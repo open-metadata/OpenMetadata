@@ -328,7 +328,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
-      @Parameter(description = "Run Id of the App", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "RunId to fetch the logs for (use AppRunRecord.startTime)",
+              schema = @Schema(type = "string"))
           @PathParam("runId")
           String runId,
       @Parameter(description = "Limit records. (1 to 1000000, default = 10)")

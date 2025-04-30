@@ -4,9 +4,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -40,7 +37,7 @@ public class DataRetention extends AbstractNativeApplication {
   private JobExecutionContext jobExecutionContext;
 
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
-  private Map<String, Object> failureDetails = null;
+  private IndexingError failureDetails = null;
 
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -66,7 +63,7 @@ public class DataRetention extends AbstractNativeApplication {
       executeCleanup(dataRetentionConfiguration);
 
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, retentionStats);
-      updateRecordToDbAndNotify(null);
+      updateRecordToDbAndNotify();
 
       if (internalStatus == AppRunRecord.Status.ACTIVE_ERROR
           || internalStatus == AppRunRecord.Status.FAILED) {
@@ -77,11 +74,12 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("DataRetention job failed.", ex);
       internalStatus = AppRunRecord.Status.FAILED;
 
-      failureDetails = new HashMap<>();
-      failureDetails.put("message", ex.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      failureDetails =
+          new IndexingError()
+              .withMessage(ex.getMessage())
+              .withStackTrace(ExceptionUtils.getStackTrace(ex));
 
-      updateRecordToDbAndNotify(ex);
+      updateRecordToDbAndNotify();
     }
   }
 
@@ -117,6 +115,7 @@ public class DataRetention extends AbstractNativeApplication {
     cleanAppRecords(appRecordsRetentionPeriod);
   }
 
+  @Transaction
   private void cleanAppRecords(int appLogRetentionPeriod) {
     long end = System.currentTimeMillis() - (appLogRetentionPeriod * DAY_MILLIS);
     StepStats stepStats = new StepStats().withFailedRecords(0).withSuccessRecords(0);
@@ -131,7 +130,7 @@ public class DataRetention extends AbstractNativeApplication {
               .cleanTimeseriesBatch(range.getLeft(), range.getRight());
       stepStats.setSuccessRecords(stepStats.getSuccessRecords() + result);
       stepStats.setTotalRecords(stepStats.getSuccessRecords());
-      if (result < 0) {
+      if (result > 0) {
         logger.info(
             String.format(
                 "Cleaned %s app logs for range %s to %s",
@@ -178,9 +177,10 @@ public class DataRetention extends AbstractNativeApplication {
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
         if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+          failureDetails =
+              new IndexingError()
+                  .withMessage(ex.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(ex));
         }
         break;
       }
@@ -214,21 +214,12 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
-  private void updateRecordToDbAndNotify(Exception error) {
+  private void updateRecordToDbAndNotify() {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(internalStatus);
 
     if (failureDetails != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
-    } else {
-      appRecord.setFailureContext(
-          new FailureContext()
-              .withFailure(
-                  new IndexingError()
-                      .withReason(error.getClass().getName())
-                      .withStackTrace(Arrays.toString(error.getStackTrace()))
-                      .withMessage(error.getMessage())));
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
     }
 
     if (WebSocketManager.getInstance() != null) {
