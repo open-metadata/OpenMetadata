@@ -18,6 +18,7 @@ from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_workflow_config_property,
+    execute_workflow,
 )
 
 from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
@@ -57,12 +58,8 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig, **conte
         **(config.get("appConfig") or {}),
         **(params.get("appConfigOverride") or {}),
     }
-
     workflow = ApplicationWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, workflow_config)
 
 
 def build_application_workflow_config(

@@ -357,20 +357,6 @@ class SearchClassBase {
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
-      [SearchIndex.TABLE]: {
-        label: i18n.t('label.table-plural'),
-        sortingFields: tableSortingFields,
-        sortField: INITIAL_SORT_FIELD,
-        path: ExplorePageTabs.TABLES,
-        icon: TableIcon,
-      },
-      [SearchIndex.STORED_PROCEDURE]: {
-        label: i18n.t('label.stored-procedure-plural'),
-        sortingFields: entitySortingFields,
-        sortField: INITIAL_SORT_FIELD,
-        path: ExplorePageTabs.STORED_PROCEDURE,
-        icon: IconStoredProcedure,
-      },
       [SearchIndex.DATABASE]: {
         label: i18n.t('label.database-plural'),
         sortingFields: entitySortingFields,
@@ -384,6 +370,20 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: SchemaIcon,
+      },
+      [SearchIndex.TABLE]: {
+        label: i18n.t('label.table-plural'),
+        sortingFields: tableSortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.TABLES,
+        icon: TableIcon,
+      },
+      [SearchIndex.STORED_PROCEDURE]: {
+        label: i18n.t('label.stored-procedure-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.STORED_PROCEDURE,
+        icon: IconStoredProcedure,
       },
       [SearchIndex.DASHBOARD]: {
         label: i18n.t('label.dashboard-plural'),

@@ -250,7 +250,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important border-none"
+        className="mt-0-important border-none p-lg"
         doc={doc}
         heading={heading}
         permission={permission}

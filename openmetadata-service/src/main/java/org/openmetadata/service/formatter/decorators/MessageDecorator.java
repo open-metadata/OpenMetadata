@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThreadEntity;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
@@ -176,17 +177,15 @@ public interface MessageDecorator<T> {
         .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
         .orElseGet(
             () -> {
-              EntityInterface entityInterface = getEntity(event);
-              String fqn = entityInterface.getFullyQualifiedName();
-
-              if (CommonUtil.nullOrEmpty(fqn)) {
-                EntityInterface result =
-                    Entity.getEntity(
-                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
-                fqn = result.getFullyQualifiedName();
+              if (event.getEntityType().equals(Entity.THREAD)) {
+                Thread thread = getThreadEntity(event);
+                return nullOrEmpty(thread.getEntityRef())
+                    ? thread.getId().toString()
+                    : thread.getEntityRef().getFullyQualifiedName();
+              } else {
+                EntityInterface entityInterface = getEntity(event);
+                return entityInterface.getFullyQualifiedName();
               }
-
-              return fqn;
             });
   }
 

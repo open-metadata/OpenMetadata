@@ -261,6 +261,7 @@
   {
     "name" : "task",
     "supportedFilters" : [
+      "filterByMentionedName"
     ]
   },
   {

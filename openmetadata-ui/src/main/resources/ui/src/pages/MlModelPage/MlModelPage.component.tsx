@@ -71,7 +71,7 @@ const MlModelPage = () => {
         entityFqn
       );
       setPipelinePermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -233,7 +233,7 @@ const MlModelPage = () => {
     const updatedData = data as Mlmodel;
 
     setMlModelDetail((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

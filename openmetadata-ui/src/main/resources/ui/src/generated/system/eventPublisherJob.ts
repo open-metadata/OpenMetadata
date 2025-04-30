@@ -78,8 +78,8 @@ export interface EventPublisherJob {
     /**
      * This schema publisher run job status.
      */
-    status:    Status;
-    timestamp: number;
+    status?:    Status;
+    timestamp?: number;
 }
 
 /**
