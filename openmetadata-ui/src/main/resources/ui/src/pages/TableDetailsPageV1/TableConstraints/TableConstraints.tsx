@@ -76,8 +76,6 @@ const TableConstraints = () => {
 
   const content = (
     <Space className="w-full new-header-border-card" direction="vertical">
-      {header}
-
       {hasPermission && isEmpty(data?.tableConstraints) && (
         <TagButton
           className="text-primary cursor-pointer"

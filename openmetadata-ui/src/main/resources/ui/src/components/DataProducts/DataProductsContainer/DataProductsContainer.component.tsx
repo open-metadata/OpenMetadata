@@ -201,7 +201,7 @@ const DataProductsContainer = ({
   return (
     <ExpandableCard
       cardProps={cardProps}
-      data-testid="data-products-container"
+      dataTestId="data-products-container"
       isExpandDisabled={isEmpty(dataProducts)}>
       {!isEditMode && (
         <Row data-testid="data-products-list">

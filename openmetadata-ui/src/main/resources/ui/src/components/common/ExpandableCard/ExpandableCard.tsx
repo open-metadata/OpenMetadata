@@ -21,6 +21,7 @@ interface ExpandableCardProps {
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
   cardProps: CardProps;
+  dataTestId?: string;
 }
 
 const ExpandableCard = ({
@@ -28,6 +29,7 @@ const ExpandableCard = ({
   cardProps: { className, ...restCardProps },
   onExpandStateChange,
   isExpandDisabled,
+  dataTestId,
 }: ExpandableCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -49,9 +51,12 @@ const ExpandableCard = ({
         },
         className
       )}
+      data-testid={dataTestId}
       extra={
         <CardExpandCollapseIconButton
+          className="expand-collapse-icon bordered"
           disabled={isExpandDisabled}
+          size="small"
           title={isExpanded ? t('label.collapse') : t('label.expand')}
           onClick={handleExpandClick}
         />

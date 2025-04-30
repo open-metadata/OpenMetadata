@@ -133,14 +133,13 @@ export const CardExpandCollapseIconButton = ({
   ...props
 }: IconButtonPropsInternal) => {
   return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('border-none tab-expand-icon', className)}
-        icon={<CardExpandCollapseIcon />}
-        size={size}
-        type="text"
-        {...props}
-      />
-    </Tooltip>
+    <Button
+      className={classNames('bordered', className)}
+      icon={<CardExpandCollapseIcon />}
+      size={size}
+      title={title}
+      type="text"
+      {...props}
+    />
   );
 };

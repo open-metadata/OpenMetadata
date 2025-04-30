@@ -119,7 +119,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {customProperties && (
           <CustomPropertyTable<T>
             isRenderedInRightPanel
-            newLook
             entityType={entityType as T}
             hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={Boolean(viewAllPermission)}

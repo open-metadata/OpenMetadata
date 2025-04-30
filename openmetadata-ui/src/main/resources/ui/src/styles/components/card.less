@@ -77,6 +77,7 @@
 .ant-card.new-header-border-card {
   height: auto !important;
 
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   .ant-card-head {
     background: @grey-50;
     border-radius: @border-radius-sm;
@@ -92,7 +93,6 @@
 
   .expand-collapse-icon {
     transform: rotate(180deg);
-    transition: transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   }
 
   &.expanded {
