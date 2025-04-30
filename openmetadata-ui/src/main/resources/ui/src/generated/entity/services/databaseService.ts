@@ -42,6 +42,10 @@ export interface DatabaseService {
      */
     domain?: EntityReference;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;

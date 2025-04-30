@@ -54,6 +54,10 @@ export interface DatabaseSchema {
      */
     extension?: any;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * Name that uniquely identifies a schema in the format
      * 'ServiceName.DatabaseName.SchemaName'.
      */

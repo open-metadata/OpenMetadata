@@ -1294,7 +1294,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the table.",
+      description = "Remove the user identified `userId` as a follower of the entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1307,7 +1307,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user being removed as follower",

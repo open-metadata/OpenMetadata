@@ -152,6 +152,10 @@
       "description": "Domain the Messaging service belongs to.",
       "$ref": "../../type/entityReference.json"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"

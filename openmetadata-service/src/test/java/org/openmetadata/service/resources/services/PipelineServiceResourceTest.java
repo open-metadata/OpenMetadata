@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -71,7 +72,7 @@ public class PipelineServiceResourceTest
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "owners");
+        PipelineServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -261,7 +262,7 @@ public class PipelineServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

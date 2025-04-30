@@ -262,7 +262,7 @@ public class DatabaseSchemaResourceTest
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
     assertListNull(schema.getOwners(), schema.getTables());
 
-    fields = "owners,tags,tables";
+    fields = "owners,tags,tables,followers";
     schema =
         byName
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
