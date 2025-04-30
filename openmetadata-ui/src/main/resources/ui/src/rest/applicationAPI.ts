@@ -18,6 +18,7 @@ import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -35,6 +36,14 @@ export const getApplicationList = async (params?: AppListParams) => {
   const response = await APIClient.get<PagingResponse<App[]>>(BASE_URL, {
     params,
   });
+
+  return response.data;
+};
+
+export const getInstalledApplicationList = async () => {
+  const response = await APIClient.get<EntityReference[]>(
+    `${BASE_URL}/installed`
+  );
 
   return response.data;
 };

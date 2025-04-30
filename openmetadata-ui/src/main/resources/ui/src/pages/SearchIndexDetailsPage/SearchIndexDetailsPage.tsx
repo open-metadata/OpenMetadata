@@ -208,7 +208,7 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,

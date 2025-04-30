@@ -222,6 +222,12 @@ test('GlossaryTerm', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
 
+    await page.waitForLoadState('networkidle');
+
+    await page
+      .locator('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
+      .scrollIntoViewIfNeeded();
+
     await expect(
       page.locator(
         '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'

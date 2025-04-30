@@ -638,6 +638,13 @@
         <artifactId>azure-identity</artifactId>
         <version>1.14.0</version>
       </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>4.1.112.Final</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
       <!-- Enforce consistent snakeyaml version -->
       <dependency>
