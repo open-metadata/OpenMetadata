@@ -42,6 +42,7 @@ import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource.MlModelServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -55,7 +56,7 @@ public class MlModelServiceResourceTest
         MlModelService.class,
         MlModelServiceList.class,
         "services/mlmodelServices",
-        "owners");
+        MlModelServiceResource.FIELDS);
     this.supportsPatch = false;
     supportsSearchIndex = true;
   }

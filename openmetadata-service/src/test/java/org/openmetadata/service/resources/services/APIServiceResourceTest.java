@@ -41,7 +41,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
         ApiService.class,
         APIServiceResource.APIServiceList.class,
         "services/apiServices",
-        "owners");
+        APIServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 

@@ -42,7 +42,7 @@ public class SearchServiceResourceTest
         SearchService.class,
         SearchServiceResource.SearchServiceList.class,
         "services/searchServices",
-        "owners");
+        SearchServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 

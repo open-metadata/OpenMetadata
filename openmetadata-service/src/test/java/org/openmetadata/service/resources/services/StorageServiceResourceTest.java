@@ -40,7 +40,7 @@ public class StorageServiceResourceTest
         StorageService.class,
         StorageServiceResource.StorageServiceList.class,
         "services/storageServices",
-        "owners");
+        StorageServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
