@@ -186,8 +186,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
-        } else {
-          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {

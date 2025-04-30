@@ -26,6 +26,7 @@ from sqlalchemy.sql import sqltypes
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
     POSTGRES_FETCH_FK,
+    POSTGRES_GET_SCHEMA_NAMES,
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
@@ -43,10 +44,8 @@ logger = utils_logger()
 
 OLD_POSTGRES_VERSION = "130000"
 
-
-def get_etable_owner(
-    self, connection, table_name=None, schema=None
-):  # pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
+def get_etable_owner(self, connection, table_name=None, schema=None):
     """Return all owners.
 
     :param schema: Optional, retrieve names from a non-default schema.
@@ -67,6 +66,16 @@ def get_etable_owner(
 def get_foreign_keys(
     self, connection, table_name, schema=None, postgresql_ignore_search_path=False, **kw
 ):
+    """
+    Args:
+        connection (_type_): _description_
+        table_name (_type_): _description_
+        schema (_type_, optional): _description_. Defaults to None.
+        postgresql_ignore_search_path (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
     preparer = self.identifier_preparer
     table_oid = self.get_table_oid(
         connection, table_name, schema, info_cache=kw.get("info_cache")
@@ -87,7 +96,7 @@ def get_foreign_keys(
     t = sql.text(POSTGRES_FETCH_FK).columns(
         conname=sqltypes.Unicode, condef=sqltypes.Unicode, con_db_name=sqltypes.Unicode
     )
-    c = connection.execute(t, dict(table=table_oid))
+    c = connection.execute(t, {"table": table_oid})
     fkeys = []
     for conname, condef, conschema, con_db_name in c.fetchall():
         m = re.search(FK_REGEX, condef).groups()
@@ -109,7 +118,7 @@ def get_foreign_keys(
         ) = m
 
         if deferrable is not None:
-            deferrable = True if deferrable == "DEFERRABLE" else False
+            deferrable = deferrable == "DEFERRABLE"
         constrained_columns = tuple(re.split(r"\s*,\s*", constrained_columns))
         constrained_columns = [
             preparer._unquote_identifier(x) for x in constrained_columns
@@ -161,9 +170,7 @@ def get_foreign_keys(
 
 
 @reflection.cache
-def get_table_owner(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_owner(self, connection, table_name, schema=None, **kw):
     return get_table_owner_wrapper(
         self,
         connection=connection,
@@ -174,9 +181,7 @@ def get_table_owner(
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):
     return get_table_comment_wrapper(
         self,
         connection,
@@ -187,9 +192,7 @@ def get_table_comment(
 
 
 @reflection.cache
-def get_columns(  # pylint: disable=too-many-locals
-    self, connection, table_name, schema=None, **kw
-):
+def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Overriding the dialect method to add raw_data_type in response
     """
@@ -368,7 +371,7 @@ def _handle_array_type(attype):
     )
 
 
-# pylint: disable=too-many-statements,too-many-branches,too-many-locals,too-many-arguments
+# pylint: disable=too-many-statements,too-many-branches
 def get_column_info(
     self,
     name,
@@ -477,9 +480,7 @@ def get_column_info(
 
 
 @reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, table_name, schema=None, **kw):
     return get_view_definition_wrapper(
         self,
         connection,
@@ -515,3 +516,11 @@ def get_postgres_time_column_name(engine) -> str:
     ):
         time_column_name = "total_time"
     return time_column_name
+
+
+@reflection.cache
+def get_schema_names(self, connection, **kw):
+    result = connection.execute(
+        sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode)
+    )
+    return [name for name, in result]
