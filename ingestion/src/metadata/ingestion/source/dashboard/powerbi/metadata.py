@@ -287,7 +287,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/dashboards/{dashboard_id}"
+            f"{workspace_id}/dashboards/{dashboard_id}?experience=power-bi"
         )
 
     def _get_report_url(self, workspace_id: str, dashboard_id: str) -> str:
