@@ -111,7 +111,6 @@ export const OwnerLabel = ({
               <OwnerItem
                 avatarSize={avatarSize}
                 className={className}
-                index={index}
                 isCompactView={isCompactView}
                 owner={owner}
                 ownerDisplayName={ownerDisplayName?.[index]}
@@ -131,7 +130,6 @@ export const OwnerLabel = ({
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
-                  index={index}
                   isCompactView={isCompactView}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName?.[index]}
@@ -173,9 +171,9 @@ export const OwnerLabel = ({
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
     // Show all owners when "more" is clicked, regardless of view mode
-    const visibleOwners = (
-      showAllOwners ? owners : owners.slice(0, maxVisibleOwners)
-    ).reverse();
+    const visibleOwners = showAllOwners
+      ? owners
+      : owners.slice(0, maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
     // If no owners, render the empty state
@@ -211,7 +209,7 @@ export const OwnerLabel = ({
         <div className="d-flex items-center w-full flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center flex-row-reverse m-l-xss',
+              'avatar-group w-full  d-flex relative items-center',
               {
                 'gap-2 flex-wrap': isCompactView,
                 inherited: Boolean(owners.some((owner) => owner?.inherited)),
@@ -223,7 +221,16 @@ export const OwnerLabel = ({
                 className={classNames({
                   'w-full': owner.type === OwnerType.TEAM,
                 })}
-                key={owner.id}>
+                key={owner.id}
+                style={
+                  !isCompactView
+                    ? {
+                        zIndex: visibleOwners.length - index,
+                        marginRight: '-4px',
+                        position: 'relative',
+                      }
+                    : {}
+                }>
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
