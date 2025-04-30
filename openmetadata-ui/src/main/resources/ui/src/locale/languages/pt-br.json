@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "Usuário verificado com sucesso",
     "valid-url-endpoint": "Os endpoints devem ser URLs válidas",
     "validation-error-assets": "Por favor, verifique todos os seus ativos que estão sendo adicionados",
+    "value-must-be-greater-than": "{{field}} deve ser maior que {{minimum}}",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "{{version}} Lançada <0>Veja o que há de novo!</0>",
