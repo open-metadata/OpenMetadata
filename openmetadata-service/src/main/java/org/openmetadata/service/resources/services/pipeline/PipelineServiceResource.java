@@ -74,7 +74,7 @@ public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   private final PipelineServiceMapper mapper = new PipelineServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  static final String FIELDS = "pipelines,owners,domain";
+  static final String FIELDS = "pipelines,owners,domain,followers";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -264,6 +264,36 @@ public class PipelineServiceResource
           UUID userId) {
     return repository
         .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
 
