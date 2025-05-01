@@ -10,10 +10,13 @@
       "javaType": "org.openmetadata.schema.auth.JWTTokenExpiry",
       "description": "JWT Auth Token expiration in days",
       "type": "string",
-      "enum": ["OneHour", "1", "7", "30", "60", "90", "Unlimited"],
+      "enum": ["OneHour","FourHours", "1", "7", "30", "60", "90", "Unlimited"],
       "javaEnums": [
         {
           "name": "OneHour"
+        },
+        {
+          "name": "FourHours"
         },
         {
           "name": "One"
