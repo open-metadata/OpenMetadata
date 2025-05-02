@@ -95,7 +95,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   private void handleSseEvent(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     String pathInfo = request.getPathInfo();
-    if (!this.sseEndpoint.equals(pathInfo)) {
+    if (!this.sseEndpoint.contains(pathInfo)) {
       response.sendError(404);
     } else if (this.isClosing.get()) {
       response.sendError(503, "Server is shutting down");
@@ -122,8 +122,10 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
     if (this.isClosing.get()) {
       response.sendError(503, "Server is shutting down");
     } else {
-      String pathInfo = request.getPathInfo();
-      if (this.messageEndpoint.equals(pathInfo)) {
+      String requestURI = request.getRequestURI();
+      if (!requestURI.endsWith(this.messageEndpoint)) {
+        response.sendError(404);
+      } else {
         String sessionId = request.getParameter("sessionId");
         if (sessionId == null) {
           response.setContentType("application/json");
@@ -181,10 +183,6 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
             }
           }
         }
-      } else if (this.sseEndpoint.equals(pathInfo)) {
-        handleSseEvent(request, response);
-      } else {
-        response.sendError(404);
       }
     }
   }

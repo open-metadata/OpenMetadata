@@ -303,7 +303,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .build();
 
     HttpServletSseServerTransportProvider transport =
-        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/message", "/sse");
+        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/message", "/mcp/sse");
     McpSyncServer server =
         McpServer.sync(transport)
             .serverInfo("openmetadata-mcp", "0.1.0")
@@ -322,7 +322,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public static McpServerFeatures.SyncToolSpecification searchMetadataTool() {
     // Step 1: Load the JSON schema for the tool input arguments.
     final String schema =
-            "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The search query or keywords to find relevant metadata\"}},\"required\":[\"query\"]}";
+        "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The search query or keywords to find relevant metadata\"}},\"required\":[\"query\"]}";
 
     // Step 2: Create a tool with name, description, and JSON schema.
     McpSchema.Tool tool =
@@ -342,21 +342,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public static McpServerFeatures.SyncToolSpecification helloTool() {
     // Step 1: Load the JSON schema for the tool input arguments.
     final String schema =
-            "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"input\":{\"type\":\"string\",\"description\":\"Input that the users can pass to get Hello ${input}\"}},\"required\":[\"input\"]}";
+        "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"input\":{\"type\":\"string\",\"description\":\"Input that the users can pass to get Hello ${input}\"}},\"required\":[\"input\"]}";
 
     // Step 2: Create a tool with name, description, and JSON schema.
-    McpSchema.Tool tool =
-            new McpSchema.Tool(
-                    "hello_input", "Get hello tool", schema);
+    McpSchema.Tool tool = new McpSchema.Tool("hello_input", "Get hello tool", schema);
 
     // Step 3: Create a tool specification with the tool and the call function.
     return new McpServerFeatures.SyncToolSpecification(
-            tool,
-            (exchange, arguments) -> {
-              McpSchema.Content content =
-                      new McpSchema.TextContent(JsonUtils.pojoToJson(getEntityDetails(arguments)));
-              return new McpSchema.CallToolResult(List.of(content), false);
-            });
+        tool,
+        (exchange, arguments) -> {
+          McpSchema.Content content =
+              new McpSchema.TextContent(JsonUtils.pojoToJson(getEntityDetails(arguments)));
+          return new McpSchema.CallToolResult(List.of(content), false);
+        });
   }
 
   private static Object getEntityDetails(Map<String, Object> params) {
@@ -368,7 +366,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return Map.of("error", e.getMessage());
     }
   }
-  
+
   @SneakyThrows
   private static Map<String, Object> searchMetadata(Map<String, Object> params) {
     try {

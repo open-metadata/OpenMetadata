@@ -25,6 +25,8 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+  gzip:
+    syncFlush: true
 
   maxThreads: ${SERVER_MAX_THREADS:-50}
   minThreads: ${SERVER_MIN_THREADS:-10}
