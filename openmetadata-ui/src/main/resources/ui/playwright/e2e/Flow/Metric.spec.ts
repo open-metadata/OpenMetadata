@@ -136,6 +136,12 @@ test.describe('Listing page and add Metric flow should work', () => {
       'Track the health of your data assets with metrics.'
     );
 
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    if (await pageSizeDropdown.isVisible()) {
+      await pageSizeDropdown.click();
+      await page.getByText('25 / Page').click();
+    }
+
     await expect(
       page.getByRole('cell', { name: 'Name', exact: true })
     ).toBeVisible();
