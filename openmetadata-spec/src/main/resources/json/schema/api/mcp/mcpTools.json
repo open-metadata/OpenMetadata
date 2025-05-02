@@ -1,0 +1,352 @@
+{
+  "$id": "https://open-metadata.org/schema/api/mcp/mcpTools.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Tools",
+  "description": "Central definition of all tools available in the Model Context Protocol",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.mcp.MCPTools",
+  "definitions": {
+    "searchMetadata": {
+      "description": "Search for metadata entities in OpenMetadata",
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": "search_metadata"
+            },
+            "description": {
+              "type": "string",
+              "const": "Search for metadata entities in OpenMetadata based on keywords or phrases"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "object"
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "The search query or keywords to find relevant metadata"
+                        }
+                      }
+                    },
+                    "entity_type": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Optional entity type to filter results (e.g., 'table', 'dashboard', 'topic')"
+                        }
+                      }
+                    },
+                    "limit": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "integer"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Maximum number of results to return (default: 10)"
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "const": ["query"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "getEntityDetails": {
+      "description": "Get details about a specific entity",
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": "get_entity_details"
+            },
+            "description": {
+              "type": "string",
+              "const": "Get detailed information about a specific entity when you know its fully qualified name (FQN)"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "object"
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "entity_type": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "The type of entity (e.g., 'table', 'dashboard', 'topic')"
+                        }
+                      }
+                    },
+                    "fqn": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "The fully qualified name of the entity"
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "const": ["entity_type", "fqn"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nlqSearch": {
+      "description": "Search with natural language",
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": "nlq_search"
+            },
+            "description": {
+              "type": "string",
+              "const": "Search OpenMetadata using natural language queries"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "object"
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Natural language query"
+                        }
+                      }
+                    },
+                    "entity_type": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Entity type to search in (default: table)"
+                        }
+                      }
+                    },
+                    "limit": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "integer"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Maximum number of results to return (default: 10)"
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "const": ["query"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "advancedSearch": {
+      "description": "Advanced search with filters",
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": "advanced_search"
+            },
+            "description": {
+              "type": "string",
+              "const": "Perform advanced search with multiple filters and conditions"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "object"
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Base search query"
+                        }
+                      }
+                    },
+                    "entity_type": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Entity type to search in"
+                        }
+                      }
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "object"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Additional filters to apply (key-value pairs)"
+                        }
+                      }
+                    },
+                    "sort_field": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Field to sort results by"
+                        }
+                      }
+                    },
+                    "sort_order": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Sort order (asc or desc)"
+                        }
+                      }
+                    },
+                    "limit": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "integer"
+                        },
+                        "description": {
+                          "type": "string",
+                          "const": "Maximum number of results to return (default: 10)"
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "const": ["query"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 

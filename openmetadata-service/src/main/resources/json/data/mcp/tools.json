@@ -1,0 +1,49 @@
+{
+  "tools": [
+    {
+      "name": "search_metadata",
+      "description": "Search for metadata in the OpenMetadata catalog",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query string"
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Optional entity type to filter search"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results to return"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "get_entity_details",
+      "description": "Get detailed information about a specific entity",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity"
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity"
+          }
+        },
+        "required": [
+          "entity_type",
+          "fqn"
+        ]
+      }
+    }
+  ]
+}
