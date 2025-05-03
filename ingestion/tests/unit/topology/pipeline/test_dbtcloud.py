@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,8 @@
 Test dbt cloud using the topology
 """
 import json
+import uuid
+from datetime import datetime, timedelta
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -32,12 +34,16 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
+from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import DbtcloudSource
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
     DBTSchedule,
 )
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 
 MOCK_JOB_RESULT = json.loads(
     """
@@ -386,7 +392,9 @@ mock_dbtcloud_config = {
                 "host": "https://abc12.us1.dbt.com",
                 "discoveryAPI": "https://metadata.cloud.getdbt.com/graphql",
                 "accountId": "70403103922125",
-                "jobId": "70403103922125",
+                "jobIds": ["70403103922125", "70403103922126"],
+                "projectIds": ["70403103922127", "70403103922128"],
+                "numberOfRuns": 10,
                 "token": "dbt_token",
             }
         },
@@ -510,6 +518,10 @@ MOCK_PIPELINE = Pipeline(
     sourceHash=None,
 )
 
+EXPECTED_JOB_FILTERS = ["70403103922125", "70403103922126"]
+
+EXPECTED_PROJECT_FILTERS = ["70403103922127", "70403103922128"]
+
 EXPECTED_PIPELINE_NAME = str(MOCK_JOB_RESULT["data"][0]["name"])
 
 
@@ -534,6 +546,9 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.root
+        self.dbtcloud.metadata = OpenMetadata(
+            config.workflowConfig.openMetadataServerConfig
+        )
 
     @patch("metadata.ingestion.source.pipeline.dbtcloud.client.DBTCloudClient.get_jobs")
     def test_get_pipelines_list(self, get_jobs):
@@ -547,6 +562,224 @@ class DBTCloudUnitTest(TestCase):
             == EXPECTED_PIPELINE_NAME
         )
 
+    def test_filters_to_list(self):
+        assert self.dbtcloud.client.job_ids == EXPECTED_JOB_FILTERS
+        assert self.dbtcloud.client.project_ids == EXPECTED_PROJECT_FILTERS
+
     def test_pipelines(self):
         pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right
         assert pipeline == EXPECTED_CREATED_PIPELINES
+
+    def test_yield_pipeline_usage(self):
+        """
+        Validate the logic for existing or new usage
+        """
+
+        self.dbtcloud.context.get().__dict__["pipeline"] = "pipeline_name"
+
+        # Start checking pipeline without usage
+        # and a view count
+        return_value = Pipeline(
+            id=uuid.uuid4(),
+            name="pipeline_name",
+            fullyQualifiedName="pipeline_service.pipeline_name",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+            tasks=[
+                Task(
+                    name="task1",
+                    startDate=self.dbtcloud.today,
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+                Task(
+                    name="task2",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task3",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+            ],
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            got_usage = next(
+                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
+            ).right
+            self.assertEqual(
+                got_usage,
+                PipelineUsage(
+                    pipeline=return_value,
+                    usage=UsageRequest(date=self.dbtcloud.today, count=2),
+                ),
+            )
+
+        # Now check what happens if we already have some summary data for today
+        return_value = Pipeline(
+            id=uuid.uuid4(),
+            name="pipeline_name",
+            fullyQualifiedName="pipeline_service.pipeline_name",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+            tasks=[
+                Task(
+                    name="task1",
+                    startDate=self.dbtcloud.today,
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+                Task(
+                    name="task2",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task3",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+            ],
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=10), date=self.dbtcloud.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            # Nothing is returned
+            self.assertEqual(
+                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0
+            )
+
+        # But if we have usage for today but the count is 0, we'll return the details
+        return_value = Pipeline(
+            id=uuid.uuid4(),
+            name="pipeline_name",
+            fullyQualifiedName="pipeline_service.pipeline_name",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+            tasks=[
+                Task(
+                    name="task1",
+                    startDate=self.dbtcloud.today,
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+                Task(
+                    name="task2",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task3",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+            ],
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=0), date=self.dbtcloud.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            got_usage = next(
+                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
+            ).right
+            self.assertEqual(
+                next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right,
+                PipelineUsage(
+                    pipeline=return_value,
+                    usage=UsageRequest(date=self.dbtcloud.today, count=2),
+                ),
+            )
+
+        # But if we have usage for another day, then we do the difference
+        return_value = Pipeline(
+            id=uuid.uuid4(),
+            name="pipeline_name",
+            fullyQualifiedName="pipeline_service.pipeline_name",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+            tasks=[
+                Task(
+                    name="task1",
+                    startDate=self.dbtcloud.today,
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+                Task(
+                    name="task2",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task3",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task4",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task5",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task6",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task7",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+            ],
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=5),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            got_usage = next(
+                self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)
+            ).right
+            self.assertEqual(
+                next(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS)).right,
+                PipelineUsage(
+                    pipeline=return_value,
+                    usage=UsageRequest(date=self.dbtcloud.today, count=1),
+                ),
+            )
+
+        # If the past usage is higher than what we have today, something weird is going on
+        # we don't return usage but don't explode
+        return_value = Pipeline(
+            id=uuid.uuid4(),
+            name="pipeline_name",
+            fullyQualifiedName="pipeline_service.pipeline_name",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+            tasks=[
+                Task(
+                    name="task1",
+                    startDate=self.dbtcloud.today,
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+                Task(
+                    name="task2",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate=self.dbtcloud.today,
+                ),
+                Task(
+                    name="task3",
+                    startDate="2025-02-19 11:08:24.326771+00:00",
+                    endDate="2025-02-19 11:09:36.920915+00:00",
+                ),
+            ],
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=1000),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 1
+            )
+
+            self.assertIsNotNone(
+                list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))[0].left
+            )

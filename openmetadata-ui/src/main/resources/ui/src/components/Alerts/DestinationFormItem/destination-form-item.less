@@ -1,0 +1,57 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../styles/variables.less');
+
+.destination-select-dropdown {
+  .ant-tabs-nav {
+    margin: 0px;
+  }
+  .ant-tabs-nav .ant-tabs-nav-list {
+    width: 99%;
+  }
+  .ant-tabs-tab {
+    flex: 1;
+    justify-content: center;
+  }
+}
+.destination-list {
+  .ant-alert {
+    padding: 6px 10px;
+  }
+  .destination-status-skeleton {
+    .ant-skeleton-content .ant-skeleton-title {
+      height: 30px;
+    }
+  }
+  .destination-success-status.ant-alert-success {
+    border-color: @success-color;
+    background-color: @green-2;
+    .ant-alert-icon {
+      color: @success-color;
+    }
+  }
+  .destination-error-status {
+    border-color: @error-color;
+    background-color: @red-2;
+    .ant-alert-icon {
+      color: @error-color;
+    }
+  }
+  .destination-warning-status {
+    border-color: @warning-color;
+    .ant-alert-icon {
+      color: @warning-color;
+    }
+  }
+}

@@ -16,6 +16,7 @@ import org.openmetadata.schema.analytics.DataAssetMetrics;
 import org.openmetadata.schema.analytics.RawCostAnalysisReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.system.StepStats;
@@ -46,6 +47,7 @@ public class CostAnalysisWorkflow {
   @Getter private final Long endTimestamp;
   private final int retentionDays = 30;
   @Getter private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
+  private final CostAnalysisConfig costAnalysisConfig;
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
@@ -65,7 +67,10 @@ public class CostAnalysisWorkflow {
   @Getter private final WorkflowStats workflowStats = new WorkflowStats("CostAnalysisWorkflow");
 
   public CostAnalysisWorkflow(
-      Long timestamp, int batchSize, Optional<DataInsightsApp.Backfill> backfill) {
+      CostAnalysisConfig costAnalysisConfig,
+      Long timestamp,
+      int batchSize,
+      Optional<DataInsightsApp.Backfill> backfill) {
     this.endTimestamp =
         TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
     this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
@@ -93,6 +98,7 @@ public class CostAnalysisWorkflow {
     //    }
 
     this.batchSize = batchSize;
+    this.costAnalysisConfig = costAnalysisConfig;
   }
 
   private void initialize() throws SearchIndexException {
@@ -100,7 +106,7 @@ public class CostAnalysisWorkflow {
         new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of("*"));
     int total = 0;
 
-    while (!databaseServices.isDone()) {
+    while (!databaseServices.isDone().get()) {
       ResultList<DatabaseService> resultList =
           filterDatabaseServices(databaseServices.readNext(null));
       if (!resultList.getData().isEmpty()) {
@@ -129,6 +135,10 @@ public class CostAnalysisWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    if (!costAnalysisConfig.getEnabled()) {
+      return;
+    }
+    LOG.info("[Data Insights] Processing Cost Analysis.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
@@ -156,7 +166,7 @@ public class CostAnalysisWorkflow {
 
       Optional<String> initialProcessorError = Optional.empty();
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           ResultList<? extends EntityInterface> resultList = source.readNext(null);
           List<CostAnalysisTableData> costAnalysisTableData =

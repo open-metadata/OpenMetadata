@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -101,15 +101,19 @@ class LifeCycleQueryMixin:
         try:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
-                life_cycle = LifeCycle(
-                    created=AccessDetails(
-                        timestamp=Timestamp(
-                            datetime_to_timestamp(
-                                life_cycle_data.created_at, milliseconds=True
-                            )
-                        )
+                if life_cycle_data.created_at:
+                    timestamp_value = datetime_to_timestamp(
+                        life_cycle_data.created_at, milliseconds=True
                     )
+                else:
+                    timestamp_value = datetime_to_timestamp(
+                        datetime.min, milliseconds=True
+                    )  # Using minimum date
+
+                life_cycle = LifeCycle(
+                    created=AccessDetails(timestamp=Timestamp(timestamp_value))
                 )
+
                 yield Either(
                     right=OMetaLifeCycleData(
                         entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle

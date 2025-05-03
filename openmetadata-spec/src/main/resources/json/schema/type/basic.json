@@ -12,7 +12,7 @@
     "number" : {
       "$comment" : "@om-field-type",
       "description": "A numeric type that includes integer or floating point numbers.",
-      "type" : "integer"
+      "type" : "number"
     },
     "string" : {
       "$comment" : "@om-field-type",
@@ -105,22 +105,6 @@
         "type": "string"
       }
     },
-    "enumWithDescriptions": {
-      "$comment": "@om-field-type",
-      "description": "List of values in Enum with description for each key.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "timezone": {
       "description": "Timezone of the user in the format `America/Los_Angeles`, `Brazil/East`, etc.",
       "type": "string",
@@ -129,7 +113,7 @@
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$"
+      "pattern": "(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$"
     },
     "entityName": {
       "description": "Name that identifies an entity.",
@@ -188,6 +172,12 @@
       "additionalProperties": {
         ".{1,}": { "type": "string" }
       }
+    },
+    "map":  {
+      "description": "A generic map that can be deserialized later.",
+      "existingJavaType" : "java.util.Map<String,Object>",
+      "type" : "object",
+      "additionalProperties": true
     },
     "status" : {
       "javaType": "org.openmetadata.schema.type.ApiStatus",

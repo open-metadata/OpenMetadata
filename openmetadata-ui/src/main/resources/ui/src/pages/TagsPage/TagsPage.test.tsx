@@ -240,8 +240,21 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   ))
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => {
     return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
   }
@@ -498,14 +511,14 @@ describe('Test TagsPage page', () => {
     });
 
     act(async () => {
-      const tagEditIcon = await findAllByTestId(container, 'tag-edit-icon');
+      const tagEditIcon = await findAllByTestId(container, 'edit-button');
 
       expect(tagEditIcon[0]).toBeInTheDocument();
 
       fireEvent.click(tagEditIcon[0]);
     });
 
-    const tagName = await screen.findByText('test_tag');
+    const tagName = screen.getByTestId('test_tag');
 
     expect(tagName).toBeInTheDocument();
     expect(tagsComponent).toBeInTheDocument();

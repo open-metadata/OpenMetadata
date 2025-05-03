@@ -58,8 +58,18 @@
   }
 }
 .custom-property-card {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
   .ant-card-body {
     overflow-x: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .property-name {
@@ -85,4 +95,20 @@
   text-align: center;
   font-weight: 500;
   line-height: 18px;
+}
+
+.property-description {
+  .markdown-parser .toastui-editor-contents {
+    font-size: 13px;
+  }
+}
+
+.custom-property-inline-edit-container {
+  width: 100%;
+  flex-wrap: wrap;
+  overflow-x: scroll;
+
+  .ant-space-item:first-child {
+    width: inherit;
+  }
 }

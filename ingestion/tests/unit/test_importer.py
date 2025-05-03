@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
-    DynamicImportException,
     get_class_name_root,
     get_module_name,
     get_source_module_name,
@@ -28,9 +27,9 @@ from metadata.utils.importer import (
     import_from_module,
     import_processor_class,
     import_sink_class,
-    import_source_class,
     import_stage_class,
 )
+from metadata.utils.service_spec.service_spec import import_source_class
 
 
 # pylint: disable=import-outside-toplevel
@@ -61,31 +60,11 @@ class ImporterTest(TestCase):
         )
 
     def test_import_source_class(self) -> None:
-        from metadata.ingestion.source.database.bigquery.lineage import (
-            BigqueryLineageSource,
-        )
-        from metadata.ingestion.source.database.bigquery.usage import (
-            BigqueryUsageSource,
-        )
         from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
             MysqlSource,
-        )
-
-        self.assertEqual(
-            import_source_class(
-                service_type=ServiceType.Database, source_type="bigquery-lineage"
-            ),
-            BigqueryLineageSource,
-        )
-
-        self.assertEqual(
-            import_source_class(
-                service_type=ServiceType.Database, source_type="bigquery-usage"
-            ),
-            BigqueryUsageSource,
         )
 
     def test_import_processor_class(self) -> None:
@@ -126,7 +105,7 @@ class ImporterTest(TestCase):
         self.assertIsNotNone(get_connection_fn)
 
         self.assertRaises(
-            DynamicImportException,
+            AttributeError,
             import_connection_fn,
             connection=connection,
             function_name="random",

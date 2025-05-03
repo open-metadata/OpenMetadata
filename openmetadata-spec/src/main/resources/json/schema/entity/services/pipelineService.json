@@ -32,7 +32,10 @@
         "OpenLineage",
         "KafkaConnect",
         "DBTCloud",
-        "Matillion"
+        "Matillion",
+        "Stitch",
+        "DataFactory",
+        "Wherescape"
       ],
       "javaEnums": [
         {
@@ -82,6 +85,15 @@
         },
         {
           "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
+        },
+        {
+          "name": "Stitch"
+        },
+        {
+          "name": "Wherescape"
         }
       ]
     },
@@ -98,6 +110,9 @@
           "oneOf": [
             {
               "$ref": "./connections/pipeline/airflowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/wherescapeConnection.json"
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
@@ -143,6 +158,12 @@
             },
             {
               "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/stitchConnection.json"
             }
           ]
         }
@@ -197,7 +218,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
@@ -218,6 +239,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -227,8 +252,16 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

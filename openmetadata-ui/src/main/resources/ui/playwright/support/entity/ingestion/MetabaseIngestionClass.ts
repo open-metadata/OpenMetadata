@@ -21,14 +21,27 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MetabaseIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   tableName = 'jaffle_shop dashboard';
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Dashboard,
       `pw-Metabase-with-%-${uuid()}`,
       'Metabase',
-      'jaffle_shop dashboard'
+      'jaffle_shop dashboard',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
     this.tableName = 'jaffle_shop dashboard';
   }

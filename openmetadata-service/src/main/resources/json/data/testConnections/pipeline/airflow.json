@@ -9,6 +9,19 @@
             "errorMessage": "Failed to connect to airflow, please validate the credentials",
             "shortCircuit": true,
             "mandatory": true
+        },
+        {
+            "name": "PipelineDetailsAccess",
+            "description": "Check if pipeline details can be fetched.",
+            "errorMessage": "Failed to fetch Pipeine details.",
+            "mandatory": true
+        },
+        {
+            "name": "TaskDetailAccess",
+            "description": "Check if task details can be fetched.",
+            "errorMessage": "Failed to fetch Task details.",
+            "mandatory": true
         }
+
     ]
 }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.metrics;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -164,7 +165,8 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwners(), entity.getTags());
+    assertListNull(entity.getOwners());
+    assertTrue(entity.getTags().isEmpty());
 
     fields = "owners,followers,tags";
     entity =

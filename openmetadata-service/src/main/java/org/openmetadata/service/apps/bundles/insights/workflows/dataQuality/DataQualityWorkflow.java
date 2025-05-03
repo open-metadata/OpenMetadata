@@ -3,7 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataQuality;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +15,7 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
@@ -42,6 +43,7 @@ public class DataQualityWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
+  private final DataQualityConfig dataQualityConfig;
 
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
@@ -56,6 +58,7 @@ public class DataQualityWorkflow {
   private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
 
   public DataQualityWorkflow(
+      DataQualityConfig dataQualityConfig,
       Long timestamp,
       int batchSize,
       Optional<DataInsightsApp.Backfill> backfill,
@@ -93,6 +96,7 @@ public class DataQualityWorkflow {
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityType = entityType;
+    this.dataQualityConfig = dataQualityConfig;
   }
 
   public String getIndexNameByType(String entityType) {
@@ -101,7 +105,8 @@ public class DataQualityWorkflow {
   }
 
   private void initialize() {
-    int totalRecords = getTotalRequestToProcess(Set.of(entityType), collectionDAO);
+    int totalRecords =
+        getInitialStatsForEntities(Set.of(entityType)).getJobStats().getTotalRecords();
 
     List<String> fields = List.of("*");
     PaginatedEntityTimeSeriesSource source =
@@ -140,6 +145,10 @@ public class DataQualityWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    if (!dataQualityConfig.getEnabled()) {
+      return;
+    }
+    LOG.info("[Data Insights] Processing Data Quality Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
@@ -151,7 +160,7 @@ public class DataQualityWorkflow {
       deleteDataBeforeInserting(getIndexNameByType(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, entityType);
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           processEntity(source.readNext(null), contextData, source);
         } catch (SearchIndexException ex) {

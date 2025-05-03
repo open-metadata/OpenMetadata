@@ -42,7 +42,8 @@
         "Local",
         "Partitioned",
         "Foreign",
-        "Transient"
+        "Transient",
+        "Stream"
       ],
       "javaEnums": [
         {
@@ -77,6 +78,9 @@
         },
         {
           "name": "Transient"
+        },
+        {
+          "name": "Stream"
         }
       ]
     },
@@ -164,7 +168,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
@@ -193,7 +199,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {
@@ -210,6 +217,15 @@
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "ONE_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_ONE",
+            "MANY_TO_MANY"
+          ]
         }
       },
       "additionalProperties": false
@@ -319,7 +335,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "constraint": {
           "description": "Column level constraint.",
@@ -761,6 +777,11 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
+        },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
           "type": "string",
@@ -785,6 +806,18 @@
         "partitioning": {
           "description": "Partitioning configuration",
           "$ref": "#/definitions/partitionProfilerConfig"
+        },
+        "computeTableMetrics": {
+          "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Table Metrics"
+        },
+        "computeColumnMetrics": {
+          "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Column Metrics"
         }
       }
     },
@@ -900,7 +933,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
@@ -1010,6 +1043,11 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
@@ -1070,6 +1108,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -1107,11 +1149,19 @@
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

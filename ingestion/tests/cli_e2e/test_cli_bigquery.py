@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,7 +12,19 @@
 """
 Test Bigquery connector with CLI
 """
-from typing import List
+import random
+from typing import List, Tuple
+
+from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.generated.schema.entity.data.table import (
+    DmlOperationType,
+    ProfileSampleType,
+    SystemProfile,
+    TableProfilerConfig,
+)
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.type.basic import Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -33,8 +45,23 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     insert_data_queries: List[str] = [
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX');",
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (2,'PS');",
+        (
+            "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES "
+            + ",".join(
+                [
+                    "(" + ",".join(values) + ")"
+                    for values in [
+                        (
+                            str(i),
+                            random.choice(["'PS'", "'XBOX'", "'NINTENDO'", "'SEGA'"]),
+                        )
+                        for i in range(1000)
+                    ]
+                ]
+            )
+            + ";"
+        ),
+        "UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2",
     ]
 
     drop_table_query: str = """
@@ -65,11 +92,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 2
 
-    def inserted_rows_count(self) -> int:
-        return len(self.insert_data_queries)
+    def expected_sample_size(self) -> int:
+        return 50
 
     def view_column_lineage_count(self) -> int:
         return 2
+
+    def expected_lineage_node(self) -> str:
+        return "local_bigquery.open-metadata-beta.exclude_me.view_orders"
 
     @staticmethod
     def _expected_profiled_tables() -> int:
@@ -101,7 +131,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -126,3 +156,56 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
         ]
+
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
+            (
+                "local_bigquery.open-metadata-beta.exclude_me.orders",
+                [
+                    SystemProfile(
+                        timestamp=Timestamp(root=0),
+                        operation=DmlOperationType.INSERT,
+                        rowsAffected=1000,
+                    ),
+                    SystemProfile(
+                        timestamp=Timestamp(root=1),
+                        operation=DmlOperationType.UPDATE,
+                        rowsAffected=1,
+                    ),
+                ],
+            )
+        ]
+
+    def add_table_profile_config(self):
+        self.openmetadata.create_or_update_table_profiler_config(
+            self.get_data_quality_table(),
+            TableProfilerConfig(
+                profileSampleType=ProfileSampleType.ROWS,
+                profileSample=100,
+            ),
+        )
+
+    def get_data_quality_table(self):
+        return self.fqn_created_table()
+
+    def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+        return [
+            TestCaseDefinition(
+                name="bigquery_data_diff",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="table2",
+                        value=self.get_data_quality_table(),
+                    ),
+                    TestCaseParameterValue(
+                        name="keyColumns",
+                        value='["id"]',
+                    ),
+                ],
+            )
+        ]
+
+    def get_expected_test_case_results(self):
+        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]

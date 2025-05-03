@@ -13,12 +13,13 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { cloneDeep, isUndefined } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import CustomizeGlossaryTermDetailPage from '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
   GlobalSettingOptions,
@@ -29,7 +30,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
-import { PageType } from '../../generated/system/ui/page';
+import { Page, PageType } from '../../generated/system/ui/page';
+import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -39,91 +41,109 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
-import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
+import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
+import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
+import { useCustomizeStore } from './CustomizeStore';
 
 export const CustomizablePage = () => {
-  const { pageFqn } = useParams<{ pageFqn: PageType }>();
-  const { fqn: decodedPageFQN } = useFqn();
+  const { pageFqn } = useParams<{ pageFqn: string }>();
+  const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
-  const [page, setPage] = useState<Document>({} as Document);
-  const [editedPage, setEditedPage] = useState<Document>({} as Document);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPersonaLoading, setIsPersonaLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const [saveCurrentPageLayout, setSaveCurrentPageLayout] = useState(false);
+  const {
+    document,
+    setDocument,
+    getNavigation,
+    currentPage,
+    getPage,
+    setCurrentPageType,
+  } = useCustomizeStore();
 
-  const handlePageDataChange = useCallback((newPageData: Document) => {
-    setEditedPage(newPageData);
-  }, []);
-
-  const handleSaveCurrentPageLayout = useCallback((value: boolean) => {
-    setSaveCurrentPageLayout(value);
-  }, []);
-
-  const fetchPersonaDetails = useCallback(async () => {
-    try {
-      setIsPersonaLoading(true);
-      const response = await getPersonaByName(decodedPageFQN);
-
-      setPersonaDetails(response);
-    } catch {
-      // No error handling needed
-      // No data placeholder will be shown in case of failure
-    } finally {
-      setIsPersonaLoading(false);
+  const handlePageCustomizeSave = async (newPage?: Page) => {
+    if (!document) {
+      return;
     }
-  }, [decodedPageFQN]);
+    try {
+      let response: Document;
+      const newDoc = cloneDeep(document);
+      const pageData = getPage(pageFqn);
 
-  const fetchDocument = async () => {
-    if (!isUndefined(personaDetails)) {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${decodedPageFQN}.${EntityType.PAGE}.${pageFqn}`;
-      try {
-        setIsLoading(true);
-        const pageData = await getDocumentByFQN(pageLayoutFQN);
-
-        setPage(pageData);
-        setEditedPage(pageData);
-      } catch (error) {
-        if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
-          setPage({
-            name: `${personaDetails.name}-${decodedPageFQN}`,
-            fullyQualifiedName: pageLayoutFQN,
-            entityType: EntityType.PAGE,
-            data: {
-              page: { layout: customizePageClassBase.defaultLayout },
-            },
-          });
-        } else {
-          showErrorToast(error as AxiosError);
-        }
-      } finally {
-        setIsLoading(false);
+      if (pageData) {
+        newDoc.data.pages = newPage
+          ? newDoc.data?.pages?.map((p: Page) =>
+              p.pageType === pageFqn ? newPage : p
+            )
+          : newDoc.data?.pages.filter((p: Page) => p.pageType !== pageFqn);
+      } else {
+        newDoc.data = {
+          ...newDoc.data,
+          pages: [...(newDoc.data.pages ?? []), newPage],
+        };
       }
+
+      if (document.id) {
+        const jsonPatch = compare(document, newDoc);
+
+        response = await updateDocument(document.id ?? '', jsonPatch);
+      } else {
+        response = await createDocument({
+          ...newDoc,
+          domain: newDoc.domain?.fullyQualifiedName,
+        });
+      }
+      setDocument(response);
+
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: document.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
+    } catch (error) {
+      // Error
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: document.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
     }
   };
 
-  const handleSave = async () => {
+  const handleNavigationSave = async (
+    uiNavigation: UICustomization['navigation']
+  ) => {
+    if (!document) {
+      return;
+    }
     try {
       let response: Document;
+      const newDoc = cloneDeep(document);
 
-      if (page.id) {
-        const jsonPatch = compare(page, editedPage);
+      newDoc.data.navigation = uiNavigation;
 
-        response = await updateDocument(page.id ?? '', jsonPatch);
+      if (document.id) {
+        const jsonPatch = compare(document, newDoc);
+
+        response = await updateDocument(document.id ?? '', jsonPatch);
       } else {
         response = await createDocument({
-          ...editedPage,
-          domain: editedPage.domain?.fullyQualifiedName,
+          ...newDoc,
+          domain: newDoc.domain?.fullyQualifiedName,
         });
       }
-      setPage(response);
-      setEditedPage(response);
+      setDocument(response);
+
       showSuccessToast(
         t('server.page-layout-operation-success', {
-          operation: page.id
+          operation: document.id
             ? t('label.updated-lowercase')
             : t('label.created-lowercase'),
         })
@@ -132,7 +152,7 @@ export const CustomizablePage = () => {
       // Error
       showErrorToast(
         t('server.page-layout-operation-error', {
-          operation: page.id
+          operation: document.id
             ? t('label.updating-lowercase')
             : t('label.creating-lowercase'),
         })
@@ -140,22 +160,50 @@ export const CustomizablePage = () => {
     }
   };
 
-  useEffect(() => {
-    if (saveCurrentPageLayout) {
-      handleSave();
-      setSaveCurrentPageLayout(false);
+  const initializeCustomizeStore = async () => {
+    setIsLoading(true);
+    const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}`;
+    try {
+      const personaDetails = await getPersonaByName(personaFQN);
+      setPersonaDetails(personaDetails);
+
+      if (personaDetails) {
+        try {
+          const pageData = await getDocumentByFQN(pageLayoutFQN);
+
+          setDocument(pageData);
+          setCurrentPageType(pageFqn as PageType);
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND
+          ) {
+            setDocument({
+              name: `${personaDetails.name}-${personaFQN}`,
+              fullyQualifiedName: pageLayoutFQN,
+              entityType: EntityType.PAGE,
+              data: {
+                pages: [],
+                navigation: [],
+              },
+            });
+            setCurrentPageType(pageFqn as PageType);
+          } else {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
-  }, [saveCurrentPageLayout]);
+  };
 
   useEffect(() => {
-    fetchPersonaDetails();
-  }, [decodedPageFQN, pageFqn]);
+    initializeCustomizeStore();
+  }, []);
 
-  useEffect(() => {
-    fetchDocument();
-  }, [personaDetails]);
-
-  if (isLoading || isPersonaLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -189,17 +237,67 @@ export const CustomizablePage = () => {
     );
   }
 
-  if (pageFqn === PageType.LandingPage) {
-    return (
-      <CustomizeMyData
-        handlePageDataChange={handlePageDataChange}
-        handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
-        initialPageData={page}
-        personaDetails={personaDetails}
-        onSaveLayout={handleSave}
-      />
-    );
-  }
+  switch (pageFqn) {
+    case 'navigation':
+      return (
+        <SettingsNavigationPage
+          currentNavigation={getNavigation()}
+          onSave={handleNavigationSave}
+        />
+      );
 
-  return null;
+    case PageType.LandingPage:
+    case 'homepage':
+      return (
+        <CustomizeMyData
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Domain:
+      return (
+        <CustomizableDomainPage
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+
+    case PageType.Glossary:
+    case PageType.GlossaryTerm:
+      return (
+        <CustomizeGlossaryTermDetailPage
+          initialPageData={currentPage}
+          isGlossary={pageFqn === PageType.Glossary}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Table:
+    case PageType.Topic:
+    case PageType.StoredProcedure:
+    case PageType.DashboardDataModel:
+    case PageType.Dashboard:
+    case PageType.Pipeline:
+    case PageType.DatabaseSchema:
+    case PageType.Database:
+    case PageType.Container:
+    case PageType.SearchIndex:
+    case PageType.Metric:
+    case PageType.MlModel:
+    case PageType.APIEndpoint:
+    case PageType.APICollection:
+      return (
+        <CustomizeDetailsPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+
+    default:
+      return <ErrorPlaceHolder />;
+  }
 };

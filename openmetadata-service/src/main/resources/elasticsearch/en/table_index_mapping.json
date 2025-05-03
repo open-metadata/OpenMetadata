@@ -1,9 +1,12 @@
 {
-  "settings": {
+ "settings": {
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
-        "edge_ngram_tokenizer": {
-          "type": "edge_ngram",
+        "n_gram_tokenizer": {
+          "type": "ngram",
           "min_gram": 3,
           "max_gram": 20,
           "token_chars": ["letter", "digit"]
@@ -13,9 +16,7 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {
@@ -29,7 +30,7 @@
         },
         "om_ngram": {
           "type": "custom",
-          "tokenizer": "edge_ngram_tokenizer",
+          "tokenizer": "n_gram_tokenizer",
           "filter": ["lowercase"]
         }
       },
@@ -48,7 +49,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -75,6 +82,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -86,7 +94,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "docs"
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -99,6 +107,9 @@
         "type": "text"
       },
       "href": {
+        "type": "text"
+      },
+      "schemaDefinition": {
         "type": "text"
       },
       "sourceUrl": {
@@ -134,7 +145,7 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "index_options": "docs"
+            "similarity": "boolean"
           },
           "fullyQualifiedName": {
             "type": "keyword",
@@ -146,14 +157,21 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
               },
               "labelType": {
                 "type": "keyword"
               },
               "description": {
                 "type": "text",
-                "index_options": "docs"
+                "similarity": "boolean"
               },
               "source": {
                 "type": "keyword"
@@ -187,10 +205,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -235,10 +253,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -286,6 +304,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -446,7 +465,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -499,6 +518,9 @@
           }
         }
       },
+      "locationPath": {
+        "type": "keyword"
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {
@@ -536,13 +558,22 @@
       "deleted": {
         "type": "boolean"
       },
+      "processedLineage": {
+        "type": "boolean"
+      },
       "followers": {
         "type": "keyword"
       },
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -562,7 +593,13 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -579,6 +616,9 @@
         }
       },
       "lineage": {
+        "type" : "object"
+      },
+      "entityRelationship": {
         "type" : "object"
       },
       "serviceType": {
@@ -609,6 +649,52 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "columnDescriptionStatus": {
+        "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "changeSummary": {
+        "type" : "object"
       }
     }
   }

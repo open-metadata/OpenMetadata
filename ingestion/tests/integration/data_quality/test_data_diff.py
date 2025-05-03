@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 
 import pytest
+from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
 from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
@@ -15,7 +16,11 @@ from sqlalchemy.sql import sqltypes
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+    Table,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -40,6 +45,7 @@ class TestParameters(BaseModel):
     test_case_defintion: TestCaseDefinition
     table2_fqn: str
     expected: TestCaseResult
+    table_profile_config: TableProfilerConfig = None
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -72,6 +78,55 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     passedRows=599,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_percentage_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    # we use approximations becuase the sampling is not deterministic
+                    passedRows=IsApprox(59, delta=60) & IsPositiveInt,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_row_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    # we use approximations around the 99.5 confidence interval since the
+                    # sampling in data diff uses hash based partitioning
+                    passedRows=IsApprox(10, delta=15) & IsPositiveInt,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.ROWS,
+                    profileSample=10,
                 ),
             ),
             (
@@ -236,6 +291,49 @@ class TestParameters(BaseModel):
             ),
             (
                 TestCaseDefinition(
+                    name="postgres_different_case_columns_fail",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="true"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="1"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_success",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="false"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
+            ),
+            (
+                TestCaseDefinition(
                     name="table_from_another_db",
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
@@ -264,7 +362,7 @@ def test_happy_paths(
     cleanup_fqns,
 ):
     metadata = patched_metadata
-    table1 = metadata.get_by_name(
+    table1: Table = metadata.get_by_name(
         Table,
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
@@ -289,9 +387,13 @@ def test_happy_paths(
             ),
         ]
     )
+    if parameters.table_profile_config:
+        metadata.create_or_update_table_profiler_config(
+            table1.fullyQualifiedName.root, parameters.table_profile_config
+        )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
@@ -302,12 +404,15 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
+    metadata.create_or_update_table_profiler_config(
+        table1.fullyQualifiedName.root, TableProfilerConfig()
+    )
     test_case_entity = metadata.get_by_name(
         TestCase,
         f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",
@@ -414,7 +519,7 @@ def test_error_paths(
             )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
@@ -442,6 +547,16 @@ def test_error_paths(
 
 def add_changed_tables(connection: Connection):
     connection.execute("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
+    connection.execute(
+        "CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"
+    )
+    connection.execute(
+        'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+    )
+    # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
+    # connection.execute(
+    #     "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    # )
     connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
     connection.execute(
         "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"

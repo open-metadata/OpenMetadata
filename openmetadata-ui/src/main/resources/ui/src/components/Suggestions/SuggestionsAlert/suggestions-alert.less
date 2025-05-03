@@ -12,17 +12,24 @@
  */
 @import url('../../../styles/variables.less');
 
-.suggested-description-card {
+.suggested-card {
   border-color: @primary-color !important;
   border-radius: 10px !important;
   overflow: hidden;
 }
 
-.suggestion-pending-btn {
-  background: #ffbe0e0d !important;
-  border: 1px solid @yellow-2 !important;
-  color: @yellow-2 !important;
-  border-radius: 8px !important;
+.suggested-card.card-inline-flex {
+  .ant-card-body {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.ant-btn.suggestion-pending-btn {
+  margin-left: 4px;
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 12px;
 }
 
 .suggested-alert-content {
@@ -30,7 +37,6 @@
 }
 
 .suggested-alert-footer {
-  background-color: @grey-1 !important;
   padding: 8px 14px;
   font-size: 12px;
 }

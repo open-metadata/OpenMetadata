@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,11 +24,13 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.source.mariadb.metrics.window.first_quartile import (
+from metadata.profiler.source.database.mariadb.metrics.window.first_quartile import (
     MariaDBFirstQuartile,
 )
-from metadata.profiler.source.mariadb.metrics.window.median import MariaDBMedian
-from metadata.profiler.source.mariadb.metrics.window.third_quartile import (
+from metadata.profiler.source.database.mariadb.metrics.window.median import (
+    MariaDBMedian,
+)
+from metadata.profiler.source.database.mariadb.metrics.window.third_quartile import (
     MariaDBThirdQuartile,
 )
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -75,11 +77,11 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
                 return dict(row)
         except ProgrammingError:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow"
             )
             return None
 
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from requests.utils import quote as url_quote
 
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -85,3 +86,15 @@ def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
     E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
     """
     return url_quote(model_str(fqn), safe="")
+
+
+def build_entity_reference(entity: T) -> EntityReference:
+    """Get the EntityReference from the Entity itself"""
+    return EntityReference(
+        id=entity.id,
+        type=get_entity_type(type(entity)),
+        name=model_str(entity.name),
+        fullyQualifiedName=model_str(entity.fullyQualifiedName),
+        description=entity.description,
+        href=entity.href,
+    )

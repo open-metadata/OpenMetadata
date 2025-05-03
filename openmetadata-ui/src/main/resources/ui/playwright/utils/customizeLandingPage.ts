@@ -17,24 +17,27 @@ import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
   page: Page,
-  { personaName, customPageDataResponse }
+  {
+    personaName,
+    customPageDataResponse,
+  }: { personaName: string; customPageDataResponse: number }
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
-  await settingClick(page, GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
+  await settingClick(page, GlobalSettingOptions.PERSONA);
 
   await getPersonas;
 
   const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(
-      personaName
-    )}.Page.LandingPage`
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
   // Navigate to the customize landing page
-  await page.click(
-    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
-  );
+  await page.getByTestId(`persona-details-card-${personaName}`).click();
+
+  await page.getByRole('tab', { name: 'Customize UI' }).click();
+
+  await page.getByTestId('LandingPage').click();
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
@@ -43,7 +46,7 @@ export const navigateToCustomizeLandingPage = async (
 
 export const removeAndCheckWidget = async (
   page: Page,
-  { widgetTestId, widgetKey }
+  { widgetTestId, widgetKey }: { widgetTestId: string; widgetKey: string }
 ) => {
   // Click on remove widget button
   await page.click(
@@ -97,24 +100,20 @@ export const setUserDefaultPersona = async (
 ) => {
   await visitOwnProfilePage(page);
 
-  await page
-    .locator(
-      '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
-    )
-    .click();
-
-  await page.waitForSelector(
-    '[role="tooltip"] [data-testid="selectable-list"]'
-  );
+  await page.locator('[data-testid="edit-user-persona"]').nth(1).click();
+  await page.locator('[data-testid="persona-popover"]').isVisible();
+  await page.locator('input[role="combobox"]').nth(1).click();
+  await page.waitForSelector('[data-testid="persona-select-list"]');
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   await page.getByTitle(personaName).click();
+  await page.locator('[data-testid="user-profile-persona-edit-save"]').click();
 
   await setDefaultPersona;
 
   await expect(
-    page.locator('[data-testid="user-profile-details"]')
+    page.locator('[data-testid="persona-details-card"]')
   ).toContainText(personaName);
 };
 

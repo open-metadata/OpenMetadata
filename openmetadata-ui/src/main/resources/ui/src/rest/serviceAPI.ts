@@ -12,12 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import {
-  RestoreRequestType,
-  ServiceData,
-  ServicesData,
-  ServicesUpdateRequest,
-} from 'Models';
+import { RestoreRequestType, ServicesUpdateRequest } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -33,14 +28,6 @@ import {
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
-
-export const getServiceDetails = async (): Promise<
-  AxiosResponse<ServiceData[]>
-> => {
-  const response = await APIClient.get('/services/');
-
-  return response.data;
-};
 
 interface ServiceRequestParams {
   limit?: number;
@@ -68,14 +55,6 @@ export const getServices = async ({
   };
 
   const response = await APIClient.get<ServiceResponse>(url, { params });
-
-  return response.data;
-};
-
-export const getServiceById = async (serviceName: string, id: string) => {
-  const response = await APIClient.get<ServicesData>(
-    `/services/${serviceName}/${id}`
-  );
 
   return response.data;
 };
@@ -112,7 +91,7 @@ export const postService = async (
 ) => {
   const response = await APIClient.post<
     ServicesUpdateRequest,
-    AxiosResponse<ServiceData>
+    AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
 
   return response.data;
@@ -142,13 +121,6 @@ export const patchDomainSupportedService = async (
   >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
-};
-
-export const deleteService = (
-  serviceCat: string,
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.delete(`/services/${serviceCat}/${id}`);
 };
 
 export const getServiceVersions = async (
@@ -212,4 +184,20 @@ export const restoreService = async (serviceCategory: string, id: string) => {
   });
 
   return response.data;
+};
+
+export const exportDatabaseServiceDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `services/databaseServices/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
 };

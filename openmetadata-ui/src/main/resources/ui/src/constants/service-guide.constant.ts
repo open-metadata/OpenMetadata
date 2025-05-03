@@ -13,45 +13,6 @@
 
 import i18n from '../utils/i18next/LocalUtil';
 
-export const addServiceGuide = [
-  {
-    step: 1,
-    title: i18n.t('label.add-a-new-service'),
-    description: i18n.t('message.add-new-service-description'),
-  },
-  {
-    step: 2,
-    title: i18n.t('label.requirement-plural'),
-    description: i18n.t('message.service-requirements-description'),
-  },
-  {
-    step: 3,
-    title: i18n.t('label.configure-a-service'),
-    description: i18n.t('message.configure-a-service-description'),
-  },
-  {
-    step: 4,
-    title: i18n.t('label.connection-details'),
-    description: i18n.t('message.connection-details-description'),
-  },
-  {
-    step: 5,
-    title: i18n.t('label.service-created-successfully'),
-    description: i18n.t('message.service-created-entity-description', {
-      entity: i18n.t('message.you-can-also-set-up-the-metadata-ingestion'),
-    }),
-  },
-];
-
-export const addServiceGuideWOAirflow = {
-  title: i18n.t('label.service-created-successfully'),
-  description: i18n.t('message.service-created-entity-description', {
-    entity: i18n.t(
-      'message.ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata'
-    ),
-  }),
-};
-
 const schedulingIngestionGuide = {
   step: 4,
   title: i18n.t('label.schedule-for-entity', {
@@ -187,7 +148,8 @@ export const addDBTIngestionGuide = [
 ];
 
 export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
-export const CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY = 'CustomLogoConfiguration';
 export const CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY = 'CustomLoginConfiguration';
+export const OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY =
+  'OpenMetadataUrlConfiguration';
 export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
 export const OPEN_METADATA = 'OpenMetadata';

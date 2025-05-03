@@ -13,6 +13,7 @@
 import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
+  Empty,
   Form,
   Select,
   SelectProps,
@@ -121,36 +122,30 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   );
 
   const tagOptions = useMemo(() => {
-    const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) // To filter out Tier tags
-      .map((tag) => {
-        const displayName = tag.data?.displayName;
-        const parts = Fqn.split(tag.label);
-        const lastPartOfTag = isEmpty(displayName)
-          ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
-          : displayName;
-        parts.pop();
+    const newTags = options.map((tag) => {
+      const displayName = tag.data?.displayName;
+      const parts = Fqn.split(tag.label);
+      const lastPartOfTag = isEmpty(displayName)
+        ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
+        : displayName;
+      parts.pop();
 
-        return {
-          label: tag.label,
-          displayName: (
-            <Space className="w-full" direction="vertical" size={0}>
-              <Typography.Paragraph
-                ellipsis
-                className="text-grey-muted m-0 p-0">
-                {parts.join(FQN_SEPARATOR_CHAR)}
-              </Typography.Paragraph>
-              <Typography.Text
-                ellipsis
-                style={{ color: tag.data?.style?.color }}>
-                {lastPartOfTag}
-              </Typography.Text>
-            </Space>
-          ),
-          value: tag.value,
-          data: tag.data,
-        };
-      });
+      return {
+        label: tag.label,
+        displayName: (
+          <Space className="w-full" direction="vertical" size={0}>
+            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+              {parts.join(FQN_SEPARATOR_CHAR)}
+            </Typography.Paragraph>
+            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
+              {lastPartOfTag}
+            </Typography.Text>
+          </Space>
+        ),
+        value: tag.value,
+        data: tag.data,
+      };
+    });
 
     return newTags;
   }, [options]);
@@ -187,6 +182,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
+            disabled={isEmpty(tagOptions)}
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
@@ -252,6 +248,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     return (
       <TagsV1
+        isEditTags
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -302,7 +299,18 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       dropdownRender={dropdownRender}
       filterOption={false}
       mode={mode}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
+      notFoundContent={
+        isLoading ? (
+          <Loader size="small" />
+        ) : (
+          <Empty
+            description={t('label.no-entity-available', {
+              entity: t('label.tag-plural'),
+            })}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )
+      }
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}

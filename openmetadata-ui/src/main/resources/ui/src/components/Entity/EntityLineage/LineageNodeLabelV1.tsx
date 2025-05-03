@@ -83,14 +83,10 @@ const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
 
   return (
-    <div className="w-76">
-      <div className="m-0 p-x-md p-y-xs">
-        <div className="d-flex gap-2 items-center m-b-xs">
-          <Space
-            wrap
-            align="start"
-            className="lineage-breadcrumb w-full"
-            size={4}>
+    <div className="custom-node-label-container">
+      <div className="w-full m-0 p-x-md p-y-xs">
+        {breadcrumbs.length > 0 && (
+          <div className="d-flex gap-2 items-center m-b-xs lineage-breadcrumb">
             {breadcrumbs.map((breadcrumb, index) => (
               <React.Fragment key={breadcrumb.name}>
                 <Typography.Text
@@ -105,8 +101,9 @@ const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
                 )}
               </React.Fragment>
             ))}
-          </Space>
-        </div>
+          </div>
+        )}
+
         <EntityLabel node={node} />
       </div>
     </div>

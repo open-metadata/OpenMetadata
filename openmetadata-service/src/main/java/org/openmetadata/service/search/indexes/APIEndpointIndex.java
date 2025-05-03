@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -75,7 +73,7 @@ public class APIEndpointIndex implements SearchIndex {
         && apiEndpoint.getRequestSchema().getSchemaFields() != null
         && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(apiEndpoint.getResponseSchema().getSchemaFields(), flattenFields, null);
+      parseSchemaFields(apiEndpoint.getRequestSchema().getSchemaFields(), flattenFields, null);
 
       for (FlattenSchemaField field : flattenFields) {
         fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());
@@ -95,7 +93,8 @@ public class APIEndpointIndex implements SearchIndex {
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     Map<String, Object> commonAttributes = getCommonAttributesMap(apiEndpoint, Entity.API_ENDPOINT);
     doc.putAll(commonAttributes);
-    doc.put("lineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
+    doc.put("tags", flattenedTagList);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
     doc.put(
         "requestSchema",
         apiEndpoint.getRequestSchema() != null ? apiEndpoint.getRequestSchema() : null);
@@ -135,7 +134,6 @@ public class APIEndpointIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put(ES_MESSAGE_SCHEMA_FIELD, 7.0f);
     fields.put("responseSchema.schemaFields.name.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.description", 1.0f);
     fields.put("responseSchema.schemaFields.children.name", 7.0f);

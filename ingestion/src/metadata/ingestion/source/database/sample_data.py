@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -136,6 +136,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.sampler.models import SampleData, SamplerResponse
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
@@ -242,6 +243,41 @@ class SampleDataSource(
             entity=DatabaseService,
             config=WorkflowSource(**self.glue_database_service_json),
         )
+
+        # MYSQL service for er diagrams
+        self.mysql_database_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database_service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database_schema = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database_schema.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_tables = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/tables.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=WorkflowSource(**self.mysql_database_service_json),
+        )
+
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
@@ -615,6 +651,7 @@ class SampleDataSource(
         yield from self.ingest_users()
         yield from self.ingest_tables()
         yield from self.ingest_glue()
+        yield from self.ingest_mysql()
         yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -666,6 +703,58 @@ class SampleDataSource(
 
             yield Either(right=team_to_ingest)
 
+    def ingest_mysql(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Data for mysql database source including ER diagrams metadata"""
+
+        db = CreateDatabaseRequest(
+            name=self.mysql_database["name"],
+            service=self.mysql_database_service.fullyQualifiedName,
+            sourceUrl=self.mysql_database.get("sourceUrl"),
+        )
+
+        yield Either(right=db)
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.mysql_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+        schema = CreateDatabaseSchemaRequest(
+            name=self.mysql_database_schema["name"],
+            database=database_object.fullyQualifiedName,
+            sourceUrl=self.mysql_database_schema.get("sourceUrl"),
+        )
+        yield Either(right=schema)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.mysql_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
+            schema_name=schema.name.root,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        for table in self.mysql_tables["tables"]:
+            table_request = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
+            )
+            yield Either(right=table_request)
+
     def ingest_glue(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for glue database source"""
 
@@ -673,6 +762,7 @@ class SampleDataSource(
             name=self.glue_database["name"],
             description=self.glue_database["description"],
             service=self.glue_database_service.fullyQualifiedName,
+            sourceUrl=self.glue_database.get("sourceUrl"),
         )
 
         yield Either(right=db)
@@ -691,6 +781,7 @@ class SampleDataSource(
             name=self.glue_database_schema["name"],
             description=self.glue_database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.glue_database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -714,6 +805,7 @@ class SampleDataSource(
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
             )
             yield Either(right=table_request)
 
@@ -737,6 +829,7 @@ class SampleDataSource(
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
             )
             yield Either(right=table_request)
 
@@ -767,6 +860,7 @@ class SampleDataSource(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -795,6 +889,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
+                sourceUrl=table.get("sourceUrl"),
             )
 
             yield Either(right=table_and_db)
@@ -813,10 +908,16 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    TableData(
-                        rows=table["sampleData"]["rows"],
-                        columns=table["sampleData"]["columns"],
-                    ),
+                    sample_data=SamplerResponse(
+                        table=table_entity,
+                        sample_data=SampleData(
+                            data=TableData(
+                                rows=table["sampleData"]["rows"],
+                                columns=table["sampleData"]["columns"],
+                            ),
+                            store=True,
+                        ),
+                    ).sample_data.data,
                 )
 
             if table.get("customMetrics"):
@@ -861,6 +962,7 @@ class SampleDataSource(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -888,6 +990,7 @@ class SampleDataSource(
                 ),
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tags=stored_procedure["tags"],
+                sourceUrl=stored_procedure.get("sourceUrl"),
             )
 
             yield Either(right=stored_procedure)
@@ -1246,12 +1349,14 @@ class SampleDataSource(
                     description=model["description"],
                     algorithm=model["algorithm"],
                     dashboard=dashboard.fullyQualifiedName.root,
-                    mlStore=MlStore(
-                        storage=model["mlStore"]["storage"],
-                        imageRepository=model["mlStore"]["imageRepository"],
-                    )
-                    if model.get("mlStore")
-                    else None,
+                    mlStore=(
+                        MlStore(
+                            storage=model["mlStore"]["storage"],
+                            imageRepository=model["mlStore"]["imageRepository"],
+                        )
+                        if model.get("mlStore")
+                        else None
+                    ),
                     server=model.get("server"),
                     target=model.get("target"),
                     mlFeatures=self.get_ml_features(model),
@@ -1290,9 +1395,11 @@ class SampleDataSource(
                     name=container["name"],
                     displayName=container["displayName"],
                     description=container["description"],
-                    parent=EntityReference(id=parent_container.id, type="container")
-                    if parent_container_fqn
-                    else None,
+                    parent=(
+                        EntityReference(id=parent_container.id, type="container")
+                        if parent_container_fqn
+                        else None
+                    ),
                     prefix=container["prefix"],
                     dataModel=container.get("dataModel"),
                     numberOfObjects=container.get("numberOfObjects"),
@@ -1330,11 +1437,13 @@ class SampleDataSource(
                     yield Either(
                         right=CreateContainerRequest(
                             name=name,
-                            parent=EntityReference(
-                                id=parent_container.id, type="container"
-                            )
-                            if parent_container
-                            else None,
+                            parent=(
+                                EntityReference(
+                                    id=parent_container.id, type="container"
+                                )
+                                if parent_container
+                                else None
+                            ),
                             service=self.storage_service.fullyQualifiedName,
                         )
                     )
@@ -1450,9 +1559,7 @@ class SampleDataSource(
                     test_suite=CreateTestSuiteRequest(
                         name=test_suite["testSuiteName"],
                         description=test_suite["testSuiteDescription"],
-                        executableEntityReference=test_suite[
-                            "executableEntityReference"
-                        ],
+                        basicEntityReference=test_suite["executableEntityReference"],
                     )
                 )
             )

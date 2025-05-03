@@ -94,3 +94,15 @@ export type SearchServiceTypeSmallCaseType = {
 export type ApiServiceTypeSmallCaseType = {
   [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
 };
+
+export enum ServiceAgentSubTabs {
+  METADATA = 'metadata',
+  COLLATE_AI = 'collateAI',
+}
+
+// These are fields which have reference to the connection schema of other services
+export enum ServiceNestedConnectionFields {
+  CONNECTION = 'connection',
+  METASTORE_CONNECTION = 'metastoreConnection',
+  DATABASE_CONNECTION = 'databaseConnection',
+}

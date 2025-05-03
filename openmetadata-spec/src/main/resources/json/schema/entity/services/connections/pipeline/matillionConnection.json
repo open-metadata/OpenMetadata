@@ -13,44 +13,6 @@
         "Matillion"
       ],
       "default": "Matillion"
-    },
-    "matillionETL": {
-      "description": "Matillion ETL Auth Config",
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "MatillionETL"
-          ],
-          "default": "MatillionETL"
-        },
-        "hostPort": {
-          "type": "string",
-          "title": "Host",
-          "description": "Matillion Host",
-          "default": "localhost"
-        },
-        "username": {
-          "title": "Username",
-          "description": "Username to connect to the Matillion. This user should have privileges to read all the metadata in Matillion.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password to connect to the Matillion.",
-          "type": "string",
-          "format": "password"
-        },
-        "sslConfig": {
-          "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-        }
-      },
-      "required": [
-        "hostPort",
-        "username",
-        "password"
-      ]
     }
   },
   "properties": {
@@ -65,9 +27,14 @@
       "description": "Matillion Auth Configuration",
       "oneOf": [
         {
-          "$ref": "#/definitions/matillionETL"
+          "$ref": "matillion/matillionETL.json"
         }
       ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@ from typing import Optional
 from requests._internal_utils import to_native_string
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -50,7 +51,7 @@ class ModeApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api",
             auth_header="Authorization",
             auth_token_mode="Basic",
@@ -67,15 +68,27 @@ class ModeApiClient:
         )
         self.client = REST(client_config)
 
-    def fetch_all_reports(self, workspace_name: str) -> Optional[list]:
+    def fetch_all_reports(
+        self, workspace_name: str, filter: Optional[str] = "all"
+    ) -> Optional[list]:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
+            filter:
         Returns:
             dict
         """
+        if filter not in ["custom", "all"]:
+            logger.warning(
+                "Invalid value for filter. Should be one of ['custom', 'all']"
+            )
+            return
+
         all_reports = []
-        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}")
+        filter_param = f"?filter={filter}"
+        response_collections = self.client.get(
+            f"/{workspace_name}/{COLLECTIONS}{filter_param}"
+        )
         collections = response_collections[EMBEDDED]["spaces"]
         for collection in collections:
             response_reports = self.get_all_reports_for_collection(
@@ -175,3 +188,18 @@ class ModeApiClient:
             logger.warning(f"Error fetching all data sources: {exc}")
 
         return None
+
+    def get_workspace(self, workspace_name: str) -> Optional[dict]:
+        """Method to get info about a workspace
+        Args:
+            workspace_name:
+        Returns:
+            dict
+        """
+        try:
+            response = self.client.get(f"/{workspace_name}")
+            return response
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error testing workspace connection: {exc}")
+            raise exc

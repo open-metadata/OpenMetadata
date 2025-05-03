@@ -20,7 +20,7 @@ import { Link, useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -193,7 +193,7 @@ export const CustomPageSettings = () => {
                   }
                   title={getEntityName(persona)}>
                   {persona.description ? (
-                    <RichTextEditorPreviewer
+                    <RichTextEditorPreviewerV1
                       markdown={persona.description ?? ''}
                     />
                   ) : (
@@ -211,6 +211,7 @@ export const CustomPageSettings = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handlePersonaPageChange}

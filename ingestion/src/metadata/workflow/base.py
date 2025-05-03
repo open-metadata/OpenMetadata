@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,8 +16,10 @@ import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from statistics import mean
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
@@ -32,10 +34,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
+    WorkflowConfig,
+)
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
@@ -49,10 +54,7 @@ from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
-from metadata.workflow.workflow_status_mixin import (
-    SUCCESS_THRESHOLD_VALUE,
-    WorkflowStatusMixin,
-)
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
 
@@ -82,8 +84,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def __init__(
         self,
         config: Union[Any, Dict],
-        log_level: LogLevels,
-        metadata_config: OpenMetadataConnection,
+        workflow_config: WorkflowConfig,
         service_type: ServiceType,
         output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
     ):
@@ -92,19 +93,22 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         self.output_handler = output_handler
         self.config = config
+        self.workflow_config = workflow_config
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
         self._start_ts = datetime_to_ts(datetime.now())
+
         self._execution_time_tracker = ExecutionTimeTracker(
-            log_level == LogLevels.DEBUG
+            self.workflow_config.loggerLevel == LogLevels.DEBUG
         )
 
-        set_loggers_level(log_level.value)
+        set_loggers_level(self.workflow_config.loggerLevel.value)
 
         # We create the ometa client at the workflow level and pass it to the steps
-        self.metadata_config = metadata_config
-        self.metadata = create_ometa_client(metadata_config)
+        self.metadata = create_ometa_client(
+            self.workflow_config.openMetadataServerConfig
+        )
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -157,9 +161,22 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
 
-    @abstractmethod
-    def calculate_success(self) -> float:
-        """Get the success % of the internal execution"""
+    def calculate_success(self) -> Optional[float]:
+        """
+        Get the success % of the internal execution.
+        Since we'll use this to get a single success % from multiple steps, we'll take
+        the minimum success % from all the steps. This way, we can have a proper
+        workflow status.
+        E.g., if we have no errors on the source but a bunch of them on the sink,
+        we still want the flow to be marked as a failure or partial success.
+        """
+        if not self.workflow_steps():
+            logger.warning("No steps to calculate success")
+            return None
+
+        return mean(
+            [step.get_status().calculate_success() for step in self.workflow_steps()]
+        )
 
     @abstractmethod
     def get_failures(self) -> List[StackTraceError]:
@@ -169,9 +186,22 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def workflow_steps(self) -> List[Step]:
         """Steps to report status from"""
 
-    @abstractmethod
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
+        for step in self.workflow_steps():
+            if (
+                step.get_status().failures
+                and step.get_status().calculate_success()
+                < self.workflow_config.successThreshold
+            ):
+                raise WorkflowExecutionError(
+                    f"{step.name} reported errors: {Summary.from_step(step)}"
+                )
+
+            if raise_warnings and step.status.warnings:
+                raise WorkflowExecutionError(
+                    f"{step.name} reported warning: {Summary.from_step(step)}"
+                )
 
     def execute(self) -> None:
         """
@@ -186,10 +216,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         try:
             self.execute_internal()
 
-            if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
+            if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess
 
-        # Any unhandled exception breaking the workflow should update the status
+            # If there's any steps that should raise a failed status,
+            # raise it here to set the pipeline status as failed
+            try:
+                self.raise_from_status_internal()
+            except WorkflowExecutionError:
+                pipeline_state = PipelineState.failed
+
+        # Any unhandled exception should blow up the execution
         except Exception as err:
             pipeline_state = PipelineState.failed
             raise err

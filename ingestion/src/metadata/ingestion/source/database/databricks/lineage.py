@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,12 +11,10 @@
 """
 Databricks lineage module
 """
-import traceback
-from datetime import datetime
-from typing import Iterator
 
-from metadata.generated.schema.type.basic import DateTime
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
 )
@@ -31,22 +29,13 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
     Databricks Lineage Legacy Source
     """
 
-    def yield_table_query(self) -> Iterator[TableQuery]:
-        data = self.client.list_query_history(
-            start_date=self.start,
-            end_date=self.end,
+    sql_stmt = DATABRICKS_SQL_STATEMENT
+
+    filters = """
+        AND (
+            lower(statement_text) LIKE '%%create%%select%%'
+            OR lower(statement_text) LIKE '%%insert%%into%%select%%'
+            OR lower(statement_text) LIKE '%%update%%'
+            OR lower(statement_text) LIKE '%%merge%%'
         )
-        for row in data or []:
-            try:
-                if self.client.is_query_valid(row):
-                    yield TableQuery(
-                        query=row.get("query_text"),
-                        userName=row.get("user_name"),
-                        startTime=str(row.get("query_start_time_ms")),
-                        endTime=str(row.get("execution_end_time_ms")),
-                        analysisDate=DateTime(datetime.now()),
-                        serviceName=self.config.serviceName,
-                    )
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing query_dict {row}: {exc}")
+    """

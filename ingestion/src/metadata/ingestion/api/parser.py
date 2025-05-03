@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,8 +19,8 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.apiService import (
-    ApiServiceConnection,
-    APIServiceType,
+    ApiConnection,
+    ApiServiceType,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -135,7 +135,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
     "Backend": PipelineConnection,  # For Airflow backend
-    **{service: ApiServiceConnection for service in APIServiceType.__members__},
+    **{service: ApiConnection for service in ApiServiceType.__members__},
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},
@@ -183,7 +183,7 @@ class InvalidWorkflowException(Exception):
 def get_service_type(
     source_type: str,
 ) -> Union[
-    Type[ApiServiceConnection],
+    Type[ApiConnection],
     Type[DashboardConnection],
     Type[DatabaseConnection],
     Type[MessagingConnection],
@@ -233,7 +233,7 @@ def get_source_config_class(
 def get_connection_class(
     source_type: str,
     service_type: Union[
-        Type[ApiServiceConnection],
+        Type[ApiConnection],
         Type[DashboardConnection],
         Type[DatabaseConnection],
         Type[MessagingConnection],
@@ -557,6 +557,7 @@ def parse_automation_workflow_gracefully(
             message="Error parsing the service connection",
         )
 
+    #
     raise ParsingConfigurationError(
         "Uncaught error when parsing the Ingestion Pipeline!"
     )

@@ -23,7 +23,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddKPIPage from './AddKPIPage';
-import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
+import { KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
 const mockPush = jest.fn();
 
@@ -31,12 +31,6 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
     push: mockPush,
   }),
-}));
-
-jest.mock('../../rest/DataInsightAPI', () => ({
-  getListDataInsightCharts: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: KPI_CHARTS })),
 }));
 
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
@@ -58,6 +52,19 @@ jest.mock('../../rest/KpiAPI', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>

@@ -42,6 +42,13 @@
       "description": "Use this where clause to filter the rows to compare.",
       "dataType": "STRING",
       "required": false
+    },
+    {
+      "name": "caseSensitiveColumns",
+      "displayName": "Case sensitive columns",
+      "description": "Use case sensitivity when comparing the columns.",
+      "dataType": "BOOLEAN",
+      "required": false
     }
   ],
   "provider": "system",

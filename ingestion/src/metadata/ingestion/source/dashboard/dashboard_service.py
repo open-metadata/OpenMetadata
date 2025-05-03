@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +55,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -195,6 +198,9 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+from metadata.utils.helpers import retry_with_docker_host
+
+
 # pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -213,6 +219,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -245,7 +252,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dashboard_lineage_details(
-        self, dashboard_details: Any, db_service_name: str
+        self,
+        dashboard_details: Any,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -365,6 +374,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield lineage
 
         db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
         for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
@@ -476,6 +487,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
+        sql: Optional[str] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -491,6 +503,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
+                            sqlQuery=sql,
                             columnsLineage=column_lineage,
                         ),
                     )
@@ -554,7 +567,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def prepare(self):
         """By default, nothing to prepare"""
@@ -596,6 +612,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         patch_request = PatchRequest(
             original_entity=original_entity,
             new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn

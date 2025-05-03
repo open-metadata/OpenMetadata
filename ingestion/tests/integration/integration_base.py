@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -99,8 +99,23 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     TestCaseEntityName,
 )
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
+
+TIER1_TAG: TagLabel = TagLabel(
+    tagFQN=TagFQN(f"Tier.Tier1"),
+    name="Tier1",
+    source=TagSource.Classification,
+    labelType=LabelType.Automated,
+    state=State.Suggested,
+)
 
 COLUMNS = [
     Column(name="id", dataType=DataType.BIGINT),
@@ -147,7 +162,7 @@ PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
             "serviceConnection": {{
                 "config": {service_config}
             }},
-            "sourceConfig": {{"config": {{"type":"Profiler", "generateSampleData": true}}}}
+            "sourceConfig": {{"config": {{"type":"Profiler", "profileSample": 100}}}}
         }},
         "processor": {{"type": "orm-profiler", "config": {{}}}},
         "sink": {{"type": "metadata-rest", "config": {{}}}},
@@ -356,7 +371,7 @@ def get_create_test_suite(
     return CreateTestSuiteRequest(
         name=TestSuiteEntityName(name),
         description=Markdown(description),
-        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
+        basicEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 

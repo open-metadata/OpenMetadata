@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.domains;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -25,8 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,6 +52,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -64,7 +62,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -79,7 +77,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataProducts", order = 4) // initialize after user resource
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
-  static final String FIELDS = "domain,owners,experts,assets,extension";
+  private final DataProductMapper mapper = new DataProductMapper();
+  static final String FIELDS = "domain,owners,experts,assets,extension,tags";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -285,7 +284,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDataProduct create) {
-    DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
+    DataProduct dataProduct =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
   }
 
@@ -309,7 +309,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDataProduct create) {
-    DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
+    DataProduct dataProduct =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
   }
 
@@ -336,6 +337,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -355,13 +359,16 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                     schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkRemoveGlossaryFromAssets(
+  public Response bulkRemoveAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Data Product", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -445,6 +452,27 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDataProductAsync",
+      summary = "Asynchronously delete a dataProduct by Id",
+      description = "Asynchronously delete a dataProduct by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDataProductByFQN",
@@ -463,23 +491,5 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
-  }
-
-  private DataProduct getDataProduct(CreateDataProduct create, String user) {
-    List<String> experts = create.getExperts();
-    DataProduct dataProduct =
-        repository
-            .copy(new DataProduct(), create, user)
-            .withFullyQualifiedName(create.getName())
-            .withStyle(create.getStyle())
-            .withExperts(
-                EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
-    dataProduct.withAssets(new ArrayList<>());
-    for (EntityReference asset : listOrEmpty(create.getAssets())) {
-      asset = Entity.getEntityReference(asset, Include.NON_DELETED);
-      dataProduct.getAssets().add(asset);
-      dataProduct.getAssets().sort(EntityUtil.compareEntityReference);
-    }
-    return dataProduct;
   }
 }

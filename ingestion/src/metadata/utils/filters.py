@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -280,3 +280,33 @@ def filter_by_search_index(
     :return: True for filtering, False otherwise
     """
     return _filter(search_index_filter_pattern, search_index_name)
+
+
+def filter_by_classification(
+    classification_pattern: Optional[FilterPattern], classification_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param search_index_filter_pattern: Model defining search index filtering logic
+    :param search_index_name: search index name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(classification_pattern, classification_name)
+
+
+def filter_by_collection(
+    collection_pattern: Optional[FilterPattern], collection_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param collection_pattern: Model defining collection filtering logic
+    :param collection_name: collection name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(collection_pattern, collection_name)

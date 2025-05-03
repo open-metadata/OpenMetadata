@@ -63,6 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
+  private final TestDefinitionMapper mapper = new TestDefinitionMapper();
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owners";
 
@@ -314,7 +315,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        getTestDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, testDefinition);
   }
 
@@ -367,7 +368,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        getTestDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 
@@ -399,6 +400,36 @@ public class TestDefinitionResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTestDefinitionAsync",
+      summary = "Asynchronously delete a test definition",
+      description = "Asynchronously delete a test definition by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test definition for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -451,17 +482,5 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
-    return repository
-        .copy(new TestDefinition(), create, user)
-        .withDescription(create.getDescription())
-        .withEntityType(create.getEntityType())
-        .withTestPlatforms(create.getTestPlatforms())
-        .withSupportedDataTypes(create.getSupportedDataTypes())
-        .withDisplayName(create.getDisplayName())
-        .withParameterDefinition(create.getParameterDefinition())
-        .withName(create.getName());
   }
 }

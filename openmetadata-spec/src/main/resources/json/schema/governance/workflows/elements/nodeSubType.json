@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodeSubType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NodeSubType",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.NodeSubType",
+  "description": "SubType of the Node.",
+  "type": "string",
+  "enum": [
+    "userApprovalTask",
+    "checkEntityAttributesTask",
+    "setEntityCertificationTask",
+    "setGlossaryTermStatusTask",
+    "endEvent",
+    "startEvent",
+    "createAndRunIngestionPipelineTask",
+    "runAppTask",
+    "parallelGateway"
+  ]
+}

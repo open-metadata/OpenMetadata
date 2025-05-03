@@ -3,6 +3,7 @@ package org.openmetadata.service.security.auth;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import io.dropwizard.logback.shaded.guava.annotations.VisibleForTesting;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
@@ -12,10 +13,11 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 public class LoginAttemptCache {
+  private static LoginAttemptCache INSTANCE;
   private int maxAttempt = 3;
   private final LoadingCache<String, Integer> attemptsCache;
 
-  public LoginAttemptCache() {
+  private LoginAttemptCache() {
     LoginConfiguration loginConfiguration =
         SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
     long accessBlockTime = 600;
@@ -35,6 +37,18 @@ public class LoginAttemptCache {
                 });
   }
 
+  public static LoginAttemptCache getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new LoginAttemptCache();
+    }
+    return INSTANCE;
+  }
+
+  public static void updateLoginConfiguration() {
+    INSTANCE = new LoginAttemptCache();
+  }
+
+  @VisibleForTesting
   public LoginAttemptCache(int maxAttempt, int blockTimeInSec) {
     this.maxAttempt = maxAttempt;
     attemptsCache =

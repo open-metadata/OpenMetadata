@@ -53,51 +53,7 @@ export const mockPipelineDetails: Pipeline = {
       displayName: 'Assert Table Exists',
     },
   ],
-  service: {
-    id: 'cbdc2874-0984-42fb-9469-bfa4e6a3d4e8',
-    type: 'pipelineService',
-    name: 'sample_airflow',
-    fullyQualifiedName: 'sample_airflow',
-    deleted: false,
-    href: 'http://localhost:8585/api/v1/services/pipelineServices/cbdc2874-0984-42fb-9469-bfa4e6a3d4e8',
-  },
-};
-
-export const mockSortedPipelineDetails: Pipeline = {
-  id: '411e4e5e-b6d0-4fc9-bd82-ebe479f68249',
-  name: 'dim_address_etl',
-  displayName: 'dim_address etl',
-  fullyQualifiedName: 'sample_airflow.dim_address_etl',
-  tasks: [
-    {
-      name: 'dim_address_task',
-      displayName: 'dim_address Task',
-      tags: [
-        {
-          tagFQN: 'PersonalData.Personal',
-          source: TagSource.Classification,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        },
-        {
-          tagFQN: 'PII.Sensitive',
-          source: TagSource.Classification,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        },
-        {
-          tagFQN: 'TagClass.tag1',
-          source: TagSource.Classification,
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-        },
-      ],
-    },
-    {
-      name: 'assert_table_exists',
-      displayName: 'Assert Table Exists',
-    },
-  ],
+  tags: [],
   service: {
     id: 'cbdc2874-0984-42fb-9469-bfa4e6a3d4e8',
     type: 'pipelineService',

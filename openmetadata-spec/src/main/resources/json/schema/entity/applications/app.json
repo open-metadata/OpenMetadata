@@ -14,7 +14,8 @@
       "enum": [
         "Live",
         "Scheduled",
-        "ScheduledOrManual"
+        "ScheduledOrManual",
+        "NoSchedule"
       ],
       "javaEnums": [
         {
@@ -25,6 +26,9 @@
         },
         {
           "name": "ScheduledOrManual"
+        },
+        {
+          "name": "NoSchedule"
         }
       ]
     },
@@ -64,6 +68,23 @@
         },
         {
           "name": "External"
+        }
+      ]
+    },
+    "agentType": {
+      "javaType": "org.openmetadata.schema.entity.app.AgentType",
+      "description": "This schema defines the type of application.",
+      "type": "string",
+      "enum": [
+        "CollateAI",
+        "Metadata"
+      ],
+      "javaEnums": [
+        {
+          "name": "CollateAI"
+        },
+        {
+          "name": "Metadata"
         }
       ]
     },
@@ -143,6 +164,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -178,6 +203,10 @@
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "#/definitions/appType"
+    },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "#/definitions/agentType"
     },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
@@ -251,6 +280,10 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event Subscriptions for the Application.",
+        "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,

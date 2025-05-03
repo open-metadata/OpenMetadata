@@ -1,14 +1,14 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Mysql source module"""
+"""Doris source module"""
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, cast
@@ -224,8 +224,13 @@ class DorisSource(CommonDbSourceService):
 
         return table_columns, primary_columns
 
-    def get_columns_and_constraints(
-        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+    def get_columns_and_constraints(  # pylint: disable=too-many-locals
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: str = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:

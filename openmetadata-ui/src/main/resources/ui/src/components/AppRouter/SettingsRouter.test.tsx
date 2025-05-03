@@ -26,11 +26,6 @@ jest.mock('../../pages/AlertDetailsPage/AlertDetailsPage', () => ({
   default: jest.fn().mockReturnValue(<div>AlertDetailsPage</div>),
 }));
 
-jest.mock('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>AlertsActivityFeedPage</div>),
-}));
-
 jest.mock('../../pages/Application/ApplicationPage', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>ApplicationPage</div>),
@@ -412,7 +407,7 @@ describe('SettingsRouter', () => {
 
   it('should render PersonaPage component for persona list route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/members/persona`]}>
+      <MemoryRouter initialEntries={[`/settings/persona`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -422,7 +417,7 @@ describe('SettingsRouter', () => {
 
   it('should render PersonaDetailsPage component for persona details route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/members/persona/testPersona`]}>
+      <MemoryRouter initialEntries={[`/settings/persona/testPersona`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -450,21 +445,10 @@ describe('SettingsRouter', () => {
     expect(await screen.findByText('ApplicationPage')).toBeInTheDocument();
   });
 
-  it('should render AlertsActivityFeedPage component for alerts activity feed route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/notifications/activityFeeds`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByText('AlertsActivityFeedPage')
-    ).toBeInTheDocument();
-  });
-
   it('should render AlertDetailsPage component for alert details route', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS]}>
+      <MemoryRouter
+        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}>
         <SettingsRouter />
       </MemoryRouter>
     );

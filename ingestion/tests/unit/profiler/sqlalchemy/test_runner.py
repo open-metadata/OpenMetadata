@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,8 +12,10 @@
 """
 Test Sample behavior
 """
+import sys
 import time
-from unittest import TestCase
+from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
@@ -21,12 +23,19 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
 
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):
@@ -60,22 +69,35 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = SQASampler(
-        client=session,
-        table=User,
-        profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-    )
-    sample = sampler.random_sample()
-
-    raw_runner = QueryRunner(session=session, table=User, sample=sample)
-    timeout_runner: Timer = cls_timeout(1)(Timer())
-
     @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare Ingredients
         """
         User.__table__.create(bind=cls.engine)
+
+        with (
+            patch.object(SQASampler, "get_client", return_value=cls.session),
+            patch.object(SQASampler, "build_table_orm", return_value=User),
+            mock.patch(
+                "metadata.sampler.sampler_interface.get_ssl_connection",
+                return_value=Mock(),
+            ),
+        ):
+            sampler = SQASampler.__new__(SQASampler)
+            sampler.build_table_orm = lambda *args, **kwargs: User
+            sampler.__init__(
+                service_connection_config=Mock(),
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+            cls.dataset = sampler.get_dataset()
+
+        cls.raw_runner = QueryRunner(
+            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
+        )
+        cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
         for i in range(10):
@@ -135,7 +157,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] < 30
 
@@ -143,7 +165,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) < 30
 
@@ -161,7 +183,7 @@ class RunnerTest(TestCase):
         Test querying using `from_statement` returns expected values
         """
         stmt = "SELECT name FROM users"
-        self.raw_runner._profile_sample_query = stmt
+        self.raw_runner.profile_sample_query = stmt
 
         res = self.raw_runner.select_all_from_table(Column(User.name.name))
         assert len(res) == 30
@@ -170,9 +192,9 @@ class RunnerTest(TestCase):
         assert len(res) == 1
 
         stmt = "SELECT id FROM users"
-        self.raw_runner._profile_sample_query = stmt
+        self.raw_runner.profile_sample_query = stmt
 
         with pytest.raises(OperationalError):
             self.raw_runner.select_first_from_table(Column(User.name.name))
 
-        self.raw_runner._profile_sample_query = None
+        self.raw_runner.profile_sample_query = None

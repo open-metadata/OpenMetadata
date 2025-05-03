@@ -11,91 +11,34 @@
  *  limitations under the License.
  */
 
-export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
+import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
-export const WORKFLOWS_PROFILER_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow';
-
-export const DATA_QUALITY_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';
-
-export const GLOSSARIES_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/data/glossary';
-
-export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
-
-export const WORKFLOWS_METADATA_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
-
-export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS =
-  'https://docs.open-metadata.org/deployment/ingestion';
-
-export const BOTS_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
-
-export const TEAMS_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata';
-
-export const WEBHOOK_DOCS =
-  'https://docs.open-metadata.org/developers/webhooks';
-
-export const ADD_CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-property-to-an-entity';
-
-export const POLICY_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/policies/policy';
-
-export const ROLE_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
-
-export const DATA_INSIGHT_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-insights';
-
-export const INGESTION_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows';
-
-export const USAGE_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
-
-export const LOCAL_DEPLOYMENT =
-  'https://docs.open-metadata.org/quick-start/local-docker-deployment';
-
-export const OMD_SLACK_LINK =
-  'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
-
-export const DATA_INSIGHTS_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-insights/ingestion';
-
-export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
-
-export const ALERTS_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/alerts';
-
-export const TAGS_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
-
-export const AIRFLOW_DOCS = 'https://docs.open-metadata.org/deployment/airflow';
-
-export const CUSTOM_LOGO_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';
-
-export const FOLLOW_DATA_ASSET =
-  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset';
-
-export const RECENTLY_VIEWED =
-  'https://docs.open-metadata.org/how-to-guides/data-discovery/discover';
-
-export const DATA_INSIGHT_GUIDE_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-insights';
-
-export const DATA_QUALITY_PROFILER_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-quality-profiler';
-
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom';
-
-export const DATA_DISCOVERY_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-discovery';
-
-export const HOW_TO_GUIDE_DOCS = 'https://docs.open-metadata.org/how-to-guides';
+export const {
+  OMD_REPOSITORY_LINK,
+  WORKFLOWS_PROFILER_DOCS,
+  GLOSSARIES_DOCS,
+  CONNECTORS_DOCS,
+  WORKFLOWS_METADATA_DOCS,
+  INGESTION_FRAMEWORK_DEPLOYMENT_DOCS,
+  BOTS_DOCS,
+  TEAMS_DOCS,
+  ADD_CUSTOM_PROPERTIES_DOCS,
+  ROLE_DOCS,
+  DATA_INSIGHT_DOCS,
+  INGESTION_DOCS,
+  USAGE_DOCS,
+  LOCAL_DEPLOYMENT,
+  OMD_SLACK_LINK,
+  DATA_INSIGHTS_PIPELINE_DOCS,
+  ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
+  ALERTS_DOCS,
+  TAGS_DOCS,
+  AIRFLOW_DOCS,
+  FOLLOW_DATA_ASSET,
+  RECENTLY_VIEWED,
+  DATA_QUALITY_PROFILER_DOCS,
+  CUSTOM_PROPERTIES_DOCS,
+  DATA_DISCOVERY_DOCS,
+  HOW_TO_GUIDE_DOCS,
+  AUTO_CLASSIFICATION_DOCS,
+} = documentationLinksClassBase.getDocsURLS();

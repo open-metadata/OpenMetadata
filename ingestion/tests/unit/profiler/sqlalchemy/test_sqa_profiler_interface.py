@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,6 +51,7 @@ from metadata.profiler.metrics.core import (
 )
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 class User(declarative_base()):
@@ -78,18 +79,17 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
             self.sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+                sqlite_conn, None, table_entity, None, sampler, 5, 43200
             )
         self.table = User
 
@@ -118,12 +118,23 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
+
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=None,
         )
+
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn,
+        None,
+        table_entity,
+        None,
+        sampler,
+        5,
+        43200,
+    )
 
     @classmethod
     def setUpClass(cls) -> None:

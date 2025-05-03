@@ -25,11 +25,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getServiceDetailsPath,
-  INITIAL_PAGING_VALUE,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -42,7 +38,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -63,7 +59,10 @@ import {
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getServiceVersionPath } from '../../utils/RouterUtils';
+import {
+  getServiceDetailsPath,
+  getServiceVersionPath,
+} from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -477,12 +476,8 @@ function ServiceVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  items={tabs}
-                />
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
               </Col>
             </Row>
           </div>

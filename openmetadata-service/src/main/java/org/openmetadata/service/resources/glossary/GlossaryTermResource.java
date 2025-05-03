@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.glossary;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,7 +73,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -88,6 +94,8 @@ import org.openmetadata.service.util.ResultList;
     name = "glossaryTerms",
     order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
+  private final GlossaryTermMapper mapper = new GlossaryTermMapper();
+  private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
@@ -126,8 +134,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
-          GlossaryResource.getGlossary(
-              glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+          glossaryMapper.createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
       glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
 
@@ -135,7 +142,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
         createTerm.withGlossary(glossary.getName());
         createTerm.withProvider(glossary.getProvider());
-        GlossaryTerm term = getGlossaryTerm(createTerm, ADMIN_USER_NAME);
+        GlossaryTerm term = mapper.createToEntity(createTerm, ADMIN_USER_NAME);
         repository.setFullyQualifiedName(term); // FQN required for ordering tags based on hierarchy
         termsToCreate.add(term);
       }
@@ -221,6 +228,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           String parentTermFQNParam) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
+
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     // Filter by glossary
     String fqn = null;
@@ -411,8 +431,38 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossaryTerm create) {
-    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
+    GlossaryTerm term = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term);
+  }
+
+  @POST
+  @Path("/createMany")
+  @Operation(
+      operationId = "createManyGlossaryTerm",
+      summary = "Create multiple glossary terms at once",
+      description = "Create multiple new glossary terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createMany(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<CreateGlossaryTerm> creates) {
+    List<GlossaryTerm> terms =
+        creates.stream()
+            .map(
+                create ->
+                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
+            .toList();
+    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
+    return Response.ok(result).build();
   }
 
   @PATCH
@@ -493,7 +543,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossaryTerm create) {
-    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
+    GlossaryTerm term = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term);
   }
 
@@ -629,6 +679,35 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      summary = "Asynchronously delete a glossary term by Id",
+      description = "Asynchronously delete a glossary term by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "glossaryTerm for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteGlossaryTermByName",
@@ -680,18 +759,5 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
-    return repository
-        .copy(new GlossaryTerm(), create, user)
-        .withSynonyms(create.getSynonyms())
-        .withStyle(create.getStyle())
-        .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
-        .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
-        .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
-        .withReferences(create.getReferences())
-        .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

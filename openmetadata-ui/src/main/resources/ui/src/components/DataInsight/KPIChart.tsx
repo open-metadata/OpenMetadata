@@ -227,7 +227,7 @@ const KPIChart: FC<Props> = ({
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading || isKpiLoading}
@@ -264,7 +264,7 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
-                      tickFormatter={formatDate}
+                      tickFormatter={(value) => formatDate(value)}
                       type="category"
                     />
                     <YAxis dataKey="count" />
@@ -319,7 +319,10 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+                <ErrorPlaceHolder
+                  className="border-none"
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
               )}
             </Col>
           )}
@@ -340,7 +343,7 @@ const KPIChart: FC<Props> = ({
                 })}
               </Button>
             }
-            className="m-0"
+            className="m-0 border-none"
             permission={createKPIPermission}
             size={SIZE.MEDIUM}
             type={

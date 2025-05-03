@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
-import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
+import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getConstraintIcon } from '../../../utils/TableUtils';
-import { EdgeTypeEnum } from './EntityLineage.interface';
+import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
+import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -67,18 +68,20 @@ export const getColumnHandle = (
 };
 
 export const getExpandHandle = (
-  direction: EdgeTypeEnum,
+  direction: LineageDirection,
   onClickHandler: () => void
 ) => {
   return (
     <Button
       className={classNames(
         'absolute lineage-node-handle flex-center',
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      icon={<PlusIcon className="lineage-expand-icon" />}
+      icon={
+        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
@@ -90,23 +93,25 @@ export const getExpandHandle = (
 };
 
 export const getCollapseHandle = (
-  direction: EdgeTypeEnum,
+  direction: LineageDirection,
   onClickHandler: () => void
 ) => {
   return (
     <Button
       className={classNames(
         'absolute lineage-node-minus lineage-node-handle flex-center',
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
       data-testid={
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={<MinusIcon className="lineage-expand-icon" />}
+      icon={
+        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
@@ -121,7 +126,10 @@ export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
   isConnectable: boolean,
-  onColumnClick: (column: string) => void
+  onColumnClick: (column: string) => void,
+  showDataObservabilitySummary: boolean,
+  isLoading: boolean,
+  summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
 
@@ -129,9 +137,8 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced
-          ? 'custom-node-header-tracing'
-          : 'custom-node-column-lineage-normal bg-white'
+        isColumnTraced && 'custom-node-header-tracing',
+        showDataObservabilitySummary && 'p-r-md'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -145,16 +152,41 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
+      <Row gutter={24}>
+        <Col
+          className="custom-node-name-container"
+          span={showDataObservabilitySummary ? 8 : 12}>
+          <div className="custom-node-name-icon">
+            {getColumnDataTypeIcon({
+              dataType: column.dataType,
+              width: '14px',
+            })}
+          </div>
+          <Typography.Text
+            className="custom-node-column-label"
+            ellipsis={{ tooltip: true }}>
+            {getEntityName(column)}
+          </Typography.Text>
+        </Col>
 
-      <Typography.Text
-        className="p-xss p-x-lg"
-        ellipsis={{ tooltip: true }}
-        style={{ maxWidth: NODE_WIDTH }}>
-        {getConstraintIcon({
-          constraint: column.constraint,
-        })}
-        {getEntityName(column)}
-      </Typography.Text>
+        <Col
+          className={classNames(
+            'custom-node-constraint',
+            showDataObservabilitySummary ? 'text-left' : 'text-right'
+          )}
+          span={showDataObservabilitySummary ? 8 : 12}>
+          {column.constraint}
+        </Col>
+        {showDataObservabilitySummary && (
+          <Col span={8}>
+            <TestSuiteSummaryWidget
+              isLoading={isLoading}
+              size="small"
+              summary={summary}
+            />
+          </Col>
+        )}
+      </Row>
     </div>
   );
 };

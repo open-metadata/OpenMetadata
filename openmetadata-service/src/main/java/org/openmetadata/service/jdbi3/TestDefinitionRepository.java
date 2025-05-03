@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -49,8 +50,11 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      TestDefinition original, TestDefinition updated, Operation operation) {
+  public EntityRepository<TestDefinition>.EntityUpdater getUpdater(
+      TestDefinition original,
+      TestDefinition updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new TestDefinitionUpdater(original, updated, operation);
   }
 
@@ -62,7 +66,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange(
           "supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());

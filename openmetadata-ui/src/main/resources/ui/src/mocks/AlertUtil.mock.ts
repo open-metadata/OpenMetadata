@@ -12,6 +12,11 @@
  */
 
 import {
+  EventType,
+  Status,
+  TypedEvent,
+} from '../generated/events/api/typedEvent';
+import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../generated/events/eventSubscription';
@@ -32,3 +37,68 @@ export const mockNonTaskInternalDestinationOptions = Object.values(
     value !== SubscriptionCategory.External &&
     value !== SubscriptionCategory.Assignees
 );
+
+export const mockTypedEvent1: TypedEvent = {
+  status: Status.Successful,
+  data: [
+    {
+      eventType: EventType.EntityCreated,
+      entityId: 'entityId1',
+      userName: 'user1',
+      previousVersion: 0.1,
+      currentVersion: 0.2,
+    },
+  ],
+  timestamp: 1730871300446,
+};
+
+export const mockTypedEvent2: TypedEvent = {
+  status: Status.Failed,
+  data: [
+    {
+      changeEvent: {
+        eventType: EventType.EntityUpdated,
+        entityId: 'entityId2',
+        entityType: 'table',
+        id: '23471210-cfec-49f9-ad02-898e11621121',
+        userName: 'user2',
+        previousVersion: 0.2,
+        currentVersion: 0.3,
+        timestamp: 1730871300446,
+      },
+      reason: 'Some reason',
+      source: 'Some source',
+      failingSubscriptionId: 'subscriptionId1',
+    },
+  ],
+  timestamp: 1730871300446,
+};
+
+export const mockTypedEvent3: TypedEvent = {
+  status: Status.Unprocessed,
+  data: [
+    {
+      eventType: EventType.EntityDeleted,
+      entityId: 'entityId3',
+      userName: 'user3',
+      previousVersion: 0.3,
+      currentVersion: 0.4,
+      timestamp: 1730871300446,
+    },
+  ],
+  timestamp: 1730871300446,
+};
+
+export const mockTypedEvent4: TypedEvent = {
+  status: 'unknown' as Status,
+  data: [
+    {
+      eventType: EventType.EntityCreated,
+      entityId: 'entityId4',
+      userName: 'user4',
+      previousVersion: 0.4,
+      currentVersion: 0.5,
+    },
+  ],
+  timestamp: 1730871300446,
+};

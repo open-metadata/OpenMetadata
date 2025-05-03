@@ -18,20 +18,31 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.LineageUtil;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
@@ -100,16 +111,32 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+    BulkOperationResult result =
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+    // Add assets to domain
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.addDomainLineage(ref.getId(), ref.getType(), domain.getEntityReference());
+      }
+    }
+    return result;
   }
 
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+    BulkOperationResult result =
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), domain.getEntityReference());
+      }
+    }
+    return result;
   }
 
   @Override
-  public EntityUpdater getUpdater(Domain original, Domain updated, Operation operation) {
+  public EntityRepository<Domain>.EntityUpdater getUpdater(
+      Domain original, Domain updated, Operation operation, ChangeSource changeSource) {
     return new DomainUpdater(original, updated, operation);
   }
 
@@ -139,6 +166,47 @@ public class DomainRepository extends EntityRepository<Domain> {
         : null;
   }
 
+  public List<EntityHierarchy> buildHierarchy(String fieldsParam, int limit) {
+    fieldsParam = EntityUtil.addField(fieldsParam, Entity.FIELD_PARENT);
+    Fields fields = getFields(fieldsParam);
+    ResultList<Domain> resultList = listAfter(null, fields, new ListFilter(null), limit, null);
+    List<Domain> domains = resultList.getData();
+
+    /*
+      Maintaining hierarchy in terms of EntityHierarchy to get all other fields of Domain like style,
+      which would have been restricted if built using hierarchy of Domain, as Domain.getChildren() returns List<EntityReference>
+      and EntityReference does not support additional properties
+    */
+    List<EntityHierarchy> rootDomains = new ArrayList<>();
+
+    Map<UUID, EntityHierarchy> entityHierarchyMap =
+        domains.stream()
+            .collect(
+                Collectors.toMap(
+                    Domain::getId,
+                    domain -> {
+                      EntityHierarchy entityHierarchy =
+                          JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class);
+                      entityHierarchy.setChildren(new ArrayList<>());
+                      return entityHierarchy;
+                    }));
+
+    for (Domain domain : domains) {
+      EntityHierarchy entityHierarchy = entityHierarchyMap.get(domain.getId());
+
+      if (domain.getParent() != null) {
+        EntityHierarchy parentHierarchy = entityHierarchyMap.get(domain.getParent().getId());
+        if (parentHierarchy != null) {
+          parentHierarchy.getChildren().add(entityHierarchy);
+        }
+      } else {
+        rootDomains.add(entityHierarchy);
+      }
+    }
+
+    return rootDomains;
+  }
+
   public class DomainUpdater extends EntityUpdater {
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
@@ -146,7 +214,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
   }

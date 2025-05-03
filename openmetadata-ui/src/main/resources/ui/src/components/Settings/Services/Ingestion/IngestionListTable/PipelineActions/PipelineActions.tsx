@@ -22,8 +22,8 @@ import { Operation } from '../../../../../../generated/entity/policies/accessCon
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
-import { PipelineActionsProps } from '../../PipelineActions.interface';
 import './pipeline-actions.less';
+import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 function PipelineActions({
@@ -38,6 +38,7 @@ function PipelineActions({
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
   handleEditClick,
+  moreActionButtonProps,
 }: Readonly<PipelineActionsProps>) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -145,7 +146,7 @@ function PipelineActions({
       align="middle"
       className="pipeline-actions-container"
       data-tesid="pipeline-actions"
-      gutter={[12, 12]}
+      gutter={[8, 8]}
       justify="space-between"
       wrap={false}>
       {playPauseButton}
@@ -168,6 +169,7 @@ function PipelineActions({
                 handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
                 ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
+                moreActionButtonProps={moreActionButtonProps}
                 serviceCategory={serviceCategory}
                 serviceName={serviceName}
                 triggerIngestion={triggerIngestion}

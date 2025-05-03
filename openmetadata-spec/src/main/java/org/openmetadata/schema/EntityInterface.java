@@ -54,6 +54,12 @@ public interface EntityInterface {
 
   ChangeDescription getChangeDescription();
 
+  ChangeDescription getIncrementalChangeDescription();
+
+  default UsageDetails getUsageSummary() {
+    return null;
+  }
+
   default List<EntityReference> getOwners() {
     return null;
   }
@@ -71,6 +77,10 @@ public interface EntityInterface {
   }
 
   default Votes getVotes() {
+    return null;
+  }
+
+  default EntityReference getService() {
     return null;
   }
 
@@ -108,6 +118,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default AssetCertification getCertification() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -119,6 +133,10 @@ public interface EntityInterface {
   void setVersion(Double newVersion);
 
   void setChangeDescription(ChangeDescription changeDescription);
+
+  void setIncrementalChangeDescription(ChangeDescription incrementalChangeDescription);
+
+  default void setUsageSummary(UsageDetails usageSummary) {}
 
   void setFullyQualifiedName(String fullyQualifiedName);
 
@@ -175,6 +193,10 @@ public interface EntityInterface {
   }
 
   default void setLifeCycle(LifeCycle lifeCycle) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setCertification(AssetCertification certification) {
     /* no-op implementation to be overridden */
   }
 

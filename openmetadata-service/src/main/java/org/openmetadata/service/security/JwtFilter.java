@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateDomainEnfor
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithm;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -75,9 +76,11 @@ public class JwtFilter implements ContainerRequestFilter {
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
+  private Set<String> allowedDomains;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
+  private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
       Arrays.asList(
@@ -95,7 +98,6 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh");
 
@@ -128,8 +130,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.allowedDomains = authorizerConfiguration.getAllowedDomains();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
+    this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
   }
 
   @VisibleForTesting
@@ -189,6 +193,7 @@ public class JwtFilter implements ContainerRequestFilter {
         jwtPrincipalClaims,
         claims,
         principalDomain,
+        allowedDomains,
         enforcePrincipalDomain);
 
     // Validate Bot token matches what was created in OM
@@ -219,23 +224,25 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      throw new AuthenticationException("Invalid token", e);
+      throw AuthenticationException.getInvalidTokenException("Unable to decode the token.");
     }
 
     // Check if expired
     // If expiresAt is set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      throw new AuthenticationException("Expired token!");
+      throw AuthenticationException.getExpiredTokenException();
     }
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+    Algorithm algorithm =
+        getAlgorithm(tokenValidationAlgorithm, (RSAPublicKey) jwk.getPublicKey(), null);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthenticationException("Invalid token", runtimeException);
+      throw AuthenticationException.getInvalidTokenException(
+          "Token verification failed. Public key mismatch.", runtimeException);
     }
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -273,7 +280,8 @@ public class JwtFilter implements ContainerRequestFilter {
     if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
-    throw AuthenticationException.getInvalidTokenException();
+    throw AuthenticationException.getInvalidTokenException(
+        "The given token does not match the current bot's token!");
   }
 
   private void validatePersonalAccessToken(
@@ -289,7 +297,7 @@ public class JwtFilter implements ContainerRequestFilter {
       if (userTokens != null && userTokens.contains(tokenFromHeader)) {
         return;
       }
-      throw AuthenticationException.getInvalidTokenException();
+      throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");
     }
   }
 
@@ -299,7 +307,7 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw new AuthenticationException("Expired token!");
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
   }

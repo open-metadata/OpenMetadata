@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,6 @@ from typing import Optional
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
@@ -41,7 +40,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return self.get_column_name(
             self.test_case.entityLink.root,
-            inspect(self.runner.table).c,
+            inspect(self.runner.dataset).c,
         )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
@@ -53,12 +52,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         count = Metrics.COUNT.value(column).fn()
         unique_count = Metrics.UNIQUE_COUNT.value(column).query(
-            sample=self.runner._sample  # pylint: disable=protected-access
-            if isinstance(
-                self.runner._sample,  # pylint: disable=protected-access
-                AliasedClass,
-            )
-            else self.runner.table,
+            sample=self.runner.dataset,
             session=self.runner._session,  # pylint: disable=protected-access
         )  # type: ignore
 

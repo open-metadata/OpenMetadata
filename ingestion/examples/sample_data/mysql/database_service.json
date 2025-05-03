@@ -1,0 +1,20 @@
+{
+  "type": "mysql",
+  "serviceName": "mysql_sample",
+  "serviceConnection": {
+    "config": {
+      "type": "Mysql",
+      "hostPort": "localhost:3306",
+      "username": "openmetadata_user",
+      "authType": {
+        "password": "openmetadata_password"
+      },
+      "databaseSchema": "posts_db"
+    }
+  },
+  "sourceConfig": {
+    "config": {
+      "type": "DatabaseMetadata"
+    }
+  }
+}

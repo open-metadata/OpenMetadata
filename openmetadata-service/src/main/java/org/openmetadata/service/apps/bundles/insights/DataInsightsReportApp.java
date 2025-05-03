@@ -4,6 +4,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
@@ -34,6 +36,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -69,6 +72,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
+    app.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();
@@ -101,11 +107,22 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
   }
 
+  @Override
+  protected void validateConfig(Map<String, Object> config) {
+    try {
+      JsonUtils.convertValue(config, DataInsightsReportAppConfig.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST,
+          "Invalid DataInsightsReportAppConfig configuration: " + e.getMessage());
+    }
+  }
+
   private void sendReportsToTeams(SearchClient searchClient, TimeConfig timeConfig)
       throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
-    while (!teamReader.isDone()) {
+    while (!teamReader.isDone().get()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
       for (Team team : resultList.getData()) {
         Set<String> emails = new HashSet<>();
@@ -218,7 +235,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
-    int changeInTotalAssets = (int) (currentCount - previousCount);
+    int changeInTotalAssets = (int) Math.abs(currentCount - previousCount);
 
     if (previousCount == 0D) {
       // it should be undefined
@@ -276,7 +293,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentCompletedDescription - previousCompletedDescription);
+    int changeCount = (int) Math.abs(currentCompletedDescription - previousCompletedDescription);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
@@ -327,7 +344,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentHasOwner - previousHasOwner);
+    int changeCount = (int) Math.abs(currentHasOwner - previousHasOwner);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
@@ -376,7 +393,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentHasTier - previousHasTier);
+    int changeCount = (int) Math.abs(currentHasTier - previousHasTier);
 
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,9 +24,6 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple, Type, cast
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
@@ -38,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.profiler.api.models import ProfilerProcessorConfig
@@ -51,18 +48,19 @@ from metadata.utils.importer import (
     DynamicImportException,
     MissingPluginException,
     import_from_module,
-    import_source_class,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
-from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
 
 logger = ingestion_logger()
 
 
 class IngestionWorkflow(BaseWorkflow, ABC):
     """
-    Base Ingestion Workflow implementation
+    Base Ingestion Workflow implementation. This is used for all
+    workflows minus the application one, which directly inherits the
+    BaseWorkflow.
     """
 
     config: OpenMetadataWorkflowConfig
@@ -79,14 +77,9 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             self.config.source.type
         )
 
-        metadata_config: OpenMetadataConnection = (
-            self.config.workflowConfig.openMetadataServerConfig
-        )
-
         super().__init__(
             config=config,
-            log_level=config.workflowConfig.loggerLevel,
-            metadata_config=metadata_config,
+            workflow_config=config.workflowConfig,
             service_type=self.service_type,
         )
 
@@ -137,36 +130,11 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         if bulk_sink:
             bulk_sink.run()
 
-    def calculate_success(self) -> float:
-        return self.source.get_status().calculate_success()
-
     def get_failures(self) -> List[StackTraceError]:
         return self.source.get_status().failures
 
     def workflow_steps(self) -> List[Step]:
         return [self.source] + list(self.steps)
-
-    def raise_from_status_internal(self, raise_warnings=False):
-        """
-        Check the status of all steps
-        """
-        if (
-            self.source.get_status().failures
-            and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
-        ):
-            raise WorkflowExecutionError(
-                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
-            )
-
-        for step in self.steps:
-            if step.status.failures:
-                raise WorkflowExecutionError(
-                    f"{step.name} reported errors: {Summary.from_step(step)}"
-                )
-            if raise_warnings and step.status.warnings:
-                raise WorkflowExecutionError(
-                    f"{step.name} reported warnings: {Summary.from_step(step)}"
-                )
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """

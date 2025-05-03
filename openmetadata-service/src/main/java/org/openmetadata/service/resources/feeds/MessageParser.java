@@ -162,12 +162,16 @@ public final class MessageParser {
       // Entity links also have support for fallback texts with "|"
       // example: <#E::user::user1|[@User One](http://localhost:8585/user/user1)>
       // Extract the entity link alone if the string has a fallback text
-      if (link.contains("|")) {
-        link = link.substring(0, link.indexOf("|")) + ">";
-      }
-      Matcher matcher = ENTITY_LINK_PATTERN.matcher(link);
       EntityLink entityLink = null;
+
+      Matcher matcher = ENTITY_LINK_PATTERN.matcher(link);
       while (matcher.find()) {
+        if (link.contains("|") && matcher.group(1).contains("user")) {
+          link = link.substring(0, link.indexOf("|")) + ">";
+          matcher = ENTITY_LINK_PATTERN.matcher(link);
+          matcher.find();
+        }
+
         if (entityLink == null) {
           String entityType = matcher.group(1);
           String entityFQN = matcher.group(2);

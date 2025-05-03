@@ -13,34 +13,45 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useReserveSidebar } from '../../hooks/useReserveSidebar';
 import { getLimitConfig } from '../../rest/limitsAPI';
+import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Appbar from '../AppBar/Appbar';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
 
+const { Content } = Layout;
+
 const AppContainer = () => {
-  const { i18n } = useTranslation();
-  const { Header, Sider, Content } = Layout;
-  const { currentUser } = useApplicationStore();
-  const { isSidebarReserve } = useReserveSidebar();
+  const { currentUser, setAppPreferences, appPreferences } =
+    useApplicationStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
-  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const { isAuthenticated } = useApplicationStore();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+
   const { setConfig, bannerDetails } = useLimitStore();
 
-  const fetchLimitConfig = useCallback(async () => {
+  const fetchAppConfigurations = useCallback(async () => {
     try {
-      const response = await getLimitConfig();
+      const [response, lineageConfig] = await Promise.all([
+        getLimitConfig(),
+        getSettingsByType(SettingType.LineageSettings),
+      ]);
 
       setConfig(response);
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig: lineageConfig as LineageSettings,
+      });
     } catch (error) {
       // silent fail
     }
@@ -48,7 +59,7 @@ const AppContainer = () => {
 
   useEffect(() => {
     if (currentUser?.id) {
-      fetchLimitConfig();
+      fetchAppConfigurations();
     }
   }, [currentUser?.id]);
 
@@ -58,19 +69,21 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
-          ['reserve-right-sidebar']: isSidebarReserve,
         })}>
-        <Sider
-          className={classNames('left-sidebar-col', {
-            'left-sidebar-col-rtl': isDirectionRTL,
-          })}
-          width={60}>
-          <LeftSidebar />
-        </Sider>
+        {/* Render left side navigation */}
+        <LeftSidebar isSidebarCollapsed={isSidebarCollapsed} />
+
+        {/* Render main content */}
         <Layout>
-          <Header className="p-x-0">
-            <Appbar />
-          </Header>
+          {/* Render Appbar */}
+          {isProtectedRoute(location.pathname) && isAuthenticated ? (
+            <NavBar
+              isSidebarCollapsed={isSidebarCollapsed}
+              toggleSideBar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          ) : null}
+
+          {/* Render main content */}
           <Content>
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}

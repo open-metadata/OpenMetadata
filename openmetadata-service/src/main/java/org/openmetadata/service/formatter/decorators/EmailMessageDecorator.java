@@ -14,7 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,11 +22,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
   public String getBold() {
     return "<b>%s</b>";
+  }
+
+  @Override
+  public String getBoldWithSpace() {
+    return "<b>%s</b> ";
   }
 
   @Override
@@ -56,11 +62,12 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
-        "<a href = '%s/%s/%s%s'>%s</a>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        "<a href='%s/%s/%s%s'>%s</a>",
+        EmailUtil.getOMBaseURL(),
         prefix,
-        fqn.trim(),
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }
@@ -71,8 +78,8 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildTestMessage(String publisherName) {
-    return getEmailTestMessage(publisherName);
+  public EmailMessage buildTestMessage() {
+    return getEmailTestMessage();
   }
 
   @Override
@@ -92,22 +99,17 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
     throw new UnhandledServerException("No messages found for the event");
   }
 
-  public EmailMessage getEmailTestMessage(String publisherName) {
-    if (!publisherName.isEmpty()) {
-      EmailMessage emailMessage = new EmailMessage();
-      emailMessage.setUserName("test_user");
-      emailMessage.setUpdatedBy("system");
-      emailMessage.setEntityUrl(StringUtils.EMPTY);
-      emailMessage.setChangeMessage(
-          new ArrayList<>(
-              Collections.singleton(
-                  "This is a test alert to verify the destination configuration for alerts. "
-                      + "Publisher: "
-                      + publisherName
-                      + ". If you received this message, your alert "
-                      + "configuration is correct.")));
-      return emailMessage;
-    }
-    throw new UnhandledServerException("Publisher name not found.");
+  public EmailMessage getEmailTestMessage() {
+    EmailMessage emailMessage = new EmailMessage();
+    emailMessage.setUserName("test_user");
+    emailMessage.setUpdatedBy("system");
+    emailMessage.setEntityUrl(StringUtils.EMPTY);
+    emailMessage.setChangeMessage(
+        new ArrayList<>(
+            Collections.singleton(
+                "This is a test alert to verify the destination configuration for alerts. "
+                    + ". If you received this message, your alert "
+                    + "configuration is correct.")));
+    return emailMessage;
   }
 }

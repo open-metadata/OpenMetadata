@@ -26,18 +26,18 @@ export interface TeamHierarchyProps {
     updateChildNode?: boolean
   ) => void;
   isFetchingAllTeamAdvancedDetails: boolean;
+  searchTerm?: string;
+  showDeletedTeam: boolean;
+  onShowDeletedTeamChange: () => void;
+  handleAddTeamButtonClick: () => void;
+  createTeamPermission: boolean;
+  isTeamDeleted: boolean;
+  handleTeamSearch: (text: string) => void;
 }
 
 export interface MovedTeamProps {
   from: Team;
   to?: Team;
-}
-
-export interface TableExpandableDataProps {
-  expanded: boolean;
-  onExpand: (record: Team, event: React.MouseEvent<HTMLElement>) => void;
-  expandable: boolean;
-  record: Team;
 }
 
 export enum TeamsPageTab {

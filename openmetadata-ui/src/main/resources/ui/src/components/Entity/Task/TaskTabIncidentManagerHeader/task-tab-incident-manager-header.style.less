@@ -18,3 +18,34 @@
   padding: 24px;
   overflow-x: auto;
 }
+.incident-manager-details-label {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+}
+.task-resolution-steps-container-new {
+  border-radius: 10px;
+  background-color: @grey-9;
+  border: 0.5px solid @grey-15;
+  padding: 24px;
+  overflow-x: auto;
+  margin-bottom: -20px;
+  .incident-title {
+    width: 116px;
+  }
+  .incident-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    word-break: break-word;
+    white-space: normal;
+  }
+}
+.incident-manager-text {
+  color: @text-color;
+}
+.incident-manager-details-label.ant-typography {
+  color: @text-color-tertiary;
+}

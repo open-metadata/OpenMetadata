@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
@@ -27,6 +26,8 @@ import {
   formatDateTimeWithTimezone,
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
+import { getColumnSorter } from '../../utils/EntityUtils';
+import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Table from '../common/Table/Table';
@@ -73,6 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.user'),
         dataIndex: 'userName',
         key: 'userName',
+        sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
           <Space>
             <ProfilePicture name={userName} width="24" />

@@ -31,8 +31,8 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -200,7 +200,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     Table table =
         tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport =
-        usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
+        usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     reportUsageByNameAndCheckPut(
         TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, authHeaders);
     // a put request updates the data again
@@ -221,7 +221,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     // and monthly usage percentile rank is correct.
 
     // Publish usage for DAYS_OF_USAGE number of days starting from today
-    String today = RestUtil.DATE_FORMAT.format(new Date()); // today
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now()); // today
 
     // Add table usages of each table - 0, 1 to TABLE_COUNT - 1 to get database usage
     final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1) / 2;
@@ -348,7 +348,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
 
   public DailyCount usageReport() {
     Random random = new Random();
-    String today = RestUtil.DATE_FORMAT.format(new Date());
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now());
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 

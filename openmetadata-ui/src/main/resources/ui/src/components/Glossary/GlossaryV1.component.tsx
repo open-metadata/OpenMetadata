@@ -14,25 +14,21 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { getGlossaryTermDetailsPath } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction } from '../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
+import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { PageType } from '../../generated/system/ui/page';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addGlossaryTerm,
   getFirstLevelGlossaryTerms,
@@ -40,11 +36,12 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Loader from '../common/Loader/Loader';
+import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
@@ -52,7 +49,6 @@ import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
-import ImportGlossary from './ImportGlossary/ImportGlossary';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
@@ -71,18 +67,17 @@ const GlossaryV1 = ({
   const { t } = useTranslation();
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
-
-  const history = useHistory();
-  const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
+  const { customizedPage } = useCustomPages(
+    isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
   );
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const history = useHistory();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
     useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
-  const [isTermsLoading, setIsTermsLoading] = useState(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState(false);
+  const { setGlossaryFunctionRef, setTermsLoading } = useGlossaryStore();
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -96,44 +91,31 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    insertNewGlossaryTermToChildTerms,
+  } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
-
-  const isImportAction = useMemo(
-    () => action === EntityAction.IMPORT,
-    [action]
-  );
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
     refresh?: boolean
   ) => {
-    refresh ? setIsTermsLoading(true) : setIsLoading(true);
+    refresh ? setTermsLoading(true) : setIsLoading(true);
     try {
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      // We are considering childrenCount fot expand collapse state
+      // Hence don't need any intervention to list response here
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      refresh ? setIsTermsLoading(false) : setIsLoading(false);
+      refresh ? setTermsLoading(false) : setIsLoading(false);
     }
   };
 
@@ -161,19 +143,6 @@ const GlossaryV1 = ({
     }
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleDelete = async () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
@@ -196,93 +165,79 @@ const GlossaryV1 = ({
     [fullyQualifiedName, isGlossaryActive]
   );
 
-  const handleGlossaryTermModalAction = (
-    editMode: boolean,
-    glossaryTerm: GlossaryTerm | null
-  ) => {
-    setEditMode(editMode);
-    setActiveGlossaryTerm(glossaryTerm);
-    setIsEditModalOpen(true);
+  const handleGlossaryTermModalAction = useCallback(
+    (editMode: boolean, glossaryTerm: GlossaryTerm | null) => {
+      setEditMode(editMode);
+      setActiveGlossaryTerm(glossaryTerm);
+      setIsEditModalOpen(true);
+    },
+    []
+  );
+
+  const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
+    const clonedTerms = cloneDeep(glossaryChildTerms);
+    const updatedGlossaryTerms = updateGlossaryTermByFqn(
+      clonedTerms,
+      updatedTerm.fullyQualifiedName ?? '',
+      updatedTerm as ModifiedGlossary
+    );
+
+    setGlossaryChildTerms(updatedGlossaryTerms);
   };
 
   const updateGlossaryTerm = async (
     currentData: GlossaryTerm,
     updatedData: GlossaryTerm
   ) => {
-    try {
-      const jsonPatch = compare(currentData, updatedData);
-      const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
-      if (!response) {
-        throw t('server.entity-updating-error', {
+    const jsonPatch = compare(currentData, updatedData);
+    const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
+    if (!response) {
+      throw new Error(
+        t('server.entity-updating-error', {
           entity: t('label.glossary-term'),
-        });
-      }
-      onTermModalSuccess();
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.glossary-term'),
-            entityPlural: t('label.glossary-term-lowercase-plural'),
-            name: updatedData.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.glossary-term-lowercase'),
-          })
-        );
-      }
+        })
+      );
+    } else {
+      updateGlossaryTermInStore({
+        ...response,
+        // Since patch didn't respond with childrenCount preserve it from currentData
+        childrenCount: currentData.childrenCount,
+      });
+      setIsEditModalOpen(false);
     }
   };
 
-  const onTermModalSuccess = useCallback(() => {
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          'terms'
-        )
-      );
-    }
-    setIsEditModalOpen(false);
-  }, [isGlossaryActive, tab, selectedData]);
-
-  const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
-    try {
-      await addGlossaryTerm({
-        ...formData,
-        glossary:
-          activeGlossaryTerm?.glossary?.name ||
-          (selectedData.fullyQualifiedName ?? ''),
-        parent: activeGlossaryTerm?.fullyQualifiedName,
-      });
-      onTermModalSuccess();
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.glossary-term'),
-            entityPlural: t('label.glossary-term-lowercase-plural'),
-            name: formData.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.glossary-term-lowercase'),
-          })
+  const onTermModalSuccess = useCallback(
+    (term: GlossaryTerm) => {
+      // Setting loading so that nested terms are rendered again on table with change
+      setTermsLoading(true);
+      // Update store with newly created term
+      insertNewGlossaryTermToChildTerms(term);
+      if (!isGlossaryActive && tab !== 'terms') {
+        history.push(
+          getGlossaryTermDetailsPath(
+            selectedData.fullyQualifiedName || '',
+            EntityTabs.TERMS
+          )
         );
       }
-    }
+      // Close modal and set loading to false
+      setIsEditModalOpen(false);
+      setTermsLoading(false);
+    },
+    [isGlossaryActive, tab, selectedData]
+  );
+
+  const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
+    const term = await addGlossaryTerm({
+      ...formData,
+      glossary:
+        activeGlossaryTerm?.glossary?.name ||
+        (selectedData.fullyQualifiedName ?? ''),
+      parent: activeGlossaryTerm?.fullyQualifiedName,
+    });
+
+    onTermModalSuccess(term);
   };
 
   const handleGlossaryTermSave = async (formData: GlossaryTermForm) => {
@@ -324,67 +279,100 @@ const GlossaryV1 = ({
     }
   };
 
+  const handleGlossaryUpdate = async (newGlossary: Glossary) => {
+    const jsonPatch = compare(selectedData, newGlossary);
+
+    const shouldRefreshTerms = jsonPatch.some((patch) =>
+      patch.path.startsWith('/owners')
+    );
+
+    await updateGlossary(newGlossary);
+    shouldRefreshTerms && loadGlossaryTerms(true);
+  };
+
+  const initPermissions = async () => {
+    setIsPermissionLoading(true);
+    const permissionFetch = isGlossaryActive
+      ? fetchGlossaryPermission
+      : fetchGlossaryTermPermission;
+
+    try {
+      if (isVersionsView) {
+        isGlossaryActive
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION);
+      } else {
+        await permissionFetch();
+      }
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (id && !action) {
       loadGlossaryTerms();
-      if (isGlossaryActive) {
-        isVersionsView
-          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryPermission();
-      } else {
-        isVersionsView
-          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryTermPermission();
-      }
+      initPermissions();
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
-  return isImportAction ? (
-    <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
-  ) : (
+  useEffect(() => {
+    setGlossaryFunctionRef({
+      onAddGlossaryTerm: (term) =>
+        handleGlossaryTermModalAction(false, term ?? null),
+      onEditGlossaryTerm: (term) =>
+        handleGlossaryTermModalAction(true, term ?? null),
+      refreshGlossaryTerms: () => loadGlossaryTerms(true),
+    });
+  }, [loadGlossaryTerms, handleGlossaryTermModalAction]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  return (
     <>
-      {isLoading && <Loader />}
-      {!isLoading &&
-        !isEmpty(selectedData) &&
-        (isGlossaryActive ? (
-          <GlossaryDetails
-            handleGlossaryDelete={onGlossaryDelete}
-            isVersionView={isVersionsView}
-            permissions={glossaryPermission}
-            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-            termsLoading={isTermsLoading}
-            updateGlossary={updateGlossary}
-            updateVote={updateVote}
-            onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term ?? null)
-            }
-            onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term ?? null)
-            }
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        ) : (
-          <GlossaryTermsV1
-            glossaryTerm={selectedData as GlossaryTerm}
-            handleGlossaryTermDelete={onGlossaryTermDelete}
-            handleGlossaryTermUpdate={onGlossaryTermUpdate}
-            isSummaryPanelOpen={isSummaryPanelOpen}
-            isVersionView={isVersionsView}
-            permissions={glossaryTermPermission}
-            refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
-            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-            termsLoading={isTermsLoading}
-            updateVote={updateVote}
-            onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term ?? null)
-            }
-            onAssetClick={onAssetClick}
-            onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term)
-            }
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        ))}
+      {(isLoading || isPermissionLoading) && <Loader />}
+
+      <GenericProvider<Glossary | GlossaryTerm>
+        currentVersionData={selectedData}
+        customizedPage={customizedPage}
+        data={selectedData}
+        isTabExpanded={isTabExpanded}
+        isVersionView={isVersionsView}
+        permissions={
+          isGlossaryActive ? glossaryPermission : glossaryTermPermission
+        }
+        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        onUpdate={handleGlossaryUpdate}>
+        {!isLoading &&
+          !isPermissionLoading &&
+          !isEmpty(selectedData) &&
+          (isGlossaryActive ? (
+            <GlossaryDetails
+              handleGlossaryDelete={onGlossaryDelete}
+              isTabExpanded={isTabExpanded}
+              isVersionView={isVersionsView}
+              permissions={glossaryPermission}
+              toggleTabExpanded={toggleTabExpanded}
+              updateGlossary={handleGlossaryUpdate}
+              updateVote={updateVote}
+            />
+          ) : (
+            <GlossaryTermsV1
+              glossaryTerm={selectedData as GlossaryTerm}
+              handleGlossaryTermDelete={onGlossaryTermDelete}
+              handleGlossaryTermUpdate={onGlossaryTermUpdate}
+              isSummaryPanelOpen={isSummaryPanelOpen}
+              isTabExpanded={isTabExpanded}
+              isVersionView={isVersionsView}
+              refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
+              toggleTabExpanded={toggleTabExpanded}
+              updateVote={updateVote}
+              onAssetClick={onAssetClick}
+            />
+          ))}
+      </GenericProvider>
 
       {selectedData && (
         <EntityDeleteModal
@@ -406,19 +394,6 @@ const GlossaryV1 = ({
           onSave={handleGlossaryTermSave}
         />
       )}
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </>
   );
 };

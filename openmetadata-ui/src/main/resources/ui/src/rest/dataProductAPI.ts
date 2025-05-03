@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
 import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
@@ -22,7 +21,6 @@ import {
   EntityReference,
 } from '../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
@@ -31,15 +29,6 @@ import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
-
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-  domain?: string;
-};
 
 export const addDataProducts = async (data: CreateDataProduct) => {
   const response = await APIClient.post<
@@ -73,17 +62,6 @@ export const getDataProductByName = async (
   return response.data;
 };
 
-export const getDataProductList = async (params?: Params) => {
-  const response = await APIClient.get<PagingResponse<DataProduct[]>>(
-    BASE_URL,
-    {
-      params,
-    }
-  );
-
-  return response.data;
-};
-
 export const deleteDataProduct = (id: string) => {
   return APIClient.delete(`${BASE_URL}/${id}`);
 };
@@ -107,6 +85,7 @@ export const getDataProductVersionData = async (
 
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
+  domainFQN: string,
   page: number
 ): Promise<{
   data: {
@@ -120,7 +99,19 @@ export const fetchDataProductsElasticSearch = async (
     filters: '',
     pageNumber: page,
     pageSize: PAGE_SIZE,
-    queryFilter: {},
+    queryFilter: {
+      query: {
+        bool: {
+          should: [
+            {
+              term: {
+                'domain.fullyQualifiedName': domainFQN,
+              },
+            },
+          ],
+        },
+      },
+    },
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 

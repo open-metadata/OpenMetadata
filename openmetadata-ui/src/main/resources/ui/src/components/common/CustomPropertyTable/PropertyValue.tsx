@@ -26,7 +26,6 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -38,7 +37,6 @@ import {
   noop,
   omitBy,
   toNumber,
-  toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, {
@@ -60,12 +58,13 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
+import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig, ValueClass } from '../../../generated/type/customProperty';
+import { Config } from '../../../generated/type/customProperty';
+import { getCustomPropertyMomentFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -77,8 +76,7 @@ import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
-import Table from '../Table/Table';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -86,6 +84,8 @@ import {
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
+import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
+import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
 
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
@@ -96,9 +96,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value } = useMemo(() => {
+  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
     const propertyName = property.name;
     const propertyType = property.propertyType;
+    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const value = extension?.[propertyName];
 
@@ -106,13 +107,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       propertyName,
       propertyType,
       value,
+      isTableType,
     };
   }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  // expand the property value by default if it is a "table-type" custom property
+  const [isExpanded, setIsExpanded] = useState(isTableType);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -135,16 +138,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
-    const isEnumWithDescription = propertyType.name === ENUM_WITH_DESCRIPTION;
 
     const isArrayType = isArray(updatedValue);
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue =
-      isEnum || isEnumWithDescription
-        ? (enumValue as string[]).filter(Boolean)
-        : updatedValue;
+    const propertyValue = isEnum
+      ? (enumValue as string[]).filter(Boolean)
+      : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -186,7 +187,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getPropertyInput = () => {
     const commonStyle: CSSProperties = {
       marginBottom: '0px',
-      minWidth: '250px',
+      width: '100%',
     };
     switch (propertyType.name) {
       case 'string':
@@ -211,14 +212,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'markdown': {
         const header = t('label.edit-entity-name', {
           entityType: t('label.property'),
-          entityName: propertyName,
+          entityName: getEntityName(property),
         });
 
         return (
           <ModalWithMarkdownEditor
             header={header}
             placeholder={t('label.enter-property-value')}
-            value={value || ''}
+            value={value ?? ''}
             visible={showInput}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -227,7 +228,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'enum': {
-        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+        const enumConfig = property.customPropertyConfig?.config as Config;
 
         const isMultiSelect = Boolean(enumConfig?.multiSelect);
 
@@ -240,18 +241,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           enumValues: (isArray(value) ? value : [value]).filter(Boolean),
         };
 
+        const formId = `enum-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'enum-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="enum-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>
@@ -272,83 +276,32 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case ENUM_WITH_DESCRIPTION: {
-        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
-
-        const isMultiSelect = Boolean(enumConfig?.multiSelect);
-
-        const values = (enumConfig?.values as ValueClass[]) ?? [];
-
-        const options = values.map((option) => ({
-          label: (
-            <Tooltip title={option.description}>
-              <span>{option.key}</span>
-            </Tooltip>
-          ),
-          value: option.key,
-        }));
-
-        const initialValues = {
-          enumWithDescriptionValues: (isArray(value) ? value : [value]).filter(
-            Boolean
-          ),
-        };
-
-        return (
-          <InlineEdit
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: 'enum-with-description-form',
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id="enum-with-description-form"
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: {
-                enumWithDescriptionValues: string | string[];
-              }) => onInputSave(values.enumWithDescriptionValues)}>
-              <Form.Item name="enumWithDescriptionValues" style={commonStyle}>
-                <Select
-                  allowClear
-                  data-testid="enum-with-description-select"
-                  disabled={isLoading}
-                  mode={isMultiSelect ? 'multiple' : undefined}
-                  options={options}
-                  placeholder={t('label.enum-value-plural')}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
-
       case 'date-cp':
       case 'dateTime-cp': {
-        // Default format is 'yyyy-mm-dd'
-        const format = toUpper(
-          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
         );
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
         };
 
+        const formId = `dateTime-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'dateTime-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="dateTime-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
@@ -361,11 +314,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
                   allowClear
+                  className="w-full"
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
                   showTime={propertyType.name === 'dateTime-cp'}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -374,24 +327,30 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format =
-          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
+        );
+
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
 
+        const formId = `time-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'time-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="time-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -403,10 +362,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="time" style={commonStyle}>
                 <TimePicker
                   allowClear
+                  className="w-full"
                   data-testid="time-picker"
                   disabled={isLoading}
                   format={format}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -419,18 +378,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           email: value,
         };
 
+        const formId = `email-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'email-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="email-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -464,18 +426,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           timestamp: value,
         };
 
+        const formId = `timestamp-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timestamp-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timestamp-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
@@ -514,18 +479,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           end: value?.end ? value.end?.toString() : undefined,
         };
 
+        const formId = `timeInterval-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timeInterval-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timeInterval-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
@@ -587,18 +555,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           duration: value,
         };
 
+        const formId = `duration-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'duration-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="duration-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -623,19 +594,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           sqlQuery: value,
         };
 
+        const formId = `sqlQuery-form-${propertyName}`;
+
         return (
           <InlineEdit
-            className="sql-query-custom-property"
+            className="custom-property-inline-edit-container sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'sqlQuery-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="sqlQuery-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -696,18 +669,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           entityReference: initialValue,
         };
 
+        const formId = `entity-reference-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'entity-reference-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="entity-reference-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -748,6 +724,30 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const config = property.customPropertyConfig?.config as Config;
+
+        const columns = config?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return (
+          <>
+            {showInput && (
+              <TableTypePropertyView columns={columns} rows={rows} />
+            )}
+            <EditTableTypePropertyModal
+              columns={columns}
+              isUpdating={isLoading}
+              isVisible={showInput}
+              property={property}
+              rows={value?.rows ?? []}
+              onCancel={onHideInput}
+              onSave={onInputSave}
+            />
+          </>
+        );
+      }
+
       default:
         return null;
     }
@@ -758,7 +758,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const isKeyAdded = versionDataKeys?.includes(propertyName);
 
       return (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className={isKeyAdded ? 'diff-added' : ''}
           markdown={String(value) || ''}
         />
@@ -766,7 +766,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
     switch (propertyType.name) {
       case 'markdown':
-        return <RichTextEditorPreviewer markdown={value || ''} />;
+        return <RichTextEditorPreviewerV1 markdown={value ?? ''} />;
 
       case 'enum':
         return (
@@ -790,42 +790,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             )}
           </>
         );
-
-      case ENUM_WITH_DESCRIPTION: {
-        const enumWithDescriptionValues = (value as ValueClass[]) ?? [];
-
-        const columns: ColumnsType<ValueClass> = [
-          {
-            title: 'Key',
-            dataIndex: 'key',
-            key: 'key',
-            render: (key: string) => <Typography>{key}</Typography>,
-          },
-          {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
-            render: (description: string) => (
-              <RichTextEditorPreviewer markdown={description || ''} />
-            ),
-          },
-        ];
-
-        return (
-          <Table
-            bordered
-            resizableColumns
-            className="w-full"
-            columns={columns}
-            data-testid="enum-with-description-table"
-            dataSource={enumWithDescriptionValues}
-            pagination={false}
-            rowKey="name"
-            scroll={isRenderedInRightPanel ? { x: true } : undefined}
-            size="small"
-          />
-        );
-      }
 
       case 'sqlQuery':
         return (
@@ -944,7 +908,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <div
-            className="d-flex justify-between"
+            className="d-flex justify-center flex-wrap gap-2 py-2"
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
@@ -981,6 +945,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const columns =
+          (property.customPropertyConfig?.config as Config)?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return <TableTypePropertyView columns={columns} rows={rows} />;
+      }
+
       case 'string':
       case 'integer':
       case 'number':
@@ -1004,7 +976,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
 
-    return !isUndefined(value) ? (
+    // if value is not undefined or property is a table type(at least show the columns), return the property value
+    return !isUndefined(value) || isTableType ? (
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">
@@ -1048,7 +1021,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
-                title={t('label.edit-entity', { entity: propertyName })}>
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
                 <Icon
                   component={EditIconComponent}
                   data-testid={`edit-icon${
@@ -1060,16 +1035,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Tooltip>
             )}
           </Col>
-          {!isRenderedInRightPanel && (
-            <Col span={24}>
-              <RichTextEditorPreviewer
-                className="text-grey-muted property-description"
-                markdown={property.description || ''}
-                maxLength={70}
-                reducePreviewLineClass="max-one-line"
-              />
-            </Col>
-          )}
         </Row>
       </Col>
 
@@ -1089,7 +1054,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             ref={contentRef}
             style={{
               height: containerStyleFlag ? 'auto' : '30px',
-              overflow: containerStyleFlag ? 'visible' : 'hidden',
+              overflow: 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
           </div>

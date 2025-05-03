@@ -35,15 +35,9 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -54,6 +48,7 @@ import {
 } from '../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
+  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
@@ -67,6 +62,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import {
@@ -84,14 +80,19 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestCases = () => {
   const [form] = useForm();
   const history = useHistory();
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -110,8 +111,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
     return params as TestCaseSearchParams;
   }, [location.search]);
-  const { searchValue = '' } = params;
 
+  const { searchValue = '' } = params;
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
@@ -253,7 +254,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       });
 
       setTierOptions(options);
-    } catch (error) {
+    } catch {
       setTierOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -285,7 +286,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         });
 
       setTagOptions(options);
-    } catch (error) {
+    } catch {
       setTagOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -323,7 +324,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         };
       });
       setTableOptions(options);
-    } catch (error) {
+    } catch {
       setTableOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -361,7 +362,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         };
       });
       setServiceOptions(options);
-    } catch (error) {
+    } catch {
       setServiceOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -415,7 +416,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       key: filter,
       label: startCase(name),
       value: filter,
-      onClick: handleMenuClick,
     }));
   }, []);
 
@@ -470,14 +470,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row
-      className="p-x-lg p-t-md"
-      data-testid="test-case-container"
-      gutter={[16, 16]}>
+    <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
@@ -499,6 +501,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 menu={{
                   items: filterMenu,
                   selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
                 <Button
@@ -624,10 +627,30 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 />
               </Form.Item>
             )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.dimension')}
+                name="dataQualityDimension">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="dimension-select-filter"
+                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  placeholder={t('label.dimension')}
+                />
+              </Form.Item>
+            )}
           </Space>
         </Form>
       </Col>
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          showAdditionalSummary
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <DataQualityTab
           afterDeleteAction={fetchTestCases}

@@ -22,11 +22,19 @@
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
-        "QlikDataModel"
+        "QlikDataModel",
+        "QuickSightDataModel",
+        "SigmaDataModel"
       ],
       "javaEnums": [
         {
           "name": "TableauDataModel"
+        },
+        {
+          "name": "TableauPublishedDatasource"
+        },
+        {
+          "name": "TableauEmbeddedDatasource"
         },
         {
           "name": "SupersetDataModel"
@@ -45,6 +53,12 @@
         },
         {
           "name": "QlikDataModel"
+        },
+        {
+          "name": "QuickSightDataModel"
+        },
+        {
+          "name": "SigmaDataModel"
         }
       ]
     }
@@ -101,9 +115,13 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -155,6 +173,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

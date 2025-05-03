@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { TableRowSelection } from 'antd/lib/table/interface';
@@ -27,12 +26,12 @@ import {
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
+import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   showErrorToast,
   showSuccessToast,
@@ -50,7 +49,6 @@ export const IngestionPipelineList = ({
   serviceName: ServiceCategory | 'testSuites';
   className?: string;
 }) => {
-  const { theme } = useApplicationStore();
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>([]);
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
@@ -69,17 +67,6 @@ export const IngestionPipelineList = ({
 
   const { t } = useTranslation();
 
-  const renderFilterIcon = useCallback(
-    (filtered: boolean) => (
-      <FilterOutlined
-        style={{
-          color: filtered ? theme.primaryColor : undefined,
-        }}
-      />
-    ),
-    [theme]
-  );
-
   const typeColumnObj: ColumnsType<IngestionPipeline> = useMemo(
     () => [
       {
@@ -87,7 +74,8 @@ export const IngestionPipelineList = ({
         dataIndex: 'pipelineType',
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
-        filterIcon: renderFilterIcon,
+        filterIcon: columnFilterIcon,
+        width: 150,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,
@@ -96,7 +84,7 @@ export const IngestionPipelineList = ({
         filteredValue: pipelineTypeFilter,
       },
     ],
-    [renderFilterIcon, pipelineTypeFilter]
+    [pipelineTypeFilter]
   );
 
   const handleBulkRedeploy = useCallback(async () => {
@@ -185,7 +173,7 @@ export const IngestionPipelineList = ({
 
   useEffect(() => {
     isAirflowAvailable && fetchPipelines({ limit: pageSize });
-  }, [serviceName, isAirflowAvailable]);
+  }, [serviceName, isAirflowAvailable, pageSize]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(

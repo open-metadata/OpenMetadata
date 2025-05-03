@@ -16,6 +16,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
+import { toastNotification } from './common';
 
 type CustomMetricDetails = {
   page: Page;
@@ -118,11 +119,10 @@ export const createCustomMetric = async ({
   await page.click('[data-testid="submit-button"]');
   await createMetricResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+  await toastNotification(
+    page,
     new RegExp(`${metric.name} created successfully.`)
   );
-
-  await page.locator('.Toastify__close-button').click();
 
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
@@ -141,6 +141,10 @@ export const deleteCustomMetric = async ({
   page,
   metric,
   isColumnMetric = false,
+}: {
+  page: Page;
+  metric: CustomMetricDetails['metric'];
+  isColumnMetric?: boolean;
 }) => {
   await page
     .locator(`[data-testid="${metric.name}-custom-metrics"]`)
@@ -165,7 +169,5 @@ export const deleteCustomMetric = async ({
   await deleteMetricResponse;
 
   // Verifying the deletion
-  await expect(page.getByRole('alert').first()).toHaveText(
-    `"${metric.name}" deleted successfully!`
-  );
+  await toastNotification(page, `"${metric.name}" deleted successfully!`);
 };

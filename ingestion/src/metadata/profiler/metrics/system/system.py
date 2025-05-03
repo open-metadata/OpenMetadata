@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,43 +13,18 @@
 System Metric
 """
 
-import traceback
+from abc import ABC
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Callable, Generic, List, TypeVar
 
-from pydantic import TypeAdapter
-from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import SystemProfile
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
-)
-from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
-    build_snowflake_query_results,
-)
 from metadata.profiler.metrics.core import SystemMetric
-from metadata.profiler.metrics.system.dml_operation import (
-    DML_OPERATION_MAP,
-    DatabaseDMLOperations,
-)
-from metadata.profiler.metrics.system.queries.bigquery import (
-    DML_STAT_TO_DML_STATEMENT_MAPPING,
-    JOBS,
-    BigQueryQueryResult,
-)
-from metadata.profiler.metrics.system.queries.redshift import (
-    STL_QUERY,
-    get_metric_result,
-    get_query_results,
-)
-from metadata.profiler.orm.registry import Dialects
-from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import get_value_from_cache, set_cache
-from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = profiler_logger()
 
@@ -63,307 +38,79 @@ def recursive_dic():
 
 SYSTEM_QUERY_RESULT_CACHE = recursive_dic()
 
-
-@valuedispatch
-def get_system_metrics_for_dialect(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    *args,
-    **kwargs,
-) -> Optional[List[SystemProfile]]:
-    """_summary_
-
-    Args:
-        dialect (str): database API dialect
-        session (Session): session object
-
-    Returns:
-        Optional[Dict]: For BigQuery, Snowflake, Redshift returns
-            {
-                timestamp: <timestamp>,
-                operationType: <Enum: 'INSERT', 'UPDATE', 'DELETE'>
-                rowsAffected: <int>,
-            } else returns None
-    """
-    logger.debug(f"System metrics not support for {dialect}. Skipping processing.")
-    return None
+T = TypeVar("T")
 
 
-@get_system_metrics_for_dialect.register(Dialects.BigQuery)
-def _(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    conn_config: BigQueryConnection,
-    *args,
-    **kwargs,
-) -> List[SystemProfile]:
-    """Compute system metrics for bigquery
+class CacheProvider(ABC, Generic[T]):
+    """Cache provider class to provide cache for system metrics"""
 
-    Args:
-        dialect (str): bigquery
-        session (Session): session Object
-        table (DeclarativeMeta): orm table
+    def __init__(self):
+        self.cache = LRUCache[T](LRU_CACHE_SIZE)
 
-    Returns:
-        List[Dict]:
-    """
-    logger.debug(f"Fetching system metrics for {dialect}")
+    def get_or_update_cache(
+        self,
+        cache_path: str,
+        get_queries_fn: Callable[..., List[T]],
+        *args,
+        **kwargs,
+    ):
+        if cache_path in self.cache:
+            return self.cache.get(cache_path)
+        result = get_queries_fn(*args, **kwargs)
+        self.cache.put(cache_path, result)
+        return result
 
-    project_id = session.get_bind().url.host
-    dataset_id = table.__table_args__["schema"]  # type: ignore
 
-    metric_results: List[Dict] = []
+class EmptySystemMetricsSource:
+    """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
+    for any resource."""
 
-    jobs = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.BigQuery}.{project_id}.{dataset_id}.jobs"
-    )
+    def get_inserts(self, **kwargs) -> List[SystemProfile]:
+        """Get insert queries"""
+        return []
 
-    if not jobs:
-        cursor_jobs = session.execute(
-            text(
-                JOBS.format(
-                    usage_location=conn_config.usageLocation,
-                    dataset_id=dataset_id,
-                    project_id=project_id,
-                    insert=DatabaseDMLOperations.INSERT.value,
-                    update=DatabaseDMLOperations.UPDATE.value,
-                    delete=DatabaseDMLOperations.DELETE.value,
-                    merge=DatabaseDMLOperations.MERGE.value,
-                )
-            )
-        )
-        jobs = [
-            BigQueryQueryResult(
-                query_type=row.statement_type,
-                timestamp=row.start_time,
-                table_name=row.destination_table,
-                dml_statistics=row.dml_statistics,
-            )
-            for row in cursor_jobs
-        ]
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.BigQuery}.{project_id}.{dataset_id}.jobs",
-            jobs,
+    def get_deletes(self, **kwargs) -> List[SystemProfile]:
+        """Get delete queries"""
+        return []
+
+    def get_updates(self, **kwargs) -> List[SystemProfile]:
+        """Get update queries"""
+        return []
+
+    def get_kwargs(self, **kwargs):
+        """Get kwargs to be used in get_inserts, get_deletes, get_updates"""
+        return {}
+
+
+class SystemMetricsComputer(EmptySystemMetricsSource):
+    def __init__(self, *args, **kwargs):
+        # collaborative constructor that initalizes upstream classes
+        super().__init__(*args, **kwargs)
+
+    def get_system_metrics(self, **kwargs) -> List[SystemProfile]:
+        """Return system metrics for a given table. Actual passed object can be a variety of types based
+        on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
+        and in the case of Mongo, it can be a collection object."""
+        kwargs = super().get_kwargs(**kwargs)
+        return (
+            super().get_inserts(**kwargs)
+            + super().get_deletes(**kwargs)
+            + super().get_updates(**kwargs)
         )
 
-    for job in jobs:
-        if job.table_name.get("table_id") == table.__tablename__:  # type: ignore
-            rows_affected = None
-            try:
-                if job.query_type == DatabaseDMLOperations.INSERT.value:
-                    rows_affected = job.dml_statistics.get("inserted_row_count")
-                if job.query_type == DatabaseDMLOperations.DELETE.value:
-                    rows_affected = job.dml_statistics.get("deleted_row_count")
-                if job.query_type == DatabaseDMLOperations.UPDATE.value:
-                    rows_affected = job.dml_statistics.get("updated_row_count")
-            except AttributeError:
-                logger.debug(traceback.format_exc())
-                rows_affected = None
 
-            if job.query_type == DatabaseDMLOperations.MERGE.value:
-                for indx, key in enumerate(job.dml_statistics):
-                    if job.dml_statistics[key] != 0:
-                        metric_results.append(
-                            {
-                                # Merge statement can include multiple DML operations
-                                # We are padding timestamps by 0,1,2 millisesond to avoid
-                                # duplicate timestamps
-                                "timestamp": int(job.timestamp.timestamp() * 1000)
-                                + indx,
-                                "operation": DML_STAT_TO_DML_STATEMENT_MAPPING.get(key),
-                                "rowsAffected": job.dml_statistics[key],
-                            }
-                        )
-                continue
+class SQASessionProvider:
+    """SQASessionProvider class to provide session to the system metrics"""
 
-            metric_results.append(
-                {
-                    "timestamp": int(job.timestamp.timestamp() * 1000),
-                    "operation": job.query_type,
-                    "rowsAffected": rows_affected,
-                }
-            )
+    def __init__(self, *args, **kwargs):
+        self.session = kwargs.pop("session")
+        super().__init__(*args, **kwargs)
 
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
+    def get_session(self):
+        return self.session
 
-
-@get_system_metrics_for_dialect.register(Dialects.Redshift)
-def _(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    *args,
-    **kwargs,
-) -> List[SystemProfile]:
-    """List all the DML operations for reshifts tables
-
-    Args:
-        dialect (str): redshift
-        session (Session): session object
-        table (DeclarativeMeta): orm table
-
-    Returns:
-        List[Dict]:
-    """
-    logger.debug(f"Fetching system metrics for {dialect}")
-    database = session.get_bind().url.database
-    schema = table.__table_args__["schema"]  # type: ignore
-
-    metric_results: List[Dict] = []
-
-    # get inserts ddl queries
-    inserts = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.inserts"
-    )
-    if not inserts:
-        insert_query = STL_QUERY.format(
-            alias="si",
-            join_type="LEFT",
-            condition="sd.query is null",
-            database=database,
-            schema=schema,
-        )
-        inserts = get_query_results(
-            session,
-            insert_query,
-            DatabaseDMLOperations.INSERT.value,
-        )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.inserts",
-            inserts,
-        )
-    metric_results.extend(get_metric_result(inserts, table.__tablename__))  # type: ignore
-
-    # get deletes ddl queries
-    deletes = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.deletes"
-    )
-    if not deletes:
-        delete_query = STL_QUERY.format(
-            alias="sd",
-            join_type="RIGHT",
-            condition="si.query is null",
-            database=database,
-            schema=schema,
-        )
-        deletes = get_query_results(
-            session,
-            delete_query,
-            DatabaseDMLOperations.DELETE.value,
-        )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.deletes",
-            deletes,
-        )
-    metric_results.extend(get_metric_result(deletes, table.__tablename__))  # type: ignore
-
-    # get updates ddl queries
-    updates = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.updates"
-    )
-    if not updates:
-        update_query = STL_QUERY.format(
-            alias="si",
-            join_type="INNER",
-            condition="sd.query is not null",
-            database=database,
-            schema=schema,
-        )
-        updates = get_query_results(
-            session,
-            update_query,
-            DatabaseDMLOperations.UPDATE.value,
-        )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.updates",
-            updates,
-        )
-    metric_results.extend(get_metric_result(updates, table.__tablename__))  # type: ignore
-
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
-
-
-@get_system_metrics_for_dialect.register(Dialects.Snowflake)
-def _(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    *args,
-    **kwargs,
-) -> Optional[List[Dict]]:
-    """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
-    We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
-    (INSERTS, MERGE, DELETE, UPDATE).
-
-    :waring: Unlike redshift and bigquery results are not cached as we'll be looking
-    at DDL for each table
-
-    To get the number of rows affected we'll use the specific query ID.
-
-    Args:
-        dialect (str): dialect
-        session (Session): session object
-
-    Returns:
-        Dict: system metric
-    """
-    logger.debug(f"Fetching system metrics for {dialect}")
-
-    metric_results: List[Dict] = []
-
-    query_results = build_snowflake_query_results(
-        session=session,
-        table=table,
-    )
-
-    for query_result in query_results:
-        rows_affected = None
-        if query_result.query_type == DatabaseDMLOperations.INSERT.value:
-            rows_affected = query_result.rows_inserted
-        if query_result.query_type == DatabaseDMLOperations.DELETE.value:
-            rows_affected = query_result.rows_deleted
-        if query_result.query_type == DatabaseDMLOperations.UPDATE.value:
-            rows_affected = query_result.rows_updated
-        if query_result.query_type == DatabaseDMLOperations.MERGE.value:
-            if query_result.rows_inserted:
-                metric_results.append(
-                    {
-                        "timestamp": datetime_to_timestamp(
-                            query_result.start_time, milliseconds=True
-                        ),
-                        "operation": DatabaseDMLOperations.INSERT.value,
-                        "rowsAffected": query_result.rows_inserted,
-                    }
-                )
-            if query_result.rows_updated:
-                metric_results.append(
-                    {
-                        "timestamp": datetime_to_timestamp(
-                            query_result.start_time, milliseconds=True
-                        ),
-                        "operation": DatabaseDMLOperations.UPDATE.value,
-                        "rowsAffected": query_result.rows_updated,
-                    }
-                )
-            continue
-
-        metric_results.append(
-            {
-                "timestamp": datetime_to_timestamp(
-                    query_result.start_time, milliseconds=True
-                ),
-                "operation": DML_OPERATION_MAP.get(query_result.query_type),
-                "rowsAffected": rows_affected,
-            }
-        )
-
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
+    def get_database(self) -> str:
+        return self.session.get_bind().url.database
 
 
 class System(SystemMetric):
@@ -414,18 +161,6 @@ class System(SystemMetric):
                 )
 
     def sql(self, session: Session, **kwargs):
-        """Implements the SQL logic to fetch system data"""
-        self._validate_attrs(["table", "ometa_client", "db_service"])
-
-        conn_config = kwargs.get("conn_config")
-
-        system_metrics = get_system_metrics_for_dialect(
-            session.get_bind().dialect.name,
-            session=session,
-            table=self.table,  # pylint: disable=no-member
-            conn_config=conn_config,
-            ometa_client=self.ometa_client,  # pylint: disable=no-member
-            db_service=self.db_service,  # pylint: disable=no-member
+        raise NotImplementedError(
+            "SQL method is not implemented for System metric. Use SystemMetricsComputer.get_system_metrics instead"
         )
-        self._manage_cache()
-        return system_metrics

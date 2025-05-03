@@ -10,11 +10,68 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LOCAL_STORAGE_AUTO_PILOT_STATUS } from '../constants/LocalStorage.constants';
 import { OM_SESSION_KEY } from '../hooks/useApplicationStore';
+import { AutoPilotStatus } from './LocalStorageUtils.interface';
 
 export const getOidcToken = (): string => {
   return (
-    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
-      ?.oidcIdToken ?? ''
+    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.oidcIdToken ?? ''
+  );
+};
+
+export const setOidcToken = (token: string) => {
+  const session = JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}');
+
+  session.oidcIdToken = token;
+  localStorage.setItem(OM_SESSION_KEY, JSON.stringify(session));
+};
+
+export const getRefreshToken = (): string => {
+  return (
+    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.refreshTokenKey ??
+    ''
+  );
+};
+
+export const setRefreshToken = (token: string) => {
+  const session = JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}');
+
+  session.refreshTokenKey = token;
+  localStorage.setItem(OM_SESSION_KEY, JSON.stringify(session));
+};
+
+export const getAutoPilotStatuses = (): Array<AutoPilotStatus> => {
+  return JSON.parse(
+    localStorage.getItem(LOCAL_STORAGE_AUTO_PILOT_STATUS) ?? '[]'
+  );
+};
+
+export const updateAutoPilotStatus = (workflowStatus: AutoPilotStatus) => {
+  const currentStatuses = getAutoPilotStatuses();
+  // Remove the status if it already exists for the serviceFQN
+  const filteredStatuses = currentStatuses.filter(
+    (status) => status.serviceFQN !== workflowStatus.serviceFQN
+  );
+  // Add the new status
+  const updatedStatuses: Array<AutoPilotStatus> = [
+    ...filteredStatuses,
+    workflowStatus,
+  ];
+
+  localStorage.setItem(
+    LOCAL_STORAGE_AUTO_PILOT_STATUS,
+    JSON.stringify(updatedStatuses)
+  );
+};
+
+export const removeAutoPilotStatus = (serviceFQN: string) => {
+  const currentStatuses = getAutoPilotStatuses();
+  const filteredStatuses = currentStatuses.filter(
+    (status) => status.serviceFQN !== serviceFQN
+  );
+  localStorage.setItem(
+    LOCAL_STORAGE_AUTO_PILOT_STATUS,
+    JSON.stringify(filteredStatuses)
   );
 };

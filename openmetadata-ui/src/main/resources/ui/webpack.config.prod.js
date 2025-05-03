@@ -14,12 +14,21 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const process = require('process');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CompressionPlugin = require('compression-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 
 module.exports = {
+  cache: {
+    type: 'filesystem', // Use filesystem for cache
+    buildDependencies: {
+      config: [__filename], // Cache invalidation on config file changes
+    },
+  },
+
   // Production mode
   mode: 'production',
 
@@ -52,18 +61,32 @@ module.exports = {
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
-        loader: 'ts-loader',
-        options: {
-          configFile: 'tsconfig.json',
-          transpileOnly: true, // Speed up compilation in development mode
-        },
-        include: path.resolve(__dirname, 'src'), // Just the source code
+        exclude: [/node_modules/, /dist/],
+        include: path.resolve(__dirname, 'src'),
+        use: [
+          {
+            loader: 'thread-loader',
+            options: {
+              workers: require('os').cpus().length - 1, // Use all available CPU cores minus one
+            },
+          },
+          {
+            loader: 'ts-loader',
+            options: {
+              configFile: 'tsconfig.json',
+              happyPackMode: true, // Enable faster builds with HappyPack compatibility
+              transpileOnly: true, // Speed up compilation in development mode
+            },
+          },
+        ],
       },
+
       // .css files to be handled by style-loader & css-loader
       {
         test: /\.(css)$/,
         use: ['style-loader', 'css-loader'],
       },
+
       // .less files to be handled by less-loader
       {
         test: /\.less$/,
@@ -81,21 +104,23 @@ module.exports = {
           },
         ],
       },
+
       // .svg files to be handled by @svgr/webpack
       {
         test: /\.svg$/,
         use: ['@svgr/webpack', 'url-loader'],
-        include: path.resolve(__dirname, 'src'), // Just the source code
+        include: path.resolve(__dirname, 'src'),
       },
-      // images files to be handled by file-loader
+
+      // Images to be handled by file-loader + image-webpack-loader
       {
-        test: /\.png$/,
+        test: /\.(png|jpe?g)$/i,
         use: [
           {
             loader: 'file-loader',
             options: {
-              name: '[name].[ext]',
-              outputPath: 'images/',
+              name: 'images/[name].[contenthash].[ext]', // Output file naming
+              outputPath: 'images/', // Directory in the output folder
             },
           },
         ],
@@ -105,7 +130,6 @@ module.exports = {
 
   // Module resolution
   resolve: {
-    // File types to be handled
     extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg'],
     fallback: {
       https: require.resolve('https-browserify'),
@@ -114,14 +138,48 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: path.resolve(__dirname, 'node_modules/quill'),
     },
   },
 
+  // Optimizations
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        parallel: true,
+        terserOptions: {
+          compress: {
+            drop_console: true, // Remove console logs for production
+          },
+        },
+      }),
+    ],
+    splitChunks: {
+      chunks: 'all', // Split all types of chunks
+      maxSize: 240000, // Maximum size for chunks
+      cacheGroups: {
+        default: {
+          reuseExistingChunk: true, // Reuse existing chunks
+          priority: -10,
+        },
+        vendors: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+          priority: -20,
+        },
+      },
+    },
+    runtimeChunk: 'single', // Separate runtime code into its own chunk
+    chunkIds: 'deterministic', // Use stable and unique chunk IDs
+  },
+
+  // Plugins
   plugins: [
     // Clean webpack output directory
-    new CleanWebpackPlugin({
-      verbose: true,
-    }),
+    new CleanWebpackPlugin(),
+
     // Generate index.html from template
     new HtmlWebpackPlugin({
       favicon: path.join(__dirname, 'public/favicon.png'),
@@ -130,7 +188,8 @@ module.exports = {
       template: path.join(__dirname, 'public/index.html'),
       scriptLoading: 'defer',
     }),
-    // Copy favicon, logo and manifest for index.html
+
+    // Copy favicon, logo, manifest, and other assets
     new CopyWebpackPlugin({
       patterns: [
         {
@@ -161,7 +220,34 @@ module.exports = {
           from: path.join(__dirname, 'public/locales'),
           to: outputPath,
         },
+        {
+          from: path.join(__dirname, 'public/BronzeCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/SilverCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/GoldCertification.svg'),
+          to: outputPath,
+        },
       ],
     }),
+
+    // Compress output files
+    new CompressionPlugin({
+      algorithm: 'gzip',
+      test: /\.(js|css|html|svg)$/,
+    }),
+
+    // Bundle analyzer (optional, for debugging)
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static', // Outputs an HTML report
+      openAnalyzer: false, // Set to true to open report automatically
+    }),
   ],
+
+  // Disable source maps for production
+  devtool: false,
 };

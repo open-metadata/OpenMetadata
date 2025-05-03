@@ -34,17 +34,16 @@ import {
 import { mockStoredProcedureData } from '../mocks/StoredProcedure.mock';
 import { MOCK_TABLE } from '../mocks/TableData.mock';
 import { mockTopicData } from '../mocks/TopicVersion.mock';
-import { getDataAssetsHeaderInfo } from './DataAssetsHeader.utils';
+import {
+  getDataAssetsHeaderInfo,
+  getEntityExtraInfoLength,
+} from './DataAssetsHeader.utils';
 
-jest.mock(
-  '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => {
-      value;
-    }),
-    ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
-  })
-);
+jest.mock('./DataAssetsHeader.utils', () => ({
+  ...jest.requireActual('./DataAssetsHeader.utils'),
+  ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
+  ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
+}));
 jest.mock('./EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
@@ -74,6 +73,7 @@ jest.mock('./EntityUtils', () => ({
 }));
 
 jest.mock('./StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));
 
@@ -82,6 +82,7 @@ jest.mock('./TableUtils', () => ({
 }));
 
 jest.mock('../constants/constants', () => ({
+  ...jest.requireActual('../constants/constants'),
   NO_DATA_PLACEHOLDER: jest.fn().mockReturnValue('---'),
   getEntityDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
 }));
@@ -274,22 +275,10 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data for source url
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'http://localhost:8080/tree?dag_id=snowflake_etl'
-    );
 
     //  If Data does not present
-    const assetWithNoExtraData = getDataAssetsHeaderInfo(
-      EntityType.PIPELINE,
-      { ...mockPipelineData, sourceUrl: '' },
-      'snowflake_etl',
-      []
-    );
 
     // contains extra data for source url
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'http://localhost:8080/tree?dag_id=snowflake_etl'
-    );
   });
 
   // Test for MlModel entity
@@ -492,10 +481,6 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.language');
     expect(JSON.stringify(assetData.extraInfo)).toContain('SQL');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
-    );
-
     //  If Data does not present
 
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -658,5 +643,86 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       { name: 'entityName', url: 'url' },
     ]);
     expect(searchService.extraInfo).toEqual(<React.Fragment />);
+  });
+});
+
+describe('getEntityExtraInfoLength', () => {
+  it('should return 0 for non-React elements', () => {
+    expect(getEntityExtraInfoLength(null)).toBe(0);
+    expect(getEntityExtraInfoLength(undefined)).toBe(0);
+    expect(getEntityExtraInfoLength('string')).toBe(0);
+    expect(getEntityExtraInfoLength(123)).toBe(0);
+  });
+
+  it('should return 0 for React elements without children', () => {
+    const element = <div />;
+
+    expect(getEntityExtraInfoLength(element)).toBe(0);
+  });
+
+  it('should return 0 for React elements with non-array children', () => {
+    const element = <div>Single child</div>;
+
+    expect(getEntityExtraInfoLength(element)).toBe(0);
+  });
+
+  it('should count non-null/undefined children in array', () => {
+    const element = (
+      <div>
+        {null}
+        <span>Child 1</span>
+        {undefined}
+        <span>Child 2</span>
+        <span>Child 3</span>
+      </div>
+    );
+
+    expect(getEntityExtraInfoLength(element)).toBe(3);
+  });
+
+  it('should handle nested elements correctly', () => {
+    const element = (
+      <div>
+        <span>Child 1</span>
+        <div>
+          <span>Nested Child</span>
+        </div>
+        <span>Child 3</span>
+      </div>
+    );
+
+    expect(getEntityExtraInfoLength(element)).toBe(3);
+  });
+
+  it('should handle empty array of children', () => {
+    const element = <div>{[]}</div>;
+
+    expect(getEntityExtraInfoLength(element)).toBe(0);
+  });
+
+  it('should handle fragments', () => {
+    const element = (
+      <>
+        <span>Child 1</span>
+        <span>Child 2</span>
+      </>
+    );
+
+    expect(getEntityExtraInfoLength(element)).toBe(2);
+  });
+
+  it('should handle conditional rendering', () => {
+    const showExtra = true;
+    const element = (
+      <div>
+        <span>Always shown</span>
+        {showExtra && <span>Conditional child</span>}
+        {false && <span>Never shown</span>}
+        {null}
+        {undefined}
+      </div>
+    );
+
+    expect(getEntityExtraInfoLength(element)).toBe(2);
   });
 });

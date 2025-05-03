@@ -41,6 +41,10 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 describe('PersonaDetailsCard Component', () => {
   it('should render persona details card', async () => {
     await act(async () => {
@@ -48,7 +52,9 @@ describe('PersonaDetailsCard Component', () => {
     });
 
     expect(
-      await screen.findByTestId('persona-details-card')
+      await screen.findByTestId(
+        `persona-details-card-${personaWithDescription.name}`
+      )
     ).toBeInTheDocument();
   });
 
@@ -81,7 +87,7 @@ describe('PersonaDetailsCard Component', () => {
       userEvent.click(personaCardTitle);
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/settings/members/persona/john-doe');
+    expect(mockPush).toHaveBeenCalledWith('/settings/persona/john-doe');
   });
 
   it('should not navigate when persona.fullyQualifiedName is missing', async () => {

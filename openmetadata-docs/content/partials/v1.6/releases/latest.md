@@ -1,7 +1,7 @@
-# 1.5.6 Release 🎉
+# 1.6.10 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 3rd, 2024**
+**Apr 22nd, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,34 +10,14 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.6!
+Learn how to upgrade your OpenMetadata instance to 1.6.10!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.10-release).
 
-# What's Changed
+- Introduced the ability to use a subset of permissions when adding or deleting users in teams—more granular control for team management.
+- Added an optional mechanism to fetch response schema directly from the schema property of API endpoints—enhancing flexibility for API integrations.
+- Fixed an issue with double slashes in API endpoint names for cleaner, consistent paths.
 
-- Fixed MSTR connector import.
-- Show displayName for database and databaseSchema in explore tree.
-- Allow PowerBI datamodel children in column lineage.
-- Fixed manifest is not parsed correctly on dbt versionless.
-- Fixed lineage & queries in dbt.
-- Added DBT tests with versionless and fixed v7 parsing.
-- Reset displayName to avoid being persisted while editing user display name.
-- Fixed incorrect schema implementations in Swagger annotations.
-- Resolved type null exception on user feed.
-- Addressed missing cast to str.
-- Fixed DI Missing Dashboard Description Status.
-- Fixed SAML redirect leads to 404 page on UI.
-- Fixed General Profiler Bugs.
-- Fixed time format for the created_at of the DBT cloud pipeline status.
-- Fixed role page size from 10 to 50.
-- Fixed Search Indexing.
-- Improved AlationSink connector.
-- Fixed sktime version to fix AUT
-- Fixed Expected ColumnLineage but got dict
-- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
-
-
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.9-release...1.6.10-release)

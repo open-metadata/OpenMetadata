@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/private/external/collateAIAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CollateAIAppPrivateConfig",
+  "description": "Private Configuration for the CollateAI External Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.CollateAIAppPrivateConfig",
+  "properties": {
+    "waiiInstance": {
+      "title": "WAII Instance",
+      "description": "WAII API host URL",
+      "type": "string",
+      "format": "URI",
+      "default": "https://tweakit.waii.ai/api/"
+    },
+    "collateURL": {
+      "title": "Collate URL",
+      "description": "Collate Server public URL. WAII will use this information to interact with the server. E.g., https://sandbox.getcollate.io",
+      "type": "string",
+      "format": "URI"
+    },
+    "token": {
+      "title": "WAII API Token",
+      "description": "WAII API Token",
+      "type": "string",
+      "format": "password"
+    },
+    "limits": {
+      "title": "Limits",
+      "description": "Limits for the CollateAI Application.",
+      "$ref": "../../private/limits.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["waiiInstance", "collateURL", "token", "limits"]
+}

@@ -12,6 +12,7 @@
  */
 import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { CSVImportAsyncResponse } from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 
 export interface EntityImportProps {
   entityName: string;
@@ -19,8 +20,9 @@ export interface EntityImportProps {
     name: string,
     data: string,
     dryRun?: boolean
-  ) => Promise<CSVImportResult | undefined>;
+  ) => Promise<CSVImportAsyncResponse | undefined>;
   onSuccess: () => void;
   onCancel: () => void;
+  onCsvResultUpdate?: (result: CSVImportResult) => void;
   children: React.ReactNode;
 }

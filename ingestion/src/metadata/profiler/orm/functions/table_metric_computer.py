@@ -1,9 +1,9 @@
 #  pylint: disable=protected-access,attribute-defined-outside-init
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,7 +53,7 @@ class AbstractTableMetricComputer(ABC):
         self._metrics = metrics
         self._conn_config = conn_config
         self._database = self._runner._session.get_bind().url.database
-        self._table = self._runner.table
+        self._table = self._runner.dataset
         self._entity = entity
 
     @property
@@ -91,8 +91,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.__table_args__.get("schema")
-            self._table_name = self.table.__tablename__
+            self._schema_name = self.runner.schema_name
+            self._table_name = self.runner.table_name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
@@ -119,10 +119,10 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.table).c.keys()), type_=String).label(
-            COLUMN_NAMES
-        )
-        col_count = literal(len(inspect(self.table).c)).label(COLUMN_COUNT)
+        col_names = literal(
+            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
+        ).label(COLUMN_NAMES)
+        col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
@@ -147,7 +147,8 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     """Base table computer"""
 
     def compute(self):
-        """Default compute behavior for table metrics"""
+        """Default compute behavior for table metrics. This method will use the raw table
+        to compute metrics and omit any sampling or partitioning logic."""
         return self.runner.select_first_from_table(
             *[metric().fn() for metric in self.metrics]
         )
@@ -412,7 +413,7 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         )
         res = self.runner._session.execute(query).first()
         if not res:
-            return None
+            return super().compute()
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

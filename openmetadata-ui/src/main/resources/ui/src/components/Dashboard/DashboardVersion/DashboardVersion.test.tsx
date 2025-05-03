@@ -26,7 +26,7 @@ import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const mockPush = jest.fn();
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);

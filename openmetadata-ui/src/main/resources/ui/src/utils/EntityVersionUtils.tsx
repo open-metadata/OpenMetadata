@@ -46,8 +46,6 @@ import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column as TableColumn } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import {
@@ -139,6 +137,7 @@ export const getAddedDiffElement = (text: string) => {
   return (
     <span
       className="diff-added text-underline"
+      data-diff="true"
       data-testid="diff-added"
       key={uniqueId()}>
       {text}
@@ -150,6 +149,7 @@ export const getRemovedDiffElement = (text: string) => {
   return (
     <span
       className="text-grey-muted text-line-through"
+      data-diff="true"
       data-testid="diff-removed"
       key={uniqueId()}>
       {text}
@@ -159,7 +159,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <span data-testid="diff-normal" key={uniqueId()}>
+    <span data-diff="true" data-testid="diff-normal" key={uniqueId()}>
       {text}
     </span>
   );
@@ -334,6 +334,8 @@ const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
       status:
         statusFieldDiff.newValue === 'Approved'
           ? t('label.approved')
+          : statusFieldDiff.newValue === 'In Review'
+          ? t('label.in-review')
           : t('label.rejected'),
     });
   }
@@ -608,9 +610,6 @@ export const getCommonExtraInfoForVersionDetails = (
   tier?: TagLabel,
   domain?: EntityReference
 ) => {
-  // const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
-  //   getEntityReferenceDiffFromFieldName('owners', changeDescription, owners);
-
   const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
     owners ?? [],
     changeDescription
@@ -1034,7 +1033,10 @@ export const getOwnerDiff = (
 };
 
 export const getOwnerVersionLabel = (
-  entity: Glossary | GlossaryTerm,
+  entity: {
+    [TabSpecificField.OWNERS]?: EntityReference[];
+    changeDescription?: ChangeDescription;
+  },
   isVersionView: boolean,
   ownerField = TabSpecificField.OWNERS, // Can be owners, experts, reviewers all are OwnerLabels
   hasPermission = true

@@ -19,7 +19,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -105,7 +105,7 @@ public class UsageResource {
     ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
-    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
+    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(LocalDate.now()) : date;
     return addHref(uriInfo, dao.get(entity, id, actualDate, actualDays));
   }
 
@@ -155,7 +155,7 @@ public class UsageResource {
     ResourceContext<?> resourceContext = new ResourceContext<>(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
-    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
+    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(LocalDate.now()) : date;
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
   }
 

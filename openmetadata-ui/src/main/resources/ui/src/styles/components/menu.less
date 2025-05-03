@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
+@import (reference) url('../variables.less');
 
 @left-panel-border-color: rgb(229, 231, 235);
 @box-shadow-color: rgba(0, 0, 0, 0.06);
 @icon-color: #515151;
+
+.ant-dropdown-menu {
+  border-radius: @menu-radius;
+}
 
 .custom-menu.ant-menu-root.ant-menu-inline {
   background: @white;
@@ -53,11 +57,13 @@
   .ant-menu-item-selected {
     .ant-menu-title-content {
       font-weight: 600;
+
       .ant-badge {
         color: @primary-color;
       }
     }
   }
+
   .ant-menu-item-active {
     .ant-menu-title-content {
       .ant-badge {
@@ -72,5 +78,18 @@
 
   .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     border-right: 1px solid @left-panel-border-color;
+  }
+}
+
+.custom-menu-with-description {
+  &.custom-menu.ant-menu-root.ant-menu-inline .ant-menu-item {
+    height: 50px;
+    margin-top: 4px;
+  }
+
+  &.custom-menu.ant-menu-root.ant-menu-inline
+    .ant-menu-item-selected
+    .ant-menu-title-content {
+    font-weight: 400;
   }
 }

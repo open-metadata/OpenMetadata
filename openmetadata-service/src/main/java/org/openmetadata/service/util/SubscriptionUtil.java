@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.THREAD;
@@ -35,10 +36,13 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -161,40 +165,49 @@ public class SubscriptionUtil {
     Set<String> receiversList = new HashSet<>();
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
+    addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
+    addAssigneesUsersToNotifyIfRequired(users, teams, category, thread);
+    addThreadOwnerIfRequired(users, category, thread);
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+    return receiversList;
+  }
 
+  private static void addTargetFromEntityLink(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<MessageParser.EntityLink> mentions) {
     Team tempTeamVar;
     User tempUserVar;
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      if (!nullOrEmpty(assignees)) {
-        for (EntityReference reference : assignees) {
-          if (Entity.USER.equals(reference.getType())) {
-            tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(reference.getType())) {
-            tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
-      }
-
-      for (Post post : thread.getPosts()) {
-        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+    for (MessageParser.EntityLink link : mentions) {
+      if (USER.equals(link.getEntityType())) {
+        tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
         users.put(tempUserVar.getId(), tempUserVar);
-        List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
-        for (MessageParser.EntityLink link : mentions) {
-          if (USER.equals(link.getEntityType())) {
-            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(link.getEntityType())) {
-            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
+      } else if (TEAM.equals(link.getEntityType())) {
+        tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
       }
     }
+  }
 
+  private static void addTargetFromEntityReference(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<EntityReference> references) {
+    Team tempTeamVar;
+    User tempUserVar;
+    for (EntityReference reference : references) {
+      if (Entity.USER.equals(reference.getType())) {
+        tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+      } else if (TEAM.equals(reference.getType())) {
+        tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
+      }
+    }
+  }
+
+  private static void addThreadOwnerIfRequired(
+      Map<UUID, User> users, SubscriptionDestination.SubscriptionCategory category, Thread thread) {
+    User tempUserVar;
     if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
       try {
         tempUserVar =
@@ -204,14 +217,42 @@ public class SubscriptionUtil {
         LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
       }
     }
+  }
 
-    // Users
-    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+  private static void addAssigneesUsersToNotifyIfRequired(
+      Map<UUID, User> users,
+      Map<UUID, Team> teams,
+      SubscriptionDestination.SubscriptionCategory category,
+      Thread thread) {
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
+      addTargetFromEntityReference(users, teams, listOrEmpty(thread.getTask().getAssignees()));
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(thread.getMessage())));
+      addUsersMentionedOnPosts(users, teams, thread.getPosts());
+    }
+  }
 
-    // Teams
-    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+  private static void addUsersMentionedOnPosts(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<Post> posts) {
+    User tempUserVar;
+    for (Post post : listOrEmpty(posts)) {
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(post.getMessage())));
+    }
+  }
 
-    return receiversList;
+  private static void addMentionedUsersToNotifyIfRequired(
+      Map<UUID, User> users,
+      Map<UUID, Team> teams,
+      SubscriptionDestination.SubscriptionCategory category,
+      Thread thread) {
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(thread.getMessage())));
+      addUsersMentionedOnPosts(users, teams, thread.getPosts());
+    }
   }
 
   public static Set<String> handleConversationNotification(
@@ -223,46 +264,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar;
-    User tempUserVar;
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
-      List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
-      for (MessageParser.EntityLink link : mentions) {
-        if (USER.equals(link.getEntityType())) {
-          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-          users.put(tempUserVar.getId(), tempUserVar);
-        } else if (TEAM.equals(link.getEntityType())) {
-          tempTeamVar = Entity.getEntity(link, "", Include.NON_DELETED);
-          teams.put(tempTeamVar.getId(), tempTeamVar);
-        }
-      }
-
-      for (Post post : thread.getPosts()) {
-        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
-        users.put(tempUserVar.getId(), tempUserVar);
-        mentions = MessageParser.getEntityLinks(post.getMessage());
-        for (MessageParser.EntityLink link : mentions) {
-          if (USER.equals(link.getEntityType())) {
-            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(link.getEntityType())) {
-            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
-      }
-    }
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
-      try {
-        tempUserVar =
-            Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
-        users.put(tempUserVar.getId(), tempUserVar);
-      } catch (Exception ex) {
-        LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
-      }
-    }
+    addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
+    addThreadOwnerIfRequired(users, category, thread);
 
     // Users
     receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
@@ -335,7 +338,8 @@ public class SubscriptionUtil {
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } else {
-      receiverList = action.getReceivers() == null ? receiverList : action.getReceivers();
+      receiverList =
+          action.getReceivers() == null ? receiverList : new HashSet<>(action.getReceivers());
     }
 
     // Send to Admins
@@ -373,12 +377,19 @@ public class SubscriptionUtil {
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {
-          receiverUrls.addAll(buildReceivers(action, category, type, event, event.getEntityId()));
+          receiverUrls.addAll(
+              buildReceivers(
+                  action,
+                  category,
+                  type,
+                  thread.getEntityRef().getType(),
+                  thread.getEntityRef().getId()));
         }
       }
     } else {
       EntityInterface entityInterface = getEntity(event);
-      receiverUrls.addAll(buildReceivers(action, category, type, event, entityInterface.getId()));
+      receiverUrls.addAll(
+          buildReceivers(action, category, type, event.getEntityType(), entityInterface.getId()));
     }
 
     return receiverUrls;
@@ -388,12 +399,12 @@ public class SubscriptionUtil {
       SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
-      ChangeEvent event,
+      String entityType,
       UUID id) {
     Set<String> result = new HashSet<>();
     result.addAll(
         buildReceiversListFromActions(
-            action, category, type, Entity.getCollectionDAO(), id, event.getEntityType()));
+            action, category, type, Entity.getCollectionDAO(), id, entityType));
     return result;
   }
 
@@ -426,15 +437,11 @@ public class SubscriptionUtil {
       Object message,
       Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
-    Response response;
-
-    if (httpMethod == Webhook.HttpMethod.PUT) {
-      response =
-          target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
-    } else {
-      response =
-          target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
-    }
+    Response response =
+        (httpMethod == Webhook.HttpMethod.PUT)
+            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            : target.post(
+                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
 
     LOG.debug(
         "Subscription Destination HTTP Operation {}:{} received response {}",
@@ -442,17 +449,69 @@ public class SubscriptionUtil {
         destination.getSubscriptionDestination().getId(),
         response.getStatusInfo());
 
-    if (response.getStatus() >= 300 && response.getStatus() < 400) {
+    StatusContext statusContext = createStatusContext(response);
+    handleStatus(destination, attemptTime, statusContext);
+  }
+
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    deliverTestWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
+  }
+
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination,
+      Invocation.Builder target,
+      Object message,
+      Webhook.HttpMethod httpMethod) {
+    Response response =
+        (httpMethod == Webhook.HttpMethod.PUT)
+            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            : target.post(
+                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+
+    StatusContext statusContext = createStatusContext(response);
+    handleTestDestinationStatus(destination, statusContext);
+  }
+
+  private static void handleTestDestinationStatus(
+      Destination<ChangeEvent> destination, StatusContext statusContext) {
+    TestDestinationStatus.Status testStatus =
+        (statusContext.getStatusCode() == 200)
+            ? TestDestinationStatus.Status.SUCCESS
+            : TestDestinationStatus.Status.FAILED;
+
+    destination.setStatusForTestDestination(testStatus, statusContext);
+  }
+
+  private static void handleStatus(
+      Destination<ChangeEvent> destination, long attemptTime, StatusContext statusContext) {
+    int statusCode = statusContext.getStatusCode();
+    String statusInfo = statusContext.getStatusInfo();
+
+    if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      destination.setErrorStatus(
-          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-    } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
-      // 4xx, 5xx response retry delivering events after timeout
-      destination.setAwaitingRetry(
-          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-    } else if (response.getStatus() == 200) {
+      destination.setErrorStatus(attemptTime, statusCode, statusInfo);
+    } else if (statusCode == 200) {
       destination.setSuccessStatus(System.currentTimeMillis());
+    } else {
+      // 4xx, 5xx response retry delivering events after timeout
+      destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
     }
+  }
+
+  private static StatusContext createStatusContext(Response response) {
+    return new StatusContext()
+        .withStatusCode(response.getStatus())
+        .withStatusInfo(response.getStatusInfo().getReasonPhrase())
+        .withHeaders(response.getStringHeaders())
+        .withEntity(response.hasEntity() ? response.readEntity(String.class) : StringUtils.EMPTY)
+        .withMediaType(
+            response.getMediaType() != null
+                ? response.getMediaType().toString()
+                : StringUtils.EMPTY)
+        .withLocation(
+            response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY)
+        .withTimestamp(System.currentTimeMillis());
   }
 
   public static Client getClient(int connectTimeout, int readTimeout) {

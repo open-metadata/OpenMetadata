@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
+import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
@@ -69,7 +70,7 @@ public class DashboardServiceResourceTest
         DashboardService.class,
         DashboardServiceList.class,
         "services/dashboardServices",
-        "owners");
+        DashboardServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -127,7 +128,10 @@ public class DashboardServiceResourceTest
                     .withPassword(password));
 
     CreateDashboardService update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(dashboardConnection1)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -160,7 +164,10 @@ public class DashboardServiceResourceTest
     DashboardConnection dashboardConnection2 =
         new DashboardConnection().withConfig(metabaseConnection);
     update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(dashboardConnection2)
+            .withName(service.getName());
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -241,7 +248,7 @@ public class DashboardServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

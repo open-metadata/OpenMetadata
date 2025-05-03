@@ -1,8 +1,5 @@
 package org.openmetadata.service.resources.apps;
 
-import static org.openmetadata.service.Entity.APPLICATION;
-import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,13 +9,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -39,9 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -55,7 +48,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.AppMarketPlaceUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apps/marketplace")
@@ -64,34 +57,22 @@ import org.openmetadata.service.util.ResultList;
     description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps/marketplace", order = 8)
+@Collection(name = "apps/marketplace", order = 7)
 @Slf4j
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private PipelineServiceClientInterface pipelineServiceClient;
-
+  private AppMarketPlaceMapper mapper;
   static final String FIELDS = "owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      this.pipelineServiceClient =
+      PipelineServiceClientInterface pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(
               config.getPipelineServiceClientConfiguration());
-
-      // Initialize Default Installed Applications
-      List<CreateAppMarketPlaceDefinitionReq> createAppMarketPlaceDefinitionReqs =
-          getEntitiesFromSeedData(
-              APPLICATION,
-              String.format(".*json/data/%s/.*\\.json$", entityType),
-              CreateAppMarketPlaceDefinitionReq.class);
-      for (CreateAppMarketPlaceDefinitionReq definitionReq : createAppMarketPlaceDefinitionReqs) {
-        AppMarketPlaceDefinition definition = getApplicationDefinition(definitionReq, "admin");
-        // Update Fully Qualified Name
-        repository.setFullyQualifiedName(definition);
-        this.repository.createOrUpdate(null, definition);
-      }
+      mapper = new AppMarketPlaceMapper(pipelineServiceClient);
+      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(repository, mapper);
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }
@@ -309,7 +290,7 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, app);
   }
 
@@ -389,7 +370,7 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid CreateAppMarketPlaceDefinitionReq create) {
     AppMarketPlaceDefinition app =
-        getApplicationDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
@@ -438,6 +419,28 @@ public class AppMarketPlaceResource
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteAppAsync",
+      summary = "Asynchronously delete a App by Id",
+      description = "Asynchronously delete a App by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -458,54 +461,5 @@ public class AppMarketPlaceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private AppMarketPlaceDefinition getApplicationDefinition(
-      CreateAppMarketPlaceDefinitionReq create, String updatedBy) {
-    AppMarketPlaceDefinition app =
-        repository
-            .copy(new AppMarketPlaceDefinition(), create, updatedBy)
-            .withDeveloper(create.getDeveloper())
-            .withDeveloperUrl(create.getDeveloperUrl())
-            .withSupportEmail(create.getSupportEmail())
-            .withPrivacyPolicyUrl(create.getPrivacyPolicyUrl())
-            .withClassName(create.getClassName())
-            .withAppType(create.getAppType())
-            .withScheduleType(create.getScheduleType())
-            .withRuntime(create.getRuntime())
-            .withAppConfiguration(create.getAppConfiguration())
-            .withPermission(create.getPermission())
-            .withAppLogoUrl(create.getAppLogoUrl())
-            .withAppScreenshots(create.getAppScreenshots())
-            .withFeatures(create.getFeatures())
-            .withSourcePythonClass(create.getSourcePythonClass())
-            .withAllowConfiguration(create.getAllowConfiguration())
-            .withSystem(create.getSystem())
-            .withSupportsInterrupt(create.getSupportsInterrupt());
-
-    // Validate App
-    validateApplication(app);
-    return app;
-  }
-
-  private void validateApplication(AppMarketPlaceDefinition app) {
-    // Check if the className Exists in classPath
-    if (app.getAppType().equals(AppType.Internal)) {
-      // Check class name exists
-      try {
-        Class.forName(app.getClassName());
-      } catch (ClassNotFoundException e) {
-        throw new BadRequestException(
-            "Application Cannot be registered, because the classname cannot be found on the Classpath.");
-      }
-    } else {
-      PipelineServiceClientResponse response = pipelineServiceClient.validateAppRegistration(app);
-      if (response.getCode() != 200) {
-        throw new BadRequestException(
-            String.format(
-                "Application Cannot be registered, Error from Pipeline Service Client. Status Code : %s , Reponse : %s",
-                response.getCode(), JsonUtils.pojoToJson(response)));
-      }
-    }
   }
 }

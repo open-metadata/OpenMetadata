@@ -18,26 +18,28 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 @Setter
@@ -75,18 +77,39 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
+  @JsonProperty("operationalConfig")
+  private OpsConfig opsConfig;
+
+  private DefaultOperationalConfigProvider operationalApplicationConfigProvider;
+
   private static final String CERTIFICATE_PATH = "certificatePath";
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
-
-    LinkedHashMap<String, String> temporarySSLConfig =
-        (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
-    if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
-      temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
-      temporarySSLConfig.remove(CERTIFICATE_PATH);
+    if (pipelineServiceClientConfiguration != null) {
+      Map<String, String> temporarySSLConfig =
+          JsonUtils.readOrConvertValue(
+              pipelineServiceClientConfiguration.getSslConfig(), Map.class);
+      if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+        temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+        temporarySSLConfig.remove(CERTIFICATE_PATH);
+      }
+      pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     }
-    pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     return pipelineServiceClientConfiguration;
+  }
+
+  public DefaultOperationalConfigProvider getOperationalApplicationConfigProvider() {
+    if (operationalApplicationConfigProvider == null) {
+      operationalApplicationConfigProvider = new DefaultOperationalConfigProvider(getOpsConfig());
+    }
+    return operationalApplicationConfigProvider;
+  }
+
+  public OpsConfig getOpsConfig() {
+    if (opsConfig == null) {
+      opsConfig = new OpsConfig().withEnable(false);
+    }
+    return opsConfig;
   }
 
   @JsonProperty("migrationConfiguration")
@@ -110,9 +133,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("clusterName")
   private String clusterName;
 
-  @JsonProperty("email")
-  private SmtpSettings smtpSettings;
-
   @Valid
   @NotNull
   @JsonProperty("web")
@@ -123,6 +143,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("limits")
   private LimitsConfiguration limitsConfiguration;
+
+  @JsonProperty("objectStorage")
+  @Valid
+  private ObjectStorageConfiguration objectStorage;
 
   @Override
   public String toString() {

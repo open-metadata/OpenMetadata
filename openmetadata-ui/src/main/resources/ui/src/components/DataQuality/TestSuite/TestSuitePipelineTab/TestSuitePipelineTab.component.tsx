@@ -15,9 +15,11 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
+import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -27,6 +29,9 @@ import { PipelineType } from '../../../../generated/api/services/ingestionPipeli
 import { Table as TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { TestSuite } from '../../../../generated/tests/testCase';
+import { Paging } from '../../../../generated/type/paging';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
@@ -40,18 +45,25 @@ import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
 interface Props {
-  testSuite: TableType['testSuite'];
+  testSuite: TableType['testSuite'] | TestSuite;
+  isLogicalTestSuite?: boolean;
 }
 
-const TestSuitePipelineTab = ({ testSuite }: Props) => {
+const TestSuitePipelineTab = ({
+  testSuite,
+  isLogicalTestSuite = false,
+}: Props) => {
   const airflowInformation = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
 
   const { permissions } = usePermissionProvider();
+  const pipelinePaging = usePaging(PAGE_SIZE_BASE);
+  const { pageSize, handlePagingChange } = pipelinePaging;
   const history = useHistory();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -83,24 +95,53 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [permissions]
   );
 
-  const getAllIngestionWorkflows = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await getIngestionPipelines({
-        arrQueryFields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.PIPELINE_STATUSES,
-        ],
-        testSuite: testSuiteFQN,
-        pipelineType: [PipelineType.TestSuite],
-      });
-      setTestSuitePipelines(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [testSuiteFQN]);
+  const getAllIngestionWorkflows = useCallback(
+    async (paging?: Omit<Paging, 'total'>, limit?: number) => {
+      try {
+        setIsLoading(true);
+        const response = await getIngestionPipelines({
+          arrQueryFields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PIPELINE_STATUSES,
+          ],
+          testSuite: testSuiteFQN,
+          pipelineType: [PipelineType.TestSuite],
+          paging,
+          limit: limit ?? pageSize,
+        });
+        setTestSuitePipelines(response.data);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [testSuiteFQN, pageSize, handlePagingChange]
+  );
+
+  const handlePipelinePageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      const { paging, handlePageChange } = pipelinePaging;
+      if (cursorType) {
+        getAllIngestionWorkflows(
+          { [cursorType]: paging[cursorType] },
+          pageSize
+        );
+        handlePageChange(currentPage);
+      }
+    },
+    [getAllIngestionWorkflows, pipelinePaging]
+  );
+
+  const handleAddPipelineRedirection = () => {
+    history.push({
+      pathname: getTestSuiteIngestionPath(testSuiteFQN),
+      search: isLogicalTestSuite
+        ? QueryString.stringify({ testSuiteId: testSuite?.id })
+        : undefined,
+    });
+  };
 
   const handleEnableDisableIngestion = useCallback(
     async (id: string) => {
@@ -180,8 +221,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   }, [testSuitePipelines]);
 
   useEffect(() => {
-    getAllIngestionWorkflows();
-  }, []);
+    getAllIngestionWorkflows(undefined, pageSize);
+  }, [pageSize]);
 
   const emptyPlaceholder = useMemo(
     () =>
@@ -194,9 +235,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               data-testid="add-placeholder-button"
               icon={<PlusOutlined />}
               type="primary"
-              onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
-              }}>
+              onClick={handleAddPipelineRedirection}>
               {t('label.add')}
             </Button>
           }
@@ -225,9 +264,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           <Button
             data-testid="add-pipeline-button"
             type="primary"
-            onClick={() => {
-              history.push(getTestSuiteIngestionPath(testSuiteFQN));
-            }}>
+            onClick={handleAddPipelineRedirection}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
         </Col>
@@ -241,6 +278,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           handleIngestionListUpdate={handlePipelineListUpdate}
           handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
           ingestionData={testSuitePipelines}
+          ingestionPagingInfo={pipelinePaging}
           isLoading={isLoading}
           pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           serviceCategory={ServiceCategory.DATABASE_SERVICES}
@@ -248,6 +286,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           tableClassName="test-suite-pipeline-tab"
           triggerIngestion={handleTriggerIngestion}
           onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+          onPageChange={handlePipelinePageChange}
         />
       </Col>
     </Row>

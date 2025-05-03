@@ -5,6 +5,9 @@ from os import path
 import pytest
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseLineageConfigType,
+)
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
@@ -19,7 +22,9 @@ def native_lineage_config(db_service, workflow_config, sink_config):
         "source": {
             "type": "postgres-lineage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {"config": {}},
+            "sourceConfig": {
+                "config": {"type": DatabaseLineageConfigType.DatabaseLineage.value}
+            },
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -29,7 +34,7 @@ def native_lineage_config(db_service, workflow_config, sink_config):
 @pytest.mark.parametrize(
     "source_config,expected_nodes",
     [
-        ({"includeDDL": False}, 0),
+        ({"includeDDL": False}, 3),
         ({"includeDDL": True}, 3),
     ],
     ids=lambda config: (
@@ -39,6 +44,7 @@ def native_lineage_config(db_service, workflow_config, sink_config):
     ),
 )
 def test_native_lineage(
+    patch_passwords_for_db_services,
     source_config,
     expected_nodes,
     run_workflow,
@@ -49,6 +55,7 @@ def test_native_lineage(
 ):
     ingestion_config["source"]["sourceConfig"]["config"].update(source_config)
     run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(MetadataWorkflow, native_lineage_config)
     film_actor_edges = metadata.get_lineage_by_name(
         Table, f"{db_service.fullyQualifiedName.root}.dvdrental.public.film_actor"
     )
@@ -90,9 +97,7 @@ def test_log_lineage(
     workflow = run_workflow(
         MetadataWorkflow, log_lineage_config, raise_from_status=False
     )
-    assert len(workflow.source.status.failures) == 2
-    for failure in workflow.source.status.failures:
-        assert "Table entity not found" in failure.error
+    assert len(workflow.source.status.failures) == 0
     customer_table: Table = metadata.get_by_name(
         Table,
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",

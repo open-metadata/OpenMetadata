@@ -24,6 +24,8 @@ import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetric
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
+import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
+import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -283,16 +285,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
+      <Route
+        exact
+        component={PlatformLineage}
+        path={[ROUTES.PLATFORM_LINEAGE, ROUTES.PLATFORM_LINEAGE_WITH_FQN]}
+      />
       <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
-      />
-      <Route
-        exact
-        component={ServicePage}
-        path={[ROUTES.SERVICE_WITH_TAB, ROUTES.SERVICE]}
       />
 
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
@@ -318,6 +320,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.EDIT_INGESTION}
       />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
+
+      <Route
+        exact
+        component={ServicePage}
+        path={[
+          ROUTES.SERVICE_WITH_SUB_TAB,
+          ROUTES.SERVICE_WITH_TAB,
+          ROUTES.SERVICE,
+        ]}
+      />
 
       <AdminProtectedRoute
         exact
@@ -339,12 +356,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
-
-      <Route
-        exact
-        component={ServiceVersionPage}
-        path={ROUTES.SERVICE_VERSION}
-      />
 
       <Route
         exact
@@ -459,16 +470,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={ObservabilityAlertsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={ROUTES.OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute
         exact
         component={AlertDetailsPage}
-        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
       />
 
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddObservabilityPage}
         path={[
@@ -497,6 +516,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
 
       <Route component={ClassificationRouter} path="/tags" />
+      <Route
+        exact
+        component={TagPage}
+        path={[ROUTES.TAG_ITEM, ROUTES.TAG_ITEM_WITH_TAB]}
+      />
       <Route
         component={GlossaryRouter}
         path={['/glossary', '/glossary-term']}

@@ -26,6 +26,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -68,6 +70,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.SchemaFieldExtractor;
 
 @Path("/v1/metadata/types")
 @Tag(
@@ -81,6 +84,8 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
+  private final TypeMapper mapper = new TypeMapper();
+  public SchemaFieldExtractor extractor;
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
@@ -91,6 +96,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   public TypeResource(Authorizer authorizer, Limits limits) {
     super(Entity.TYPE, authorizer, limits);
+    extractor = new SchemaFieldExtractor();
   }
 
   @Override
@@ -112,9 +118,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                 type.setCustomProperties(storedType.getCustomProperties());
               }
             } catch (Exception e) {
-              LOG.debug("Creating entity that does not exist ", e);
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
             }
-            this.repository.createOrUpdate(null, type);
+            this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
@@ -319,7 +327,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type);
   }
 
@@ -398,7 +406,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type);
   }
 
@@ -418,6 +426,24 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTypeAsync",
+      summary = "Asynchronously delete a type by id",
+      description = "Asynchronously delete a type by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
@@ -466,11 +492,53 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return response.toResponse();
   }
 
-  private Type getType(CreateType create, String user) {
-    return repository
-        .copy(new Type(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withCategory(create.getCategory())
-        .withSchema(create.getSchema());
+  @GET
+  @Path("/fields/{entityType}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getEntityTypeFields(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("entityType") String entityType,
+      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
+
+    try {
+      Fields fieldsParam = new Fields(Set.of("customProperties"));
+      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      List<SchemaFieldExtractor.FieldDefinition> fieldsList =
+          extractor.extractFields(typeEntity, entityType);
+      return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
+
+    } catch (Exception e) {
+      LOG.error("Error processing schema for entity type: " + entityType, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "Error processing schema for entity type: "
+                  + entityType
+                  + ". Exception: "
+                  + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/customProperties")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAllCustomPropertiesByEntityType(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    try {
+      SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+      Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
+          extractor.extractAllCustomProperties(uriInfo, repository);
+      return Response.ok(customPropertiesMap).build();
+    } catch (Exception e) {
+      LOG.error("Error fetching custom properties: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "Error processing schema for entity type: "
+                  + entityType
+                  + ". Exception: "
+                  + e.getMessage())
+          .build();
+    }
   }
 }
