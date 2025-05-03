@@ -15,14 +15,13 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline'
 import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FunctionComponent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -40,16 +39,17 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../enums/entity.enum';
+import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
@@ -58,18 +58,20 @@ import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch'
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
+import { ServicesType } from '../../interface/service.interface';
 import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemas,
-  patchDatabaseDetails,
-  restoreDatabase,
-  updateDatabaseVotes,
+    getDatabaseDetailsByFQN,
+    getDatabaseSchemas,
+    patchDatabaseDetails,
+    restoreDatabase,
+    updateDatabaseVotes
 } from '../../rest/databaseAPI';
+import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
@@ -77,32 +79,24 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  getEntityDetailsPath,
-  getExplorePath,
-  getVersionPath,
+    getEntityDetailsPath,
+    getExplorePath,
+    getVersionPath
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { getServiceByFQN } from '../../rest/serviceAPI';
-import { ServicesType } from '../../interface/service.interface';
 // import { start } from 'repl';
 import {
-  CreateIngestionPipeline,
-  LogLevels,
-  PipelineType,
+    CreateIngestionPipeline,
+    LogLevels,
+    PipelineType
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { generateUUID } from '../../utils/StringsUtils';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
-  addIngestionPipeline,
+    addIngestionPipeline, deployIngestionPipelineById, triggerIngestionPipelineById
 } from '../../rest/ingestionPipelineAPI';
-import {
-  triggerIngestionPipelineById,
-} from '../../rest/ingestionPipelineAPI';
-import {
-  deployIngestionPipelineById,
-} from '../../rest/ingestionPipelineAPI';
+import { generateUUID } from '../../utils/StringsUtils';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
