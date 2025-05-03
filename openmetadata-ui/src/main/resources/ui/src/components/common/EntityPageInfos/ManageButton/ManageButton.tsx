@@ -24,6 +24,7 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { ReactComponent as ApiIcon } from '../../../../assets/svg/api.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -61,6 +62,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   deleteButtonDescription,
   deleteOptions,
   onProfilerSettingUpdate,
+  handleApiAction
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -106,6 +108,13 @@ const ManageButton: FC<ManageButtonProps> = ({
       ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
       !deleted,
     [onAnnouncementClick, entityType, deleted]
+  );
+  const showApiActionOption = useMemo(
+    () =>
+      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA, EntityType.TABLE].includes(
+        entityType as EntityType
+      ) && !deleted,
+    [entityType, deleted]
   );
 
   const showRenameOption = useMemo(
@@ -185,6 +194,26 @@ const ManageButton: FC<ManageButtonProps> = ({
           },
         ] as ItemType[])
       : []),
+    ...(showApiActionOption
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.api-action-description')}
+                icon={ApiIcon}
+                id="api-action-button"
+                name="api-call"
+              />
+            ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              !isUndefined(handleApiAction) && handleApiAction();
+            },
+            key: 'api-action-button',
+          },
+        ] as ItemType[])
+      : []),
+
     ...(extraDropdownContent ?? []),
     ...(isProfilerSupported
       ? ([

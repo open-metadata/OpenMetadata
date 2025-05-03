@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, rest, toString } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -83,9 +83,19 @@ import {
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
+import { getServiceByFQN } from '../../rest/serviceAPI';
+import { ServicesType } from '../../interface/service.interface';
+import { start } from 'repl';
+import {
+  CreateIngestionPipeline,
+  LogLevels,
+  PipelineType,
+} from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { generateUUID } from '../../utils/StringsUtils';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { currentUser} = useApplicationStore();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
@@ -106,6 +116,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>({} as ServicesType);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -435,6 +446,138 @@ const DatabaseDetails: FunctionComponent = () => {
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+  // console.log(decodedDatabaseFQN);
+  const handleApiAction = async() => {
+    // Get the current database name from the database state
+    console.log(decodedDatabaseFQN);
+    const [service_name, database_name] = decodedDatabaseFQN.split('.');
+
+    try {
+      const response = await getServiceByFQN('databaseServices', service_name, {
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.DOMAIN}`,
+          include: Include.All,
+        });
+        setServiceDetails(response);
+        console.log('Service details:', response);
+      } catch(error) {
+        console.error('Error fetching service details:', error);
+        showErrorToast(error as AxiosError);
+      }
+
+      const ingestionDetails: CreateIngestionPipeline = {
+        airflowConfig: {
+          startDate: ,
+          retries: 0,
+        },
+        raiseOnError: true,
+        loggerLevel: LogLevels.Info,
+        name: generateUUID(),
+        displayName: "red_jaffle_metadata_",
+        owners: [
+          {
+            id: currentUser?.id ?? '',
+            type: 'user',
+          },
+        ],
+        pipelineType: "metadata",
+        service: {
+          id: serviceData.id as string,
+          type: serviceCategory.slice(0, -1),
+        },
+        sourceConfig: {
+          // clean the data to remove empty fields
+          config: { ...cleanWorkFlowData(rest) },
+        },
+      };
+
+      
+    
+    // json body for payload
+    //   {
+    //     "airflowConfig":{
+    //       "startDate":"2025-05-02T00:00:00.000Z",
+    //       "retries":0
+    //     },
+    //     "raiseOnError":true,
+    //     "loggerLevel":"INFO",
+    //     "name":"fbb01bf0-9df4-4540-bc94-0cdc355ad129",
+    //     "displayName":"red_jaffle_metadata_WXcJJofh",
+    //     "owners":[
+    //       {
+    //           "id":"d7ab8a06-bdee-4567-ac97-ec5b8ce1daad",
+    //           "type":"user"
+    //       }
+    //     ],
+    //     "pipelineType":"metadata",
+    //     "service":{
+    //       "id":"c5df5e44-eee3-4e85-b5f5-a3bfcabc8e92",
+    //       "type":"databaseService"
+    //     },
+    //     "sourceConfig":{
+    //       "config":{
+    //           "type":"DatabaseMetadata",
+    //           "markDeletedTables":true,
+    //           "markDeletedStoredProcedures":true,
+    //           "includeTables":true,
+    //           "includeViews":true,
+    //           "includeTags":true,
+    //           "includeOwners":false,
+    //           "includeStoredProcedures":true,
+    //           "includeDDL":false,
+    //           "overrideMetadata":false,
+    //           "queryLogDuration":1,
+    //           "queryParsingTimeoutLimit":300,
+    //           "useFqnForFiltering":false,
+    //           "schemaFilterPattern":{
+    //             "includes":[
+                    
+    //             ],
+    //             "excludes":[
+    //                 "^information_schema$"
+    //             ]
+    //           },
+    //           "databaseFilterPattern":{
+    //             "includes":[
+                    
+    //             ],
+    //             "excludes":[
+    //                 "^template1$"
+    //             ]
+    //           },
+    //           "threads":1,
+    //           "incremental":{
+    //             "enabled":false,
+    //             "lookbackDays":7,
+    //             "safetyMarginDays":1
+    //           }
+    //       }
+    //     }
+    // }
+    // if (currentDatabaseName) {
+      // Make API call with the database name
+      // const apiUrl = `example.com?name=${encodeURIComponent(currentDatabaseName)}`;
+      // You can use fetch or axios here
+    //   fetch(apiUrl)
+    //     .then(response => {
+    //       if (!response.ok) {
+    //         throw new Error('Network response was not ok');
+    //       }
+    //       return response.json();
+    //     })
+    //     .then(data => {
+    //       // Handle successful response
+    //       console.log('API response:', data);
+    //       showSuccessToast(t('message.api-call-successful'));
+    //     })
+    //     .catch(error => {
+    //       // Handle error
+    //       console.error('Error making API call:', error);
+    //       showErrorToast(error);
+    //     });
+    // } else {
+    //   showErrorToast(t('message.database-name-not-found'));
+    // }
+  };
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
@@ -477,6 +620,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
+              handleApiAction={handleApiAction}
             />
           </Col>
           <GenericProvider<Database>

@@ -176,7 +176,7 @@ const AddIngestion = ({
     const date = new Date(Date.now());
     date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
     date.setDate(date.getDate() - 1); // subtracting 1 day from current date
-
+    // #
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: extraData.cron,

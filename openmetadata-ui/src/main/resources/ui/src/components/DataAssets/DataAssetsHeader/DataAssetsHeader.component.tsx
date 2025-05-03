@@ -117,6 +117,7 @@ export const DataAssetsHeader = ({
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
+  handleApiAction
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -570,6 +571,7 @@ export const DataAssetsHeader = ({
                     onEditDisplayName={onDisplayNameUpdate}
                     onProfilerSettingUpdate={onProfilerSettingUpdate}
                     onRestoreEntity={onRestoreDataAsset}
+                    handleApiAction={handleApiAction}
                   />
                 </ButtonGroup>
               </Space>
