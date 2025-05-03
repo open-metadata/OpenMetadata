@@ -16,12 +16,12 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import React, {
-    FunctionComponent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -39,15 +39,15 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField
 } from '../../enums/entity.enum';
 import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -60,18 +60,18 @@ import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { ServicesType } from '../../interface/service.interface';
 import {
-    getDatabaseDetailsByFQN,
-    getDatabaseSchemas,
-    patchDatabaseDetails,
-    restoreDatabase,
-    updateDatabaseVotes
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemas,
+  patchDatabaseDetails,
+  restoreDatabase,
+  updateDatabaseVotes
 } from '../../rest/databaseAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
@@ -79,22 +79,22 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-    getEntityDetailsPath,
-    getExplorePath,
-    getVersionPath
+  getEntityDetailsPath,
+  getExplorePath,
+  getVersionPath
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 // import { start } from 'repl';
 import {
-    CreateIngestionPipeline,
-    LogLevels,
-    PipelineType
+  CreateIngestionPipeline,
+  LogLevels,
+  PipelineType
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
-    addIngestionPipeline, deployIngestionPipelineById, triggerIngestionPipelineById
+  addIngestionPipeline, deployIngestionPipelineById, triggerIngestionPipelineById
 } from '../../rest/ingestionPipelineAPI';
 import { generateUUID } from '../../utils/StringsUtils';
 const DatabaseDetails: FunctionComponent = () => {
@@ -450,6 +450,21 @@ const DatabaseDetails: FunctionComponent = () => {
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+
+  async function deployAndTriggerIngestion(ingestionId: string) {
+    await deployIngestionPipelineById(ingestionId);
+
+    // Wait for 2 seconds before triggering
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    try {
+      await triggerIngestionPipelineById(ingestionId);
+    } catch (error) {
+      console.error(`Trigger failed for ingestion ${ingestionId}:`, error);
+      // Optional: Retry logic or error propagation
+    }
+  }
+
   // console.log(decodedDatabaseFQN);
   const handleApiAction = async () => {
     // Get the current database name from the database state
@@ -508,6 +523,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 "^template1$"
               ]
             },
+            syncSpecificEntity: true,
             threads: 1,
           },
         },
@@ -515,8 +531,9 @@ const DatabaseDetails: FunctionComponent = () => {
       try {
         const ingestion = await addIngestionPipeline(ingestionPayload);
         console.log(ingestion)
-        deployIngestionPipelineById(ingestion.id);
-        triggerIngestionPipelineById(ingestion.id);
+        await deployAndTriggerIngestion(ingestion.id);
+        // await deployIngestionPipelineById(ingestion.id);
+        // await triggerIngestionPipelineById(ingestion.id);
         // setIngestionData(ingestion);
         // handleIngestionDeploy(ingestion.id);
       } catch (error) {
