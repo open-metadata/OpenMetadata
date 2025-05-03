@@ -18,6 +18,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.HttpServletSseServerTransportProvider;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.mcp.tools.CreateGlossaryTerm;
+import org.openmetadata.service.mcp.tools.PatchEntity;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -131,6 +132,9 @@ public class McpServer {
         break;
       case "create_glossary_term":
         result = CreateGlossaryTerm.execute(params);
+        break;
+      case "patch_entity":
+        result = PatchEntity.execute(params);
         break;
       default:
         result = Map.of("error", "Unknown function: " + toolName);

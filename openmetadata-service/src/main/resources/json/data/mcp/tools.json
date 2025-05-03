@@ -79,6 +79,32 @@
           "description"
         ]
       }
+    },
+    {
+      "name": "patch_entity",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Entity Type to patch."
+          },
+          "entityFqn": {
+            "type": "string",
+            "description": "Fully Qualified Name of the Entity to be patched."
+          },
+          "patch": {
+            "type": "string",
+            "description": "JSONPatch as String format."
+          }
+        },
+        "required": [
+          "entityType",
+          "entityFqn",
+          "patch"
+        ]
+      }
     }
   ]
 }
