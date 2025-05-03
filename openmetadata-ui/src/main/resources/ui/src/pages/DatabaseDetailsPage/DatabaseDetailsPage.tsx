@@ -58,7 +58,6 @@ import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch'
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { ServicesType } from '../../interface/service.interface';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
@@ -86,7 +85,6 @@ import {
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-// import { start } from 'repl';
 import {
   CreateIngestionPipeline,
   LogLevels,
@@ -120,7 +118,6 @@ const DatabaseDetails: FunctionComponent = () => {
   );
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
-  const [serviceDetails, setServiceDetails] = useState<ServicesType>({} as ServicesType);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -453,29 +450,22 @@ const DatabaseDetails: FunctionComponent = () => {
 
   async function deployAndTriggerIngestion(ingestionId: string) {
     await deployIngestionPipelineById(ingestionId);
-
-    // Wait for 2 seconds before triggering
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     try {
       await triggerIngestionPipelineById(ingestionId);
     } catch (error) {
       console.error(`Trigger failed for ingestion ${ingestionId}:`, error);
-      // Optional: Retry logic or error propagation
     }
   }
-
-  // console.log(decodedDatabaseFQN);
   const handleApiAction = async () => {
     // Get the current database name from the database state
-    console.log(decodedDatabaseFQN);
     const [service_name, database_name] = decodedDatabaseFQN.split('.');
 
     try {
       const response = await getServiceByFQN('databaseServices', service_name, {
         include: Include.NonDeleted,
       });
-      console.log('Service details:', response);
       const ingestionPayload: CreateIngestionPipeline = {
         airflowConfig: {
           startDate: new Date(),
@@ -496,7 +486,6 @@ const DatabaseDetails: FunctionComponent = () => {
           type: "databaseService",
         },
         sourceConfig: {
-          // clean the data to remove empty fields
           config: {
             type: ConfigType.DatabaseMetadata,
             markDeletedTables: false,
@@ -532,10 +521,6 @@ const DatabaseDetails: FunctionComponent = () => {
         const ingestion = await addIngestionPipeline(ingestionPayload);
         console.log(ingestion)
         await deployAndTriggerIngestion(ingestion.id);
-        // await deployIngestionPipelineById(ingestion.id);
-        // await triggerIngestionPipelineById(ingestion.id);
-        // setIngestionData(ingestion);
-        // handleIngestionDeploy(ingestion.id);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -543,93 +528,6 @@ const DatabaseDetails: FunctionComponent = () => {
       console.error('Error fetching service details:', error);
       showErrorToast(error as AxiosError);
     }
-
-
-    // json body for payload
-    //   {
-    //     "airflowConfig":{
-    //       "startDate":"2025-05-02T00:00:00.000Z",
-    //       "retries":0
-    //     },
-    //     "raiseOnError":true,
-    //     "loggerLevel":"INFO",
-    //     "name":"fbb01bf0-9df4-4540-bc94-0cdc355ad129",
-    //     "displayName":"red_jaffle_metadata_WXcJJofh",
-    //     "owners":[
-    //       {
-    //           "id":"d7ab8a06-bdee-4567-ac97-ec5b8ce1daad",
-    //           "type":"user"
-    //       }
-    //     ],
-    //     "pipelineType":"metadata",
-    //     "service":{
-    //       "id":"c5df5e44-eee3-4e85-b5f5-a3bfcabc8e92",
-    //       "type":"databaseService"
-    //     },
-    //     "sourceConfig":{
-    //       "config":{
-    //           "type":"DatabaseMetadata",
-    //           "markDeletedTables":true,
-    //           "markDeletedStoredProcedures":true,
-    //           "includeTables":true,
-    //           "includeViews":true,
-    //           "includeTags":true,
-    //           "includeOwners":false,
-    //           "includeStoredProcedures":true,
-    //           "includeDDL":false,
-    //           "overrideMetadata":false,
-    //           "queryLogDuration":1,
-    //           "queryParsingTimeoutLimit":300,
-    //           "useFqnForFiltering":false,
-    //           "schemaFilterPattern":{
-    //             "includes":[
-
-    //             ],
-    //             "excludes":[
-    //                 "^information_schema$"
-    //             ]
-    //           },
-    //           "databaseFilterPattern":{
-    //             "includes":[
-
-    //             ],
-    //             "excludes":[
-    //                 "^template1$"
-    //             ]
-    //           },
-    //           "threads":1,
-    //           "incremental":{
-    //             "enabled":false,
-    //             "lookbackDays":7,
-    //             "safetyMarginDays":1
-    //           }
-    //       }
-    //     }
-    // }
-    // if (currentDatabaseName) {
-    // Make API call with the database name
-    // const apiUrl = `example.com?name=${encodeURIComponent(currentDatabaseName)}`;
-    // You can use fetch or axios here
-    //   fetch(apiUrl)
-    //     .then(response => {
-    //       if (!response.ok) {
-    //         throw new Error('Network response was not ok');
-    //       }
-    //       return response.json();
-    //     })
-    //     .then(data => {
-    //       // Handle successful response
-    //       console.log('API response:', data);
-    //       showSuccessToast(t('message.api-call-successful'));
-    //     })
-    //     .catch(error => {
-    //       // Handle error
-    //       console.error('Error making API call:', error);
-    //       showErrorToast(error);
-    //     });
-    // } else {
-    //   showErrorToast(t('message.database-name-not-found'));
-    // }
   };
 
   const isExpandViewSupported = useMemo(
