@@ -536,6 +536,10 @@ const DatabaseDetails: FunctionComponent = () => {
         // await triggerIngestionPipelineById(ingestion.id);
         // setIngestionData(ingestion);
         // handleIngestionDeploy(ingestion.id);
+        showSuccessToast(
+          'Syncing metadata process for this entity has been started',
+          2000
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
