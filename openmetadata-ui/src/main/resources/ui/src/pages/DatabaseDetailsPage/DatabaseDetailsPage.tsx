@@ -502,15 +502,11 @@ const DatabaseDetails: FunctionComponent = () => {
             useFqnForFiltering: false,
             schemaFilterPattern: {
               includes: [],
-              excludes: [
-                "^information_schema$"
-              ]
+              excludes: []
             },
             databaseFilterPattern: {
               includes: [database_name],
-              excludes: [
-                "^template1$"
-              ]
+              excludes: []
             },
             syncSpecificEntity: true,
             threads: 1,
@@ -521,10 +517,6 @@ const DatabaseDetails: FunctionComponent = () => {
         const ingestion = await addIngestionPipeline(ingestionPayload);
         console.log(ingestion)
         await deployAndTriggerIngestion(ingestion.id);
-        // await deployIngestionPipelineById(ingestion.id);
-        // await triggerIngestionPipelineById(ingestion.id);
-        // setIngestionData(ingestion);
-        // handleIngestionDeploy(ingestion.id);
         showSuccessToast(
           'Syncing metadata process for this entity has been started',
           2000
