@@ -125,26 +125,22 @@ public class McpServer {
         tool,
         (exchange, arguments) -> {
           McpSchema.Content content =
-              new McpSchema.TextContent(JsonUtils.pojoToJson(runMethod(arguments)));
+              new McpSchema.TextContent(JsonUtils.pojoToJson(runMethod(toolName, arguments)));
           return new McpSchema.CallToolResult(List.of(content), false);
         });
   }
 
-  private static Object runMethod(Map<String, Object> params) {
-    Map<String, Object> paramsMap = JsonUtils.getObjectMapper().convertValue(params, Map.class);
-    String functionName = (String) paramsMap.get("name");
-    Map<String, Object> functionParams = (Map<String, Object>) paramsMap.get("parameters");
-
+  private static Object runMethod(String toolName, Map<String, Object> params) {
     Object result;
-    switch (functionName) {
+    switch (toolName) {
       case "search_metadata":
         result = searchMetadata(params);
         break;
       case "get_entity_details":
-        result = EntityUtil.getEntityDetails(functionParams);
+        result = EntityUtil.getEntityDetails(params);
         break;
       default:
-        result = Map.of("error", "Unknown function: " + functionName);
+        result = Map.of("error", "Unknown function: " + toolName);
         break;
     }
 
