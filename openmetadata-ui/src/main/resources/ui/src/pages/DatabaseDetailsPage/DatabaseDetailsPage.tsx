@@ -473,7 +473,7 @@ const DatabaseDetails: FunctionComponent = () => {
         },
         loggerLevel: LogLevels.Info,
         name: generateUUID(),
-        displayName: "red_jaffle_metadata_",
+        displayName: `${response.name}_metadata_${generateUUID().slice(0, 8)}`,
         owners: [
           {
             id: currentUser?.id ?? '',
@@ -519,7 +519,7 @@ const DatabaseDetails: FunctionComponent = () => {
         await deployAndTriggerIngestion(ingestion.id);
         showSuccessToast(
           'Syncing metadata process for this entity has been started',
-          2000
+          4000
         );
       } catch (error) {
         showErrorToast(error as AxiosError);

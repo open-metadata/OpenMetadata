@@ -800,7 +800,7 @@ const TableDetailsPageV1: React.FC = () => {
         },
         loggerLevel: LogLevels.Info,
         name: generateUUID(),
-        displayName: "red_jaffle_metadata_",
+        displayName: `${response.name}_metadata_${generateUUID().slice(0, 8)}`,
         owners: [
           {
             id: currentUser?.id ?? '',
@@ -848,6 +848,10 @@ const TableDetailsPageV1: React.FC = () => {
         const ingestion = await addIngestionPipeline(ingestionPayload);
         console.log(ingestion)
         await deployAndTriggerIngestion(ingestion.id);
+        showSuccessToast(
+          'Syncing metadata process for this entity has been started',
+          4000
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
