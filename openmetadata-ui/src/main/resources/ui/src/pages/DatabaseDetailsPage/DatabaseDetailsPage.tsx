@@ -97,9 +97,15 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   addIngestionPipeline,
 } from '../../rest/ingestionPipelineAPI';
+import {
+  triggerIngestionPipelineById,
+} from '../../rest/ingestionPipelineAPI';
+import {
+  deployIngestionPipelineById,
+} from '../../rest/ingestionPipelineAPI';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { currentUser} = useApplicationStore();
+  const { currentUser } = useApplicationStore();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
@@ -451,7 +457,7 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsTabExpanded(!isTabExpanded);
   };
   // console.log(decodedDatabaseFQN);
-  const handleApiAction = async() => {
+  const handleApiAction = async () => {
     // Get the current database name from the database state
     console.log(decodedDatabaseFQN);
     const [service_name, database_name] = decodedDatabaseFQN.split('.');
@@ -515,17 +521,19 @@ const DatabaseDetails: FunctionComponent = () => {
       try {
         const ingestion = await addIngestionPipeline(ingestionPayload);
         console.log(ingestion)
+        deployIngestionPipelineById(ingestion.id);
+        triggerIngestionPipelineById(ingestion.id);
         // setIngestionData(ingestion);
         // handleIngestionDeploy(ingestion.id);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
-    }catch(error) {
+    } catch (error) {
       console.error('Error fetching service details:', error);
       showErrorToast(error as AxiosError);
     }
 
-    
+
     // json body for payload
     //   {
     //     "airflowConfig":{
@@ -564,7 +572,7 @@ const DatabaseDetails: FunctionComponent = () => {
     //           "useFqnForFiltering":false,
     //           "schemaFilterPattern":{
     //             "includes":[
-                    
+
     //             ],
     //             "excludes":[
     //                 "^information_schema$"
@@ -572,7 +580,7 @@ const DatabaseDetails: FunctionComponent = () => {
     //           },
     //           "databaseFilterPattern":{
     //             "includes":[
-                    
+
     //             ],
     //             "excludes":[
     //                 "^template1$"
@@ -588,9 +596,9 @@ const DatabaseDetails: FunctionComponent = () => {
     //     }
     // }
     // if (currentDatabaseName) {
-      // Make API call with the database name
-      // const apiUrl = `example.com?name=${encodeURIComponent(currentDatabaseName)}`;
-      // You can use fetch or axios here
+    // Make API call with the database name
+    // const apiUrl = `example.com?name=${encodeURIComponent(currentDatabaseName)}`;
+    // You can use fetch or axios here
     //   fetch(apiUrl)
     //     .then(response => {
     //       if (!response.ok) {

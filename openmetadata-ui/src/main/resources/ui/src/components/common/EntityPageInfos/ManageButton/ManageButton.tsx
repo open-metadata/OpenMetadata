@@ -129,139 +129,139 @@ const ManageButton: FC<ManageButtonProps> = ({
   const items: ItemType[] = [
     ...(deleted
       ? ([
-          {
-            label: (
-              <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-                <ManageButtonItemLabel
-                  description={t('message.restore-action-description', {
-                    entityType,
-                  })}
-                  icon={IconRestore}
-                  id="restore-button"
-                  name={t('label.restore')}
-                />
-              </Tooltip>
-            ),
-            onClick: (e) => {
-              if (canDelete) {
-                e.domEvent.stopPropagation();
-                setShowReactiveModal(true);
-              }
-            },
-            key: 'restore-button',
+        {
+          label: (
+            <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+              <ManageButtonItemLabel
+                description={t('message.restore-action-description', {
+                  entityType,
+                })}
+                icon={IconRestore}
+                id="restore-button"
+                name={t('label.restore')}
+              />
+            </Tooltip>
+          ),
+          onClick: (e) => {
+            if (canDelete) {
+              e.domEvent.stopPropagation();
+              setShowReactiveModal(true);
+            }
           },
-        ] as ItemType[])
+          key: 'restore-button',
+        },
+      ] as ItemType[])
       : []),
 
     ...(showAnnouncementOption
       ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
-                id="announcement-button"
-                name={t('label.announcement-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
-            },
-            key: 'announcement-button',
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.announcement-action-description')}
+              icon={IconAnnouncementsBlack}
+              id="announcement-button"
+              name={t('label.announcement-plural')}
+            />
+          ),
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            !isUndefined(onAnnouncementClick) && onAnnouncementClick();
           },
-        ] as ItemType[])
+          key: 'announcement-button',
+        },
+      ] as ItemType[])
       : []),
 
     ...(showRenameOption
       ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.update-displayName-entity', {
-                  entity: entityName,
-                })}
-                icon={EditIcon}
-                id="rename-button"
-                name={t('label.rename')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDisplayNameEditing(true);
-            },
-            key: 'rename-button',
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.update-displayName-entity', {
+                entity: entityName,
+              })}
+              icon={EditIcon}
+              id="rename-button"
+              name={t('label.rename')}
+            />
+          ),
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setIsDisplayNameEditing(true);
           },
-        ] as ItemType[])
+          key: 'rename-button',
+        },
+      ] as ItemType[])
       : []),
     ...(showApiActionOption
       ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.api-action-description')}
-                icon={ApiIcon}
-                id="api-action-button"
-                name="api-call"
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              !isUndefined(handleApiAction) && handleApiAction();
-            },
-            key: 'api-action-button',
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('Refresh metadata for this entity without affecting others.')}
+              icon={ApiIcon}
+              id="api-action-button"
+              name="Sync Entity"
+            />
+          ),
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            !isUndefined(handleApiAction) && handleApiAction();
           },
-        ] as ItemType[])
+          key: 'api-action-button',
+        },
+      ] as ItemType[])
       : []),
 
     ...(extraDropdownContent ?? []),
     ...(isProfilerSupported
       ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={
-                  deleteButtonDescription ??
-                  t('message.update-profiler-settings')
-                }
-                icon={IconSetting}
-                id="profiler-setting-button"
-                name={t('label.profiler-setting-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              onProfilerSettingUpdate?.();
-            },
-            key: 'profiler-setting-button',
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={
+                deleteButtonDescription ??
+                t('message.update-profiler-settings')
+              }
+              icon={IconSetting}
+              id="profiler-setting-button"
+              name={t('label.profiler-setting-plural')}
+            />
+          ),
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            onProfilerSettingUpdate?.();
           },
-        ] as ItemType[])
+          key: 'profiler-setting-button',
+        },
+      ] as ItemType[])
       : []),
     ...(canDelete
       ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={
-                  deleteButtonDescription ??
-                  t('message.delete-entity-type-action-description', {
-                    entityType,
-                  })
-                }
-                icon={IconDelete}
-                id="delete-button"
-                name={t('label.delete')}
-              />
-            ),
-            onClick: (e) => {
-              if (canDelete) {
-                e.domEvent.stopPropagation();
-                setIsDelete(true);
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={
+                deleteButtonDescription ??
+                t('message.delete-entity-type-action-description', {
+                  entityType,
+                })
               }
-            },
-            key: 'delete-button',
+              icon={IconDelete}
+              id="delete-button"
+              name={t('label.delete')}
+            />
+          ),
+          onClick: (e) => {
+            if (canDelete) {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+            }
           },
-        ] as ItemType[])
+          key: 'delete-button',
+        },
+      ] as ItemType[])
       : []),
   ];
 
