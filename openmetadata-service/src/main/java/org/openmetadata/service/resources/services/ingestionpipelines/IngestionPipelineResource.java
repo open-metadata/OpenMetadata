@@ -29,6 +29,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -83,10 +85,14 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-// TODO merge with workflows
 @Slf4j
 @Path("/v1/services/ingestionPipelines")
 @Tag(
@@ -97,6 +103,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+  private static final Logger LOG = LoggerFactory.getLogger(IngestionPipelineResource.class);
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
@@ -249,14 +256,59 @@ public class IngestionPipelineResource
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
-    for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
+    // Filter pipelines based on syncSpecificEntity field
+//    List<IngestionPipeline> filteredPipelines = listOrEmpty(ingestionPipelines.getData()).stream()
+//        .filter(pipeline -> {
+//            SourceConfig sourceConfig = pipeline.getSourceConfig();
+//            if (sourceConfig != null) {
+//                try {
+//                    DatabaseServiceMetadataPipeline config = JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
+//                    return !Boolean.TRUE.equals(config.getSyncSpecificEntity());
+//                } catch (Exception e) {
+//                    // If casting fails or any other error occurs, include the pipeline
+//                    LOG.debug("Could not cast to DatabaseServiceMetadataPipeline: {}", e.getMessage());
+//                }
+//            }
+//            // Include all other pipelines by default
+//            return true;
+//        })
+//        .collect(Collectors.toList());
+
+      List<IngestionPipeline> filteredPipelines = new ArrayList<>();
+      for (IngestionPipeline pipeline : listOrEmpty(ingestionPipelines.getData())) {
+          SourceConfig sourceConfig = pipeline.getSourceConfig();
+          if (sourceConfig != null) {
+              try {
+                  DatabaseServiceMetadataPipeline config = JsonUtils.convertValue(
+                          sourceConfig.getConfig(), DatabaseServiceMetadataPipeline.class
+                  );
+                  if (!Boolean.TRUE.equals(config.getSyncSpecificEntity())) {
+                      filteredPipelines.add(pipeline);
+                  }
+              } catch (Exception e) {
+                  // Include the pipeline if deserialization fails
+                  LOG.debug("Could not cast to DatabaseServiceMetadataPipeline: {}", e.getMessage());
+                  filteredPipelines.add(pipeline);
+              }
+          } else {
+              // Include the pipeline if no source config
+              filteredPipelines.add(pipeline);
+          }
+      }
+
+
+
+      // Create a new ResultList with the filtered pipelines
+    ResultList<IngestionPipeline> result = new ResultList<>(filteredPipelines, null, filteredPipelines.size());
+
+    for (IngestionPipeline ingestionPipeline : filteredPipelines) {
       if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
         ingestionPipeline.setPipelineStatuses(
             repository.getLatestPipelineStatus(ingestionPipeline));
       }
       decryptOrNullify(securityContext, ingestionPipeline, false);
     }
-    return ingestionPipelines;
+    return result;
   }
 
   @GET
