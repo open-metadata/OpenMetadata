@@ -4,6 +4,7 @@
       "name": "search_metadata",
       "description": "Search for metadata in the OpenMetadata catalog",
       "parameters": {
+        "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
         "type": "object",
         "properties": {
           "query": {
@@ -28,6 +29,7 @@
       "name": "get_entity_details",
       "description": "Get detailed information about a specific entity",
       "parameters": {
+        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
           "entity_type": {

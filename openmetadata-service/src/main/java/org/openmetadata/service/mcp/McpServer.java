@@ -11,7 +11,6 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -72,16 +71,6 @@ public class McpServer {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
-  }
-
-  private static Map<String, Object> buildSchema(Map<String, Object> parameters) {
-    Map<String, Object> schema = new HashMap<>();
-    schema.put("$schema", "http://json-schema.org/draft-07/schema#");
-    schema.put("description", parameters.get("description"));
-    schema.put("type", parameters.get("type"));
-    schema.put("properties", parameters.get("properties"));
-    schema.put("required", parameters.get("required"));
-    return schema;
   }
 
   @SuppressWarnings("unchecked")
