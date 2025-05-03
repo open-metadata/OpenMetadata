@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.HttpServletSseServerTransportProvider;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.mcp.tools.CreateGlossaryTerm;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -127,6 +128,9 @@ public class McpServer {
         break;
       case "get_entity_details":
         result = EntityUtil.getEntityDetails(params);
+        break;
+      case "create_glossary_term":
+        result = CreateGlossaryTerm.execute(params);
         break;
       default:
         result = Map.of("error", "Unknown function: " + toolName);

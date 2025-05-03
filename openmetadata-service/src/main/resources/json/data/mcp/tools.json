@@ -46,6 +46,39 @@
           "fqn"
         ]
       }
+    },
+    {
+      "name": "create_glossary_term",
+      "description": "Creates a new Glossary Term",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "glossary": {
+            "type": "string",
+            "description": "Glossary in which the term belongs. This should be its fully qualified name."
+          },
+          "name": {
+            "type": "string",
+            "description": "Glossary Term name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Glossary Term description."
+          },
+          "owners": {
+            "type": "array",
+            "description": "Glossary Term owner. This should be an OpenMetadata User",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "glossary",
+          "name",
+          "description"
+        ]
+      }
     }
   ]
 }
