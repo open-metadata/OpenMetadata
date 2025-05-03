@@ -14,7 +14,8 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, rest, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
+import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline'
 import React, {
   FunctionComponent,
   useCallback,
@@ -85,14 +86,17 @@ import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { ServicesType } from '../../interface/service.interface';
-import { start } from 'repl';
+// import { start } from 'repl';
 import {
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
-} from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+} from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { generateUUID } from '../../utils/StringsUtils';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import {
+  addIngestionPipeline,
+} from '../../rest/ingestionPipelineAPI';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser} = useApplicationStore();
@@ -454,22 +458,14 @@ const DatabaseDetails: FunctionComponent = () => {
 
     try {
       const response = await getServiceByFQN('databaseServices', service_name, {
-          fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.DOMAIN}`,
-          include: Include.All,
-        });
-        setServiceDetails(response);
-        console.log('Service details:', response);
-      } catch(error) {
-        console.error('Error fetching service details:', error);
-        showErrorToast(error as AxiosError);
-      }
-
-      const ingestionDetails: CreateIngestionPipeline = {
+        include: Include.NonDeleted,
+      });
+      console.log('Service details:', response);
+      const ingestionPayload: CreateIngestionPipeline = {
         airflowConfig: {
-          startDate: ,
+          startDate: new Date(),
           retries: 0,
         },
-        raiseOnError: true,
         loggerLevel: LogLevels.Info,
         name: generateUUID(),
         displayName: "red_jaffle_metadata_",
@@ -479,18 +475,56 @@ const DatabaseDetails: FunctionComponent = () => {
             type: 'user',
           },
         ],
-        pipelineType: "metadata",
+        pipelineType: PipelineType.Metadata,
         service: {
-          id: serviceData.id as string,
-          type: serviceCategory.slice(0, -1),
+          id: response.id as string,
+          type: "databaseService",
         },
         sourceConfig: {
           // clean the data to remove empty fields
-          config: { ...cleanWorkFlowData(rest) },
+          config: {
+            type: ConfigType.DatabaseMetadata,
+            markDeletedTables: false,
+            markDeletedStoredProcedures: false,
+            includeTables: true,
+            includeViews: true,
+            includeTags: true,
+            includeOwners: true,
+            includeStoredProcedures: true,
+            includeDDL: true,
+            overrideMetadata: false,
+            queryLogDuration: 1,
+            queryParsingTimeoutLimit: 300,
+            useFqnForFiltering: false,
+            schemaFilterPattern: {
+              includes: [],
+              excludes: [
+                "^information_schema$"
+              ]
+            },
+            databaseFilterPattern: {
+              includes: [database_name],
+              excludes: [
+                "^template1$"
+              ]
+            },
+            threads: 1,
+          },
         },
       };
+      try {
+        const ingestion = await addIngestionPipeline(ingestionPayload);
+        console.log(ingestion)
+        // setIngestionData(ingestion);
+        // handleIngestionDeploy(ingestion.id);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }catch(error) {
+      console.error('Error fetching service details:', error);
+      showErrorToast(error as AxiosError);
+    }
 
-      
     
     // json body for payload
     //   {
