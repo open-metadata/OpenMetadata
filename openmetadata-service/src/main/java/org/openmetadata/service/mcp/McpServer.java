@@ -9,7 +9,6 @@ import io.dropwizard.setup.Environment;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +23,9 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class McpServer {
-  public static void initializeMcpServer(Environment environment) {
+  public McpServer() {}
+
+  public void initializeMcpServer(Environment environment) {
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -48,10 +49,10 @@ public class McpServer {
     contextHandler.addServlet(servletHolder, "/mcp/*");
   }
 
-  public static void addTools(McpSyncServer server) {
+  public void addTools(McpSyncServer server) {
     try {
       LOG.info("Loading tool definitions...");
-      List<Map<String, Object>> cachedTools = loadToolDefinitions();
+      List<Map<String, Object>> cachedTools = loadToolsDefinitionsFromJson();
       if (cachedTools == null || cachedTools.isEmpty()) {
         LOG.error("No tool definitions were loaded!");
         throw new RuntimeException("Failed to load tool definitions");
@@ -75,12 +76,23 @@ public class McpServer {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private static List<Map<String, Object>> loadToolDefinitions() throws IOException {
+  protected List<Map<String, Object>> loadToolsDefinitionsFromJson() {
+    String json = getJsonFromFile("json/data/mcp/tools.json");
+    return loadToolDefinitionsFromJson(json);
+  }
+
+  protected static String getJsonFromFile(String path) {
     try {
-      String json =
-          CommonUtil.getResourceAsStream(
-              McpServer.class.getClassLoader(), "json/data/mcp/tools.json");
+      return CommonUtil.getResourceAsStream(McpServer.class.getClassLoader(), path);
+    } catch (Exception ex) {
+      LOG.error("Error loading JSON file: {}", path, ex);
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Map<String, Object>> loadToolDefinitionsFromJson(String json) {
+    try {
       LOG.info("Loaded tool definitions, content length: {}", json.length());
       LOG.info("Raw tools.json content: {}", json);
 
@@ -108,7 +120,7 @@ public class McpServer {
     }
   }
 
-  private static McpServerFeatures.SyncToolSpecification getTool(
+  private McpServerFeatures.SyncToolSpecification getTool(
       String schema, String toolName, String description) {
     McpSchema.Tool tool = new McpSchema.Tool(toolName, description, schema);
 
@@ -121,7 +133,7 @@ public class McpServer {
         });
   }
 
-  private static Object runMethod(String toolName, Map<String, Object> params) {
+  protected Object runMethod(String toolName, Map<String, Object> params) {
     Object result;
     switch (toolName) {
       case "search_metadata":

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.mcp.McpServer.initializeMcpServer;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import io.dropwizard.Application;
@@ -92,6 +91,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.McpServer;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -275,11 +275,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthServlets(catalogConfig, environment);
   }
 
-  private void registerMCPServer(
+  protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getMcpConfiguration() != null
         && catalogConfig.getMcpConfiguration().isEnabled()) {
-      initializeMcpServer(environment);
+      McpServer mcpServer = new McpServer();
+      mcpServer.initializeMcpServer(environment);
     }
   }
 
