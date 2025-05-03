@@ -560,6 +560,10 @@ public final class EntityUtil {
         : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
   }
 
+  public static EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    return fqn == null ? null : Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
   public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;

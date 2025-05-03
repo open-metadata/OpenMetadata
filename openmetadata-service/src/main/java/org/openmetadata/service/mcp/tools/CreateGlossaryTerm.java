@@ -20,6 +20,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class CreateGlossaryTerm {
+  private static GlossaryTermMapper glossaryTermMapper = new GlossaryTermMapper();
+
   public static Map<String, Object> execute(Map<String, Object> params) {
     org.openmetadata.schema.api.data.CreateGlossaryTerm createGlossaryTerm =
         new org.openmetadata.schema.api.data.CreateGlossaryTerm();
@@ -70,9 +72,9 @@ public class CreateGlossaryTerm {
       createGlossaryTerm.setOwners(owners);
     }
 
-    GlossaryTermMapper mapper = new GlossaryTermMapper();
     try {
-      GlossaryTerm glossaryTerm = mapper.createToEntity(createGlossaryTerm, ADMIN_USER_NAME);
+      GlossaryTerm glossaryTerm =
+          glossaryTermMapper.createToEntity(createGlossaryTerm, ADMIN_USER_NAME);
       GlossaryTermRepository glossaryTermRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
       // TODO: Get the updatedBy from the tool request.
