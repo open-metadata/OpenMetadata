@@ -155,4 +155,34 @@ public class DataInsightSystemChartResource
         repository.listChartData(chartNames, start, end, filter);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
+
+  @GET
+      @Path("/generateAPIRequest")
+  @Operation(
+      operationId = "generateAPIRequest",
+      summary = "Generate API request",
+      description = "Generate API request",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The API request",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response generateAPIRequest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "prompt for API request",
+              required = true,
+              schema = @Schema(type = "String", example = "chart1,chart2"))
+          @QueryParam("prompt")
+          String prompt)
+      throws IOException {
+    String result = repository.generateAPIRequest(prompt);
+    return Response.status(Response.Status.OK).entity(result).build();
+  }
 }

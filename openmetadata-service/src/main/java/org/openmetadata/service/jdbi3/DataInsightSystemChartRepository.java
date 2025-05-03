@@ -3,6 +3,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -148,4 +155,78 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
     return result;
   }
+
+  public String generateAPIRequest(String prompt) {
+    try {
+      // Define the API endpoint URL
+      URL url = new URL("http://10.71.6.85:5003/generate");
+      
+      // Open a connection to the URL
+      HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+      
+      // Set up the HTTP request
+      connection.setRequestMethod("POST");
+      
+      // Set request headers based on example request
+      connection.setRequestProperty("Content-Type", "application/json");
+      connection.setRequestProperty("Accept", "*/*");
+      connection.setRequestProperty("Connection", "keep-alive");
+      
+      // Remove the authorization header as it's not needed
+      // connection.setRequestProperty("Authorization", "Bearer YOUR_API_KEY_HERE");
+      
+      connection.setDoOutput(true);
+      
+      // Create the request body
+      JSONObject requestBody = new JSONObject();
+      requestBody.put("use_case", prompt);
+      
+      // Convert body to bytes
+      byte[] input = requestBody.toString().getBytes(StandardCharsets.UTF_8);
+      
+      // Set content length
+      connection.setRequestProperty("Content-Length", String.valueOf(input.length));
+      
+      // Send the request
+      try (OutputStream os = connection.getOutputStream()) {
+          os.write(input, 0, input.length);
+      }
+      
+      // Check the response code first
+      int responseCode = connection.getResponseCode();
+      if (responseCode == 200) {
+        // Get the response for successful requests
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            String responseLine;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+        }
+        return response.toString();
+      } else {
+        // Handle error responses
+        StringBuilder errorResponse = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(connection.getErrorStream() != null ? 
+                        connection.getErrorStream() : new java.io.ByteArrayInputStream(new byte[0]), 
+                        StandardCharsets.UTF_8))) {
+            String responseLine;
+            while ((responseLine = br.readLine()) != null) {
+                errorResponse.append(responseLine.trim());
+            }
+        } catch (Exception e) {
+            // Error stream might be null
+            errorResponse.append("No detailed error information available");
+        }
+        
+        return "Error: HTTP " + responseCode + " - " + errorResponse.toString();
+      }
+    } catch (Exception e) {
+      // Handle any exceptions
+      return "Error calling API: " + e.getMessage();
+    }
+  }
+
 }
