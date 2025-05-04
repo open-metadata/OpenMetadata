@@ -199,25 +199,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if col.name != RANDOM_LABEL and col.name in names
             ]
         with self.get_client() as client:
-            try:
-                sqa_sample = (
-                    client.query(*sqa_columns)
-                    .select_from(ds)
-                    .limit(self.sample_limit)
-                    .all()
-                )
-            except Exception:
-                logger.debug(
-                    "Cannot fetch sample data with random sampling. Falling back to 100 rows."
-                )
-                logger.debug(traceback.format_exc())
-                sqa_columns = list(inspect(self.raw_dataset).c)
-                sqa_sample = (
-                    client.query(*sqa_columns)
-                    .select_from(self.raw_dataset)
-                    .limit(100)
-                    .all()
-                )
+            sqa_sample = (
+                client.query(*sqa_columns)
+                .select_from(ds)
+                .limit(self.sample_limit)
+                .all()
+            )
             return TableData(
                 columns=[column.name for column in sqa_columns],
                 rows=[list(row) for row in sqa_sample],
