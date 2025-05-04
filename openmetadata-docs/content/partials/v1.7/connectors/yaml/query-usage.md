@@ -100,7 +100,7 @@ bulkSink:
     filename: /tmp/athena_usage
 ```
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 {% /codePreview %}
