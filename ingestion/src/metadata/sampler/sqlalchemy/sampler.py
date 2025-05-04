@@ -13,7 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 import hashlib
-import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text

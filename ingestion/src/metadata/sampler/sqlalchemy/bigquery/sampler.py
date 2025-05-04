@@ -12,18 +12,16 @@
 Helper module to handle data sampling
 for the profiler
 """
-import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
 from sqlalchemy import Column
 from sqlalchemy import Table as SqaTable
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     Table,
-    TableData,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
