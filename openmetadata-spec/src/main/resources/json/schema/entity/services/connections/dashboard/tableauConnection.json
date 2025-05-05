@@ -43,7 +43,8 @@
     "siteName": {
       "title": "Site Name",
       "description": "Tableau Site Name.",
-      "type": "string"
+      "type": "string",
+      "default": null
     },
     "paginationLimit": {
       "title": "Pagination Limit",
