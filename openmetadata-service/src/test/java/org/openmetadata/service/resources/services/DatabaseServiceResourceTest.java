@@ -82,6 +82,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -98,7 +99,7 @@ public class DatabaseServiceResourceTest
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "owners,tags");
+        DatabaseServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -537,7 +538,7 @@ public class DatabaseServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
