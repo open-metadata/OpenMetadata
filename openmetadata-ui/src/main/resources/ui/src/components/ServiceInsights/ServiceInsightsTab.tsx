@@ -188,10 +188,18 @@ const ServiceInsightsTab = ({
             workflowStatesData?.mainInstanceState?.status ??
               WorkflowStatus.Running
           )}
-          closeIcon={<CloseOutlined className="text-md" />}
+          closeIcon={
+            <CloseOutlined
+              className="text-md"
+              data-testid="status-banner-close-icon"
+            />
+          }
+          data-testid="auto-pilot-status-banner"
           description={description}
           icon={
-            <div className="status-banner-icon">
+            <div
+              className="status-banner-icon"
+              data-testid={`status-banner-icon-${workflowStatesData?.mainInstanceState?.status}`}>
               <StatusIcon height={20} width={20} />
             </div>
           }

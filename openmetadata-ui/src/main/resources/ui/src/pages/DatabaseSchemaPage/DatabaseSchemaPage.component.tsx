@@ -206,7 +206,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        history.replace({
           pathname: getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
@@ -340,7 +340,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     const updatedData = data as DatabaseSchema;
 
     setDatabaseSchema((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

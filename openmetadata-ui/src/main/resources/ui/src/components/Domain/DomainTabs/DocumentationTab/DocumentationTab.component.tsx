@@ -150,7 +150,7 @@ const DocumentationTab = ({
       secondPanel={{
         wrapInCard: true,
         children: (
-          <div className="d-flex flex-column gap-5 p-md">
+          <div className="d-flex flex-column gap-5">
             <OwnerLabelV2 dataTestId="domain-owner-name" />
 
             <TagsContainerV2
