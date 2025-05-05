@@ -107,7 +107,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.34</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.24</elasticsearch.version>
+    <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
