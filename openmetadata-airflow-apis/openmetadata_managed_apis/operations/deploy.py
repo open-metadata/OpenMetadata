@@ -97,6 +97,8 @@ class DagDeployer:
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
         """
+        # Create directory if it doesn't exist
+        dag_config_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
