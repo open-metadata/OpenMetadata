@@ -1,0 +1,25 @@
+{
+  "name": "HelloPipelines",
+  "displayName": "Hello Pipelines",
+  "description": "Example external application to demonstrate the use of pipelines.",
+  "features": "Test external application functionality",
+  "appType": "external",
+  "appScreenshots": ["DataInsightsPic1.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.AbstractNativeApplication",
+  "sourcePythonClass": "metadata.applications.example.HelloPipelines",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {
+    "type": "HelloPipelines",
+    "sleep": 10,
+    "echo": "hello pipelines"
+  },
+  "enabled": false
+}

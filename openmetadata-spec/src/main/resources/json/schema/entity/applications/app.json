@@ -307,14 +307,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "id",
-    "name",
-    "appType",
-    "className",
-    "scheduleType",
-    "permission",
-    "runtime",
-    "appSchedule"
-  ]
+  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime"]
 }
