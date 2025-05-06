@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
-- [Troubleshooting](/connectors/search/airflow/troubleshooting)
+- [Troubleshooting](/connectors/pipeline/airflow/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
 
