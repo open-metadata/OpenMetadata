@@ -16,7 +16,11 @@ from typing import Callable
 
 from flask import Blueprint, Response, request
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_request_arg, get_request_dag_id
+from openmetadata_managed_apis.api.utils import (
+    get_request_arg,
+    get_request_conf,
+    get_request_dag_id,
+)
 from openmetadata_managed_apis.operations.trigger import trigger
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -41,13 +45,14 @@ def get_fn(blueprint: Blueprint) -> Callable:
     @security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def trigger_dag() -> Response:
         """
-        Trigger a dag run
+        Trigger a dag run with optional configuration
         """
         dag_id = get_request_dag_id()
 
         try:
             run_id = get_request_arg(request, "run_id", raise_missing=False)
-            response = trigger(dag_id, run_id)
+            conf = get_request_conf()
+            response = trigger(dag_id, run_id, conf=conf)
 
             return response
 

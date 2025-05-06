@@ -99,6 +99,16 @@ def get_request_dag_id() -> Optional[str]:
     return clean_dag_id(raw_dag_id)
 
 
+def get_request_conf() -> Optional[dict]:
+    """
+    Try to fetch the conf from the JSON request. Return None if no conf is provided.
+    """
+    try:
+        return request.get_json().get("conf")
+    except Exception:
+        return None
+
+
 def get_dagbag():
     """
     Load the dagbag from Airflow settings

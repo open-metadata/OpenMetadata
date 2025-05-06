@@ -1065,12 +1065,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-        if (configPayload != null) {
-          throw new BadRequestException(
-              "Overriding app config is not supported for external applications.");
-        }
         PipelineServiceClientResponse response =
-            pipelineServiceClient.runPipeline(ingestionPipeline, service);
+            pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         return Response.status(response.getCode()).entity(response).build();
       }
     }

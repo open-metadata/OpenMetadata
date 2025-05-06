@@ -527,6 +527,8 @@ services:
       # To integrate GCP
       AIRFLOW__OPENMETADATA_SECRETS_MANAGER__GCP_PROJECT_ID: ${OM_SM_PROJECT_ID:-""}
 
+      # Apps
+      ENABLE_APP_HelloPipelines: "true"
 
     entrypoint: /bin/bash
     command:
