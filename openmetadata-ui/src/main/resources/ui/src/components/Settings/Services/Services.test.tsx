@@ -116,14 +116,17 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isFetchingStatus: false,
-    isAirflowAvailable: true,
-    fetchAirflowStatus: jest.fn(),
-    platform: PIPELINE_SERVICE_PLATFORM,
-  })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isFetchingStatus: false,
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      platform: PIPELINE_SERVICE_PLATFORM,
+    })),
+  })
+);
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('Pipeline Service'),

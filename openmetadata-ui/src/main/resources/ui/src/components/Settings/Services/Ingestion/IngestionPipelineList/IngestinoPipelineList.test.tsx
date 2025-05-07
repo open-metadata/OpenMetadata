@@ -13,8 +13,8 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
-import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
 import { mockESIngestionData } from '../../../../../mocks/IngestionListTable.mock';
 import { deployIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
@@ -27,12 +27,15 @@ jest.mock(
   }
 );
 
-jest.mock('../../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isAirflowAvailable: true,
-    isFetchingStatus: false,
-  })),
-}));
+jest.mock(
+  '../../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    })),
+  })
+);
 
 jest.mock('../../../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);

@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -32,7 +33,6 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -168,7 +168,7 @@ const TestSuitePipelineTab = ({
         showSuccessToast('Pipeline triggered successfully');
 
         setPipelineIdToFetchStatus(id);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.ingestion-workflow-operation-error', {
             operation: 'triggering',

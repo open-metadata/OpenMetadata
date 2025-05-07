@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,22 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
-import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
-import { getAirflowStatus } from '../rest/ingestionPipelineAPI';
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { PipelineServiceClientResponse } from '../../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
+import { getAirflowStatus } from '../../rest/ingestionPipelineAPI';
+import { AirflowStatusContextType } from './AirflowStatusProvider.interface';
 
-export interface UseAirflowStatusProps {
-  isFetchingStatus: boolean;
-  isAirflowAvailable: boolean;
-  error: AxiosError | undefined;
-  reason: PipelineServiceClientResponse['reason'];
-  platform: PipelineServiceClientResponse['platform'];
-  fetchAirflowStatus: () => Promise<void>;
+export const AirflowStatusContext = createContext(
+  {} as AirflowStatusContextType
+);
+
+interface Props {
+  children: ReactNode;
 }
 
-export const useAirflowStatus = (): UseAirflowStatusProps => {
+const AirflowStatusProvider = ({ children }: Props) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
@@ -34,7 +41,7 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [platform, setPlatform] =
     useState<PipelineServiceClientResponse['platform']>('unknown');
 
-  const fetchAirflowStatus = async () => {
+  const fetchAirflowStatus = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await getAirflowStatus();
@@ -47,18 +54,31 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAirflowStatus();
   }, []);
 
-  return {
-    isFetchingStatus: isLoading,
-    isAirflowAvailable,
-    error,
-    fetchAirflowStatus,
-    reason,
-    platform,
-  };
+  const value: AirflowStatusContextType = useMemo(
+    () => ({
+      isFetchingStatus: isLoading,
+      isAirflowAvailable,
+      error,
+      reason,
+      platform,
+      fetchAirflowStatus,
+    }),
+    [isLoading, isAirflowAvailable, error, reason, platform, fetchAirflowStatus]
+  );
+
+  return (
+    <AirflowStatusContext.Provider value={value}>
+      {children}
+    </AirflowStatusContext.Provider>
+  );
 };
+
+export const useAirflowStatus = () => useContext(AirflowStatusContext);
+
+export default AirflowStatusProvider;

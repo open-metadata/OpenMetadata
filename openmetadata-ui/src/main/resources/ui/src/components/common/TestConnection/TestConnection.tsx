@@ -32,6 +32,7 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
 import {
   StatusType,
@@ -41,7 +42,6 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
   deleteWorkflowById,
