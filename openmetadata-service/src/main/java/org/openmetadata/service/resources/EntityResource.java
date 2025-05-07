@@ -499,6 +499,52 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response;
   }
 
+  public Response deleteParallel(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    T entity;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            DeleteResponse<T> deleteResponse =
+                repository.deleteAsync(userName, id, recursive, hardDelete);
+            if (hardDelete) {
+              limits.invalidateCache(entityType);
+            }
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, entity, e.getMessage());
+          }
+        });
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + entity.getName(),
+                    entity.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
+  }
+
   public Response deleteByName(
       UriInfo uriInfo,
       SecurityContext securityContext,
