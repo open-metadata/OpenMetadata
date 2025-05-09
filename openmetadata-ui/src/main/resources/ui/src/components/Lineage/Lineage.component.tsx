@@ -119,6 +119,35 @@ const Lineage = ({
     updateEntityData(entityType, entity as SourceType, isPlatformLineage);
   }, [entity, entityType, isPlatformLineage]);
 
+  // Memoize callback for onEdgeClick to prevent unnecessary re-renders
+  const handleEdgeClick = useCallback(
+    (_e: React.MouseEvent, data: any) => {
+      onEdgeClick(data);
+      _e.stopPropagation();
+    },
+    [onEdgeClick]
+  );
+
+  // Memoize callback for onNodeClick to prevent unnecessary re-renders
+  const handleNodeClick = useCallback(
+    (_e: React.MouseEvent, node: any) => {
+      onNodeClick(node);
+      _e.stopPropagation();
+    },
+    [onNodeClick]
+  );
+
+  // Memoize callback for onNodeDrop to prevent unnecessary re-renders
+  const handleNodeDrop = useCallback(
+    (_e: DragEvent) => {
+      onNodeDrop(
+        _e,
+        reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
+      );
+    },
+    [onNodeDrop, reactFlowWrapper]
+  );
+
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
   return (
@@ -135,7 +164,9 @@ const Lineage = ({
         ref={reactFlowWrapper}>
         {entityLineage && (
           <>
-            <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            {isPlatformLineage ? null : (
+              <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            )}
             <LineageControlButtons
               deleted={deleted}
               entityType={entityType}
@@ -152,6 +183,7 @@ const Lineage = ({
         {init ? (
           <ReactFlowProvider>
             <ReactFlow
+              elevateEdgesOnSelect
               className="custom-react-flow"
               data-testid="react-flow-component"
               deleteKeyCode={null}
@@ -162,28 +194,18 @@ const Lineage = ({
               }}
               maxZoom={MAX_ZOOM_VALUE}
               minZoom={MIN_ZOOM_VALUE}
+              nodeDragThreshold={1}
               nodeTypes={nodeTypes}
               nodes={nodes}
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               onConnect={onConnect}
               onDragOver={onDragOver}
-              onDrop={(_e) =>
-                onNodeDrop(
-                  _e,
-                  reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
-                )
-              }
-              onEdgeClick={(_e, data) => {
-                onEdgeClick(data);
-                _e.stopPropagation();
-              }}
+              onDrop={handleNodeDrop}
+              onEdgeClick={handleEdgeClick}
               onEdgesChange={onEdgesChange}
               onInit={onInitReactFlow}
-              onNodeClick={(_e, node) => {
-                onNodeClick(node);
-                _e.stopPropagation();
-              }}
+              onNodeClick={handleNodeClick}
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}

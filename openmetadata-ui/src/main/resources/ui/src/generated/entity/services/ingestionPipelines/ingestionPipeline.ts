@@ -50,6 +50,10 @@ export interface IngestionPipeline {
      */
     enabled?: boolean;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * Name that uniquely identifies a Pipeline.
      */
     fullyQualifiedName?: string;
@@ -88,6 +92,10 @@ export interface IngestionPipeline {
     pipelineStatuses?: PipelineStatus;
     pipelineType:      PipelineType;
     provider?:         ProviderType;
+    /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
     /**
      * Link to the service (such as database, messaging, storage services, etc. for which this
      * ingestion pipeline ingests the metadata from.
@@ -247,14 +255,14 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * The ingestion agent responsible for executing the ingestion pipeline.
- *
- * Owners of this Pipeline.
+ * Followers of this entity.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
  * Link to the service (such as database, messaging, storage services, etc. for which this
  * ingestion pipeline ingests the metadata from.
@@ -1247,6 +1255,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */

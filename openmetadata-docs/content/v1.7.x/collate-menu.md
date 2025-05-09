@@ -721,6 +721,22 @@ site_menu:
 
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
+  - category: Collate AI / Collate AI Tier Agent
+    url: /collateai/tier-agent
+  - category: Collate AI / Collate AI Quality Agent
+    url: /collateai/quality-agent
+  - category: Collate AI / Collate AI Documentation Agent
+    url: /collateai/documentation-agent
+
+  - category: Applications
+    url: /applications
+
+  - category: Applications / Reverse Metadata Application
+    url: /applications/reverse-metadata
+  - category: Applications / Autopilot
+    url: /applications/autopilot
+  - category: Applications / Data Retention Application
+    url: /applications/data-retention
 
   - category: How-to Guides
     url: /how-to-guides
@@ -969,6 +985,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Sample Data Handling Using PII Tags
+    url: /how-to-guides/data-governance/classification/sample-data-using-pii-tag
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
     url: /how-to-guides/data-governance/classification/auto-classification
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow

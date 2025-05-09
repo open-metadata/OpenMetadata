@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.application import (
 from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.workflow.base import BaseWorkflow
 
 # pylint: disable=ungrouped-imports
 try:
@@ -192,6 +193,19 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     )
 
 
+def execute_workflow(
+    workflow: BaseWorkflow, workflow_config: OpenMetadataWorkflowConfig
+) -> None:
+    """
+    Execute the workflow and handle the status
+    """
+    workflow.execute()
+    workflow.print_status()
+    workflow.stop()
+    if workflow_config.workflowConfig.raiseOnError:
+        workflow.raise_from_status()
+
+
 def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     """
     Task that creates and runs the ingestion workflow.
@@ -208,11 +222,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = MetadataWorkflow.create(config)
-
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, workflow_config)
 
 
 def build_workflow_config_property(
@@ -225,6 +235,7 @@ def build_workflow_config_property(
     """
     return WorkflowConfig(
         loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
+        raiseOnError=ingestion_pipeline.raiseOnError,
         openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
     )
 
@@ -358,9 +369,16 @@ def build_dag(
     ingestion_pipeline: IngestionPipeline,
     workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
     workflow_fn: Callable,
+    params: Optional[dict] = None,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
+    :param task_name: Name of the task
+    :param ingestion_pipeline: Pipeline configs
+    :param workflow_config: Workflow configurations
+    :param workflow_fn: Function to be executed
+    :param params: Optional parameters to pass to the operator
+    :return: DAG
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
@@ -371,7 +389,9 @@ def build_dag(
         CustomPythonOperator(
             task_id=task_name,
             python_callable=workflow_fn,
-            op_kwargs={"workflow_config": workflow_config},
+            op_kwargs={
+                "workflow_config": workflow_config,
+            },
             # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
             retries=ingestion_pipeline.airflowConfig.retries or 0,
             # each DAG will call its own OpenMetadataWorkflowConfig
@@ -380,6 +400,7 @@ def build_dag(
             owner=ingestion_pipeline.owners.root[0].name
             if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
             else "openmetadata",
+            params=params,
         )
 
         return dag

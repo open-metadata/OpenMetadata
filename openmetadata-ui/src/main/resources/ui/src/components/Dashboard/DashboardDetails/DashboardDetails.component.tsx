@@ -130,7 +130,7 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,

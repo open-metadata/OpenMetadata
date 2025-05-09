@@ -141,6 +141,10 @@ public class AppRepository extends EntityRepository<App> {
     return null;
   }
 
+  public List<EntityReference> listAllAppsReference() {
+    return daoCollection.applicationDAO().listAppsRef();
+  }
+
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();

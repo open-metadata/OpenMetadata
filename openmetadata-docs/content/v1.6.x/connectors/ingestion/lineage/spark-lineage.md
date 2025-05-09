@@ -9,6 +9,10 @@ A spark job may involve movement/transfer of data which may result into a data l
 
 In this guide we will explain how you can make use of the `OpenMetadata Spark Agent` to capture such lineage.
 
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+- [Using Spark Agent with Databricks](#using-spark-agent-with-databricks)
+- [Using Spark Agent with Glue](#using-spark-agent-with-glue)
 
 ## Requirement
 
