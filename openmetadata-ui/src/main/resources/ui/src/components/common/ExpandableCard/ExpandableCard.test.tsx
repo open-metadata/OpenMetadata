@@ -103,8 +103,8 @@ describe('ExpandableCard', () => {
 
       const expandButton = screen.getByRole('button');
 
-      // Initial state (expanded)
-      expect(expandButton).toHaveAttribute('title', 'label.expand');
+      // Initial state (collapsed)
+      expect(expandButton).toHaveAttribute('title', 'label.collapse');
       expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
 
       // Click to collapse
@@ -112,15 +112,15 @@ describe('ExpandableCard', () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton).toHaveAttribute('title', 'label.collapse');
-      expect(expandButton.closest('.ant-card')).not.toHaveClass('expanded');
+      expect(expandButton).toHaveAttribute('title', 'label.expand');
+      expect(expandButton.closest('.ant-card')).not.toHaveClass('collapsed');
 
       // Click to expand again
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton).toHaveAttribute('title', 'label.expand');
+      expect(expandButton).toHaveAttribute('title', 'label.collapse');
       expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
     });
 
@@ -240,7 +240,7 @@ describe('ExpandableCard', () => {
       });
 
       // Should not throw any errors
-      expect(expandButton).toHaveAttribute('title', 'label.collapse');
+      expect(expandButton).toHaveAttribute('title', 'label.expand');
     });
 
     it('works with minimal cardProps', () => {
