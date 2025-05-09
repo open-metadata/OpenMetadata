@@ -735,6 +735,8 @@ site_menu:
     url: /applications/reverse-metadata
   - category: Applications / Autopilot
     url: /applications/autopilot
+  - category: Applications / Data Retention Application
+    url: /applications/data-retention
 
   - category: How-to Guides
     url: /how-to-guides
