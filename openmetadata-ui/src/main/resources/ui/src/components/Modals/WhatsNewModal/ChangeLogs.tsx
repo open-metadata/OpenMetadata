@@ -13,34 +13,37 @@
 
 /* eslint-disable max-len */
 
-import React from 'react';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 
 type Props = {
   data: { [name: string]: string };
 };
 
-const ChangeLogs = ({ data }: Props) => {
-  const logKeys: Array<string> = Object.keys(data);
+const ChangeLogs: React.FC<Props> = () => {
+  const [changeLogs, setChangeLogs] = useState<string>('');
+
+  useEffect(() => {
+    axios
+      .get(
+        'http://localhost:8000/storage/2/8bc1c66a-6b4c-42a6-b5ed-e475139bdef7.md'
+      )
+      .then((response) => {
+        setChangeLogs(response.data);
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error(error);
+      });
+  }, []);
 
   return (
     <div>
-      {logKeys.map((log) => (
-        <div className="mb-4" key={log}>
-          <div className="border-bottom mb-2.5 border-text">
-            <p className="text-base font-medium mb-2.5 log-title">
-              <RichTextEditorPreviewer
-                enableSeeMoreVariant={false}
-                markdown={log}
-              />
-            </p>
-          </div>
-          <RichTextEditorPreviewer
-            enableSeeMoreVariant={false}
-            markdown={data[log]}
-          />
-        </div>
-      ))}
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={changeLogs}
+      />
     </div>
   );
 };

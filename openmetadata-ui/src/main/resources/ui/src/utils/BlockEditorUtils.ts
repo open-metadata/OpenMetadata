@@ -130,7 +130,7 @@ export const formatValueBasedOnContent = (value: string) =>
 export const isHTMLString = (content: string) => {
   // Quick check for common HTML tags
   const commonHtmlTags =
-    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
+    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre|iframe)[>\s]/i;
 
   // If content doesn't have any HTML-like structure, return false early
   if (!commonHtmlTags.test(content)) {
@@ -181,12 +181,60 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   openLinksInNewWindow: true,
   emoji: true,
   underline: true,
+  backslashEscapesHTMLTags: false, // Allow HTML tags to pass through
 });
 
 export const getHtmlStringFromMarkdownString = (content: string) => {
-  return isHTMLString(content)
-    ? content
-    : _convertMarkdownStringToHtmlString.makeHtml(content);
+  // First convert any markdown to HTML
+  const markdownHtml = _convertMarkdownStringToHtmlString.makeHtml(content);
+
+  // If the content contains iframes or other HTML elements, preserve them
+  if (content.includes('<iframe') || isHTMLString(content)) {
+    // Create a temporary div to parse the content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = markdownHtml;
+
+    // Find all iframes in the original content
+    const iframeRegex = /<iframe[^>]*>.*?<\/iframe>/gi;
+    const iframes = content.match(iframeRegex) || [];
+
+    // Replace any iframes in the markdown HTML with the original iframes
+    iframes.forEach((iframe) => {
+      const placeholder = document.createElement('div');
+      placeholder.innerHTML = iframe;
+      const iframeElement = placeholder.firstChild as HTMLElement;
+
+      // Find the corresponding iframe in the markdown HTML and replace it
+      const existingIframes = tempDiv.getElementsByTagName('iframe');
+      if (existingIframes.length > 0) {
+        existingIframes[0].replaceWith(iframeElement);
+      } else {
+        // If no iframe found, append it to the end
+        tempDiv.appendChild(iframeElement);
+      }
+    });
+
+    return tempDiv.innerHTML;
+  }
+
+  return markdownHtml;
+};
+
+// Helper function to convert YouTube URLs to embed format
+export const convertYouTubeUrlToEmbed = (url: string): string => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+
+  if (match && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+
+  return url;
+};
+
+// Helper function to check if a URL is a YouTube URL
+export const isYouTubeUrl = (url: string): boolean => {
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url);
 };
 
 /**

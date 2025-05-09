@@ -23,7 +23,7 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
-import WhatsNewModal from '../WhatsNewModal';
+import { WhatsNewModalV1 } from '../WhatsNewModalV1';
 
 const cookieStorage = new CookieStorage();
 
@@ -32,7 +32,7 @@ const WhatsNewAlert = () => {
   const location = useCustomLocation();
   const { isFirstTimeUser } = useAuth();
   const [showWhatsNew, setShowWhatsNew] = useState({
-    alert: false,
+    alert: true,
     modal: false,
   });
 
@@ -45,14 +45,12 @@ const WhatsNewAlert = () => {
     [location.pathname]
   );
 
-  const onAlertCardClick = useCallback(
-    () =>
-      setShowWhatsNew({
-        alert: false,
-        modal: true,
-      }),
-    []
-  );
+  const onAlertCardClick = useCallback(() => {
+    setShowWhatsNew({
+      alert: false,
+      modal: true,
+    });
+  }, [setShowWhatsNew]);
 
   const onModalCancel = useCallback(
     () =>
@@ -71,10 +69,10 @@ const WhatsNewAlert = () => {
   }, [cookieStorage, onModalCancel, getReleaseVersionExpiry]);
 
   useEffect(() => {
-    setShowWhatsNew({
-      alert: cookieStorage.getItem(COOKIE_VERSION) !== 'true',
-      modal: false,
-    });
+    // setShowWhatsNew({
+    //   alert: cookieStorage.getItem(COOKIE_VERSION) !== 'true',
+    //   modal: false,
+    // });
   }, [isFirstTimeUser]);
 
   const title = useMemo(() => {
@@ -123,7 +121,7 @@ const WhatsNewAlert = () => {
           </Card>
         </Affix>
       )}
-      <WhatsNewModal
+      <WhatsNewModalV1
         header={`${t('label.whats-new')}!`}
         visible={showWhatsNew.modal}
         onCancel={onModalCancel}
