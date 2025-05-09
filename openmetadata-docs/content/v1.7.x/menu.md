@@ -1254,8 +1254,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts
