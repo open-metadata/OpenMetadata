@@ -234,8 +234,12 @@ const DescriptionV1 = ({
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
       <Space
+        {...(wrapInCard
+          ? {}
+          : {
+              'data-testid': 'asset-description-container',
+            })}
         className={classNames('schema-description d-flex', className)}
-        data-testid="asset-description-container"
         direction="vertical"
         size={16}>
         {!wrapInCard ? header : null}
@@ -258,7 +262,8 @@ const DescriptionV1 = ({
 
   return wrapInCard ? (
     <ExpandableCard
-      cardProps={{ title: header, className: 'new-description-card' }}>
+      cardProps={{ title: header, className: 'new-description-card' }}
+      dataTestId="asset-description-container">
       {content}
     </ExpandableCard>
   ) : (
