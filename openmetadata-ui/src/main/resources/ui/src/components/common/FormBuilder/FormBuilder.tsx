@@ -160,21 +160,42 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
           validateFormData: (formData: ConfigData) => {
             const validationErrors: Record<string, { __errors: string[] }> = {};
 
-            // Check for minimum values in number fields
-            Object.keys(schema.properties || {}).forEach((key) => {
-              const property = schema?.properties?.[key];
+            const resolveRef = (ref: string, schemaObj: any) => {
+              if (!ref) {
+                return null;
+              }
+              const refPath = ref.split('/').slice(1);
+
+              return refPath.reduce((obj, path) => obj?.[path], schemaObj);
+            };
+
+            const validateProperty = (
+              property: any,
+              value: any,
+              key: string,
+              path: string
+            ): { __errors: string[] } | null => {
+              // Handle schema references
+              if (property.$ref) {
+                const refSchema = resolveRef(property.$ref, schema);
+                if (!refSchema) {
+                  return null;
+                }
+
+                return validateProperty(refSchema, value, key, path);
+              }
+
               if (
                 typeof property === 'object' &&
                 property !== null &&
                 (property.type === 'number' || property.type === 'integer')
               ) {
-                const value = formData[key as keyof ConfigData];
                 if (
                   typeof value === 'number' &&
                   property.minimum !== undefined &&
                   value < property.minimum
                 ) {
-                  validationErrors[key] = {
+                  return {
                     __errors: [
                       t('message.value-must-be-greater-than', {
                         field: property.title ?? key,
@@ -184,7 +205,70 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                   };
                 }
               }
-            });
+
+              return null;
+            };
+
+            const checkProperties = (obj: any, schemaObj: any, path = '') => {
+              if (!schemaObj) {
+                return;
+              }
+
+              // Handle schema references
+              if (schemaObj.$ref) {
+                schemaObj = resolveRef(schemaObj.$ref, schema);
+                if (!schemaObj) {
+                  return;
+                }
+              }
+
+              Object.keys(schemaObj.properties ?? {}).forEach((key) => {
+                const property = schemaObj.properties[key];
+                const value = obj?.[key];
+                const currentPath = path ? `${path}.${key}` : key;
+
+                // Handle nested references
+                if (property.$ref) {
+                  const refSchema = resolveRef(property.$ref, schema);
+                  if (refSchema) {
+                    checkProperties(value, refSchema, currentPath);
+                  }
+                } else {
+                  const error = validateProperty(
+                    property,
+                    value,
+                    key,
+                    currentPath
+                  );
+                  if (error) {
+                    validationErrors[currentPath] = error;
+                  }
+
+                  // Recursively check nested objects
+                  if (property.type === 'object' && value) {
+                    checkProperties(value, property, currentPath);
+                  }
+                }
+              });
+            };
+
+            checkProperties(formData, schema);
+
+            // Convert validation errors to the format expected by rjsf
+            const errorSchema = Object.keys(validationErrors).reduce(
+              (acc: Record<string, any>, key) => {
+                const path = key.split('.');
+                let current = acc;
+                for (let i = 0; i < path.length - 1; i++) {
+                  current[path[i]] = current[path[i]] || {};
+                  current = current[path[i]];
+                }
+                current[path[path.length - 1]] = validationErrors[key];
+
+                return acc;
+              },
+              {}
+            );
 
             return {
               errors: Object.keys(validationErrors).map((key) => ({
@@ -196,13 +280,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                   minimum: validationErrors[key].__errors[0].split(' ').pop(),
                 }),
               })),
-              errorSchema: Object.keys(validationErrors).reduce(
-                (acc, key) => ({
-                  ...acc,
-                  [key]: { __errors: validationErrors[key].__errors },
-                }),
-                {}
-              ),
+              errorSchema,
             };
           },
         }}>
