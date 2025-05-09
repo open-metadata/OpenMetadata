@@ -5238,10 +5238,21 @@ public interface CollectionDAO {
       return listAppExtension(appName, limit, offset, extension, null);
     }
 
+    // We use CTE because postgres does not support LIMIT with GROUP BY.
+    // This query works with both MySQL and Postgres.
     @SqlQuery(
-        "SELECT min(timestamp), max(timestamp) FROM apps_extension_time_series "
-            + "WHERE timestamp < :to "
-            + "ORDER BY timestamp ASC LIMIT :limit")
+        """
+                    WITH limited_data AS (
+                        SELECT timestamp
+                        FROM apps_extension_time_series
+                        WHERE timestamp < :to
+                        ORDER BY timestamp ASC
+                        LIMIT :limit
+                    )
+                    SELECT
+                        MIN(timestamp) AS min_timestamp,
+                        MAX(timestamp) AS max_timestamp
+                    FROM limited_data;""")
     @RegisterRowMapper(RangeMapper.class)
     Pair<Long, Long> getBatchToDelete(@Bind("limit") int limit, @Bind("to") long to);
 
