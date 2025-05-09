@@ -60,6 +60,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -240,8 +241,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
 
-    JobHandlerRegistry registry = new JobHandlerRegistry();
-    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    JobHandlerRegistry registry = getJobHandlerRegistry();
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
@@ -269,6 +269,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    return registry;
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
