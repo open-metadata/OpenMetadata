@@ -3,7 +3,7 @@ title: Managing and Editing Table Constraint in OpenMetadata
 slug: /how-to-guides/data-discovery/table-constraint
 ---
 
-# table constraint
+# Table Constraint
 
 ​In OpenMetadata, **table constraint** are integral to understanding the relationships between tables, enhancing data discovery, and facilitating comprehensive data lineage tracking. By default, the ingestion process captures these constraints, allowing users to visualize and manage table relationships effectively.​
 
