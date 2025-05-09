@@ -40,7 +40,7 @@ export const OwnerLabel = ({
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
   avatarSize = 32,
-  showMultipleType,
+  multiEntityConfig,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -51,7 +51,7 @@ export const OwnerLabel = ({
     isTaskClosed,
     ownersLength,
     setIsEditAssignee,
-  } = showMultipleType || {};
+  } = multiEntityConfig || {};
 
   const ownerElementsNonCompactView = useMemo(() => {
     if (!isCompactView) {
@@ -120,9 +120,9 @@ export const OwnerLabel = ({
                 avatarSize={avatarSize}
                 className={className}
                 isCompactView={isCompactView}
+                multiEntityConfig={multiEntityConfig}
                 owner={owner}
                 ownerDisplayName={ownerDisplayName?.[index]}
-                showMultipleType={showMultipleType}
               />
             </div>
           ))}
@@ -139,9 +139,9 @@ export const OwnerLabel = ({
                   avatarSize={avatarSize}
                   className={className}
                   isCompactView={isCompactView}
+                  multiEntityConfig={multiEntityConfig}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName?.[index]}
-                  showMultipleType={showMultipleType}
                 />
               </div>
             ))}
@@ -180,7 +180,7 @@ export const OwnerLabel = ({
     className,
     isCompactView,
     ownerDisplayName,
-    showMultipleType,
+    multiEntityConfig,
     isDropdownOpen,
     owners,
     setIsDropdownOpen,
@@ -212,7 +212,7 @@ export const OwnerLabel = ({
       );
     }
 
-    if (showMultipleType) {
+    if (multiEntityConfig) {
       return renderMultipleType;
     }
 

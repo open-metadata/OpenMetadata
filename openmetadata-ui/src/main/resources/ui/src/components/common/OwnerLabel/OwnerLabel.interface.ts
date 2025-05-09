@@ -29,7 +29,7 @@ export interface OwnerLabelProps {
   tooltipText?: string;
   isCompactView?: boolean;
   avatarSize?: number;
-  showMultipleType?: {
+  multiEntityConfig?: {
     isCreator?: boolean;
     hasEditAccess?: boolean;
     isTaskClosed?: boolean;

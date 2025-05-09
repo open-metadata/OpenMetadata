@@ -972,15 +972,15 @@ export const TaskTabNew = ({
                   <OwnerLabel
                     avatarSize={24}
                     isCompactView={false}
-                    owners={taskThread?.task?.assignees}
-                    showLabel={false}
-                    showMultipleType={{
+                    multiEntityConfig={{
                       isCreator,
                       hasEditAccess,
                       isTaskClosed,
                       ownersLength: owners.length,
                       setIsEditAssignee,
                     }}
+                    owners={taskThread?.task?.assignees}
+                    showLabel={false}
                   />
                 )}
               </Col>

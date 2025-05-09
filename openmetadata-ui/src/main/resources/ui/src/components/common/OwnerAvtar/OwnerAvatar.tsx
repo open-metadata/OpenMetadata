@@ -26,7 +26,7 @@ interface OwnerAvatarProps {
   avatarSize?: number;
   isCompactView?: boolean;
   inheritedIcon?: React.ReactNode;
-  showMultipleType?: {
+  multiEntityConfig?: {
     isCreator?: boolean;
     hasEditAccess?: boolean;
     isTaskClosed?: boolean;
@@ -40,11 +40,11 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   isCompactView,
   inheritedIcon,
   avatarSize = 32,
-  showMultipleType,
+  multiEntityConfig,
 }) => {
   const displayName = getEntityName(owner);
 
-  if (showMultipleType) {
+  if (multiEntityConfig) {
     return (
       <div className="flex w-max-full items-center gap-2">
         {owner.type === OwnerType.TEAM ? (
