@@ -131,7 +131,13 @@ class DataFrameColumnParser:
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
-        if file_type == SupportedTypes.PARQUET:
+        if file_type in {
+            SupportedTypes.PARQUET,
+            SupportedTypes.PARQUET_PQ,
+            SupportedTypes.PARQUET_PQT,
+            SupportedTypes.PARQUET_PARQ,
+            SupportedTypes.PARQUET_SNAPPY,
+        }:
             parser = ParquetDataFrameColumnParser(data_frame)
         elif file_type in {
             SupportedTypes.JSON,
