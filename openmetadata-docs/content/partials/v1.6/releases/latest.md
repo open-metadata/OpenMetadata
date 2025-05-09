@@ -1,7 +1,7 @@
-# 1.6.10 Release 🎉
+# 1.6.11 Release 🎉
 
 {% note noteType="Tip" %}
-**Apr 22nd, 2025**
+**Apr 28th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,14 +10,14 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.10!
+Learn how to upgrade your OpenMetadata instance to 1.6.11!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.10-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.11-release).
 
-- Introduced the ability to use a subset of permissions when adding or deleting users in teams—more granular control for team management.
-- Added an optional mechanism to fetch response schema directly from the schema property of API endpoints—enhancing flexibility for API integrations.
-- Fixed an issue with double slashes in API endpoint names for cleaner, consistent paths.
+- Fixed isOwner permission issue for domains and dataProducts.
+- Improve UDF Lineage Processing & Better Logging Time & MultiProcessing.
+- Fix to handle Primary Key for snowflake in data diff Tests.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.9-release...1.6.10-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.10-release...1.6.11-release)
