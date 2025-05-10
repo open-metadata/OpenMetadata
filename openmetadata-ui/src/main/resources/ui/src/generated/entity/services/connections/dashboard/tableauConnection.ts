@@ -15,10 +15,6 @@
  */
 export interface TableauConnection {
     /**
-     * Tableau API version.
-     */
-    apiVersion: string;
-    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
@@ -35,11 +31,7 @@ export interface TableauConnection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
-     * Tableau Environment Name.
-     */
-    env: string;
-    /**
-     * Tableau Server.
+     * Tableau Server url.
      */
     hostPort: string;
     /**
@@ -53,11 +45,7 @@ export interface TableauConnection {
     /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:                    string;
+    siteName?:                   string;
     sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**

@@ -16,3 +16,11 @@ WHERE NOT JSON_CONTAINS(
     JSON_QUOTE('operator')
   ) AND name = 'tableCustomSQLQuery';
 
+UPDATE dashboard_service_entity
+SET json = JSON_REMOVE(
+    json,
+    '$.connection.config.siteUrl',
+    '$.connection.config.apiVersion',
+    '$.connection.config.env'
+)
+WHERE serviceType = 'Tableau';
