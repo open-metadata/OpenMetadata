@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "ユーザ認証に成功しました",
     "valid-url-endpoint": "エンドポイントは有効なURLでなければなりません",
     "validation-error-assets": "Please examine all your assets that are being added",
+    "value-must-be-greater-than": "{{field}} は {{minimum}} より大きくなければなりません",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",
