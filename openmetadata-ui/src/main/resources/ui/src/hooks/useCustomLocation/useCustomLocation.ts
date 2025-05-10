@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import process from 'process';
 import { useLocation } from 'react-router-dom';
+import { getBasePath } from '../../utils/HistoryUtils';
 
 const useCustomLocation = (): ReturnType<typeof useLocation> => {
   const location = useLocation();
-  const modifiedPathname = location.pathname.replace(
-    process.env.APP_SUB_PATH ?? '',
-    ''
-  );
+  const modifiedPathname = location.pathname.replace(getBasePath(), '');
 
   return {
     ...location,
