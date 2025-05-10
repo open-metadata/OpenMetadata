@@ -131,6 +131,7 @@ export type DataAssetsHeaderProps = {
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
   onProfilerSettingUpdate?: () => void;
+  handleApiAction?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];

@@ -9,7 +9,9 @@
     "databaseMetadataConfigType": {
       "description": "Database Source Config Metadata Pipeline type",
       "type": "string",
-      "enum": ["DatabaseMetadata"],
+      "enum": [
+        "DatabaseMetadata"
+      ],
       "default": "DatabaseMetadata"
     },
     "incremental": {
@@ -78,7 +80,7 @@
       "default": true,
       "title": "Include Tags"
     },
-    "includeOwners":{
+    "includeOwners": {
       "title": "Include Owners",
       "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
       "type": "boolean",
@@ -96,7 +98,7 @@
       "default": false,
       "title": "Include DDL Statements"
     },
-    "overrideMetadata":{
+    "overrideMetadata": {
       "title": "Override Metadata",
       "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
       "type": "boolean",
@@ -145,6 +147,12 @@
       "title": "Incremental Metadata Extraction Configuration",
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
       "$ref": "#/definitions/incremental"
+    },
+    "syncSpecificEntity": {
+      "description": "Optional setting to sync specific entities, primarily used for specific sync pipelines. End users do not need to modify this.",
+      "type": "boolean",
+      "default": false,
+      "title": "Sync Specific Entity"
     }
   },
   "additionalProperties": false

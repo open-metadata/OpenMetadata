@@ -42,4 +42,5 @@ export interface ManageButtonProps {
   deleteButtonDescription?: string;
   deleteOptions?: DeleteOption[];
   onProfilerSettingUpdate?: () => void;
+  handleApiAction?: () => void;
 }

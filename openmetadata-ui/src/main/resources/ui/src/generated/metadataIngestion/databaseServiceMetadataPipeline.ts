@@ -87,6 +87,11 @@ export interface DatabaseServiceMetadataPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Optional setting to sync specific entities, primarily used for specific sync pipelines.
+     * End users do not need to modify this.
+     */
+    syncSpecificEntity?: boolean;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;

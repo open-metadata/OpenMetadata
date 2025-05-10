@@ -27,6 +27,7 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 - **`databaseFilterPattern`**: Regex to only fetch databases that matches the pattern. Refer to *[../type/filterPattern.json#/definitions/filterPattern](#/type/filterPattern.json#/definitions/filterPattern)*.
 - **`threads`** *(integer)*: Number of Threads to use in order to parallelize Table ingestion. Default: `1`.
 - **`incremental`**: Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases. Refer to *[#/definitions/incremental](#definitions/incremental)*.
+- **`syncSpecificEntity`**: Optional setting to sync specific entities, primarily used for specific sync pipelines. End users do not need to modify this. Default: `false`.
 ## Definitions
 
 - **`databaseMetadataConfigType`** *(string)*: Database Source Config Metadata Pipeline type. Must be one of: `["DatabaseMetadata"]`. Default: `"DatabaseMetadata"`.

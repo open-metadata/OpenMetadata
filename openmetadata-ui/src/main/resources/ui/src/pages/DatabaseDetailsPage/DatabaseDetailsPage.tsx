@@ -21,7 +21,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -40,15 +40,16 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
-  ResourceEntity,
+  ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
-  TabSpecificField,
+  TabSpecificField
 } from '../../enums/entity.enum';
+import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
@@ -62,13 +63,14 @@ import {
   getDatabaseSchemas,
   patchDatabaseDetails,
   restoreDatabase,
-  updateDatabaseVotes,
+  updateDatabaseVotes
 } from '../../rest/databaseAPI';
+import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+  getTabLabelMapFromTabs
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
@@ -78,14 +80,24 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getExplorePath,
-  getVersionPath,
+  getVersionPath
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
+import {
+  CreateIngestionPipeline,
+  LogLevels,
+  PipelineType
+} from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import {
+  addIngestionPipeline, deployIngestionPipelineById, triggerIngestionPipelineById
+} from '../../rest/ingestionPipelineAPI';
+import { generateUUID } from '../../utils/StringsUtils';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
@@ -436,6 +448,88 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsTabExpanded(!isTabExpanded);
   };
 
+  async function deployAndTriggerIngestion(ingestionId: string) {
+    await deployIngestionPipelineById(ingestionId);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    try {
+      await triggerIngestionPipelineById(ingestionId);
+    } catch (error) {
+      console.error(`Trigger failed for ingestion ${ingestionId}:`, error);
+    }
+  }
+  const handleApiAction = async () => {
+    // Get the current database name from the database state
+    const [service_name, database_name] = decodedDatabaseFQN.split('.');
+
+    try {
+      const response = await getServiceByFQN('databaseServices', service_name, {
+        include: Include.NonDeleted,
+      });
+      const ingestionPayload: CreateIngestionPipeline = {
+        airflowConfig: {
+          startDate: new Date(),
+          retries: 0,
+        },
+        loggerLevel: LogLevels.Info,
+        name: generateUUID(),
+        displayName: `${response.name}_metadata_${generateUUID().slice(0, 8)}`,
+        owners: [
+          {
+            id: currentUser?.id ?? '',
+            type: 'user',
+          },
+        ],
+        pipelineType: PipelineType.Metadata,
+        service: {
+          id: response.id as string,
+          type: "databaseService",
+        },
+        sourceConfig: {
+          config: {
+            type: ConfigType.DatabaseMetadata,
+            markDeletedTables: false,
+            markDeletedStoredProcedures: false,
+            includeTables: true,
+            includeViews: true,
+            includeTags: true,
+            includeOwners: true,
+            includeStoredProcedures: true,
+            includeDDL: true,
+            overrideMetadata: false,
+            queryLogDuration: 1,
+            queryParsingTimeoutLimit: 300,
+            useFqnForFiltering: false,
+            schemaFilterPattern: {
+              includes: [],
+              excludes: []
+            },
+            databaseFilterPattern: {
+              includes: [database_name],
+              excludes: []
+            },
+            syncSpecificEntity: true,
+            threads: 1,
+          },
+        },
+      };
+      try {
+        const ingestion = await addIngestionPipeline(ingestionPayload);
+        console.log(ingestion)
+        await deployAndTriggerIngestion(ingestion.id);
+        showSuccessToast(
+          'Syncing metadata process for this entity has been started',
+          4000
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    } catch (error) {
+      console.error('Error fetching service details:', error);
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
     [tabs[0], activeTab]
@@ -477,6 +571,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
+              handleApiAction={handleApiAction}
             />
           </Col>
           <GenericProvider<Database>

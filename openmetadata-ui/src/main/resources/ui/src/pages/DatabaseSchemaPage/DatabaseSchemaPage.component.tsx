@@ -81,11 +81,23 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  addIngestionPipeline, deployIngestionPipelineById, triggerIngestionPipelineById
+} from '../../rest/ingestionPipelineAPI';
+import { getServiceByFQN } from '../../rest/serviceAPI';
+import {
+  CreateIngestionPipeline,
+  LogLevels,
+  PipelineType
+} from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { generateUUID } from '../../utils/StringsUtils';
+import { ConfigType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-
+  const { currentUser } = useApplicationStore();
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
@@ -491,6 +503,89 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
+  async function deployAndTriggerIngestion(ingestionId: string) {
+    await deployIngestionPipelineById(ingestionId);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    try {
+      await triggerIngestionPipelineById(ingestionId);
+    } catch (error) {
+      console.error(`Trigger failed for ingestion ${ingestionId}:`, error);
+    }
+  }
+  const handleApiAction = async () => {
+  // Get the current database name from the database state
+  // console.log("table details",tableFqn)
+    const [service_name, database_name, schema_name] = decodedDatabaseSchemaFQN.split('.');
+  // const [service_name, database_name] = tableFqn.split('.');
+
+    try {
+      const response = await getServiceByFQN('databaseServices', service_name, {
+        include: Include.NonDeleted,
+      });
+      const ingestionPayload: CreateIngestionPipeline = {
+        airflowConfig: {
+          startDate: new Date(),
+          retries: 0,
+        },
+        loggerLevel: LogLevels.Info,
+        name: generateUUID(),
+        displayName: `${response.name}_metadata_${generateUUID().slice(0, 8)}`,
+        owners: [
+          {
+            id: currentUser?.id ?? '',
+            type: 'user',
+          },
+        ],
+        pipelineType: PipelineType.Metadata,
+        service: {
+          id: response.id as string,
+          type: "databaseService",
+        },
+        sourceConfig: {
+          config: {
+            type: ConfigType.DatabaseMetadata,
+            markDeletedTables: false,
+            markDeletedStoredProcedures: false,
+            includeTables: true,
+            includeViews: true,
+            includeTags: true,
+            includeOwners: true,
+            includeStoredProcedures: true,
+            includeDDL: true,
+            overrideMetadata: false,
+            queryLogDuration: 1,
+            queryParsingTimeoutLimit: 300,
+            useFqnForFiltering: false,
+            schemaFilterPattern: {
+              includes: [schema_name],
+              excludes: []
+            },
+            databaseFilterPattern: {
+              includes: [database_name],
+              excludes: []
+            },
+            syncSpecificEntity: true,
+            threads: 1,
+          },
+        },
+      };
+      try {
+        const ingestion = await addIngestionPipeline(ingestionPayload);
+        console.log(ingestion)
+        await deployAndTriggerIngestion(ingestion.id);
+        showSuccessToast(
+          'Syncing metadata process for this entity has been started',
+          4000
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    } catch (error) {
+      console.error('Error fetching service details:', error);
+      showErrorToast(error as AxiosError);
+    }
+  };
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
@@ -548,6 +643,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onTierUpdate={handleUpdateTier}
                 onUpdateVote={updateVote}
                 onVersionClick={versionHandler}
+                handleApiAction={handleApiAction}
               />
             )}
           </Col>
