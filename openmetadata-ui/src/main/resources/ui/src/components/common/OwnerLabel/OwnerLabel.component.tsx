@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
@@ -39,10 +40,18 @@ export const OwnerLabel = ({
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
   avatarSize = 32,
+  multiEntityConfig,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const {
+    isCreator,
+    hasEditAccess,
+    isTaskClosed,
+    ownersLength,
+    setIsEditAssignee,
+  } = multiEntityConfig || {};
 
   const ownerElementsNonCompactView = useMemo(() => {
     if (!isCompactView) {
@@ -85,16 +94,107 @@ export const OwnerLabel = ({
     className,
   ]);
 
+  const showMultipleTypeTeam = owners.filter(
+    (owner) => owner.type === OwnerType.TEAM
+  );
+  const showMultipleTypeVisibleUser = owners
+    .filter((owner) => owner.type === OwnerType.USER)
+    .slice(0, maxVisibleOwners);
+  const showMultipleTypeRemainingUser = owners
+    .filter((owner) => owner.type === OwnerType.USER)
+    .slice(maxVisibleOwners);
+  const renderMultipleType = useMemo(() => {
+    return (
+      <div className="flex-wrap w-full d-flex relative items-center">
+        <div className="flex w-full gap-2 flex-wrap relative">
+          {showMultipleTypeTeam.map((owner, index) => (
+            <div
+              className="w-max-full"
+              key={owner.id}
+              style={{
+                zIndex: showMultipleTypeTeam.length - index,
+                marginRight: '-4px',
+                position: 'relative',
+              }}>
+              <OwnerItem
+                avatarSize={avatarSize}
+                className={className}
+                isCompactView={isCompactView}
+                multiEntityConfig={multiEntityConfig}
+                owner={owner}
+                ownerDisplayName={ownerDisplayName?.[index]}
+              />
+            </div>
+          ))}
+          <div className="flex  relative">
+            {showMultipleTypeVisibleUser.map((owner, index) => (
+              <div
+                key={owner.id}
+                style={{
+                  zIndex: showMultipleTypeVisibleUser.length - index,
+                  marginRight: '-4px',
+                  position: 'relative',
+                }}>
+                <OwnerItem
+                  avatarSize={avatarSize}
+                  className={className}
+                  isCompactView={isCompactView}
+                  multiEntityConfig={multiEntityConfig}
+                  owner={owner}
+                  ownerDisplayName={ownerDisplayName?.[index]}
+                />
+              </div>
+            ))}
+            {showMultipleTypeRemainingUser.length > 0 && (
+              <OwnerReveal
+                avatarSize={isCompactView ? 24 : avatarSize}
+                isCompactView={false}
+                isDropdownOpen={isDropdownOpen}
+                owners={showMultipleTypeRemainingUser}
+                remainingCount={showMultipleTypeRemainingUser.length}
+                setIsDropdownOpen={setIsDropdownOpen}
+                setShowAllOwners={setShowAllOwners}
+                showAllOwners={showAllOwners}
+              />
+            )}
+            {(isCreator || hasEditAccess) &&
+              !isTaskClosed &&
+              ownersLength === 0 && (
+                <Button
+                  className="p-0 flex-center h-auto"
+                  data-testid="edit-assignees"
+                  icon={<EditIcon width="14px" />}
+                  type="text"
+                  onClick={() => setIsEditAssignee?.(true)}
+                />
+              )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    showMultipleTypeTeam,
+    showMultipleTypeVisibleUser,
+    showMultipleTypeRemainingUser,
+    avatarSize,
+    className,
+    isCompactView,
+    ownerDisplayName,
+    multiEntityConfig,
+    isDropdownOpen,
+    owners,
+    setIsDropdownOpen,
+    setShowAllOwners,
+    showAllOwners,
+  ]);
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
-
     // Show all owners when "more" is clicked, regardless of view mode
-    const visibleOwners = (
-      showAllOwners ? owners : owners.slice(0, maxVisibleOwners)
-    ).reverse();
+    const visibleOwners = showAllOwners
+      ? owners
+      : owners.slice(0, maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
-
     // If no owners, render the empty state
     if (!hasOwners) {
       return (
@@ -112,19 +212,23 @@ export const OwnerLabel = ({
       );
     }
 
+    if (multiEntityConfig) {
+      return renderMultipleType;
+    }
+
     return (
       <div
         className={classNames({
-          'owner-label-container d-flex flex-col items-start flex-start':
+          'owner-label-container w-full d-flex flex-col items-start flex-start':
             !isCompactView,
           'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
         {ownerElementsNonCompactView}
-        <div className="d-flex items-center flex-center">
+        <div className="d-flex items-center w-full flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center flex-row-reverse m-l-xss',
+              'avatar-group w-full  d-flex relative items-center',
               {
                 'gap-2 flex-wrap': isCompactView,
                 inherited: Boolean(owners.some((owner) => owner?.inherited)),
@@ -136,7 +240,16 @@ export const OwnerLabel = ({
                 className={classNames({
                   'w-full': owner.type === OwnerType.TEAM,
                 })}
-                key={owner.id}>
+                key={owner.id}
+                style={
+                  !isCompactView
+                    ? {
+                        zIndex: visibleOwners.length - index,
+                        marginRight: '-4px',
+                        position: 'relative',
+                      }
+                    : {}
+                }>
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
@@ -146,34 +259,25 @@ export const OwnerLabel = ({
                 />
               </div>
             ))}
-            {showMoreButton && isCompactView && (
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
+
+            {showMoreButton && (
+              <div
+                className={classNames({
+                  'm-l-sm': !isCompactView,
+                })}>
+                <OwnerReveal
+                  avatarSize={isCompactView ? 24 : avatarSize}
+                  isCompactView={isCompactView}
+                  isDropdownOpen={isDropdownOpen}
+                  owners={owners.slice(maxVisibleOwners)}
+                  remainingCount={remainingOwnersCount}
+                  setIsDropdownOpen={setIsDropdownOpen}
+                  setShowAllOwners={setShowAllOwners}
+                  showAllOwners={showAllOwners}
+                />
+              </div>
             )}
           </div>
-
-          {showMoreButton && !isCompactView && (
-            <div className="m-l-xs">
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            </div>
-          )}
         </div>
         {isCompactView && onUpdate && (
           <UserTeamSelectableList
