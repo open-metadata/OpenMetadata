@@ -308,7 +308,7 @@ const DashboardDetails = ({
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}
           onUpdate={onDashboardUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

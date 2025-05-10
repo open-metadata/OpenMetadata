@@ -1198,13 +1198,13 @@ export const getTableWidgetFromKey = (
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
   ) {
-    return <TableConstraints newLook />;
+    return <TableConstraints />;
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
   ) {
-    return <FrequentlyJoinedTables newLook />;
+    return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
-    return <PartitionedKeys newLook />;
+    return <PartitionedKeys />;
   } else {
     return (
       <CommonWidgets

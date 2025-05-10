@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space, Typography } from 'antd';
+import { Button, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -26,6 +26,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -188,10 +189,11 @@ const GlossaryTermSynonyms = () => {
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="synonyms-container"
-      title={header}>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="synonyms-container">
       {isViewMode ? (
         getSynonymsContainer()
       ) : (
@@ -228,7 +230,7 @@ const GlossaryTermSynonyms = () => {
           />
         </>
       )}
-    </Card>
+    </ExpandableCard>
   );
 };
 

@@ -35,7 +35,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
-import { getLayoutFromCustomizedPage } from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  getLayoutFromCustomizedPage,
+  updateWidgetHeightRecursively,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -62,6 +65,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
+  updateWidgetHeight: (widgetId: string, height: number) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -134,6 +138,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [setFilteredKeys]
   );
 
+  const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
+    setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
+  }, []);
+
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
     return layout?.find((widget) =>
@@ -191,6 +199,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       onThreadLinkSelect,
       layout: filteredLayout,
       filterWidgets,
+      updateWidgetHeight,
     }),
     [
       data,
@@ -202,6 +211,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       onThreadLinkSelect,
       filteredLayout,
       filterWidgets,
+      updateWidgetHeight,
     ]
   );
 

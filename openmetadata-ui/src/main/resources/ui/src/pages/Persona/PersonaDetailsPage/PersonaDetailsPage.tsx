@@ -245,7 +245,6 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
-            newLook
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}

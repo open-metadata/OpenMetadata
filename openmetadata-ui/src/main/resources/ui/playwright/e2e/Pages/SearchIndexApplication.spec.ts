@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { expect, Page, Response } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   getApiContext,
@@ -53,13 +53,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
   await expect(page.getByTestId('pipeline-status')).toContainText('Success');
 };
 
-const verifyLastExecutionRun = async (page: Page) => {
-  const response = await page.waitForResponse(
-    '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
-  );
-
-  expect(response.status()).toBe(200);
-
+const verifyLastExecutionRun = async (page: Page, response: Response) => {
   const responseData = await response.json();
   if (responseData.data.length > 0) {
     expect(responseData.data).toHaveLength(1);
@@ -82,12 +76,19 @@ test('Search Index Application', async ({ page }) => {
   });
 
   await test.step('Verify last execution run', async () => {
+    const statusAPI = page.waitForResponse(
+      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
+    );
     await page
       .locator(
         '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
       )
       .click();
-    await verifyLastExecutionRun(page);
+    const statusResponse = await statusAPI;
+
+    expect(statusResponse.status()).toBe(200);
+
+    await verifyLastExecutionRun(page, statusResponse);
   });
 
   await test.step('View App Run Config', async () => {
@@ -234,9 +235,15 @@ test('Search Index Application', async ({ page }) => {
 
       await toastNotification(page, 'Application triggered successfully');
 
+      const statusAPI = page.waitForResponse(
+        '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
+      );
       await page.reload();
+      const statusResponse = await statusAPI;
 
-      await verifyLastExecutionRun(page);
+      expect(statusResponse.status()).toBe(200);
+
+      await verifyLastExecutionRun(page, statusResponse);
     });
   }
 });
