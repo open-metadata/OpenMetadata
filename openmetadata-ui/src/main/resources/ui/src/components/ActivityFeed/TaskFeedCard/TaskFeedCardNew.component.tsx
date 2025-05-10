@@ -376,7 +376,6 @@ const TaskFeedCard = ({
                       className="task-card-approve-btn d-flex items-center"
                       data-testid="approve-button"
                       icon={<CheckCircleFilled />}
-                      type="primary"
                       onClick={onTaskResolve}>
                       {t('label.approve')}
                     </Button>
