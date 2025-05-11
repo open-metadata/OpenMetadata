@@ -8,11 +8,13 @@ slug: /releases/all-releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %}{% ossContent %}[Roadmap](/roadmap){% /ossContent %} section.
+version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %} section.
 
 {% /note %}
 
 {% partial file="/v1.7/releases/latest.md" /%}
+
+{% partial file="/v1.7/releases/1.6.11.md" /%}
 
 {% partial file="/v1.7/releases/1.6.10.md" /%}
 
