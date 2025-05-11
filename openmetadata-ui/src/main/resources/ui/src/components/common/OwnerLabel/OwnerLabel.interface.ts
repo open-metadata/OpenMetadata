@@ -29,11 +29,6 @@ export interface OwnerLabelProps {
   tooltipText?: string;
   isCompactView?: boolean;
   avatarSize?: number;
-  multiEntityConfig?: {
-    isCreator?: boolean;
-    hasEditAccess?: boolean;
-    isTaskClosed?: boolean;
-    ownersLength?: number;
-    setIsEditAssignee?: React.Dispatch<React.SetStateAction<boolean>>;
-  };
+  isAssignee?: boolean;
+  onEditClick?: () => void;
 }

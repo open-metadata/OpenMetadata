@@ -434,6 +434,8 @@ export const TaskTabNew = ({
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
 
+  const shouldEditAssignee =
+    hasEditAccess && !isTaskClosed && owners.length === 0;
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
@@ -863,6 +865,10 @@ export const TaskTabNew = ({
     setTaskAction(latestAction);
   }, [latestAction]);
 
+  const handleEditClick = () => {
+    setIsEditAssignee(true);
+  };
+
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeaderNew thread={taskThread} />
   ) : (
@@ -970,17 +976,13 @@ export const TaskTabNew = ({
                   </div>
                 ) : (
                   <OwnerLabel
+                    isAssignee
                     avatarSize={24}
+                    hasPermission={shouldEditAssignee}
                     isCompactView={false}
-                    multiEntityConfig={{
-                      isCreator,
-                      hasEditAccess,
-                      isTaskClosed,
-                      ownersLength: owners.length,
-                      setIsEditAssignee,
-                    }}
                     owners={taskThread?.task?.assignees}
                     showLabel={false}
+                    onEditClick={handleEditClick}
                   />
                 )}
               </Col>

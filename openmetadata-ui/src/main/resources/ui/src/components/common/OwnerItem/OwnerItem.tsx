@@ -26,13 +26,7 @@ interface OwnerItemProps {
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
-  multiEntityConfig?: {
-    isCreator?: boolean;
-    hasEditAccess?: boolean;
-    isTaskClosed?: boolean;
-    ownersLength?: number;
-    setIsEditAssignee?: (value: boolean) => void;
-  };
+  isAssignee?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -41,7 +35,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   className,
   ownerDisplayName,
   avatarSize = 32,
-  multiEntityConfig,
+  isAssignee,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
@@ -86,8 +80,8 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <OwnerAvatar
             avatarSize={avatarSize}
             inheritedIcon={inheritedIcon}
+            isAssignee={isAssignee}
             isCompactView={isCompactView}
-            multiEntityConfig={multiEntityConfig}
             owner={owner}
           />
         </Link>
@@ -100,8 +94,8 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             <OwnerAvatar
               avatarSize={avatarSize}
               inheritedIcon={inheritedIcon}
+              isAssignee={isAssignee}
               isCompactView={isCompactView}
-              multiEntityConfig={multiEntityConfig}
               owner={owner}
             />
           </Link>

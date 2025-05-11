@@ -26,13 +26,7 @@ interface OwnerAvatarProps {
   avatarSize?: number;
   isCompactView?: boolean;
   inheritedIcon?: React.ReactNode;
-  multiEntityConfig?: {
-    isCreator?: boolean;
-    hasEditAccess?: boolean;
-    isTaskClosed?: boolean;
-    ownersLength?: number;
-    setIsEditAssignee?: (value: boolean) => void;
-  };
+  isAssignee?: boolean;
 }
 
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
@@ -40,11 +34,11 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   isCompactView,
   inheritedIcon,
   avatarSize = 32,
-  multiEntityConfig,
+  isAssignee,
 }) => {
   const displayName = getEntityName(owner);
 
-  if (multiEntityConfig) {
+  if (isAssignee) {
     return (
       <div className="flex w-max-full items-center gap-2">
         {owner.type === OwnerType.TEAM ? (
@@ -53,7 +47,6 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
               className="owner-team-icon"
               component={AssigneesIcon}
               data-testid={!isCompactView && getEntityName(owner)}
-              style={{ fontSize: '16px', color: 'white' }}
             />
             <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
               {displayName}

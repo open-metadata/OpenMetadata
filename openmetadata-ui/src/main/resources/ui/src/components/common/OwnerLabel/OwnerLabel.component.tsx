@@ -40,18 +40,12 @@ export const OwnerLabel = ({
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
   avatarSize = 32,
-  multiEntityConfig,
+  isAssignee = false,
+  onEditClick,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const {
-    isCreator,
-    hasEditAccess,
-    isTaskClosed,
-    ownersLength,
-    setIsEditAssignee,
-  } = multiEntityConfig || {};
 
   const ownerElementsNonCompactView = useMemo(() => {
     if (!isCompactView) {
@@ -108,38 +102,30 @@ export const OwnerLabel = ({
       <div className="flex-wrap w-full d-flex relative items-center">
         <div className="flex w-full gap-2 flex-wrap relative">
           {showMultipleTypeTeam.map((owner, index) => (
-            <div
-              className="w-max-full"
-              key={owner.id}
-              style={{
-                zIndex: showMultipleTypeTeam.length - index,
-                marginRight: '-4px',
-                position: 'relative',
-              }}>
+            <div className="w-max-full" key={owner.id}>
               <OwnerItem
                 avatarSize={avatarSize}
                 className={className}
+                isAssignee={isAssignee}
                 isCompactView={isCompactView}
-                multiEntityConfig={multiEntityConfig}
                 owner={owner}
                 ownerDisplayName={ownerDisplayName?.[index]}
               />
             </div>
           ))}
-          <div className="flex  relative">
+          <div className="flex relative">
             {showMultipleTypeVisibleUser.map((owner, index) => (
               <div
+                className="owner-item-container relative"
                 key={owner.id}
                 style={{
                   zIndex: showMultipleTypeVisibleUser.length - index,
-                  marginRight: '-4px',
-                  position: 'relative',
                 }}>
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
+                  isAssignee={isAssignee}
                   isCompactView={isCompactView}
-                  multiEntityConfig={multiEntityConfig}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName?.[index]}
                 />
@@ -157,17 +143,15 @@ export const OwnerLabel = ({
                 showAllOwners={showAllOwners}
               />
             )}
-            {(isCreator || hasEditAccess) &&
-              !isTaskClosed &&
-              ownersLength === 0 && (
-                <Button
-                  className="p-0 flex-center h-auto"
-                  data-testid="edit-assignees"
-                  icon={<EditIcon width="14px" />}
-                  type="text"
-                  onClick={() => setIsEditAssignee?.(true)}
-                />
-              )}
+            {hasPermission && (
+              <Button
+                className="p-0 flex-center h-auto"
+                data-testid="edit-assignees"
+                icon={<EditIcon width="14px" />}
+                type="text"
+                onClick={onEditClick}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -180,7 +164,8 @@ export const OwnerLabel = ({
     className,
     isCompactView,
     ownerDisplayName,
-    multiEntityConfig,
+    hasPermission,
+    onEditClick,
     isDropdownOpen,
     owners,
     setIsDropdownOpen,
@@ -212,7 +197,7 @@ export const OwnerLabel = ({
       );
     }
 
-    if (multiEntityConfig) {
+    if (isAssignee) {
       return renderMultipleType;
     }
 
