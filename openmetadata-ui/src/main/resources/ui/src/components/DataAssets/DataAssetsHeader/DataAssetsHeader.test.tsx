@@ -375,4 +375,46 @@ describe('DataAssetsHeader component', () => {
       entityLink: 'entityFeedLink',
     });
   });
+
+  it('renders certification or no certificates text', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          certification: {
+            tagLabel: {
+              tagFQN: 'Certification.Bronze',
+              name: 'Bronze',
+              displayName: 'Bronze_medal',
+              description: 'Bronze certified Data Asset test',
+              style: {
+                color: '#C08329',
+                iconURL: 'BronzeCertification.svg',
+              },
+              source: TagSource.Classification,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+            appliedDate: 1743070962048,
+            expiryDate: 1745662962048,
+          },
+        }}
+        disableRunAgentsButton={false}
+      />
+    );
+
+    expect(screen.getByText('Certification')).toBeInTheDocument();
+    expect(screen.getByText('Bronze_medal')).toBeInTheDocument();
+
+    <DataAssetsHeader
+      {...mockProps}
+      dataAsset={{
+        ...mockProps.dataAsset,
+      }}
+      disableRunAgentsButton={false}
+    />;
+
+    expect(screen.getByText('no certificates')).toBeInTheDocument();
+  });
 });
