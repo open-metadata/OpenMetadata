@@ -29,7 +29,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.source.pipeline.openlineage.utils import (
+    FQNNotFoundException,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -39,6 +41,8 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Timestamp,
 )
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -51,6 +55,8 @@ from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+
+from .utils import get_destination_table_details, get_source_table_details
 
 logger = ingestion_logger()
 
@@ -189,6 +195,25 @@ class AirbyteSource(PipelineServiceSource):
                     )
                 )
 
+    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
+        """
+        Get the FQN of the table
+        """
+        try:
+            if self.get_db_service_names():
+                return self._get_table_fqn_from_om(table_details)
+            else:
+                return fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name="*",
+                    database_name=table_details.database,
+                    schema_name=table_details.schema,
+                    table_name=table_details.name,
+                )
+        except FQNNotFoundException:
+            return None
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirbytePipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -203,41 +228,27 @@ class AirbyteSource(PipelineServiceSource):
         destination_connection = self.client.get_destination(
             pipeline_details.connection.get("destinationId")
         )
-        source_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=source_connection.get("name")
-        )
-        destination_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=destination_connection.get("name")
-        )
-        if not source_service or not destination_service:
-            return
 
         for task in (
             pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
         ):
             stream = task.get("stream")
-            from_fqn = fqn.build(
-                self.metadata,
-                Table,
-                table_name=stream.get("name"),
-                database_name=None,
-                schema_name=stream.get("namespace"),
-                service_name=source_connection.get("name"),
+
+            source_table_details = get_source_table_details(stream, source_connection)
+            destination_table_details = get_destination_table_details(
+                stream, destination_connection
             )
 
-            to_fqn = fqn.build(
-                self.metadata,
-                Table,
-                table_name=stream.get("name"),
-                database_name=None,
-                schema_name=stream.get("namespace"),
-                service_name=destination_connection.get("name"),
-            )
+            from_fqn = self._get_table_fqn(source_table_details)
+            to_fqn = self._get_table_fqn(destination_table_details)
+
+            if not from_fqn or not to_fqn:
+                continue
 
             from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
 
-            if not from_entity and not to_entity:
+            if not from_entity or not to_entity:
                 continue
 
             pipeline_fqn = fqn.build(
@@ -279,4 +290,4 @@ class AirbyteSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details.connection.get("connectionId")
+        return pipeline_details.connection.get("name")
