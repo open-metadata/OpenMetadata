@@ -94,8 +94,10 @@ import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
+  addServiceFollower,
   getServiceByFQN,
   patchService,
+  removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
@@ -137,6 +139,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
@@ -173,7 +176,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
-
+  const USERId = currentUser?.id ?? '';
   const {
     paging: collateAgentPaging,
     pageSize: collateAgentPageSize,
@@ -225,6 +228,23 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
 
+  const { followers = [] } = useMemo(
+    () => ({
+      ...serviceDetails,
+      tier: getTierTags(serviceDetails.tags ?? []),
+      apiEndpointTags: getTagsWithoutTier(serviceDetails.tags ?? []),
+      entityName: getEntityName(serviceDetails),
+    }),
+    [serviceDetails]
+  );
+
+  const { isFollowing } = useMemo(
+    () => ({
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
+      followersCount: followers?.length ?? 0,
+    }),
+    [followers, currentUser]
+  );
   const { CollateAIAgentsWidget } = useMemo(
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
@@ -301,10 +321,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => serviceDetails,
-    [serviceDetails]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: serviceId,
+  } = useMemo(() => serviceDetails, [serviceDetails]);
 
   const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
@@ -738,6 +759,55 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
+  const followService = useCallback(async () => {
+    try {
+      const res = await addServiceFollower(serviceId, currentUser?.id ?? '');
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setServiceDetails((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const unFollowService = useCallback(async () => {
+    try {
+      const res = await removeServiceFollower(serviceId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setServiceDetails((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowService() : await followService();
+  }, [isFollowing, unFollowService, followService]);
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
       if (isEmpty(serviceDetails)) {
@@ -1427,6 +1497,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreService}
               onTierUpdate={handleUpdateTier}

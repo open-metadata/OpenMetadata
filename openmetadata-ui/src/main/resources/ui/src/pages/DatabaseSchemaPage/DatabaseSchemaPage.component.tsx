@@ -56,13 +56,16 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  addSchemaFollower,
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  removeSchemaFollower,
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
@@ -79,12 +82,15 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
 
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -111,6 +117,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
+  const { followers = [] } = useMemo(
+    () => ({
+      ...databaseSchema,
+      tier: getTierTags(databaseSchema.tags ?? []),
+      apiEndpointTags: getTagsWithoutTier(databaseSchema.tags ?? []),
+      entityName: getEntityName(databaseSchema),
+    }),
+    [databaseSchema]
+  );
+
+  const { isFollowing } = useMemo(
+    () => ({
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
+      followersCount: followers?.length ?? 0,
+    }),
+    [followers, currentUser]
+  );
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
@@ -500,6 +523,60 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       checkIfExpandViewSupported(tabs[0], activeTab, PageType.DatabaseSchema),
     [tabs[0], activeTab]
   );
+  const followSchema = useCallback(async () => {
+    try {
+      const res = await addSchemaFollower(
+        databaseSchemaId,
+        currentUser?.id ?? ''
+      );
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setDatabaseSchema((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(databaseSchema),
+        })
+      );
+    }
+  }, [USERId, databaseSchemaId]);
+  const unFollowSchema = useCallback(async () => {
+    try {
+      const res = await removeSchemaFollower(databaseSchemaId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setDatabaseSchema((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(databaseSchema),
+        })
+      );
+    }
+  }, [USERId, databaseSchemaId]);
+
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowSchema() : await followSchema();
+  }, [isFollowing, unFollowSchema, followSchema]);
+
   if (isPermissionsLoading) {
     return <Loader />;
   }
@@ -542,6 +619,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
+                onFollowClick={handleFollowClick}
                 onOwnerUpdate={handleUpdateOwner}
                 onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}

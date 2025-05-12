@@ -15,11 +15,13 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import {
   Database,
   DatabaseProfilerConfig as ProfilerConfig,
 } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -82,6 +84,35 @@ export const patchDatabaseSchemaDetails = async (
     Operation[],
     AxiosResponse<DatabaseSchema>
   >(`/databaseSchemas/${id}`, data);
+
+  return response.data;
+};
+
+export const addSchemaFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `/databaseSchema/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeSchemaFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(
+    `/services/databaseServices/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

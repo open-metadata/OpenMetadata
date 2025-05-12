@@ -54,13 +54,16 @@ import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  addSchemaFollower,
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
+  removeSchemaFollower,
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
@@ -80,7 +83,7 @@ import {
   getExplorePath,
   getVersionPath,
 } from '../../utils/RouterUtils';
-import { getTierTags } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -111,11 +114,14 @@ const DatabaseDetails: FunctionComponent = () => {
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => database,
-    [database]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: databaseId,
+  } = useMemo(() => database, [database]);
 
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
   const tier = getTierTags(database?.tags ?? []);
 
   const [databasePermission, setDatabasePermission] =
@@ -177,7 +183,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: `${TabSpecificField.OWNERS},
+      ${TabSpecificField.TAGS},
+      ${TabSpecificField.DOMAIN},
+      ${TabSpecificField.VOTES},
+      ${TabSpecificField.EXTENSION},
+      ${TabSpecificField.DATA_PRODUCTS},
+      ${TabSpecificField.FOLLOWERS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -325,6 +337,23 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const { followers = [] } = useMemo(
+    () => ({
+      ...database,
+      tier: getTierTags(database.tags ?? []),
+      apiEndpointTags: getTagsWithoutTier(database.tags ?? []),
+      entityName: getEntityName(database),
+    }),
+    [database]
+  );
+
+  const { isFollowing } = useMemo(
+    () => ({
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
+      followersCount: followers?.length ?? 0,
+    }),
+    [followers, currentUser]
+  );
   const handleRestoreDatabase = useCallback(async () => {
     try {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
@@ -431,6 +460,56 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+  const followSchema = useCallback(async () => {
+    try {
+      const res = await addSchemaFollower(databaseId, currentUser?.id ?? '');
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setDatabase((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, databaseId]);
+  const unFollowSchema = useCallback(async () => {
+    try {
+      const res = await removeSchemaFollower(databaseId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setDatabase((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, database]);
+
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowSchema() : await followSchema();
+  }, [isFollowing, unFollowSchema, followSchema]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -471,6 +550,7 @@ const DatabaseDetails: FunctionComponent = () => {
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
