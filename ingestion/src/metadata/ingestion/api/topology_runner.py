@@ -376,7 +376,11 @@ class TopologyRunnerMixin(Generic[C]):
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)
             if entity_source_hash:
                 # if the source hash is present, compare it with new hash
-                if entity_source_hash != create_entity_request_hash:
+                # if overrideMetadata is true, we will always update the entity
+                if (
+                    entity_source_hash != create_entity_request_hash
+                    and not self.source_config.overrideMetadata
+                ):
                     # the entity has changed, get the entity from server and make a patch request
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
