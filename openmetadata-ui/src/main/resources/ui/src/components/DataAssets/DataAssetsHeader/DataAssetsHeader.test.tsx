@@ -12,26 +12,24 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
-import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
-import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader } from './DataAssetsHeader.component';
-import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
-
-import { Typography } from 'antd';
-import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
@@ -93,13 +91,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
-      <div className="d-flex align-start extra-info-container">
-        <Typography.Text
-          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-          data-testid={dataTestId}>
-          {label && <span className="extra-info-label-heading">{label}</span>}
-          <div className="font-medium extra-info-value">{value}</div>
-        </Typography.Text>
+      <div data-testid={dataTestId}>
+        {label && <span>{label}</span>}
+        <div>{value}</div>
       </div>
     )),
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
