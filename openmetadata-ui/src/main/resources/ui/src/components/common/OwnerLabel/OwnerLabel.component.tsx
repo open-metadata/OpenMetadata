@@ -97,6 +97,10 @@ export const OwnerLabel = ({
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
 
+    const renderVisibleOwners = isCompactView
+      ? visibleOwners
+      : reverse(visibleOwners);
+
     // If no owners, render the empty state
     if (!hasOwners) {
       return (
@@ -134,7 +138,7 @@ export const OwnerLabel = ({
               },
               className
             )}>
-            {(isCompactView ? visibleOwners : reverse(visibleOwners)).map(
+            {renderVisibleOwners.map(
               (owner: EntityReference, index: number) => (
                 <div
                   className={classNames({
@@ -199,7 +203,6 @@ export const OwnerLabel = ({
     showAllOwners,
     maxVisibleOwners,
     placeHolder,
-    t,
     ownerDisplayName,
     isCompactView,
     isDropdownOpen,
