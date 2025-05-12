@@ -11,10 +11,6 @@ slug: /how-to-guides/data-discovery/table-constraint
 
 Once the metadata ingestion is complete, foreign key relationships can be explored within the OpenMetadata UI:​
 
-## Viewing table constraint
-
-Once the metadata ingestion is complete, foreign key relationships can be explored within the OpenMetadata UI:​
-
 ### Navigate to the Table Details Page:
 - Access the desired table within the OpenMetadata interface.
 
@@ -25,7 +21,7 @@ caption="Navigate to the Table Details Page"
 /%}
 
 ### Explore Table Constraints:
-- Table constraint are displayed, detailing the relationships between the current table and its related tables. [OpenMetadata Docs+6GitHub+6OpenMetadata Docs+6](https://github.com/open-metadata/OpenMetadata/issues/10583)
+- Table constraint are displayed, detailing the relationships between the current table and its related tables. [OpenMetadata referred column for foreign key](https://github.com/open-metadata/OpenMetadata/issues/10583)
 
 {% image
 src="/images/v1.8/how-to-guides/discovery/foreign-key2.png"
