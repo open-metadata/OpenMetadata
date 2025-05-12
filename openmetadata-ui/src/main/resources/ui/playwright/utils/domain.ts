@@ -446,6 +446,28 @@ export const addAssetsToDataProduct = async (
   await assetsAddRes;
 
   await checkAssetsCount(page, assets.length);
+
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    await page
+      .locator(
+        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProductFqn}`)
+    ).toBeVisible();
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const removeAssetsFromDataProduct = async (
