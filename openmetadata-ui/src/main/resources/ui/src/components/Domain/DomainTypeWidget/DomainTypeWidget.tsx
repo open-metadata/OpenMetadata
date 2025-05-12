@@ -10,23 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import FormItemLabel from '../../common/Form/FormItemLabel';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
-export const DomainTypeWidget = ({
-  newLook = false,
-}: {
-  newLook?: boolean;
-}) => {
+export const DomainTypeWidget = () => {
   const { data: domain, permissions, onUpdate } = useGenericContext<Domain>();
   const [editDomainType, setEditDomainType] = useState(false);
 
@@ -63,8 +60,8 @@ export const DomainTypeWidget = ({
 
       {editAllPermission && domain.domainType && (
         <EditIconButton
+          newLook
           data-testid="edit-domainType-button"
-          newLook={newLook}
           size="small"
           title={t('label.edit-entity', {
             entity: t('label.domain-type'),
@@ -93,21 +90,13 @@ export const DomainTypeWidget = ({
     </>
   );
 
-  if (newLook) {
-    return (
-      <Card
-        className="new-header-border-card"
-        data-testid="domainType"
-        title={header}>
-        {content}
-      </Card>
-    );
-  }
-
   return (
-    <Col data-testid="domainType" span="24">
-      {header}
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="domainType">
       {content}
-    </Col>
+    </ExpandableCard>
   );
 };

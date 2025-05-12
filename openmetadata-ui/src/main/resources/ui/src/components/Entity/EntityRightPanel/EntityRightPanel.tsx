@@ -80,7 +80,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
-              newLook
               activeDomain={domain}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
@@ -122,14 +121,13 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {customProperties && (
           <CustomPropertyTable<T>
             isRenderedInRightPanel
-            newLook
             entityType={entityType as T}
             hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={Boolean(viewAllPermission)}
             maxDataCap={5}
           />
         )}
-        <PartitionedKeys newLook />
+        <PartitionedKeys />
       </Space>
       {afterSlot}
     </>

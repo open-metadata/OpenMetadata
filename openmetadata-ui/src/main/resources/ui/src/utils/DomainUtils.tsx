@@ -507,9 +507,9 @@ export const getDomainDetailTabs = ({
 
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-    return <DomainExpertWidget newLook />;
+    return <DomainExpertWidget />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
-    return <DomainTypeWidget newLook />;
+    return <DomainTypeWidget />;
   }
 
   return (

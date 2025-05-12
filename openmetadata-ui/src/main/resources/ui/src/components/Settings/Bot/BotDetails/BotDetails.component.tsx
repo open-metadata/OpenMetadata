@@ -183,7 +183,6 @@ const BotDetails: FC<BotsDetailProps> = ({
                   )}
                 </div>
                 <DescriptionV1
-                  newLook
                   description={botData.description}
                   entityName={getEntityName(botData)}
                   entityType={EntityType.BOT}

@@ -163,5 +163,5 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: () => (
     <StoredProcedureCodeCard />
   ),
-  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => <PartitionedKeys newLook />,
+  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => <PartitionedKeys />,
 } as const;

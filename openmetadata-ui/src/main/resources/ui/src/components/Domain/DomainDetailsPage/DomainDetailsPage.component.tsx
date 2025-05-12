@@ -724,6 +724,7 @@ const DomainDetailsPage = ({
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}
+          isVersionView={isVersionsView}
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>

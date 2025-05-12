@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
@@ -20,12 +20,13 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
-export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
+export const DomainExpertWidget = () => {
   const {
     data: domain,
     permissions,
@@ -64,10 +65,7 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
   const header = (
     <div className={`d-flex items-center gap-2 `}>
       <Typography.Text
-        className={classNames({
-          'text-sm font-medium': newLook,
-          'right-panel-label': !newLook,
-        })}
+        className={classNames('text-sm font-medium')}
         data-testid="domain-expert-heading-name">
         {t('label.expert-plural')}
       </Typography.Text>
@@ -78,8 +76,8 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
           selectedUsers={domain.experts ?? []}
           onUpdate={handleExpertsUpdate}>
           <EditIconButton
+            newLook
             data-testid="edit-expert-button"
-            newLook={newLook}
             size="small"
             title={t('label.edit-entity', {
               entity: t('label.expert-plural'),
@@ -120,21 +118,13 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
     </>
   );
 
-  if (newLook) {
-    return (
-      <Card
-        className="new-header-border-card"
-        data-testid="domain-expert-name"
-        title={header}>
-        {content}
-      </Card>
-    );
-  }
-
   return (
-    <div data-testid="domain-expert-name">
-      {header}
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="domain-expert-name">
       {content}
-    </div>
+    </ExpandableCard>
   );
 };

@@ -1131,7 +1131,6 @@ const TeamDetailsV1 = ({
               header={teamsCollapseHeader}
               key="1">
               <DescriptionV1
-                newLook
                 wrapInCard
                 description={currentTeam.description ?? ''}
                 entityName={getEntityName(currentTeam)}

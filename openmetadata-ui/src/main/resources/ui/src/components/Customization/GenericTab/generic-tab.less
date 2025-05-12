@@ -14,20 +14,15 @@
 @import (reference) url('../../../styles/variables.less');
 
 .grid-container {
+  position: relative;
+
   .react-grid-item {
-    & > div {
-      height: 100%;
-    }
+    background: transparent;
+    transition: all 200ms ease;
+    transition-property: left, top;
 
     .ant-card.ant-card-bordered,
     .ant-card.new-description-card {
-      height: 100%;
-      .ant-card-body {
-        // calculate body height
-        max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
-        overflow-y: auto;
-      }
-
       &.empty-widget-placeholder {
         .ant-card-body {
           max-height: initial;
@@ -61,4 +56,11 @@
   .grid-container > #KnowledgePanel\.DomainType {
     height: initial !important;
   }
+}
+
+// Dynamic height widget styles
+.dynamic-height-widget {
+  height: auto !important;
+  min-height: 54px; // Minimum height to prevent collapse
+  overflow: visible;
 }

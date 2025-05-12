@@ -508,7 +508,7 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"
