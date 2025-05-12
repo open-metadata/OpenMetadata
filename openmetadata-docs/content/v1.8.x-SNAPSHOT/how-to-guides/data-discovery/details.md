@@ -90,7 +90,7 @@ caption="Queries Tab"
 
 ## Data Observability Tab
 
-The Data Observability tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. The Profiler brings in details like number of rows and columns for the table profile alongwith the details of the data volume, table updates, and volume change. For the column profile, it brings in the details of the type of each column, the value count, null value %, distinct value %, unique %, etc. Data quality tests can be run on this sample data. We can add tests at the table and column level.
+The Data Observability tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. The Data Observability brings in details like number of rows and columns for the table profile alongwith the details of the data volume, table updates, and volume changes. For the column profile, it provides details about the type of each column, the value count, null value %, distinct value %, unique %, etc. Data quality tests can be run on this sample data, and tests can be added at both the table and column levels.
 
 {% image
 src="/images/v1.8/how-to-guides/discovery/dq1.png"
