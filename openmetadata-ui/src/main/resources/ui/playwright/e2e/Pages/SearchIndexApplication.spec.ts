@@ -13,6 +13,7 @@
 import test, { expect, Page, Response } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -132,7 +133,7 @@ test('Search Index Application', async ({ page }) => {
       'Search Indexing Application'
     );
 
-    await page.fill('#root\\/batchSize', '0');
+    await page.fill('#root\\/batchSize', '100');
 
     await page.getByTestId('tree-select-widget').click();
 
@@ -145,10 +146,15 @@ test('Search Index Application', async ({ page }) => {
     // uncheck the entity
     await page.getByRole('tree').getByTitle('Table').click();
 
-    await page.click(
-      '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
-    );
-    await page.click('[data-testid="select-option-JP"]');
+    // Need an outside click to close the dropdown
+    await clickOutside(page);
+    await page.locator('[for="root/searchIndexMappingLanguage"]').click();
+
+    await page.getByTestId('select-widget').click();
+
+    await expect(page.getByTestId('select-option-JP')).toBeVisible();
+
+    await page.getByTestId('select-option-JP').click();
 
     const responseAfterSubmit = page.waitForResponse('/api/v1/apps/*');
     await page.click('[data-testid="submit-btn"]');
