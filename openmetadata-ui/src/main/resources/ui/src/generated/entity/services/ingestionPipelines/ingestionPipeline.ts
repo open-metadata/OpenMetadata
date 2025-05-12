@@ -1236,7 +1236,7 @@ export interface Pipeline {
     /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
     /**
      * Application private configuration
      */
