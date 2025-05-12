@@ -209,7 +209,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (query.id !== selectedQuery?.id) {
       setIsLoading((pre) => ({ ...pre, rightPanel: true }));
       setSelectedQuery(query);
-      history.push({
+      history.replace({
         search: Qs.stringify({
           ...searchParams,
           query: query.id,
@@ -260,7 +260,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             queries[0]
           : queries[0];
         setSelectedQuery(selectedQueryData);
-        history.push({
+        history.replace({
           search: stringifySearchParams({
             tableId,
             query: selectedQueryData.id,
@@ -464,7 +464,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }, [tableId, pageSize]);
 
   const handleAddQueryClick = () => {
-    history.push(getAddQueryPath(datasetFQN));
+    history.replace(getAddQueryPath(datasetFQN));
   };
 
   const addButton = (
