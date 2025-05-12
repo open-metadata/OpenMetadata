@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tag, Typography } from 'antd';
+import { Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -25,16 +25,15 @@ import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectForm from '../DataProductSelectForm/DataProductsSelectForm';
-
 interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
-  newLook?: boolean;
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
@@ -44,7 +43,6 @@ const DataProductsContainer = ({
   dataProducts,
   activeDomain,
   onSave,
-  newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -160,17 +158,8 @@ const DataProductsContainer = ({
   const header = useMemo(() => {
     return (
       showHeader && (
-        <Space
-          align="center"
-          className={classNames('w-full', {
-            'm-b-xss': !newLook,
-          })}
-          size="middle">
-          <Typography.Text
-            className={classNames({
-              'text-sm font-medium': newLook,
-              'right-panel-label': !newLook,
-            })}>
+        <Space align="center" className={classNames('w-full')} size="middle">
+          <Typography.Text className={classNames('text-sm font-medium')}>
             {t('label.data-product-plural')}
           </Typography.Text>
           {hasPermission && !isUndefined(activeDomain) && (
@@ -178,8 +167,8 @@ const DataProductsContainer = ({
               {!isEmpty(dataProducts) && (
                 <Col>
                   <EditIconButton
+                    newLook
                     data-testid="edit-button"
-                    newLook={newLook}
                     size="small"
                     title={t('label.edit-entity', {
                       entity: t('label.data-product-plural'),
@@ -208,28 +197,17 @@ const DataProductsContainer = ({
     [showAddTagButton]
   );
 
-  if (newLook) {
-    return (
-      <Card
-        className="new-header-border-card w-full"
-        data-testid="data-products-container"
-        title={header}>
-        {!isEditMode && (
-          <Row data-testid="data-products-list">
-            <Col className="flex flex-wrap gap-2">
-              {addTagButton}
-              {renderDataProducts}
-            </Col>
-          </Row>
-        )}
-        {isEditMode && autoCompleteFormSelectContainer}
-      </Card>
-    );
-  }
+  const cardProps = useMemo(() => {
+    return {
+      title: header,
+    };
+  }, [header]);
 
   return (
-    <div className="w-full" data-testid="data-products-container">
-      {header}
+    <ExpandableCard
+      cardProps={cardProps}
+      dataTestId="data-products-container"
+      isExpandDisabled={isEmpty(dataProducts)}>
       {!isEditMode && (
         <Row data-testid="data-products-list">
           <Col className="flex flex-wrap gap-2">
@@ -239,7 +217,7 @@ const DataProductsContainer = ({
         </Row>
       )}
       {isEditMode && autoCompleteFormSelectContainer}
-    </div>
+    </ExpandableCard>
   );
 };
 
