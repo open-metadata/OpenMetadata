@@ -47,9 +47,6 @@ const DataProductsContainer = ({
   const { t } = useTranslation();
   const history = useHistory();
   const [isEditMode, setIsEditMode] = useState(false);
-  // const [previousDomainId, setPreviousDomainId] = useState<string | undefined>(
-  //   activeDomain?.id
-  // );
 
   const handleAddClick = () => {
     setIsEditMode(true);
@@ -77,26 +74,6 @@ const DataProductsContainer = ({
   const handleCancel = () => {
     setIsEditMode(false);
   };
-
-  // console.log('dataProducts', dataProducts);
-  // console.log('activeDomain', activeDomain);
-  // console.log('previousDomainId', previousDomainId);
-  // console.log('onSave', onSave);
-
-  // Check for domain changes and clear data products if needed
-  // useEffect(() => {
-  //   const currentDomainId = activeDomain?.id;
-
-  //   if (
-  //     previousDomainId !== currentDomainId &&
-  //     dataProducts.length > 0 &&
-  //     onSave
-  //   ) {
-  //     onSave([]);
-  //   }
-
-  //   setPreviousDomainId(currentDomainId);
-  // }, [activeDomain?.id, previousDomainId, dataProducts, onSave]);
 
   const autoCompleteFormSelectContainer = useMemo(() => {
     return (
