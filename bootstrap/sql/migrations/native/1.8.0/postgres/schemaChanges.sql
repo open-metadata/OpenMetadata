@@ -3,6 +3,6 @@ UPDATE apps_marketplace
 SET json = jsonb_set(
 	json::jsonb,
 	'{runtime,enabled}',
-	'true',
+	'true'
 )
 where name = 'AutoPilotApplication';
