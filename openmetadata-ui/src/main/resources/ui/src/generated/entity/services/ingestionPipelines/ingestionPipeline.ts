@@ -50,6 +50,10 @@ export interface IngestionPipeline {
      */
     enabled?: boolean;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * Name that uniquely identifies a Pipeline.
      */
     fullyQualifiedName?: string;
@@ -251,14 +255,14 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * The ingestion agent responsible for executing the ingestion pipeline.
- *
- * Owners of this Pipeline.
+ * Followers of this entity.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
  * Link to the service (such as database, messaging, storage services, etc. for which this
  * ingestion pipeline ingests the metadata from.
@@ -1232,7 +1236,7 @@ export interface Pipeline {
     /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -1388,6 +1392,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1901,19 +1906,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**

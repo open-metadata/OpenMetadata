@@ -882,7 +882,7 @@ public class IngestionPipelineResourceTest
     assertListNotNull(ingestion.getService());
     assertListNull(ingestion.getOwners());
 
-    fields = FIELD_OWNERS;
+    fields = "owners,followers";
     ingestion =
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
