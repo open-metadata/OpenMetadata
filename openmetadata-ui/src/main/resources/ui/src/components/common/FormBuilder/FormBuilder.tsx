@@ -260,7 +260,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                 const path = key.split('.');
                 let current = acc;
                 for (let i = 0; i < path.length - 1; i++) {
-                  current[path[i]] = current[path[i]] || {};
+                  current[path[i]] = current[path[i]] ?? {};
                   current = current[path[i]];
                 }
                 current[path[path.length - 1]] = validationErrors[key];
