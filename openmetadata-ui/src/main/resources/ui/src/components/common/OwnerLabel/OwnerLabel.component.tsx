@@ -225,16 +225,7 @@ export const OwnerLabel = ({
                 className={classNames({
                   'w-full': owner.type === OwnerType.TEAM,
                 })}
-                key={owner.id}
-                style={
-                  !isCompactView
-                    ? {
-                        zIndex: visibleOwners.length - index,
-                        marginRight: '-4px',
-                        position: 'relative',
-                      }
-                    : {}
-                }>
+                key={owner.id}>
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
@@ -248,7 +239,7 @@ export const OwnerLabel = ({
             {showMoreButton && (
               <div
                 className={classNames({
-                  'm-l-sm': !isCompactView,
+                  'm-l-xs': !isCompactView,
                 })}>
                 <OwnerReveal
                   avatarSize={isCompactView ? 24 : avatarSize}
