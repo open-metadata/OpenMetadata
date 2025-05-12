@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
@@ -74,7 +75,11 @@ public final class RestUtil {
             SettingsType.EMAIL_CONFIGURATION,
             new SmtpSettings().withOpenMetadataUrl(uriInfo.getBaseUri().toString()),
             SmtpSettings.class);
-    return URI.create(smtpSettings.getOpenMetadataUrl() + "/" + collectionPath);
+    String url =
+        nullOrEmpty(smtpSettings.getOpenMetadataUrl())
+            ? uriInfo.getBaseUri().toString()
+            : smtpSettings.getOpenMetadataUrl();
+    return URI.create(url + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {

@@ -23,7 +23,8 @@
     },
     "openMetadataUrl": {
       "description": "Openmetadata Server Endpoint",
-      "type": "string"
+      "type": "string",
+      "default": "http://localhost:8585"
     },
     "senderMail": {
       "description": "Mail of the sender",
