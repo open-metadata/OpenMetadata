@@ -24,6 +24,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
+import { Typography } from 'antd';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
@@ -89,12 +90,18 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
-  ExtraInfoLabel: jest.fn().mockImplementation(({ label, value }) => (
-    <div>
-      {label && <span>{label}</span>}
-      <span>{value}</span>
-    </div>
-  )),
+  ExtraInfoLabel: jest
+    .fn()
+    .mockImplementation(({ label, value, dataTestId }) => (
+      <div className="d-flex align-start extra-info-container">
+        <Typography.Text
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+          data-testid={dataTestId}>
+          {label && <span className="extra-info-label-heading">{label}</span>}
+          <div className="font-medium extra-info-value">{value}</div>
+        </Typography.Text>
+      </div>
+    )),
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,
@@ -317,7 +324,7 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
-  it('should render certification when certification is present', () => {
+  it('should always render certification', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {
         tagFQN: 'Certification.Bronze',
@@ -335,7 +342,9 @@ describe('DataAssetsHeader component', () => {
       appliedDate: 1732814645688,
       expiryDate: 1735406645688,
     };
-    render(
+
+    // First test with certification
+    const { unmount } = render(
       <DataAssetsHeader
         {...mockProps}
         dataAsset={{
@@ -350,6 +359,16 @@ describe('DataAssetsHeader component', () => {
     const certificatComponent = screen.getByText(`CertificationTag`);
 
     expect(certificatComponent).toBeInTheDocument();
+
+    // Clean up the first render before rendering again
+    unmount();
+
+    // Second test without certification
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(screen.getByTestId('certification-label')).toContainHTML(
+      'label.no-entity'
+    );
   });
 
   it('should trigger the AutoPilot application when the button is clicked', () => {
@@ -374,47 +393,5 @@ describe('DataAssetsHeader component', () => {
     expect(triggerOnDemandApp).toHaveBeenCalledWith(AUTO_PILOT_APP_NAME, {
       entityLink: 'entityFeedLink',
     });
-  });
-
-  it('renders certification or no certificates text', () => {
-    render(
-      <DataAssetsHeader
-        {...mockProps}
-        dataAsset={{
-          ...mockProps.dataAsset,
-          certification: {
-            tagLabel: {
-              tagFQN: 'Certification.Bronze',
-              name: 'Bronze',
-              displayName: 'Bronze_medal',
-              description: 'Bronze certified Data Asset test',
-              style: {
-                color: '#C08329',
-                iconURL: 'BronzeCertification.svg',
-              },
-              source: TagSource.Classification,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-            appliedDate: 1743070962048,
-            expiryDate: 1745662962048,
-          },
-        }}
-        disableRunAgentsButton={false}
-      />
-    );
-
-    expect(screen.getByText('Certification')).toBeInTheDocument();
-    expect(screen.getByText('Bronze_medal')).toBeInTheDocument();
-
-    <DataAssetsHeader
-      {...mockProps}
-      dataAsset={{
-        ...mockProps.dataAsset,
-      }}
-      disableRunAgentsButton={false}
-    />;
-
-    expect(screen.getByText('no certificates')).toBeInTheDocument();
   });
 });

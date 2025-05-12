@@ -694,6 +694,7 @@ export const DataAssetsHeader = ({
 
             <Divider className="self-center vertical-divider" type="vertical" />
             <ExtraInfoLabel
+              dataTestId="certification-label"
               label={t('label.certification')}
               value={
                 (dataAsset as Table).certification ? (
