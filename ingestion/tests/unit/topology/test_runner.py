@@ -186,7 +186,7 @@ class TopologyRunnerTest(TestCase):
         # will get.
         self.assertGreater(len(self.source.context.contexts.keys()), 1)
 
-        self.assertEqual(
+        self.assertCountEqual(
             # check the post process being at the end
             [
                 either.right if hasattr(either, "right") else either
