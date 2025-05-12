@@ -46,7 +46,7 @@ To modify table constraint:[​GitHub](https://github.com/open-metadata/OpenMeta
 - Navigate to the table's schema view within the OpenMetadata UI.​
 
 {% image
-src="/images/v1.8/how-to-guides/discovery/foreign-key1.png"
+src="/images/v1.8/how-to-guides/discovery/foreign-key4.png"
 alt="Access the Table's Schema"
 caption="Access the Table's Schema"
 /%}
