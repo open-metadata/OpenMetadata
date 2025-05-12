@@ -3,13 +3,9 @@ title: Managing and Editing Table Constraint in OpenMetadata
 slug: /how-to-guides/data-discovery/table-constraint
 ---
 
-# table constraint
+# Table Constraint
 
 ​In OpenMetadata, **table constraint** are integral to understanding the relationships between tables, enhancing data discovery, and facilitating comprehensive data lineage tracking. By default, the ingestion process captures these constraints, allowing users to visualize and manage table relationships effectively.​
-
-## Viewing table constraint
-
-Once the metadata ingestion is complete, foreign key relationships can be explored within the OpenMetadata UI:​
 
 ## Viewing table constraint
 
@@ -25,7 +21,7 @@ caption="Navigate to the Table Details Page"
 /%}
 
 ### Explore Table Constraints:
-- Table constraint are displayed, detailing the relationships between the current table and its related tables. [OpenMetadata Docs+6GitHub+6OpenMetadata Docs+6](https://github.com/open-metadata/OpenMetadata/issues/10583)
+- Table constraint are displayed, detailing the relationships between the current table and its related tables. [OpenMetadata referred column for foreign key](https://github.com/open-metadata/OpenMetadata/issues/10583)
 
 {% image
 src="/images/v1.7/how-to-guides/discovery/foreign-key2.png"
@@ -46,7 +42,7 @@ To modify table constraint:[​GitHub](https://github.com/open-metadata/OpenMeta
 - Navigate to the table's schema view within the OpenMetadata UI.​
 
 {% image
-src="/images/v1.7/how-to-guides/discovery/foreign-key1.png"
+src="/images/v1.7/how-to-guides/discovery/foreign-key4.png"
 alt="Access the Table's Schema"
 caption="Access the Table's Schema"
 /%}
