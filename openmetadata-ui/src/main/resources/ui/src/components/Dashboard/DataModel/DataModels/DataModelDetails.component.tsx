@@ -118,7 +118,7 @@ const DataModelDetails = ({
 
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.DASHBOARD_DATA_MODEL,
           decodedDataModelFQN,
@@ -245,7 +245,7 @@ const DataModelDetails = ({
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

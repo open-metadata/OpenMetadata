@@ -294,6 +294,18 @@ class ServiceBaseClass {
 
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.click('#root\\/raiseOnError');
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
     );

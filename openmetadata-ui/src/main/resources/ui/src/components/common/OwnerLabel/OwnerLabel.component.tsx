@@ -15,6 +15,7 @@ import { Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OwnerType } from '../../../enums/user.enum';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
@@ -88,9 +89,9 @@ export const OwnerLabel = ({
     const hasOwners = owners && owners.length > 0;
 
     // Show all owners when "more" is clicked, regardless of view mode
-    const visibleOwners = showAllOwners
-      ? owners
-      : owners.slice(0, maxVisibleOwners);
+    const visibleOwners = (
+      showAllOwners ? owners : owners.slice(0, maxVisibleOwners)
+    ).reverse();
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
 
@@ -123,7 +124,7 @@ export const OwnerLabel = ({
         <div className="d-flex items-center flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center',
+              'avatar-group w-full  d-flex relative items-center flex-row-reverse m-l-xss',
               {
                 'gap-2 flex-wrap': isCompactView,
                 inherited: Boolean(owners.some((owner) => owner?.inherited)),
@@ -132,21 +133,13 @@ export const OwnerLabel = ({
             )}>
             {visibleOwners.map((owner, index) => (
               <div
-                className="w-full"
-                key={owner.id}
-                style={
-                  !isCompactView
-                    ? {
-                        zIndex: visibleOwners.length - index,
-                        marginRight: '-4px',
-                        position: 'relative',
-                      }
-                    : {}
-                }>
+                className={classNames({
+                  'w-full': owner.type === OwnerType.TEAM,
+                })}
+                key={owner.id}>
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
-                  index={index}
                   isCompactView={isCompactView}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName?.[index]}
@@ -168,7 +161,7 @@ export const OwnerLabel = ({
           </div>
 
           {showMoreButton && !isCompactView && (
-            <div className="m-l-sm">
+            <div className="m-l-xs">
               <OwnerReveal
                 avatarSize={isCompactView ? 24 : avatarSize}
                 isCompactView={isCompactView}

@@ -13,12 +13,14 @@
 import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import {
   checkIfExpandViewSupported,
   getDefaultTabs,
   getTabLabelFromId,
   getTabLabelMapFromTabs,
   sortTabs,
+  updateWidgetHeightRecursively,
 } from './CustomizePageUtils';
 
 describe('CustomizePageUtils', () => {
@@ -156,6 +158,77 @@ describe('CustomizePageUtils', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(EntityTabs.CUSTOM_PROPERTIES);
+    });
+  });
+
+  describe('updateWidgetHeightRecursively', () => {
+    it('should update the height of the specified widget', () => {
+      const widgets = [
+        { i: 'widget-1', h: 50 },
+        { i: 'widget-2', h: 75 },
+        { i: 'widget-3', h: 100 },
+      ] as WidgetConfig[];
+      const widgetId = 'widget-2';
+      const newHeight = 150;
+
+      const result = updateWidgetHeightRecursively(
+        widgetId,
+        newHeight,
+        widgets
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result.find((widget) => widget.i === widgetId)?.h).toBe(newHeight);
+    });
+
+    it('should update the height of the specified child widget', () => {
+      const widgets = [
+        { i: 'widget-1', h: 50 },
+        {
+          i: 'widget-2',
+          h: 75,
+          children: [
+            { i: 'child-1', h: 30 },
+            { i: 'child-2', h: 40 },
+          ],
+        },
+        { i: 'widget-3', h: 100 },
+      ] as WidgetConfig[];
+      const widgetId = 'child-2';
+      const newHeight = 60;
+
+      const result = updateWidgetHeightRecursively(
+        widgetId,
+        newHeight,
+        widgets
+      );
+
+      expect(result).toHaveLength(3);
+
+      const updatedWidget = result.find((widget) => widget.i === 'widget-2');
+
+      expect(updatedWidget?.children).toBeDefined();
+      expect(
+        updatedWidget?.children?.find((child) => child.i === widgetId)?.h
+      ).toBe(newHeight);
+    });
+
+    it('should not change widgets if widgetId is not found', () => {
+      const widgets = [
+        { i: 'widget-1', h: 50 },
+        { i: 'widget-2', h: 75 },
+        { i: 'widget-3', h: 100 },
+      ] as WidgetConfig[];
+      const widgetId = 'non-existent-widget';
+      const newHeight = 150;
+
+      const result = updateWidgetHeightRecursively(
+        widgetId,
+        newHeight,
+        widgets
+      );
+
+      expect(result).toEqual(widgets);
     });
   });
 });
