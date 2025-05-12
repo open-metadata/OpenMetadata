@@ -17,7 +17,6 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -66,7 +65,6 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     },
     ref
   ) => {
-    const { t } = useTranslation();
     const isReadOnlyForm = useMemo(() => {
       return !!props.readonly;
     }, [props.readonly]);
@@ -154,136 +152,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
         onChange={handleFormChange}
         onFocus={onFocus}
         onSubmit={onSubmit}
-        {...props}
-        validator={{
-          ...props?.validator,
-          validateFormData: (formData: ConfigData) => {
-            const validationErrors: Record<string, { __errors: string[] }> = {};
-
-            const resolveRef = (ref: string, schemaObj: any) => {
-              if (!ref) {
-                return null;
-              }
-              const refPath = ref.split('/').slice(1);
-
-              return refPath.reduce((obj, path) => obj?.[path], schemaObj);
-            };
-
-            const validateProperty = (
-              property: any,
-              value: any,
-              key: string,
-              path: string
-            ): { __errors: string[] } | null => {
-              // Handle schema references
-              if (property.$ref) {
-                const refSchema = resolveRef(property.$ref, schema);
-                if (!refSchema) {
-                  return null;
-                }
-
-                return validateProperty(refSchema, value, key, path);
-              }
-
-              if (
-                typeof property === 'object' &&
-                property !== null &&
-                (property.type === 'number' || property.type === 'integer')
-              ) {
-                if (
-                  typeof value === 'number' &&
-                  property.minimum !== undefined &&
-                  value < property.minimum
-                ) {
-                  return {
-                    __errors: [
-                      t('message.value-must-be-greater-than', {
-                        field: property.title ?? key,
-                        minimum: property.minimum,
-                      }),
-                    ],
-                  };
-                }
-              }
-
-              return null;
-            };
-
-            const checkProperties = (obj: any, schemaObj: any, path = '') => {
-              if (!schemaObj) {
-                return;
-              }
-
-              // Handle schema references
-              if (schemaObj.$ref) {
-                schemaObj = resolveRef(schemaObj.$ref, schema);
-                if (!schemaObj) {
-                  return;
-                }
-              }
-
-              Object.keys(schemaObj.properties ?? {}).forEach((key) => {
-                const property = schemaObj.properties[key];
-                const value = obj?.[key];
-                const currentPath = path ? `${path}.${key}` : key;
-
-                // Handle nested references
-                if (property.$ref) {
-                  const refSchema = resolveRef(property.$ref, schema);
-                  if (refSchema) {
-                    checkProperties(value, refSchema, currentPath);
-                  }
-                } else {
-                  const error = validateProperty(
-                    property,
-                    value,
-                    key,
-                    currentPath
-                  );
-                  if (error) {
-                    validationErrors[currentPath] = error;
-                  }
-
-                  // Recursively check nested objects
-                  if (property.type === 'object' && value) {
-                    checkProperties(value, property, currentPath);
-                  }
-                }
-              });
-            };
-
-            checkProperties(formData, schema);
-
-            // Convert validation errors to the format expected by rjsf
-            const errorSchema = Object.keys(validationErrors).reduce(
-              (acc: Record<string, any>, key) => {
-                const path = key.split('.');
-                let current = acc;
-                for (let i = 0; i < path.length - 1; i++) {
-                  current[path[i]] = current[path[i]] ?? {};
-                  current = current[path[i]];
-                }
-                current[path[path.length - 1]] = validationErrors[key];
-
-                return acc;
-              },
-              {}
-            );
-
-            return {
-              errors: Object.keys(validationErrors).map((key) => ({
-                name: key,
-                property: key,
-                message: validationErrors[key].__errors[0],
-                stack: t('message.value-must-be-greater-than', {
-                  field: key,
-                  minimum: validationErrors[key].__errors[0].split(' ').pop(),
-                }),
-              })),
-              errorSchema,
-            };
-          },
-        }}>
+        {...props}>
         {children}
         <div
           className="m-t-lg d-flex justify-end text-right"
