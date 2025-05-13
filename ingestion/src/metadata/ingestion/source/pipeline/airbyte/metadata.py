@@ -222,12 +222,15 @@ class AirbyteSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from airbyte
         :return: Lineage from inlets and outlets
         """
+        pipeline_name = pipeline_details.connection.get("name")
         source_connection = self.client.get_source(
             pipeline_details.connection.get("sourceId")
         )
         destination_connection = self.client.get_destination(
             pipeline_details.connection.get("destinationId")
         )
+        source_name = source_connection.get("sourceName")
+        destination_name = destination_connection.get("destinationName")
 
         for task in (
             pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
@@ -239,16 +242,45 @@ class AirbyteSource(PipelineServiceSource):
                 stream, destination_connection
             )
 
+            if not source_table_details or not destination_table_details:
+                continue
+
             from_fqn = self._get_table_fqn(source_table_details)
             to_fqn = self._get_table_fqn(destination_table_details)
 
-            if not from_fqn or not to_fqn:
+            if not from_fqn:
+                logger.warning(
+                    f"While extracting lineage: [{pipeline_name}],"
+                    f" source table: [{source_table_details.database or '*'}]"
+                    f".[{source_table_details.schema}].[{source_table_details.name}]"
+                    f" (type: {source_name}) not found in openmetadata"
+                )
+                continue
+            if not to_fqn:
+                logger.warning(
+                    f"While extracting lineage: [{pipeline_name}],"
+                    f" destination table: [{destination_table_details.database or '*'}]"
+                    f".[{destination_table_details.schema}].[{destination_table_details.name}]"
+                    f" (type: {destination_name}) not found in openmetadata"
+                )
                 continue
 
             from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
 
-            if not from_entity or not to_entity:
+            if not from_entity:
+                logger.warning(
+                    f"While extracting lineage: [{pipeline_name}],"
+                    f" source table (fqn: [{from_fqn}], type: {source_name}) not found"
+                    " in openmetadata"
+                )
+                continue
+            if not to_entity:
+                logger.warning(
+                    f"While extracting lineage: [{pipeline_name}],"
+                    f" destination table (fqn: [{to_fqn}], type: {destination_name}) not found"
+                    " in openmetadata"
+                )
                 continue
 
             pipeline_fqn = fqn.build(

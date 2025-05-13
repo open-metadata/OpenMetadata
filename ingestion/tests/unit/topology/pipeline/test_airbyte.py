@@ -185,7 +185,7 @@ class AirbyteUnitTest(TestCase):
     def test_pipeline_name(self):
         assert self.airbyte.get_pipeline_name(
             EXPECTED_ARIBYTE_DETAILS
-        ) == mock_data.get("connection")[0].get("connectionId")
+        ) == mock_data.get("connection")[0].get("name")
 
     def test_pipelines(self):
         pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0].right

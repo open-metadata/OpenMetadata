@@ -13,17 +13,17 @@
 Constants for Airbyte
 """
 
-from pydantic import BaseModel
+from enum import Enum
 
 
-class AirbyteSource(BaseModel):
-    mysql = "MySQL"
-    postgres = "Postgres"
-    mssql = "Microsoft SQL Server (MSSQL)"
-    mongodb = "MongoDb"
+class AirbyteSource(Enum):
+    MYSQL = "MySQL"
+    POSTGRES = "Postgres"
+    MSSQL = "Microsoft SQL Server (MSSQL)"
+    MONGODB = "MongoDb"
 
 
-class AirbyteDestination(BaseModel):
-    mysql = "MySQL"
-    postgres = "Postgres"
-    mssql = "MS SQL Server"
+class AirbyteDestination(Enum):
+    MYSQL = "MySQL"
+    POSTGRES = "Postgres"
+    MSSQL = "MS SQL Server"

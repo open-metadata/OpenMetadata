@@ -13,11 +13,8 @@
 Utils for Airbyte
 """
 
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.utils.logger import ingestion_logger
-
-from ingestion.build.lib.metadata.ingestion.source.pipeline.openlineage.models import (
-    TableDetails,
-)
 
 from .constants import AirbyteDestination, AirbyteSource
 
@@ -34,12 +31,12 @@ def get_source_table_details(stream: dict, source_connection: dict) -> TableDeta
     )
     source_schema = stream.get("namespace")
 
-    if source_name in [AirbyteSource.postgres, AirbyteSource.mssql]:
+    if source_name in [AirbyteSource.POSTGRES.value, AirbyteSource.MSSQL.value]:
         pass
-    elif source_name in [AirbyteSource.mysql]:
+    elif source_name in [AirbyteSource.MYSQL.value]:
         source_schema = source_database
         source_database = None
-    elif source_name in [AirbyteSource.mongodb]:
+    elif source_name in [AirbyteSource.MONGODB.value]:
         source_schema = (
             source_connection.get("connectionConfiguration", {})
             .get("database_config", {})
@@ -48,7 +45,7 @@ def get_source_table_details(stream: dict, source_connection: dict) -> TableDeta
         source_database = None
     else:
         logger.warning(
-            f"Lineage for Airbyte source [{source_name}] is not supported yet"
+            f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet"
         )
         return None
 
@@ -73,14 +70,17 @@ def get_destination_table_details(
         "schema"
     )
 
-    if destination_name in [AirbyteDestination.postgres, AirbyteDestination.mssql]:
+    if destination_name in [
+        AirbyteDestination.POSTGRES.value,
+        AirbyteDestination.MSSQL.value,
+    ]:
         pass
-    elif destination_name in [AirbyteDestination.mysql]:
+    elif destination_name in [AirbyteDestination.MYSQL.value]:
         destination_schema = destination_database
         destination_database = None
     else:
         logger.warning(
-            f"Lineage for Airbyte destination [{destination_name}] is not supported yet"
+            f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet"
         )
         return None
 
