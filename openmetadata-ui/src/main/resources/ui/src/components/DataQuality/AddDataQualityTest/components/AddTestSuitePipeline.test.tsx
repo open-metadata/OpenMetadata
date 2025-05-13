@@ -49,6 +49,10 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
+}));
+
 const mockProps: AddTestSuitePipelineProps = {
   isLoading: false,
   onSubmit: jest.fn(),

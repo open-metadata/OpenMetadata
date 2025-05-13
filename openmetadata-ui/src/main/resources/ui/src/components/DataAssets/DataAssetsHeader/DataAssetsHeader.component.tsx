@@ -21,7 +21,6 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -33,7 +32,6 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -54,6 +52,7 @@ import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
+  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
@@ -92,89 +91,6 @@ import {
   DataAssetsWithFollowersField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
-
-export const ExtraInfoLabel = ({
-  label,
-  value,
-  dataTestId,
-  inlineLayout = false,
-}: {
-  label: string;
-  value: string | number | React.ReactNode;
-  dataTestId?: string;
-  inlineLayout?: boolean;
-}) => {
-  if (inlineLayout) {
-    return (
-      <>
-        <Divider className="self-center" type="vertical" />
-        <Typography.Text
-          className="self-center text-xs whitespace-nowrap"
-          data-testid={dataTestId}>
-          {!isEmpty(label) && (
-            <span className="text-grey-muted">{`${label}: `}</span>
-          )}
-          <span className="font-medium">{value}</span>
-        </Typography.Text>
-      </>
-    );
-  }
-
-  return (
-    <div className="d-flex align-start extra-info-container">
-      <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-        data-testid={dataTestId}>
-        {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{label}</span>
-        )}
-        <div className={classNames('font-medium extra-info-value')}>
-          {value}
-        </div>
-      </Typography.Text>
-    </div>
-  );
-};
-
-export const ExtraInfoLink = ({
-  label,
-  value,
-  href,
-  newTab = false,
-  ellipsis = false,
-}: {
-  label: string;
-  value: string | number;
-  href: string;
-  newTab?: boolean;
-  ellipsis?: boolean;
-}) => (
-  <div
-    className={classNames('d-flex  text-sm  flex-col gap-2', {
-      'w-48': ellipsis,
-    })}>
-    {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{label}</span>
-    )}
-    <div className="d-flex items-center gap-1">
-      <Tooltip title={value}>
-        <Typography.Link
-          ellipsis
-          className="extra-info-link"
-          href={href}
-          rel={newTab ? 'noopener noreferrer' : undefined}
-          target={newTab ? '_blank' : undefined}>
-          {value}
-        </Typography.Link>
-      </Tooltip>
-      <Icon
-        className="m-l-xs"
-        component={IconExternalLink}
-        style={DATA_ASSET_ICON_DIMENSION}
-      />
-    </div>
-  </div>
-);
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -301,9 +217,7 @@ export const DataAssetsHeader = ({
   };
 
   const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() &&
-      dqFailureCount > 0 &&
-      isDqAlertSupported ? (
+    const renderAlertBadgeWithDq = () => (
       <Space size={8}>
         {badge}
         <Tooltip placement="right" title={t('label.check-upstream-failure')}>
@@ -323,9 +237,16 @@ export const DataAssetsHeader = ({
           </Link>
         </Tooltip>
       </Space>
-    ) : (
-      badge
     );
+    if (
+      isDqAlertSupported &&
+      tableClassBase.getAlertEnableStatus() &&
+      dqFailureCount > 0
+    ) {
+      return renderAlertBadgeWithDq();
+    }
+
+    return badge;
   }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
 
   const fetchActiveAnnouncement = async () => {
@@ -556,7 +477,7 @@ export const DataAssetsHeader = ({
             )}
           />
           <Row>
-            <Col flex="auto">
+            <Col className="w-min-0" flex="1">
               <EntityHeaderTitle
                 badge={alertBadge}
                 deleted={dataAsset?.deleted}
@@ -573,7 +494,7 @@ export const DataAssetsHeader = ({
                 serviceName={dataAssetServiceName}
               />
             </Col>
-            <Col className="flex items-center">
+            <Col className="flex items-center ">
               <Space className="">
                 <ButtonGroup
                   className="data-asset-button-group spaced"
@@ -776,23 +697,21 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            {(dataAsset as Table)?.certification && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <ExtraInfoLabel
-                  label={t('label.certification')}
-                  value={
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
-                  }
-                />
-              </>
-            )}
+            <Divider className="self-center vertical-divider" type="vertical" />
+            <ExtraInfoLabel
+              dataTestId="certification-label"
+              label={t('label.certification')}
+              value={
+                (dataAsset as Table).certification ? (
+                  <CertificationTag
+                    showName
+                    certification={(dataAsset as Table).certification!}
+                  />
+                ) : (
+                  t('label.no-entity', { entity: t('label.certification') })
+                )
+              }
+            />
             {extraInfo}
           </div>
           <div className="mt-2">

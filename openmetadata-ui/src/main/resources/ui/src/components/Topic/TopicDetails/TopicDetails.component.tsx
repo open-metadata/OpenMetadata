@@ -172,7 +172,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
+        getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey),
+        { replace: true }
       );
     }
   };
@@ -412,7 +413,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

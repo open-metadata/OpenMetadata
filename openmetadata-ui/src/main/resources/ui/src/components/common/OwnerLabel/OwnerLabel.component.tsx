@@ -13,8 +13,11 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { reverse } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
@@ -94,6 +97,10 @@ export const OwnerLabel = ({
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
 
+    const renderVisibleOwners = isCompactView
+      ? visibleOwners
+      : reverse(visibleOwners);
+
     // If no owners, render the empty state
     if (!hasOwners) {
       return (
@@ -123,35 +130,31 @@ export const OwnerLabel = ({
         <div className="d-flex items-center flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center',
+              'avatar-group w-full  d-flex relative items-center m-l-xss',
               {
                 'gap-2 flex-wrap': isCompactView,
+                'flex-row-reverse': !isCompactView,
                 inherited: Boolean(owners.some((owner) => owner?.inherited)),
               },
               className
             )}>
-            {visibleOwners.map((owner, index) => (
-              <div
-                key={owner.id}
-                style={
-                  !isCompactView
-                    ? {
-                        zIndex: visibleOwners.length - index,
-                        marginRight: '-4px',
-                        position: 'relative',
-                      }
-                    : {}
-                }>
-                <OwnerItem
-                  avatarSize={avatarSize}
-                  className={className}
-                  index={index}
-                  isCompactView={isCompactView}
-                  owner={owner}
-                  ownerDisplayName={ownerDisplayName?.[index]}
-                />
-              </div>
-            ))}
+            {renderVisibleOwners.map(
+              (owner: EntityReference, index: number) => (
+                <div
+                  className={classNames({
+                    'w-full': owner.type === OwnerType.TEAM,
+                  })}
+                  key={owner.id}>
+                  <OwnerItem
+                    avatarSize={avatarSize}
+                    className={className}
+                    isCompactView={isCompactView}
+                    owner={owner}
+                    ownerDisplayName={ownerDisplayName?.[index]}
+                  />
+                </div>
+              )
+            )}
             {showMoreButton && isCompactView && (
               <OwnerReveal
                 avatarSize={isCompactView ? 24 : avatarSize}
@@ -167,7 +170,7 @@ export const OwnerLabel = ({
           </div>
 
           {showMoreButton && !isCompactView && (
-            <div className="m-l-sm">
+            <div className="m-l-xs">
               <OwnerReveal
                 avatarSize={isCompactView ? 24 : avatarSize}
                 isCompactView={isCompactView}
@@ -200,7 +203,6 @@ export const OwnerLabel = ({
     showAllOwners,
     maxVisibleOwners,
     placeHolder,
-    t,
     ownerDisplayName,
     isCompactView,
     isDropdownOpen,

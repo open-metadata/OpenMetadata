@@ -114,11 +114,14 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    navigate({
-      pathname: version
-        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
-    });
+    navigate(
+      {
+        pathname: version
+          ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+          : getGlossaryTermDetailsPath(glossaryFqn, tab),
+      },
+      { replace: true }
+    );
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {

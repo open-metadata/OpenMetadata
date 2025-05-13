@@ -51,6 +51,7 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -89,13 +90,7 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
-const NavBar = ({
-  isSidebarCollapsed = true,
-  toggleSideBar,
-}: {
-  isSidebarCollapsed?: boolean;
-  toggleSideBar?: () => void;
-}) => {
+const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
@@ -116,6 +111,10 @@ const NavBar = ({
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
+  const {
+    preferences: { isSidebarCollapsed },
+    setPreference,
+  } = useCurrentUserPreferences();
 
   const fetchOMVersion = async () => {
     try {
@@ -416,7 +415,9 @@ const NavBar = ({
                 }
                 size="middle"
                 type="text"
-                onClick={toggleSideBar}
+                onClick={() =>
+                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+                }
               />
             </Tooltip>
             <GlobalSearchBar />

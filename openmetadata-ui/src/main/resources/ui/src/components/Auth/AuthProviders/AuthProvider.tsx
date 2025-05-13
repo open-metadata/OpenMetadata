@@ -365,6 +365,7 @@ export const AuthProvider = ({
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
             navigate(ROUTES.UNAUTHORISED);
+            showErrorToast(err);
           } else {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
@@ -527,8 +528,12 @@ export const AuthProvider = ({
           if (status === ClientErrors.UNAUTHORIZED) {
             // For login or refresh we don't want to fire another refresh req
             // Hence rejecting it
-            if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url)) {
-              return Promise.reject(error as Error);
+            if (
+              UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
+              (error.config.url === '/users/loggedInUser' &&
+                !error.response.data.message.includes('Expired token!'))
+            ) {
+              return Promise.reject(error);
             }
             handleStoreProtectedRedirectPath();
 
@@ -549,7 +554,7 @@ export const AuthProvider = ({
                     // Retry the pending requests
                     initializeAxiosInterceptors();
                     pendingRequests.forEach(({ resolve, reject, config }) => {
-                      axiosClient(config).then(resolve).catch(reject);
+                      axiosClient.request(config).then(resolve).catch(reject);
                     });
 
                     // Clear the queue after retrying

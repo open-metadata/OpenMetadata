@@ -215,7 +215,8 @@ function SearchIndexDetailsPage() {
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
           activeKey
-        )
+        ),
+        { replace: true }
       );
     }
   };
@@ -492,7 +493,7 @@ function SearchIndexDetailsPage() {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

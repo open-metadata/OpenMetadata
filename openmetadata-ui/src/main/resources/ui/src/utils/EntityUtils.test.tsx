@@ -155,7 +155,10 @@ describe('EntityUtils unit tests', () => {
   describe('getEntityOverview', () => {
     it('should call getChartOverview and get ChartData if ExplorePageTabs is charts', () => {
       const result = JSON.stringify(
-        getEntityOverview(ExplorePageTabs.CHARTS, MOCK_CHART_DATA)
+        getEntityOverview(ExplorePageTabs.CHARTS, {
+          ...MOCK_CHART_DATA,
+          dataProducts: [],
+        })
       );
 
       expect(result).toContain('label.owner-plural');
@@ -177,6 +180,7 @@ describe('EntityUtils unit tests', () => {
         getEntityOverview(ExplorePageTabs.TABLES, {
           ...MOCK_TABLE,
           tags: [MOCK_TIER_DATA],
+          dataProducts: [],
         })
       );
 

@@ -122,7 +122,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey)
+        getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey),
+        { replace: true }
       );
     }
   };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -37,6 +37,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
 import {
   CustomPropertyProps,
@@ -54,7 +55,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
-  newLook = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -258,17 +258,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return <ExtensionTable extension={entityDetails?.extension} />;
   }
 
-  if (isRenderedInRightPanel || newLook) {
+  if (isRenderedInRightPanel) {
     const header = (
-      <div
-        className={classNames('d-flex justify-between', {
-          'm-b-md': !newLook,
-        })}>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
+      <div className={classNames('d-flex justify-between')}>
+        <Typography.Text className={classNames('text-sm font-medium')}>
           {t('label.custom-property-plural')}
         </Typography.Text>
         {viewAllBtn}
@@ -306,21 +299,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       return null;
     }
 
-    if (newLook) {
-      return (
-        <Card
-          className="w-full new-header-border-card no-scrollbar"
-          title={header}>
-          {propertyList}
-        </Card>
-      );
-    }
-
     return (
-      <>
-        {header}
+      <ExpandableCard
+        cardProps={{
+          className: 'no-scrollbar',
+          title: header,
+        }}>
         {propertyList}
-      </>
+      </ExpandableCard>
     );
   }
 

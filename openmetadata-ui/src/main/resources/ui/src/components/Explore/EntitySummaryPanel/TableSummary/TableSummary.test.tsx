@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
@@ -68,9 +69,15 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 describe('TableSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <TableSummary
+          entityDetails={mockTableEntityDetails}
+          permissions={mockEntityPermissions as OperationPermission}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
     const profilerHeader = screen.getByTestId('profiler-header');
@@ -88,9 +95,15 @@ describe('TableSummary component tests', () => {
 
   it('Component should render properly, when loaded in the Lineage page.', async () => {
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <TableSummary
+          entityDetails={mockTableEntityDetails}
+          permissions={mockEntityPermissions as OperationPermission}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
     const profilerHeader = screen.getByTestId('profiler-header');
@@ -116,9 +129,15 @@ describe('TableSummary component tests', () => {
     );
 
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <TableSummary
+          entityDetails={mockTableEntityDetails}
+          permissions={mockEntityPermissions as OperationPermission}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
     const testsPassedLabel = screen.getByTestId('test-passed');
@@ -145,9 +164,15 @@ describe('TableSummary component tests', () => {
       })
     );
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <TableSummary
+          entityDetails={mockTableEntityDetails}
+          permissions={mockEntityPermissions as OperationPermission}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
     const testsPassedValue = screen.getByTestId('test-passed-value');
     const testsAbortedValue = screen.getByTestId('test-aborted-value');

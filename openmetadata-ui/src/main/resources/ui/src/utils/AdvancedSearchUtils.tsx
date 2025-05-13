@@ -16,6 +16,7 @@ import { ListValues, RenderSettings } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
+import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -28,6 +29,7 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -405,4 +407,37 @@ export const getCustomPropertyAdvanceSearchEnumOptions = (
 
     return acc;
   }, {});
+};
+
+export const getEmptyJsonTree = (
+  defaultField: string = EntityFields.OWNERS
+): JsonTree => {
+  return {
+    id: QbUtils.uuid(),
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [QbUtils.uuid()]: {
+        type: 'group',
+        properties: {
+          conjunction: 'AND',
+          not: false,
+        },
+        children1: {
+          [QbUtils.uuid()]: {
+            type: 'rule',
+            properties: {
+              field: defaultField,
+              operator: null,
+              value: [],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
 };

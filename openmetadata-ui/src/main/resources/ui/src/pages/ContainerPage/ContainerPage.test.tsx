@@ -385,7 +385,10 @@ describe('Container Page Component', () => {
 
     userEvent.click(childrenTab);
 
-    expect(mockNavigate).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.any,
+      expect.objectContaining({ replace: true })
+    );
   });
 
   it('children should render on children tab', async () => {

@@ -207,13 +207,16 @@ const APICollectionPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== tab) {
-        navigate({
-          pathname: getEntityDetailsPath(
-            EntityType.API_COLLECTION,
-            decodedAPICollectionFQN,
-            activeKey
-          ),
-        });
+        navigate(
+          {
+            pathname: getEntityDetailsPath(
+              EntityType.API_COLLECTION,
+              decodedAPICollectionFQN,
+              activeKey
+            ),
+          },
+          { replace: true }
+        );
       }
     },
     [tab, decodedAPICollectionFQN]
@@ -338,7 +341,7 @@ const APICollectionPage: FunctionComponent = () => {
     const updatedData = data as APICollection;
 
     setAPICollection((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -508,7 +511,7 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={tab}
                 className="tabs-new"

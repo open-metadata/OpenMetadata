@@ -103,13 +103,18 @@ const SettingsRouter = () => {
         }
         path={ROUTES.ADD_POLICY}
       />
-      <Route element={<AddRulePage />} path={ROUTES.ADD_POLICY_RULE} />
-      <Route
-        element={
-          <AdminProtectedRoute hasPermission={false}>
-            <EditEmailConfigPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<AddRulePage />}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.ADD_POLICY_RULE}
+      />
+      <AdminProtectedRoute
+        element={<EditEmailConfigPage />}
+        hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
       />
 
@@ -130,8 +135,15 @@ const SettingsRouter = () => {
         }
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
       />
-      <Route element={<EditRulePage />} path={ROUTES.EDIT_POLICY_RULE} />
-
+      <AdminProtectedRoute
+        element={<EditRulePage />}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.EDIT_POLICY_RULE}
+      />
       {/*  Setting routes without any category will be places here */}
       <Route
         element={
@@ -174,28 +186,28 @@ const SettingsRouter = () => {
         )}
       />
 
-      <Route
-        element={
-          <AdminProtectedRoute hasPermission={false}>
-            <BotsPageV1 />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<BotsPageV1 />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.BOT,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingOptions.BOTS)}
       />
-      <Route
-        element={
-          <AdminProtectedRoute hasPermission={false}>
-            <ApplicationPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<ApplicationPage />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.APPLICATION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
       />
-      <Route
-        element={
-          <AdminProtectedRoute hasPermission={false}>
-            <AppDetails />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<AppDetails />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.APPLICATION,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingOptions.APPLICATIONS,
           undefined,
@@ -241,16 +253,13 @@ const SettingsRouter = () => {
           true
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.TEAM,
-              permissions
-            )}>
-            <ImportTeamsPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<ImportTeamsPage />}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEAM,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
@@ -278,24 +287,24 @@ const SettingsRouter = () => {
       {/* Roles route start
        * Do not change the order of these route
        */}
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <RolesListPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<RolesListPage />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
         )}
       />
 
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <RolesDetailPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<RolesDetailPage />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -355,23 +364,23 @@ const SettingsRouter = () => {
         )}
       />
 
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <PoliciesListPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<PoliciesListPage />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <PoliciesDetailPage />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<PoliciesDetailPage />}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
@@ -434,12 +443,13 @@ const SettingsRouter = () => {
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <CustomPageSettings />
-          </AdminProtectedRoute>
-        }
+      <AdminProtectedRoute
+        element={<CustomPageSettings />}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.PERSONA,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE

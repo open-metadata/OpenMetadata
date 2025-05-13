@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
-
+import { Typography } from 'antd';
+import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -40,36 +42,43 @@ export const OwnerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
+  const header = useMemo(
+    () => (
+      <div className="d-flex items-center gap-2">
+        <Typography.Text className="text-sm font-medium">
+          {t('label.owner-plural')}
+        </Typography.Text>
+        {(permissions.EditOwners || permissions.EditAll) &&
+          data.owners &&
+          data.owners.length > 0 && (
+            <UserTeamSelectableList
+              hasPermission={permissions.EditOwners || permissions.EditAll}
+              listHeight={200}
+              multiple={{ user: true, team: false }}
+              owner={data.owners}
+              onUpdate={handleUpdatedOwner}>
+              <EditIconButton
+                newLook
+                data-testid="edit-owner"
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            </UserTeamSelectableList>
+          )}
+      </div>
+    ),
+    [data, permissions, handleUpdatedOwner]
+  );
+
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid={dataTestId}
-      title={
-        <div className="d-flex items-center gap-2">
-          <Typography.Text className="text-sm font-medium">
-            {t('label.owner-plural')}
-          </Typography.Text>
-          {(permissions.EditOwners || permissions.EditAll) &&
-            data.owners &&
-            data.owners.length > 0 && (
-              <UserTeamSelectableList
-                hasPermission={permissions.EditOwners || permissions.EditAll}
-                listHeight={200}
-                multiple={{ user: true, team: false }}
-                owner={data.owners}
-                onUpdate={handleUpdatedOwner}>
-                <EditIconButton
-                  newLook
-                  data-testid="edit-owner"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.owner-plural'),
-                  })}
-                />
-              </UserTeamSelectableList>
-            )}
-        </div>
-      }>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId={dataTestId}
+      isExpandDisabled={isEmpty(data.owners)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,
@@ -94,6 +103,6 @@ export const OwnerLabelV2 = <
             />
           </UserTeamSelectableList>
         )}
-    </Card>
+    </ExpandableCard>
   );
 };

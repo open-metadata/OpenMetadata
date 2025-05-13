@@ -170,6 +170,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
     /* Required for serde */
   }
 
+  public static class AppRefList extends ResultList<EntityReference> {
+    /* Required for serde */
+  }
+
   public static class AppRunList extends ResultList<AppRunRecord> {
     /* Required for serde */
   }
@@ -237,6 +241,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  @GET
+  @Path("/installed")
+  @Operation(
+      operationId = "listInstalledAppsInformation",
+      summary = "List Entity Reference for installed application",
+      description = "Get a list of applications ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Entity Reference",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppRefList.class)))
+      })
+  public List<EntityReference> list(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return repository.listAllAppsReference();
   }
 
   @GET
@@ -1041,12 +1065,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-        if (configPayload != null) {
-          throw new BadRequestException(
-              "Overriding app config is not supported for external applications.");
-        }
         PipelineServiceClientResponse response =
-            pipelineServiceClient.runPipeline(ingestionPipeline, service);
+            pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         return Response.status(response.getCode()).entity(response).build();
       }
     }

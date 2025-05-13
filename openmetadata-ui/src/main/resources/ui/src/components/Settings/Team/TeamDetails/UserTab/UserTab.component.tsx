@@ -355,7 +355,7 @@ export const UserTab = ({
             )}
           </Space>
         }
-        className="mt-0-important"
+        className="mt-0-important border-none"
         heading={t('label.user')}
         permission={editUserPermission}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}

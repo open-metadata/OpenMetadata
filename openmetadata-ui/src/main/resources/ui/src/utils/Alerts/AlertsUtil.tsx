@@ -63,7 +63,6 @@ import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
   DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
@@ -105,12 +104,13 @@ import {
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
+import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { showSuccessToast } from '../ToastUtils';
+import { showErrorToast, showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -266,6 +266,13 @@ export const searchEntity = async ({
       'label'
     );
   } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.search'),
+      })
+    );
+
     return [];
   }
 };
@@ -353,26 +360,24 @@ export const getSupportedFilterOptions = (
   }));
 
 export const getConnectionTimeoutField = () => (
-  <>
-    <Row align="middle">
-      <Col span={7}>{`${t('label.connection-timeout')} (${t(
-        'label.second-plural'
-      )})`}</Col>
-      <Col span={1}>:</Col>
-      <Col data-testid="connection-timeout" span={16}>
-        <Form.Item name="timeout">
-          <Input
-            data-testid="connection-timeout-input"
-            defaultValue={10}
-            placeholder={`${t('label.connection-timeout')} (${t(
-              'label.second-plural'
-            )})`}
-            type="number"
-          />
-        </Form.Item>
-      </Col>
-    </Row>
-  </>
+  <Row align="middle">
+    <Col span={7}>{`${t('label.connection-timeout')} (${t(
+      'label.second-plural'
+    )})`}</Col>
+    <Col span={1}>:</Col>
+    <Col data-testid="connection-timeout" span={16}>
+      <Form.Item name="timeout">
+        <Input
+          data-testid="connection-timeout-input"
+          defaultValue={10}
+          placeholder={`${t('label.connection-timeout')} (${t(
+            'label.second-plural'
+          )})`}
+          type="number"
+        />
+      </Form.Item>
+    </Col>
+  </Row>
 );
 
 export const getReadTimeoutField = () => (

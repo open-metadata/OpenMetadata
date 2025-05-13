@@ -141,7 +141,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
+        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey),
+        { replace: true }
       );
     }
   };
@@ -406,7 +407,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

@@ -13,8 +13,8 @@
 import { Skeleton } from 'antd';
 import { ButtonSkeletonProps } from '../../Skeleton.interfaces';
 
-const ButtonSkeleton = ({ key, ...props }: ButtonSkeletonProps) => {
-  return <Skeleton.Button active block key={key} size="small" {...props} />;
+const ButtonSkeleton = (props: ButtonSkeletonProps) => {
+  return <Skeleton.Button active block size="small" {...props} />;
 };
 
 export default ButtonSkeleton;

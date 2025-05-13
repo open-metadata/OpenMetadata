@@ -158,7 +158,8 @@ export const ActivityFeedTab = ({
         fqn,
         EntityTabs.ACTIVITY_FEED,
         subTab
-      )
+      ),
+      { replace: true }
     );
     setActiveThread();
     setIsFullWidth(false);

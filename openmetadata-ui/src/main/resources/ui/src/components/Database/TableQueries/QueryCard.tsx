@@ -190,11 +190,13 @@ const QueryCard: FC<QueryCardProp> = ({
           }
           title={
             <Space className="font-normal p-y-xs" size={8}>
-              <Text>{queryDate}</Text>
+              <Text className="text-sm">{queryDate}</Text>
               {duration && (
                 <>
                   <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text data-testid="query-run-duration">{duration}</Text>
+                  <Text className="text-sm" data-testid="query-run-duration">
+                    {duration}
+                  </Text>
                 </>
               )}
             </Space>

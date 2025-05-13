@@ -230,9 +230,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-save"
               data-testid="user-profile-persona-edit-cancel"
-              icon={
-                <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<ClosePopoverIcon height={24} />}
               size="small"
               type="primary"
               onClick={handleCloseEditTeam}
@@ -240,9 +238,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-cancel"
               data-testid="user-profile-persona-edit-save"
-              icon={
-                <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<SavePopoverIcon height={24} />}
               loading={isSaving}
               size="small"
               type="primary"

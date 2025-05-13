@@ -208,13 +208,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        navigate({
-          pathname: getEntityDetailsPath(
-            EntityType.DATABASE_SCHEMA,
-            decodedDatabaseSchemaFQN,
-            activeKey
-          ),
-        });
+        navigate(
+          {
+            pathname: getEntityDetailsPath(
+              EntityType.DATABASE_SCHEMA,
+              decodedDatabaseSchemaFQN,
+              activeKey
+            ),
+          },
+          { replace: true }
+        );
       }
     },
     [activeTab, decodedDatabaseSchemaFQN]
@@ -342,7 +345,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     const updatedData = data as DatabaseSchema;
 
     setDatabaseSchema((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

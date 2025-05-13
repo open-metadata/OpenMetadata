@@ -252,12 +252,7 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="user-profile-edit-roles-cancel-button"
-                    icon={
-                      <ClosePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<ClosePopoverIcon height={24} />}
                     size="small"
                     style={{
                       width: '30px',
@@ -273,12 +268,7 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-cancel"
                     data-testid="user-profile-edit-roles-save-button"
-                    icon={
-                      <SavePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<SavePopoverIcon height={24} />}
                     loading={isLoading}
                     size="small"
                     style={{

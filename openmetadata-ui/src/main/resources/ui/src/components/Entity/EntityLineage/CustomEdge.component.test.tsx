@@ -81,14 +81,9 @@ describe('Test CustomEdge Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const edgePathElement = await screen.findAllByTestId(
-      'react-flow-edge-path'
-    );
-
     const deleteButton = screen.queryByTestId('delete-button');
 
     expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
   it('Pipeline as edge should be visible', async () => {

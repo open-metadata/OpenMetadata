@@ -188,7 +188,7 @@ export const getMetricDetailsPageTabs = ({
 
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
-    return <RelatedMetrics newLook />;
+    return <RelatedMetrics />;
   }
 
   return (

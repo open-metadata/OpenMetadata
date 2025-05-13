@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByText,
-  getByTestId,
-  queryByText,
-  render,
-} from '@testing-library/react';
+import { findByText, queryByText, render } from '@testing-library/react';
 import {
   mockedGlossaries,
   mockedGlossaryTerms,
@@ -25,7 +19,7 @@ import {
 import GlossaryV1 from './GlossaryV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 
-let params = {
+const params = {
   glossaryName: 'GlossaryName',
   action: '',
 };
@@ -109,12 +103,6 @@ jest.mock('../ActivityFeed/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('./ImportGlossary/ImportGlossary', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="import-glossary">ImportGlossary</div>)
-);
-
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
@@ -178,17 +166,5 @@ describe('Test Glossary component', () => {
 
     expect(glossaryTerm).toBeInTheDocument();
     expect(glossaryDetails).not.toBeInTheDocument();
-  });
-
-  it('Should render import glossary component', async () => {
-    params = { ...params, action: 'import' };
-
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const importGlossary = getByTestId(container, 'import-glossary');
-
-      expect(importGlossary).toBeInTheDocument();
-    });
   });
 });

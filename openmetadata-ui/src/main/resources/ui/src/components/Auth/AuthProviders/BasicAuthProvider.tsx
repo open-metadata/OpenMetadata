@@ -25,7 +25,6 @@ import { RegistrationRequest } from '../../../generated/auth/registrationRequest
 import {
   basicAuthRegister,
   basicAuthSignIn,
-  checkEmailInUse,
   generatePasswordResetLink,
   logoutUser,
   resetPassword,
@@ -131,18 +130,13 @@ const BasicAuthProvider = ({
 
   const handleRegister = async (request: RegistrationRequest) => {
     try {
-      const isEmailAlreadyExists = await checkEmailInUse(request.email);
-      if (!isEmailAlreadyExists) {
-        await basicAuthRegister(request);
+      await basicAuthRegister(request);
 
-        showSuccessToast(
-          t('server.create-entity-success', { entity: t('label.user-account') })
-        );
-        showInfoToast(t('server.email-confirmation'));
-        navigate(ROUTES.SIGNIN);
-      } else {
-        return showErrorToast(t('server.email-found'));
-      }
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.user-account') })
+      );
+      showInfoToast(t('server.email-confirmation'));
+      navigate(ROUTES.SIGNIN);
     } catch (err) {
       if (
         (err as AxiosError).response?.status ===

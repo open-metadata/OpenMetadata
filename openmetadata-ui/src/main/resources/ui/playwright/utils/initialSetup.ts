@@ -32,8 +32,11 @@ const initialSetup = async (page: Page) => {
   await updateDefaultOrganizationPolicy(apiContext);
   // update default Data consumer policy
   await updateDefaultDataConsumerPolicy(apiContext);
-  // disable the AutoPilot application
-  await enableDisableAutoPilotApplication(apiContext, false);
+
+  if (process.env.PLAYWRIGHT_IN_NIGHTLY) {
+    // disable the AutoPilot application
+    await enableDisableAutoPilotApplication(apiContext, false);
+  }
 
   await afterAction();
 };
@@ -45,5 +48,9 @@ export const loginAsAdmin = async (page: Page, admin: AdminClass) => {
   await admin.logout(page);
   await page.waitForURL('**/signin');
   await admin.login(page);
+
+  // Close the leftside bar to run tests smoothly
+  await page.getByTestId('sidebar-toggle').click();
+
   await page.waitForURL('**/my-data');
 };

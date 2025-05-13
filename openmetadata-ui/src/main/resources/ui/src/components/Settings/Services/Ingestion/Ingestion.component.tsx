@@ -65,6 +65,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   onCollateAgentPageChange,
   agentCounts,
   refreshAgentsList,
+  workflowStartAt,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -248,6 +249,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           collateAgentsList={collateAgentsList}
           isCollateAgentLoading={isCollateAgentLoading}
           serviceDetails={serviceDetails}
+          workflowStartAt={workflowStartAt}
           onCollateAgentPageChange={onCollateAgentPageChange}
         />
       ) : (

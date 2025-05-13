@@ -31,13 +31,13 @@ import {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
+  getEmptyJsonTree,
   getTierOptions,
   getTreeConfig,
 } from '../../../utils/AdvancedSearchUtils';
@@ -117,7 +117,10 @@ export const AdvanceSearchProvider = ({
 
   const defaultTree = useMemo(
     () =>
-      QbUtils.Validation.sanitizeTree(QbUtils.loadTree(emptyJsonTree), config),
+      QbUtils.Validation.sanitizeTree(
+        QbUtils.loadTree(getEmptyJsonTree()),
+        config
+      ),
     []
   );
 
@@ -152,7 +155,7 @@ export const AdvanceSearchProvider = ({
   const [showModal, setShowModal] = useState(false);
   const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
     jsonTree
-      ? QbUtils.checkTree(QbUtils.loadTree(jsonTree), config)
+      ? QbUtils.Validation.sanitizeTree(QbUtils.loadTree(jsonTree), config)
       : defaultTree
   );
   const [queryFilter, setQueryFilter] = useState<
@@ -200,7 +203,9 @@ export const AdvanceSearchProvider = ({
   };
 
   const handleReset = useCallback(() => {
-    setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
+    setTreeInternal(
+      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+    );
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);

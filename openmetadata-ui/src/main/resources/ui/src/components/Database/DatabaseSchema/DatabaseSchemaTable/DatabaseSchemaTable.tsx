@@ -24,6 +24,7 @@ import {
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
+import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
@@ -45,6 +46,7 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getEntityBulkEditPath,
@@ -53,7 +55,12 @@ import {
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
-import { ownerTableObject } from '../../../../utils/TableColumn.util';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
@@ -120,7 +127,7 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: [TabSpecificField.OWNERS, TabSpecificField.USAGE_SUMMARY],
+          fields: [TabSpecificField.USAGE_SUMMARY, commonTableFields],
         });
 
         setSchemas(data);
@@ -267,6 +274,9 @@ export const DatabaseSchemaTable = ({
           ),
       },
       ...ownerTableObject<DatabaseSchema>(),
+      ...domainTableObject<DatabaseSchema>(),
+      ...dataProductTableObject<DatabaseSchema>(),
+      ...tagTableObject<DatabaseSchema>(),
       {
         title: t('label.usage'),
         dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
@@ -340,6 +350,7 @@ export const DatabaseSchemaTable = ({
       }}
       pagination={false}
       rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
       searchProps={{
         placeholder: t('label.search-for-type', {
           type: t('label.schema'),

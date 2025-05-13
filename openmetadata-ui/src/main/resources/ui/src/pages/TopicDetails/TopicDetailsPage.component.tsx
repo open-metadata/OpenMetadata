@@ -98,7 +98,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         entityFqn
       );
       setTopicPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -236,7 +236,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     const updatedData = data as Topic;
 
     setTopicDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -713,9 +713,30 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
   - category: Connectors / Troubleshooting
     url: /connectors/troubleshooting
+
+  - category: Collate AI
+    url: /collateai
+
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
+  - category: Collate AI / Collate AI Tier Agent
+    url: /collateai/tier-agent
+  - category: Collate AI / Collate AI Quality Agent
+    url: /collateai/quality-agent
+  - category: Collate AI / Collate AI Documentation Agent
+    url: /collateai/documentation-agent
+
+  - category: Applications
+    url: /applications
+
+  - category: Applications / Reverse Metadata Application
+    url: /applications/reverse-metadata
+  - category: Applications / Autopilot
+    url: /applications/autopilot
+  - category: Applications / Data Retention Application
+    url: /applications/data-retention
 
   - category: How-to Guides
     url: /how-to-guides
@@ -964,6 +985,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Sample Data Handling Using PII Tags
+    url: /how-to-guides/data-governance/classification/sample-data-using-pii-tag
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
     url: /how-to-guides/data-governance/classification/auto-classification
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
@@ -1043,138 +1066,6 @@ site_menu:
     url: /security/saml/aws
   - category: Enable Security / Saml / Azure
     url: /security/saml/azure
-
-  - category: Releases
-    url: /releases
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Supported Releases
-    url: /releases/supported
-  - category: Releases / All Releases
-    url: /releases/all-releases
-  - category: Releases / All Releases / 1.6.10 Release
-    url: /releases/all-releases/#1.6.10-release
-  - category: Releases / All Releases / 1.6.9 Release
-    url: /releases/all-releases/#1.6.9-release
-  - category: Releases / All Releases / 1.6.8 Release
-    url: /releases/all-releases/#1.6.8-release
-  - category: Releases / All Releases / 1.6.7 Release
-    url: /releases/all-releases/#1.6.7-release
-  - category: Releases / All Releases / 1.6.6 Release
-    url: /releases/all-releases/#1.6.6-release
-  - category: Releases / All Releases / 1.6.5 Release
-    url: /releases/all-releases/#1.6.5-release
-  - category: Releases / All Releases / 1.6.4 Release
-    url: /releases/all-releases/#1.6.4-release
-  - category: Releases / All Releases / 1.6.3 Release
-    url: /releases/all-releases/#1.6.3-release
-  - category: Releases / All Releases / 1.6.2 Release
-    url: /releases/all-releases/#1.6.2-release
-  - category: Releases / All Releases / 1.6.1 Release
-    url: /releases/all-releases/#1.6.1-release
-  - category: Releases / All Releases / 1.5.15 Release
-    url: /releases/all-releases/#1.5.15-release
-  - category: Releases / All Releases / 1.5.14 Release
-    url: /releases/all-releases/#1.5.14-release
-  - category: Releases / All Releases / 1.5.13 Release
-    url: /releases/all-releases/#1.5.13-release
-  - category: Releases / All Releases / 1.5.12 Release
-    url: /releases/all-releases/#1.5.12-release
-  - category: Releases / All Releases / 1.5.11 Release
-    url: /releases/all-releases/#1.5.11-release
-  - category: Releases / All Releases / 1.5.10 Release
-    url: /releases/all-releases/#1.5.10-release
-  - category: Releases / All Releases / 1.5.9 Release
-    url: /releases/all-releases/#1.5.9-release
-  - category: Releases / All Releases / 1.5.8 Release
-    url: /releases/all-releases/#1.5.8-release
-  - category: Releases / All Releases / 1.5.7 Release
-    url: /releases/all-releases/#1.5.7-release
-  - category: Releases / All Releases / 1.5.6 Release
-    url: /releases/all-releases/#1.5.6-release
-  - category: Releases / All Releases / 1.5.5 Release
-    url: /releases/all-releases/#1.5.5-release
-  - category: Releases / All Releases / 1.5.4 Release
-    url: /releases/all-releases/#1.5.4-release
-  - category: Releases / All Releases / 1.5.3 Release
-    url: /releases/all-releases/#1.5.3-release
-  - category: Releases / All Releases / 1.5.2 Release
-    url: /releases/all-releases/#1.5.2-release
-  - category: Releases / All Releases / 1.5.1 Release
-    url: /releases/all-releases/#1.5.1-release
-  - category: Releases / All Releases / 1.4.8 Release
-    url: /releases/all-releases/#1.4.8-release
-  - category: Releases / All Releases / 1.4.7 Release
-    url: /releases/all-releases/#1.4.7-release
-  - category: Releases / All Releases / 1.4.6 Release
-    url: /releases/all-releases/#1.4.6-release
-  - category: Releases / All Releases / 1.4.5 Release
-    url: /releases/all-releases/#1.4.5-release
-  - category: Releases / All Releases / 1.4.4 Release
-    url: /releases/all-releases/#1.4.4-release
-  - category: Releases / All Releases / 1.4.3 Release
-    url: /releases/all-releases/#1.4.3-release
-  - category: Releases / All Releases / 1.4.2 Release
-    url: /releases/all-releases/#1.4.2-release
-  - category: Releases / All Releases / 1.4.1 Release
-    url: /releases/all-releases/#1.4.1-release
-  - category: Releases / All Releases / 1.4.0 Release
-    url: /releases/all-releases/#1.4.0-release
-  - category: Releases / All Releases / 1.3.4 Release
-    url: /releases/all-releases/#1.3.4-release
-  - category: Releases / All Releases / 1.3.3 Release
-    url: /releases/all-releases/#1.3.3-release
-  - category: Releases / All Releases / 1.3.2 Release
-    url: /releases/all-releases/#1.3.2-release
-  - category: Releases / All Releases / 1.3.1 Release
-    url: /releases/all-releases/#1.3.1-release
-  - category: Releases / All Releases / 1.3.0 Release
-    url: /releases/all-releases/#1.3.0-release
-  - category: Releases / All Releases / 1.2.0 Release
-    url: /releases/all-releases/#1.2.0-release
-  - category: Releases / All Releases / 1.1.2 Release
-    url: /releases/all-releases/#1.1.2-release
-  - category: Releases / All Releases / 1.1.1 Release
-    url: /releases/all-releases/#1.1.1-release
-  - category: Releases / All Releases / 1.1.0 Release
-    url: /releases/all-releases/#1.1.0-release
-  - category: Releases / All Releases / 1.0.0 Release
-    url: /releases/all-releases/#1.0.0-release
-  - category: Releases / All Releases / 0.13.3 Release
-    url: /releases/all-releases/#0.13.3-release
-  - category: Releases / All Releases / 0.13.2 Release
-    url: /releases/all-releases/#0.13.2-release
-  - category: Releases / All Releases / 0.13.1 Release
-    url: /releases/all-releases/#0.13.1-release
-  - category: Releases / All Releases / 0.13.0 Release
-    url: /releases/all-releases/#0.13.0-release
-  - category: Releases / All Releases / 0.12.3 Release
-    url: /releases/all-releases/#0.12.3-release
-  - category: Releases / All Releases / 0.12.2 Release
-    url: /releases/all-releases/#0.12.2-release
-  - category: Releases / All Releases / 0.12.1 Release
-    url: /releases/all-releases/#0.12.1-release
-  - category: Releases / All Releases / 0.12.0 Release
-    url: /releases/all-releases/#0.12.0-release
-  - category: Releases / All Releases / 0.11.0 Release
-    url: /releases/all-releases/#0.11.0-release
-  - category: Releases / All Releases / 0.10.1 Release
-    url: /releases/all-releases/#0.10.1-release
-  - category: Releases / All Releases / 0.10.0 Release
-    url: /releases/all-releases/#0.10.0-release
-  - category: Releases / All Releases / 0.9.0 Release
-    url: /releases/all-releases/#0.9.0-release
-  - category: Releases / All Releases / 0.8.0 Release
-    url: /releases/all-releases/#0.8.0-release
-  - category: Releases / All Releases / 0.7.0 Release
-    url: /releases/all-releases/#0.7.0-release
-  - category: Releases / All Releases / 0.6.0 Release
-    url: /releases/all-releases/#0.6.0-release
-  - category: Releases / All Releases / 0.5.0 Release
-    url: /releases/all-releases/#0.5.0-release
-  - category: Releases / All Releases / 0.4.0 Release
-    url: /releases/all-releases/#0.4.0-release
-
 
   - category: Main Concepts
     url: /main-concepts
@@ -2193,9 +2084,4 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-
-  - category: Collate AI
-    url: /collateai
-  - category: Collate AI / How to Use Collate AI
-    url: /collateai/how-to-use-collate-ai
 ---

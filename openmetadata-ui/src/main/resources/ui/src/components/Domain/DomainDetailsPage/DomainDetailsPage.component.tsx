@@ -27,7 +27,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -63,6 +63,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
@@ -124,6 +125,8 @@ const DomainDetailsPage = ({
   const { tab: activeTab, version } =
     useRequiredParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
+  const { currentUser } = useApplicationStore();
+
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -149,6 +152,11 @@ const DomainDetailsPage = ({
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
+
+  const isOwner = useMemo(
+    () => domain.owners?.some((owner) => isEqual(owner.id, currentUser?.id)),
+    [domain, currentUser]
+  );
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -214,7 +222,7 @@ const DomainDetailsPage = ({
           },
         ]
       : []),
-    ...(permissions.dataProduct.Create
+    ...(isOwner || permissions.dataProduct.Create
       ? [
           {
             label: t('label.data-product-plural'),
@@ -714,6 +722,7 @@ const DomainDetailsPage = ({
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}
+          isVersionView={isVersionsView}
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>

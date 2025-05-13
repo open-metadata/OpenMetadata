@@ -230,12 +230,17 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      navigate({
-        pathname: getClassificationTagPath(
-          tagItem.fullyQualifiedName ?? '',
-          tab
-        ),
-      });
+      navigate(
+        {
+          pathname: getClassificationTagPath(
+            tagItem.fullyQualifiedName ?? '',
+            tab
+          ),
+        },
+        {
+          replace: true,
+        }
+      );
     }
   };
 
@@ -342,6 +347,12 @@ const TagPage = () => {
         setPreviewAsset(undefined);
       }
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })
+      );
       setAssetCount(0);
     }
   };
@@ -592,7 +603,7 @@ const TagPage = () => {
             className="data-classification"
             data-testid="data-classification"
             gutter={[0, 12]}>
-            <Col className="p-x-md" flex="auto">
+            <Col className="p-x-md" flex="1">
               <EntityHeader
                 badge={
                   tagItem.disabled && (

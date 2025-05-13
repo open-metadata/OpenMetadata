@@ -17,7 +17,6 @@ import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -72,7 +71,7 @@ const MlModelPage = () => {
         entityFqn
       );
       setPipelinePermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -235,7 +234,7 @@ const MlModelPage = () => {
       const updatedData = data as Mlmodel;
 
       setMlModelDetail((data) => ({
-        ...(data ?? updatedData),
+        ...(updatedData ?? data),
         version: updatedData.version,
       }));
     },

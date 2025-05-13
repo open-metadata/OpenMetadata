@@ -237,13 +237,16 @@ const ContainerPage = () => {
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      navigate({
-        pathname: getEntityDetailsPath(
-          EntityType.CONTAINER,
-          decodedContainerName,
-          tabValue
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.CONTAINER,
+            decodedContainerName,
+            tabValue
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -374,7 +377,7 @@ const ContainerPage = () => {
     const updatedData = data as Container;
 
     setContainerData((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -573,7 +576,7 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

@@ -210,7 +210,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const exploreLeftPanel = useMemo(() => {
     if (tabItems.length === 0) {
-      return (
+      return loading ? (
+        <Loader />
+      ) : (
         <FilterErrorPlaceHolder
           className="h-min-80 d-flex flex-col justify-center border-none"
           size={SIZE.MEDIUM}

@@ -124,6 +124,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       testCases,
       name: ingestionPipeline?.displayName,
       selectAllTestCases: !isEmpty(ingestionPipeline) && isUndefined(testCases),
+      raiseOnError: ingestionPipeline?.raiseOnError ?? true,
     };
   }, [ingestionPipeline]);
 
@@ -173,6 +174,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: generateUUID(),
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       pipelineType: PipelineType.TestSuite,
+      raiseOnError: data.raiseOnError ?? true,
       service: {
         id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
@@ -210,6 +212,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         ...ingestionPipeline?.airflowConfig,
         scheduleInterval: data.cron,
       },
+      raiseOnError: data.raiseOnError ?? true,
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {
         ...ingestionPipeline?.sourceConfig,

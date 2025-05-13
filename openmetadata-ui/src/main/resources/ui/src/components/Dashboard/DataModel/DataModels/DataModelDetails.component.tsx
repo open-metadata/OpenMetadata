@@ -124,7 +124,10 @@ const DataModelDetails = ({
           EntityType.DASHBOARD_DATA_MODEL,
           decodedDataModelFQN,
           tabValue
-        )
+        ),
+        {
+          replace: true,
+        }
       );
     }
   };
@@ -246,7 +249,7 @@ const DataModelDetails = ({
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

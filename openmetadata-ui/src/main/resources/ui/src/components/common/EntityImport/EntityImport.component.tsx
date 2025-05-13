@@ -23,11 +23,11 @@ import {
   CSVImportResult,
   Status,
 } from '../../../generated/type/csvImportResult';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
-} from '../../BulkImport/BulkEntityImport.interface';
+} from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { UploadFile } from '../../UploadFile/UploadFile';
 import Banner from '../Banner/Banner';

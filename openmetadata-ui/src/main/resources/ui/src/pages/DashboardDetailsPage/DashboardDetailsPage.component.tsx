@@ -80,7 +80,7 @@ const DashboardDetailsPage = () => {
         entityFqn
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -245,7 +245,7 @@ const DashboardDetailsPage = () => {
       const updatedData = data as Dashboard;
 
       setDashboardDetails((data) => ({
-        ...(data ?? updatedData),
+        ...(updatedData ?? data),
         version: updatedData.version,
       }));
     },

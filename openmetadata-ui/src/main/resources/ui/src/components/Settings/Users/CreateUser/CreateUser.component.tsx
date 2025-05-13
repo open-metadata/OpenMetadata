@@ -50,7 +50,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
+import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -234,24 +234,6 @@ const CreateUser = ({
             message: t('message.field-text-is-invalid', {
               fieldText: t('label.email'),
             }),
-          },
-          {
-            type: 'email',
-            required: true,
-            validator: async (_, value) => {
-              if (EMAIL_REG_EX.test(value) && !forceBot) {
-                const isEmailAlreadyExists = await checkEmailInUse(value);
-                if (isEmailAlreadyExists) {
-                  return Promise.reject(
-                    t('message.entity-already-exists', {
-                      entity: value,
-                    })
-                  );
-                }
-
-                return Promise.resolve();
-              }
-            },
           },
         ]}>
         <Input

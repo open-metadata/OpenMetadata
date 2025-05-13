@@ -17,4 +17,5 @@ import { BasicEntityOverviewInfo } from '../../../../utils/EntityUtils.interface
 export interface CommonEntitySummaryInfoProps {
   entityInfo: Array<BasicEntityOverviewInfo>;
   componentType: DRAWER_NAVIGATION_OPTIONS;
+  isDomainVisible?: boolean;
 }

@@ -214,13 +214,16 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
-      navigate({
-        pathname: getEntityDetailsPath(
-          EntityType.DATABASE,
-          decodedDatabaseFQN,
-          key
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.DATABASE,
+            decodedDatabaseFQN,
+            key
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -264,7 +267,8 @@ const DatabaseDetails: FunctionComponent = () => {
           extraParameters: {
             quickFilter: getQueryFilterForDatabase(serviceType, database.name),
           },
-        })
+        }),
+        { replace: true }
       );
     }
   }, [withinPageSearch]);
@@ -378,7 +382,7 @@ const DatabaseDetails: FunctionComponent = () => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -30,6 +30,10 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 describe('GlossaryTermReferences', () => {
   it('renders glossary term references', async () => {
     mockContext.data = mockGlossaryTerm2;

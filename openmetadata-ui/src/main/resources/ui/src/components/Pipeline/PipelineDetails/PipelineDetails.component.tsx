@@ -234,13 +234,16 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      navigate({
-        pathname: getEntityDetailsPath(
-          EntityType.PIPELINE,
-          pipelineFQN,
-          tabValue
-        ),
-      });
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.PIPELINE,
+            pipelineFQN,
+            tabValue
+          ),
+        },
+        { replace: true }
+      );
     }
   };
 
@@ -348,7 +351,7 @@ const PipelineDetails = ({
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

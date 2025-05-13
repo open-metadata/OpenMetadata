@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
-
+import { Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +29,7 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -144,10 +144,12 @@ const GlossaryTermReferences = () => {
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="references-container"
-      title={header}>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="references-container"
+      isExpandDisabled={isEmpty(references)}>
       {isVersionView ? (
         getVersionReferenceElements()
       ) : (
@@ -179,7 +181,7 @@ const GlossaryTermReferences = () => {
         }}
         onSave={handleReferencesSave}
       />
-    </Card>
+    </ExpandableCard>
   );
 };
 

@@ -285,9 +285,7 @@ const IncidentManagerPageHeader = ({
               team: false,
             }}
             owners={details?.assignee ? [details.assignee] : []}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.assignee'),
-            })}
+            placeHolder={t('label.assignee')}
             tooltipText={t('label.edit-entity', {
               entity: t('label.assignee'),
             })}

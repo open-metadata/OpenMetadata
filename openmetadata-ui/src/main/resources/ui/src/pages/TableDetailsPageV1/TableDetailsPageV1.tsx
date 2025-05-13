@@ -361,7 +361,9 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey));
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+          replace: true,
+        });
       }
     }
   };
@@ -678,7 +680,7 @@ const TableDetailsPageV1: React.FC = () => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -60,6 +60,11 @@ jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
   return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
 });
 
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
+}));
+
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);

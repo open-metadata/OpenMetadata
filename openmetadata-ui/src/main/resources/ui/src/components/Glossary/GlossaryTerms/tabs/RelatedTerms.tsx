@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 
 import { isArray, isEmpty, isUndefined } from 'lodash';
@@ -41,6 +41,7 @@ import {
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -246,10 +247,12 @@ const RelatedTerms = () => {
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="related-term-container"
-      title={header}>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="related-term-container"
+      isExpandDisabled={selectedOption.length === 0}>
       {isIconVisible ? (
         relatedTermsContainer
       ) : (
@@ -266,7 +269,7 @@ const RelatedTerms = () => {
           onSubmit={handleRelatedTermsSave}
         />
       )}
-    </Card>
+    </ExpandableCard>
   );
 };
 
