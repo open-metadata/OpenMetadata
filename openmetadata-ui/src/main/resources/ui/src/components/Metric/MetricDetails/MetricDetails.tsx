@@ -196,6 +196,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      editAllPermission,
       getEntityFeedCount,
       labelMap: tabLabelMap,
     });

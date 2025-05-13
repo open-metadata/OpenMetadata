@@ -51,6 +51,7 @@ export const makeData = (
 export const getSearchIndexDetailsTabs = ({
   searchIndexDetails,
   viewAllPermission,
+  editAllPermission,
   feedCount,
   activeTab,
   getEntityFeedCount,
@@ -94,6 +95,7 @@ export const getSearchIndexDetailsTabs = ({
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={searchIndexDetails?.owners}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchSearchIndexDetails}
           onUpdateFeedCount={handleFeedCount}

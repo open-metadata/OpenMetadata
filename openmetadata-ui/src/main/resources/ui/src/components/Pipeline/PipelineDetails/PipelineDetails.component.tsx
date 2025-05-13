@@ -208,6 +208,7 @@ const PipelineDetails = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    editAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -227,6 +228,7 @@ const PipelineDetails = ({
         (pipelinePermissions.EditAll || pipelinePermissions.EditLineage) &&
         !deleted,
       viewAllPermission: pipelinePermissions.ViewAll,
+      editAllPermission: pipelinePermissions.EditAll,
     }),
     [pipelinePermissions, deleted]
   );
@@ -269,6 +271,7 @@ const PipelineDetails = ({
       pipelineDetails,
       pipelineFQN,
       viewAllPermission,
+      editAllPermission,
       editLineagePermission,
       editCustomAttributePermission,
       deleted: Boolean(pipelineDetails.deleted),
@@ -300,6 +303,7 @@ const PipelineDetails = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    editAllPermission,
   ]);
 
   const toggleTabExpanded = () => {

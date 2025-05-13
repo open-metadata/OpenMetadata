@@ -125,6 +125,7 @@ export const getContainerDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  editAllPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
@@ -198,6 +199,7 @@ export const getContainerDetailPageTabs = ({
           entityType={EntityType.CONTAINER}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={() =>
             fetchContainerDetail(decodedContainerName)

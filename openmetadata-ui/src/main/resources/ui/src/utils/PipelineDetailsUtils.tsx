@@ -61,6 +61,7 @@ export const getPipelineDetailPageTabs = ({
   pipelineDetails,
   pipelineFQN,
   viewAllPermission,
+  editAllPermission,
   editLineagePermission,
   editCustomAttributePermission,
   deleted,
@@ -90,6 +91,7 @@ export const getPipelineDetailPageTabs = ({
           entityType={EntityType.PIPELINE}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchPipeline}
           onUpdateFeedCount={handleFeedCount}
