@@ -217,10 +217,10 @@ export const OwnerLabel = ({
         })}
         data-testid="owner-label">
         {ownerElementsNonCompactView}
-        <div className="d-flex items-center w-full flex-center">
+        <div className="d-flex w-max-full items-center  flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center',
+              'avatar-group w-full d-flex relative items-center m-l-xss',
               {
                 'gap-2 flex-wrap': isCompactView,
                 'flex-row-reverse': !isCompactView,
@@ -245,12 +245,22 @@ export const OwnerLabel = ({
                 </div>
               )
             )}
+            {showMoreButton && isCompactView && (
+              <OwnerReveal
+                avatarSize={isCompactView ? 24 : avatarSize}
+                isCompactView={isCompactView}
+                isDropdownOpen={isDropdownOpen}
+                owners={owners.slice(maxVisibleOwners)}
+                remainingCount={remainingOwnersCount}
+                setIsDropdownOpen={setIsDropdownOpen}
+                setShowAllOwners={setShowAllOwners}
+                showAllOwners={showAllOwners}
+              />
+            )}
           </div>
-          {showMoreButton && (
-            <div
-              className={classNames({
-                'm-l-xs': !isCompactView,
-              })}>
+
+          {showMoreButton && !isCompactView && (
+            <div className="m-l-xs">
               <OwnerReveal
                 avatarSize={isCompactView ? 24 : avatarSize}
                 isCompactView={isCompactView}
