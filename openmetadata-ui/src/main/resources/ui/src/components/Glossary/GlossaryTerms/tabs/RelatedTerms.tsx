@@ -250,7 +250,8 @@ const RelatedTerms = () => {
       cardProps={{
         title: header,
       }}
-      dataTestId="related-term-container">
+      dataTestId="related-term-container"
+      isExpandDisabled={selectedOption.length === 0}>
       {isIconVisible ? (
         relatedTermsContainer
       ) : (
