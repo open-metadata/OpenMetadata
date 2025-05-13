@@ -75,9 +75,11 @@
 }
 
 .ant-card.new-header-border-card {
+  height: auto !important;
+
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   .ant-card-head {
     background: @grey-50;
-    border-bottom: none;
     border-radius: @border-radius-sm;
 
     .text-sm();
@@ -85,14 +87,38 @@
   }
 
   .ant-card-body {
-    .scrollable-card-body();
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .expand-collapse-icon {
+    transform: rotate(180deg);
+  }
+
+  &.expanded {
+    .ant-card-head {
+      border-bottom: none;
+      margin-bottom: 0;
+
+      .expand-collapse-icon {
+        transform: rotate(0deg);
+      }
+    }
+  }
+
+  &:not(.expanded) {
+    .ant-card-body {
+      height: 0 !important;
+      overflow: hidden;
+      padding: 0;
+    }
+  }
+
+  .expand-collapse-icon {
+    & svg {
+      fill: @white;
+    }
   }
 
   border: 1px solid @grey-15;
-}
-
-.ant-card.scrollable-body-card {
-  .ant-card-body {
-    .scrollable-card-body();
-  }
 }

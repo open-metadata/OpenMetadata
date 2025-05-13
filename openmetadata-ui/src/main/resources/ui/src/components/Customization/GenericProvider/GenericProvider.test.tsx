@@ -18,15 +18,13 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
 import { postThread } from '../../../rest/feedsAPI';
+import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { GenericProvider, useGenericContext } from './GenericProvider';
 
 // Mock dependencies
 jest.mock('../../../rest/feedsAPI');
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
 
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockImplementation(() => ({
@@ -43,6 +41,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
   getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
+  updateWidgetHeightRecursively: jest.fn(),
 }));
 
 // Mock ActivityFeedProvider
@@ -76,6 +75,9 @@ const TestComponent = () => {
           context.onThreadLinkSelect('test-link', ThreadType.Task)
         }>
         Open Thread
+      </button>
+      <button onClick={() => context.updateWidgetHeight('widget-id', 100)}>
+        Update Widget Height
       </button>
     </div>
   );
@@ -225,5 +227,32 @@ describe('GenericProvider', () => {
     );
 
     expect(screen.getByTestId('context-data')).toBeInTheDocument();
+  });
+
+  it('should handle update widget height', () => {
+    const { rerender } = render(
+      <GenericProvider {...defaultProps}>
+        <TestComponent />
+      </GenericProvider>
+    );
+
+    const updatedData = { ...mockData, name: 'Updated Name' };
+    rerender(
+      <GenericProvider {...defaultProps} data={updatedData}>
+        <TestComponent />
+      </GenericProvider>
+    );
+
+    fireEvent.click(screen.getByText('Update Widget Height'));
+
+    expect(updateWidgetHeightRecursively).toHaveBeenCalledWith(
+      'widget-id',
+      100,
+      []
+    );
+
+    expect(screen.getByTestId('context-data')).toHaveTextContent(
+      JSON.stringify(updatedData)
+    );
   });
 });
