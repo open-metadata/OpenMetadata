@@ -90,6 +90,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -277,6 +278,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataProductDAO dataProductDAO();
+
+  @CreateSqlObject
+  DataContractDAO dataContractDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -2394,6 +2398,23 @@ public interface CollectionDAO {
     @Override
     default boolean supportsSoftDelete() {
       return false;
+    }
+  }
+
+  interface DataContractDAO extends EntityDAO<DataContract> {
+    @Override
+    default String getTableName() {
+      return "data_contract_entity";
+    }
+
+    @Override
+    default Class<DataContract> getEntityClass() {
+      return DataContract.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 
