@@ -39,6 +39,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -1320,6 +1321,15 @@ public class ElasticSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  @Override
+  public Response updateClusterSettings(String jsonRequest) throws IOException {
+    Request request = new Request("PUT", "/_cluster/settings");
+    request.setJsonEntity(jsonRequest);
+    return Response.ok()
+        .entity(client.getLowLevelClient().performRequest(request).getEntity())
+        .build();
   }
 
   @Override
