@@ -165,6 +165,9 @@ export class UserClass {
       .nth(1)
       .isVisible();
 
+    // Close the leftside bar to run tests smoothly
+    await page.getByTestId('sidebar-toggle').click();
+
     if (modal) {
       await page.getByRole('dialog').getByRole('img').first().click();
     }
