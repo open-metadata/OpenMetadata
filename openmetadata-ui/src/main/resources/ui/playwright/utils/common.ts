@@ -58,6 +58,7 @@ export const getAuthContext = async (token: string) => {
 
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
+  await page.waitForLoadState('networkidle');
   await page.waitForURL('**/my-data');
 };
 
@@ -122,7 +123,11 @@ export const toastNotification = async (
 ) => {
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
+  await page.waitForSelector('[data-testid="alert-icon"]');
+
   await expect(page.getByTestId('alert-icon')).toBeVisible();
+
+  await page.waitForSelector('[data-testid="alert-icon-close"]');
 
   await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
