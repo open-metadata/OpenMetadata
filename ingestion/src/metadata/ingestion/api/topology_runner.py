@@ -379,7 +379,7 @@ class TopologyRunnerMixin(Generic[C]):
                 # if overrideMetadata is true, we will always update the entity
                 if (
                     entity_source_hash != create_entity_request_hash
-                or self.source_config.overrideMetadata
+                    or self.source_config.overrideMetadata
                 ):
                     # the entity has changed, get the entity from server and make a patch request
                     entity = self.metadata.get_by_name(
