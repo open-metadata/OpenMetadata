@@ -114,7 +114,7 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    history.push({
+    history.replace({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
         : getGlossaryTermDetailsPath(glossaryFqn, tab),

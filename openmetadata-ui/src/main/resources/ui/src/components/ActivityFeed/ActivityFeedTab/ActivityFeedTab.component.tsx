@@ -195,7 +195,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     setIsFirstLoad(true);
-    history.push(
+    history.replace(
       entityUtilClassBase.getEntityLink(
         entityType,
         fqn,

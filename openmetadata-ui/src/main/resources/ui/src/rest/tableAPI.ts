@@ -239,10 +239,12 @@ export const exportTableDetailsInCSV = async (
     recursive?: boolean;
   }
 ) => {
-  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`tables/name/${fqn}/exportAsync`, {
-    params,
-  });
+  const res = await APIClient.get(
+    `tables/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
 
   return res.data;
 };

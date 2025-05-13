@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrDefault;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -834,6 +835,9 @@ public class LineageRepository {
       case CONTAINER -> {
         Container container =
             Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
+        if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
+          return new HashSet<>();
+        }
         return CommonUtil.getChildrenNames(
             container.getDataModel().getColumns(),
             "getChildren",
@@ -852,7 +856,7 @@ public class LineageRepository {
         Dashboard dashboard =
             Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
         Set<String> result = new HashSet<>();
-        for (EntityReference chart : dashboard.getCharts()) {
+        for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
           result.add(
               chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
         }
@@ -862,7 +866,7 @@ public class LineageRepository {
         MlModel mlModel =
             Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
         Set<String> result = new HashSet<>();
-        for (MlFeature feature : mlModel.getMlFeatures()) {
+        for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
           result.add(
               feature.getFullyQualifiedName().replace(mlModel.getFullyQualifiedName() + ".", ""));
         }
@@ -888,6 +892,10 @@ public class LineageRepository {
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
+        return new HashSet<>();
+      }
+      case PIPELINE -> {
+        LOG.info("Pipeline column level lineage is not supported");
         return new HashSet<>();
       }
       default -> throw new IllegalArgumentException(

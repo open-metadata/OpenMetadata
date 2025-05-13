@@ -1541,6 +1541,36 @@ Since we are introducing the Auto Classification workflow, we are going to remov
   },
   {
     id: 65,
+    version: 'v1.6.9',
+    description: 'Released on 17th April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Made Fields immutable for Applications.
+      `,
+    },
+  },
+  {
+    id: 66,
+    version: 'v1.6.10',
+    description: 'Released on 23rd April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Use Subset of Permissions for add delete Users in teams.
+      `,
+    },
+  },
+  {
+    id: 67,
+    version: 'v1.6.11',
+    description: 'Released on 28th April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Fixed isOwner permission issue for domains and dataProducts.
+      `,
+    },
+  },
+  {
+    id: 68,
     version: 'v1.7.0',
     description: 'Released on 15th April 2025.',
     features: [

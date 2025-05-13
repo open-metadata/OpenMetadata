@@ -46,7 +46,7 @@ While the Airflow part only needs to read the secrets hence the role `Key Vault 
 
 1. In your Key Vault overview page, note down the `Vault URI`.
 2. Go to `Access Control (IAM)` and click on `Add Role Assignment`.
-3. Give the permission `Key Vault Secrets Users` to your Principal.
+3. Give the permission `Key Vault Secrets User` to your Principal.
 
 ### 3. Update configuration
 
