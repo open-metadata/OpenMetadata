@@ -112,11 +112,13 @@ const AddDomainForm = ({
       required: false,
       label: t('label.glossary-term-plural'),
       id: 'root/glossaryTerms',
-      type: FieldTypes.TAG_SUGGESTION,
+      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
       props: {
         selectProps: {
           'data-testid': 'glossary-terms-container',
         },
+        open: false,
+        hasNoActionButtons: true,
         tagType: TagSource.Glossary,
         placeholder: t('label.select-field', {
           field: t('label.glossary-term-plural'),
