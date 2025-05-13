@@ -119,7 +119,7 @@ export const OwnerLabel = ({
           <div className="flex">
             <div className="flex relative m-l-xs justify-end flex-row-reverse">
               {showMultipleTypeVisibleUser.map((owner, index) => (
-                <div className="owner-item-container relative" key={owner.id}>
+                <div className="relative" key={owner.id}>
                   <OwnerItem
                     avatarSize={avatarSize}
                     className={className}
