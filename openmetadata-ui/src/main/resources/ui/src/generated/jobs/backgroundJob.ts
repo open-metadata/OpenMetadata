@@ -81,6 +81,7 @@ export interface EnumCleanupArgs {
 export enum JobType {
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
     DeleteEntity = "DELETE_ENTITY",
+    DeleteToken = "DELETE_TOKEN",
 }
 
 /**

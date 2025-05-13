@@ -29,7 +29,6 @@ export interface JwtAuth {
  * JWT Auth Token expiration in days
  */
 export enum JWTTokenExpiry {
-    FourHours = "FourHours",
     OneHour = "OneHour",
     The1 = "1",
     The30 = "30",

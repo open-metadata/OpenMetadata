@@ -172,7 +172,6 @@ public class JWTTokenGenerator {
     LocalDateTime expiryDate =
         switch (jwtTokenExpiry) {
           case OneHour -> LocalDateTime.now().plusHours(1);
-          case FourHours -> LocalDateTime.now().plusHours(4);
           case One -> LocalDateTime.now().plusDays(1);
           case Seven -> LocalDateTime.now().plusDays(7);
           case Thirty -> LocalDateTime.now().plusDays(30);
