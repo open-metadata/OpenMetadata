@@ -31,61 +31,43 @@ function CommonEntitySummaryInfo({
   return (
     <Row className="text-sm" gutter={[0, 4]}>
       {entityInfo.map((info) => {
-        const isOwner = info.name === t('label.owner-plural');
         const isDomain = isDomainVisible && info.name === t('label.domain');
 
         return info.visible?.includes(componentType) || isDomain ? (
           <Col key={info.name} span={24}>
-            <Row
-              className={classNames('', {
-                'p-b-md': isOwner,
-              })}
-              gutter={[16, 32]}>
-              {!isOwner ? (
-                <>
-                  <Col span={8}>
-                    <Typography.Text
-                      className="summary-item-key font-semibold"
-                      data-testid={`${info.name}-label`}>
-                      {info.name}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={16}>
-                    {info.isLink ? (
-                      <Link
-                        component={Typography.Link}
-                        data-testid={`${info.name}-value`}
-                        target={info.isExternal ? '_blank' : '_self'}
-                        to={info.linkProps ?? { pathname: info.url }}>
-                        {info.value}
-                        {info.isExternal ? (
-                          <Icon
-                            className="m-l-xs"
-                            component={IconExternalLink}
-                            data-testid="external-link-icon"
-                            style={ICON_DIMENSION}
-                          />
-                        ) : null}
-                      </Link>
-                    ) : (
-                      <Typography.Text
-                        className={classNames(
-                          'summary-item-value text-grey-muted',
-                          {
-                            'text-grey-body': !isOwner,
-                          }
-                        )}
-                        data-testid={`${info.name}-value`}>
-                        {info.value}
-                      </Typography.Text>
-                    )}
-                  </Col>
-                </>
-              ) : (
-                <Col data-testid={`${info.name}-value`} span={24}>
-                  {info.value}
-                </Col>
-              )}
+            <Row gutter={[16, 32]}>
+              <Col span={8}>
+                <Typography.Text
+                  className="summary-item-key font-semibold"
+                  data-testid={`${info.name}-label`}>
+                  {info.name}
+                </Typography.Text>
+              </Col>
+              <Col span={16}>
+                {info.isLink ? (
+                  <Link
+                    component={Typography.Link}
+                    data-testid={`${info.name}-value`}
+                    target={info.isExternal ? '_blank' : '_self'}
+                    to={info.linkProps ?? { pathname: info.url }}>
+                    {info.value}
+                    {info.isExternal ? (
+                      <Icon
+                        className="m-l-xs"
+                        component={IconExternalLink}
+                        data-testid="external-link-icon"
+                        style={ICON_DIMENSION}
+                      />
+                    ) : null}
+                  </Link>
+                ) : (
+                  <Typography.Text
+                    className={classNames('summary-item-value text-grey-body')}
+                    data-testid={`${info.name}-value`}>
+                    {info.value}
+                  </Typography.Text>
+                )}
+              </Col>
             </Row>
           </Col>
         ) : null;
