@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "Gebruiker succesvol geverifieerd",
     "valid-url-endpoint": "Eindpunten moeten geldige URL's zijn",
     "validation-error-assets": "Onderzoek al je assets die worden toegevoegd",
+    "value-must-be-greater-than": "{{field}} moet groter zijn dan {{minimum}}",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "{{version}} vrijgegeven <0>Zie wat er veranderd is!</0>",

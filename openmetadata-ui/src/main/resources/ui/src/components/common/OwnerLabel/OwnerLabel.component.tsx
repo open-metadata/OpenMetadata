@@ -13,10 +13,12 @@
 
 import { Button, Typography } from 'antd';
 import classNames from 'classnames';
+import { reverse } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
@@ -180,6 +182,11 @@ export const OwnerLabel = ({
       : owners.slice(0, maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
     const showMoreButton = remainingOwnersCount > 0 && !showAllOwners;
+
+    const renderVisibleOwners = isCompactView
+      ? visibleOwners
+      : reverse(visibleOwners);
+
     // If no owners, render the empty state
     if (!hasOwners) {
       return (
@@ -216,44 +223,46 @@ export const OwnerLabel = ({
               'avatar-group w-full  d-flex relative items-center',
               {
                 'gap-2 flex-wrap': isCompactView,
+                'flex-row-reverse': !isCompactView,
                 inherited: Boolean(owners.some((owner) => owner?.inherited)),
               },
               className
             )}>
-            {visibleOwners.map((owner, index) => (
-              <div
-                className={classNames({
-                  'w-full': owner.type === OwnerType.TEAM,
-                })}
-                key={owner.id}>
-                <OwnerItem
-                  avatarSize={avatarSize}
-                  className={className}
-                  isCompactView={isCompactView}
-                  owner={owner}
-                  ownerDisplayName={ownerDisplayName?.[index]}
-                />
-              </div>
-            ))}
-
-            {showMoreButton && (
-              <div
-                className={classNames({
-                  'm-l-xs': !isCompactView,
-                })}>
-                <OwnerReveal
-                  avatarSize={isCompactView ? 24 : avatarSize}
-                  isCompactView={isCompactView}
-                  isDropdownOpen={isDropdownOpen}
-                  owners={owners.slice(maxVisibleOwners)}
-                  remainingCount={remainingOwnersCount}
-                  setIsDropdownOpen={setIsDropdownOpen}
-                  setShowAllOwners={setShowAllOwners}
-                  showAllOwners={showAllOwners}
-                />
-              </div>
+            {renderVisibleOwners.map(
+              (owner: EntityReference, index: number) => (
+                <div
+                  className={classNames({
+                    'w-full': owner.type === OwnerType.TEAM,
+                  })}
+                  key={owner.id}>
+                  <OwnerItem
+                    avatarSize={avatarSize}
+                    className={className}
+                    isCompactView={isCompactView}
+                    owner={owner}
+                    ownerDisplayName={ownerDisplayName?.[index]}
+                  />
+                </div>
+              )
             )}
           </div>
+          {showMoreButton && (
+            <div
+              className={classNames({
+                'm-l-xs': !isCompactView,
+              })}>
+              <OwnerReveal
+                avatarSize={isCompactView ? 24 : avatarSize}
+                isCompactView={isCompactView}
+                isDropdownOpen={isDropdownOpen}
+                owners={owners.slice(maxVisibleOwners)}
+                remainingCount={remainingOwnersCount}
+                setIsDropdownOpen={setIsDropdownOpen}
+                setShowAllOwners={setShowAllOwners}
+                showAllOwners={showAllOwners}
+              />
+            </div>
+          )}
         </div>
         {isCompactView && onUpdate && (
           <UserTeamSelectableList
@@ -274,7 +283,6 @@ export const OwnerLabel = ({
     showAllOwners,
     maxVisibleOwners,
     placeHolder,
-    t,
     ownerDisplayName,
     isCompactView,
     isDropdownOpen,
