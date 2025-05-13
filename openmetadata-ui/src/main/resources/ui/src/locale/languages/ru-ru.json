@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "Пользователь успешно проверен",
     "valid-url-endpoint": "Конечные точки должны быть действительным URL",
     "validation-error-assets": "Please examine all your assets that are being added",
+    "value-must-be-greater-than": "{{field}} должно быть больше чем {{minimum}}",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "Выпущена {{версия}} <0>Посмотрите, что нового!</0>",

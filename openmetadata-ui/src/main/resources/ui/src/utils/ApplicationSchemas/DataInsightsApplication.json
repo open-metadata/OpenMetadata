@@ -75,7 +75,8 @@
           "title": "Data Retention (Days)",
           "description": "Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.",
           "type": "integer",
-          "default": 7
+          "default": 7,
+          "minimum": 0
         },
         "serviceFilter": {
           "type": "object",
@@ -173,7 +174,8 @@
     "batchSize": {
       "description": "Maximum number of events processed at a time (Default 100).",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 0
     },
     "recreateDataAssetsIndex": {
       "title": "Recreate DataInsights DataAssets Index",

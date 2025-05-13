@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "L'utilisateur a été vérifié avec succès",
     "valid-url-endpoint": "Les points de terminaison doivent être une URL valide",
     "validation-error-assets": "Veuillez exmanier tous les actifs qui sont ajoutés",
+    "value-must-be-greater-than": "{{field}} doit être supérieur à {{minimum}}",
     "value-should-equal-to-value": "La valeur devrait être égale à {{value}}.",
     "value-should-not-equal-to-value": "La valeur ne devrait pas être égale à {{value}}.",
     "version-released-try-now": "{{version}} publié essayez maintenant !",

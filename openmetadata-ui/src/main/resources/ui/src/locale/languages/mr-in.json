@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "वापरकर्ता यशस्वीरित्या सत्यापित केला",
     "valid-url-endpoint": "एंडपॉईंट्स वैध URL असावेत",
     "validation-error-assets": "कृपया तुम्ही जोडत असलेल्या सर्व ॲसेट्सची तपासणी करा",
+    "value-must-be-greater-than": "{{field}} {{minimum}} पेक्षा मोठा असावा",
     "value-should-equal-to-value": "मूल्य {{value}} च्या बरोबरीचे असावे.",
     "value-should-not-equal-to-value": "मूल्य {{value}} च्या बरोबरीचे नसावे.",
     "version-released-try-now": "{{version}} रिलीझ झाले <0>नवीन काय आहे ते पहा!</0>",

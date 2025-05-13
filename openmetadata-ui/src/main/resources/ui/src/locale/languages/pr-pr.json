@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "کاربر با موفقیت تأیید شد.",
     "valid-url-endpoint": "نقاط پایانی باید URL معتبر باشند.",
     "validation-error-assets": "لطفاً تمام دارایی‌هایی که در حال اضافه کردن آن‌ها هستید را بررسی کنید.",
+    "value-must-be-greater-than": "{{field}} {{minimum}} से अधिक होना चाहिए",
     "value-should-equal-to-value": "مقدار باید برابر با {{value}} باشد.",
     "value-should-not-equal-to-value": "مقدار نباید برابر با {{value}} باشد.",
     "version-released-try-now": "{{version}} منتشر شد <0>مشاهده کنید چه خبر است!</0>",
