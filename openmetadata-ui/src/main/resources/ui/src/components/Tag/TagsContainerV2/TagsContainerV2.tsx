@@ -427,7 +427,8 @@ const TagsContainerV2 = ({
         cardProps={{
           title: header,
         }}
-        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
+        isExpandDisabled={isEmpty(tags?.[tagType])}>
         {suggestionDataRender ?? (
           <>
             {tagBody}
