@@ -39,7 +39,7 @@ export interface ActivityFeedTabBasicProps {
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
   owners?: EntityReference[];
-  permissions?: OperationPermission;
+  permissions?: OperationPermission | boolean;
   subTab?: ActivityFeedTabs;
   layoutType?: ActivityFeedLayoutType;
   feedCount?: FeedCounts;

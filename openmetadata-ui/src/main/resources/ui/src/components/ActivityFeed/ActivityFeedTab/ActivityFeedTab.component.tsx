@@ -872,7 +872,11 @@ export const ActivityFeedTab = ({
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement-btn"
-                disabled={!permissions?.EditAll}
+                disabled={
+                  typeof permissions === 'boolean'
+                    ? !permissions
+                    : !permissions?.EditAll
+                }
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -905,7 +909,11 @@ export const ActivityFeedTab = ({
             feedList={entityThread}
             isForFeedTab={isForFeedTab}
             isLoading={loading}
-            permissions={permissions?.EditAll}
+            permissions={
+              typeof permissions === 'boolean'
+                ? permissions
+                : permissions?.EditAll
+            }
             selectedThread={selectedThread}
             showThread={false}
             updateAnnouncementThreads={

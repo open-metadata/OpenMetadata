@@ -38,6 +38,7 @@ export interface DashboardDetailsTabsProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  editAllPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
   feedCount: FeedCounts;
   activeTab: EntityTabs;

@@ -71,6 +71,7 @@ export const getDashboardDetailPageTabs = ({
   deleted,
   getEntityFeedCount,
   fetchDashboard,
+  editAllPermission,
 }: DashboardDetailsTabsProps): TabProps[] => {
   return [
     {
@@ -97,6 +98,7 @@ export const getDashboardDetailPageTabs = ({
           entityType={EntityType.DASHBOARD}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDashboard}
           onUpdateFeedCount={handleFeedCount}
