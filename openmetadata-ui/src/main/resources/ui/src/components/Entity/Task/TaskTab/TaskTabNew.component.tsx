@@ -435,7 +435,7 @@ export const TaskTabNew = ({
   const [recentComment, setRecentComment] = useState<string>('');
 
   const shouldEditAssignee =
-    hasEditAccess && !isTaskClosed && owners.length === 0;
+    (isCreator || hasEditAccess) && !isTaskClosed && owners.length === 0;
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {

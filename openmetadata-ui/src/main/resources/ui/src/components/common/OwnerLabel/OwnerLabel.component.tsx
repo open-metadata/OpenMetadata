@@ -95,13 +95,14 @@ export const OwnerLabel = ({
   );
   const showMultipleTypeVisibleUser = owners
     .filter((owner) => owner.type === OwnerType.USER)
-    .slice(0, maxVisibleOwners);
+    .slice(0, maxVisibleOwners)
+    .reverse();
   const showMultipleTypeRemainingUser = owners
     .filter((owner) => owner.type === OwnerType.USER)
     .slice(maxVisibleOwners);
   const renderMultipleType = useMemo(() => {
     return (
-      <div className="flex-wrap w-full d-flex relative items-center">
+      <div className="flex-wrap w-max-full d-flex relative items-center">
         <div className="flex w-full gap-2 flex-wrap relative">
           {showMultipleTypeTeam.map((owner, index) => (
             <div className="w-max-full" key={owner.id}>
@@ -115,35 +116,34 @@ export const OwnerLabel = ({
               />
             </div>
           ))}
-          <div className="flex relative">
-            {showMultipleTypeVisibleUser.map((owner, index) => (
-              <div
-                className="owner-item-container relative"
-                key={owner.id}
-                style={{
-                  zIndex: showMultipleTypeVisibleUser.length - index,
-                }}>
-                <OwnerItem
-                  avatarSize={avatarSize}
-                  className={className}
-                  isAssignee={isAssignee}
-                  isCompactView={isCompactView}
-                  owner={owner}
-                  ownerDisplayName={ownerDisplayName?.[index]}
+          <div className="flex">
+            <div className="flex relative m-l-xs justify-end flex-row-reverse">
+              {showMultipleTypeVisibleUser.map((owner, index) => (
+                <div className="owner-item-container relative" key={owner.id}>
+                  <OwnerItem
+                    avatarSize={avatarSize}
+                    className={className}
+                    isAssignee={isAssignee}
+                    isCompactView={isCompactView}
+                    owner={owner}
+                    ownerDisplayName={ownerDisplayName?.[index]}
+                  />
+                </div>
+              ))}
+            </div>
+            {showMultipleTypeRemainingUser.length > 0 && (
+              <div className="m-l-xs">
+                <OwnerReveal
+                  avatarSize={isCompactView ? 24 : avatarSize}
+                  isCompactView={false}
+                  isDropdownOpen={isDropdownOpen}
+                  owners={showMultipleTypeRemainingUser}
+                  remainingCount={showMultipleTypeRemainingUser.length}
+                  setIsDropdownOpen={setIsDropdownOpen}
+                  setShowAllOwners={setShowAllOwners}
+                  showAllOwners={showAllOwners}
                 />
               </div>
-            ))}
-            {showMultipleTypeRemainingUser.length > 0 && (
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={false}
-                isDropdownOpen={isDropdownOpen}
-                owners={showMultipleTypeRemainingUser}
-                remainingCount={showMultipleTypeRemainingUser.length}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
             )}
             {hasPermission && (
               <Button
