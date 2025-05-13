@@ -13,7 +13,6 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import process from 'process';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
