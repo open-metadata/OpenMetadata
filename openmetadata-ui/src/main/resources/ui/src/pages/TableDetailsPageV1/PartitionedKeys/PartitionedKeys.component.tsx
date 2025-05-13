@@ -84,7 +84,8 @@ export const PartitionedKeys = () => {
     <ExpandableCard
       cardProps={{
         title: t('label.table-partition-plural'),
-      }}>
+      }}
+      isExpandDisabled={isEmpty(partitionColumnDetails)}>
       {content}
     </ExpandableCard>
   );

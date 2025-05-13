@@ -13,7 +13,7 @@
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { default as React, useMemo } from 'react';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -100,7 +100,7 @@ export const DomainExpertWidget = () => {
       </div>
 
       <div>
-        {editOwnerPermission && domain.experts && domain.experts.length === 0 && (
+        {editOwnerPermission && domain.experts?.length === 0 && (
           <UserSelectableList
             hasPermission={editOwnerPermission}
             popoverProps={{ placement: 'topLeft' }}
@@ -123,7 +123,8 @@ export const DomainExpertWidget = () => {
       cardProps={{
         title: header,
       }}
-      dataTestId="domain-expert-name">
+      dataTestId="domain-expert-name"
+      isExpandDisabled={isEmpty(domain.experts)}>
       {content}
     </ExpandableCard>
   );

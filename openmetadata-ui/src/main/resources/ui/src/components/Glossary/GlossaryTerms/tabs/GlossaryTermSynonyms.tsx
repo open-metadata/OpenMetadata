@@ -193,7 +193,8 @@ const GlossaryTermSynonyms = () => {
       cardProps={{
         title: header,
       }}
-      dataTestId="synonyms-container">
+      dataTestId="synonyms-container"
+      isExpandDisabled={isEmpty(synonyms)}>
       {isViewMode ? (
         getSynonymsContainer()
       ) : (
