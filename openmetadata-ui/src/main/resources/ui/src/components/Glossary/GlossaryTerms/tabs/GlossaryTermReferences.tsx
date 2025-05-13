@@ -147,7 +147,8 @@ const GlossaryTermReferences = () => {
       cardProps={{
         title: header,
       }}
-      dataTestId="references-container">
+      dataTestId="references-container"
+      isExpandDisabled={isEmpty(references)}>
       {isVersionView ? (
         getVersionReferenceElements()
       ) : (

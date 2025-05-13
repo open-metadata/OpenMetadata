@@ -647,7 +647,13 @@ export const addTagsAndGlossaryToDomain = async (
     const input = page.locator(`${container} #tagsForm_tags`);
     await input.click();
     await input.fill(value);
-    await page.getByTestId(`tag-${value}`).click();
+    const tag = page.getByTestId(`tag-${value}`);
+    if (containerType === 'glossary') {
+      // To avoid clicking on white space between checkbox and text
+      await tag.locator('.ant-select-tree-checkbox').click();
+    } else {
+      await tag.click();
+    }
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(

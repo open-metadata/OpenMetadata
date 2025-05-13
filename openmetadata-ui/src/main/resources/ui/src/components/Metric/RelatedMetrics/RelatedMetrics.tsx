@@ -219,7 +219,8 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
     <ExpandableCard
       cardProps={{
         title: header,
-      }}>
+      }}
+      isExpandDisabled={isEmpty(relatedMetrics)}>
       <Row gutter={[0, 8]}>{content}</Row>
     </ExpandableCard>
   );

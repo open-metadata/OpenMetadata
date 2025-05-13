@@ -513,6 +513,10 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await page.reload();
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await addTagsAndGlossaryToDomain(page, {
@@ -522,6 +526,10 @@ test.describe('Domains', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await page.waitForLoadState('networkidle');

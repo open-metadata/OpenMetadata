@@ -178,7 +178,8 @@ const TableConstraints = () => {
     <ExpandableCard
       cardProps={{
         title: header,
-      }}>
+      }}
+      isExpandDisabled={isEmpty(data?.tableConstraints)}>
       {content}
     </ExpandableCard>
   );

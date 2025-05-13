@@ -100,7 +100,8 @@ export const ReviewerLabelV2 = <
       cardProps={{
         title: header,
       }}
-      dataTestId="glossary-reviewer">
+      dataTestId="glossary-reviewer"
+      isExpandDisabled={!hasReviewers}>
       <div data-testid="glossary-reviewer-name">
         {getOwnerVersionLabel(
           data,
