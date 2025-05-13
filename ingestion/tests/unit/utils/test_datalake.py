@@ -198,7 +198,14 @@ class TestParquetDataFrameColumnParser(TestCase):
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
         self.assertIsInstance(parquet_parser.parser, ParquetDataFrameColumnParser)
 
-        other_types = [typ for typ in SupportedTypes if typ != SupportedTypes.PARQUET]
+        parquet_types = [
+            SupportedTypes.PARQUET,
+            SupportedTypes.PARQUET_PQ,
+            SupportedTypes.PARQUET_PQT,
+            SupportedTypes.PARQUET_PARQ,
+            SupportedTypes.PARQUET_SNAPPY,
+        ]
+        other_types = [typ for typ in SupportedTypes if typ not in parquet_types]
         for other_type in other_types:
             with self.subTest(other_type=other_type):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)

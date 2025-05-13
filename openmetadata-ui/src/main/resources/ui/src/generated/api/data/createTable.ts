@@ -671,6 +671,10 @@ export enum FileFormat {
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
     Parquet = "parquet",
+    ParquetPq = "pq",
+    ParquetPqt = "pqt",
+    ParquetParq = "parq",
+    ParquetSnappy = "parquet.snappy",
     Tsv = "tsv",
 }
 
