@@ -26,7 +26,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -137,7 +137,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
   const location = useCustomLocation();
-  const history = useHistory();
   const { isTourOpen, isTourPage } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
@@ -165,7 +164,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     LineagePlatformView.None
   );
   const [entity, setEntity] = useState<SourceType>();
-
+  const navigate = useNavigate();
   const [dataQualityLineage, setDataQualityLineage] =
     useState<EntityLineageResponse>();
   const [updatedEntityLineage, setUpdatedEntityLineage] =
@@ -443,7 +442,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             ? location.search.substring(1)
             : location.search
         );
-        history.push({
+        navigate({
           search: QueryString.stringify({
             ...searchData,
             platformView: view !== LineagePlatformView.None ? view : undefined,

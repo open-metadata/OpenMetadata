@@ -19,7 +19,6 @@ import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { TestSuite } from '../../generated/tests/testSuite';
 import { useAuth } from '../../hooks/authHooks';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -48,15 +47,6 @@ const DataQualityPage = () => {
     if (key !== tab) {
       navigate(getDataQualityPagePath(key as DataQualityPageTabs));
     }
-  };
-
-  const handleTestSuiteClick = (testSuite: TestSuite) => {
-    navigate(
-      ROUTES.TEST_SUITES_WITH_FQN.replace(
-        ':fqn',
-        testSuite.fullyQualifiedName ?? ''
-      )
-    );
   };
 
   const hasViewPermission = useMemo(() => {

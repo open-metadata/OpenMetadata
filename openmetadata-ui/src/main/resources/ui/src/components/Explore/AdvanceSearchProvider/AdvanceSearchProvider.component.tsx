@@ -13,11 +13,9 @@
 import {
   Config,
   Field,
-  FieldGroup,
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
-  ValueField,
   ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
@@ -87,10 +85,9 @@ export const AdvanceSearchProvider = ({
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const [customProps, setCustomProps] = useState<Record<
-    string,
-    ValueField
-  > | null>(null);
+  const [customProps, setCustomProps] = useState<Record<string, Field> | null>(
+    null
+  );
 
   const [searchIndex, setSearchIndex] = useState<
     SearchIndex | Array<SearchIndex>
@@ -265,9 +262,11 @@ export const AdvanceSearchProvider = ({
       setCustomProps(extensionSubField);
     }
 
-    if (!isEmpty(extensionSubField)) {
-      (actualConfig.fields.extension as FieldGroup).subfields =
-        extensionSubField;
+    if (
+      !isEmpty(extensionSubField) &&
+      'subfields' in actualConfig.fields.extension
+    ) {
+      actualConfig.fields.extension.subfields = extensionSubField;
     }
 
     // Update field type if field override is provided

@@ -12,11 +12,15 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { ListValues, RenderSettings } from '@react-awesome-query-builder/antd';
+import {
+  JsonTree,
+  ListValues,
+  RenderSettings,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';

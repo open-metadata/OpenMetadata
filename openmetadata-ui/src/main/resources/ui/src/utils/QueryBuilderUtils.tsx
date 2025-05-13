@@ -12,7 +12,7 @@
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  FieldGroup,
+  FieldOrGroup,
   Fields,
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
@@ -57,23 +57,25 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
+    if (!('subfields' in currentField)) {
+      continue;
+    }
+
     // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
-    if (i === 1 && (currentField as FieldGroup)?.subfields) {
+    if (i === 1) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as FieldGroup).subfields[
-        remainingPath
-      ];
+      const remainingField = currentField.subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
+    if (!currentField?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as FieldGroup).subfields[fieldParts[i]];
+    currentField = currentField.subfields[fieldParts[i]] as FieldOrGroup;
   }
 
   return currentField?.type;
