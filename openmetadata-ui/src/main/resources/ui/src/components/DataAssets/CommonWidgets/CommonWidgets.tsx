@@ -266,7 +266,6 @@ export const CommonWidgets = ({
   const dataProductsWidget = useMemo(() => {
     return (
       <DataProductsContainer
-        newLook
         activeDomain={domain as EntityReference}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
@@ -324,7 +323,6 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
-        newLook
         showSuggestions
         wrapInCard
         description={description}
@@ -367,7 +365,6 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -408,13 +405,7 @@ export const CommonWidgets = ({
 
   return (
     <>
-      <div
-        data-grid={widgetConfig}
-        data-testid={widgetConfig.i}
-        id={widgetConfig.i}
-        key={widgetConfig.i}>
-        {widget}
-      </div>
+      {widget}
       {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={updatedData as unknown as GlossaryTerm}
