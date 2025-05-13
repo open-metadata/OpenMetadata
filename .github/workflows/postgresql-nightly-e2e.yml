@@ -131,11 +131,51 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  merge-reports:
+    # Merge reports after playwright-tests successfully completes, even if some shards have failed
+    if: ${{ !failure() || !cancelled() }}
+    needs: [pw-ci-postgresql-branch]
+    runs-on: ubuntu-latest
+    environment: AUTOMATE_UPGRADE_CYPRESS_TESTS
+    steps:
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y git curl unzip jq
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.19.0
+      - name: Download Playwright Reports from Artifacts
+        run: |
+          mkdir -p blob-reports
+          for i in {1..4}; do
+            gh run download ${{ github.run_id }} -n playwright-report-$i -D blob-reports/shard-$i
+          done
+      - name: Merge Playwright Reports to JSON and Push a Slack Notification
+        env:
+          RUN_TITLE: "OSS Postgresql ${{ inputs.branch }}"
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+        run: |
+          echo "List Current Directory"
+          ls -lahtr
+          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
+          npx playwright-slack-report -c automate-upgrade-tests/scripts/k8s/slack-cli.config.json -j merged_tests_results.json > slack_report.json
+      - name: Upload Merged Reports
+        run: |
+          npx playwright merge-reports --config automate-upgrade-tests/scripts/k8s/html.merge.config.ts ./blob-reports
+          echo '## Test Reports' >> $GITHUB_STEP_SUMMARY
+          echo '✅ Reports have been generated successfully.' >> $GITHUB_STEP_SUMMARY
+          echo 'You can find the merged reports in the artifacts of this workflow run.' >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          name: merged-playwright-report
+          path: |
+            playwright-report
+            merged_tests_results.json
           retention-days: 5
 
       - name: Clean Up
