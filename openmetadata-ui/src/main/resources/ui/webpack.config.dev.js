@@ -18,7 +18,8 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
-const devServerTarget = process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
+const devServerTarget =
+  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
@@ -130,7 +131,7 @@ module.exports = {
     // Generate index.html from template
     new HtmlWebpackPlugin({
       favicon: path.join(__dirname, 'public/favicon.png'),
-      template: path.join(__dirname, 'public/index.dev.html'),
+      template: path.join(__dirname, 'public/index.html'),
       scriptLoading: 'defer',
       hash: true,
     }),

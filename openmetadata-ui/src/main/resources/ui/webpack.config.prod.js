@@ -38,7 +38,7 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: 'openmetadata.[fullhash].js',
+    filename: '[name].[fullhash].js',
     chunkFilename: '[name].[fullhash].js',
     // Clean the output directory before emit.
     clean: true,
