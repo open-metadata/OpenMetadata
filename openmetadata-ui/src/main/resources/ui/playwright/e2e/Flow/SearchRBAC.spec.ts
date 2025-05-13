@@ -132,7 +132,7 @@ test.beforeAll(async ({ browser }) => {
   const policyResponse2 = await policy2.create(apiContext, [
     {
       name: `pw-permission-rule-${uuid()}`,
-      resources: ['Table'],
+      resources: ['All'],
       operations: ['All'],
       effect: 'deny',
       condition: '!isOwner',
