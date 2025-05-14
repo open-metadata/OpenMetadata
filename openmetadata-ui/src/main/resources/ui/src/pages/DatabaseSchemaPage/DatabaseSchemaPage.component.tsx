@@ -194,7 +194,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.EXTENSION,
             TabSpecificField.FOLLOWERS,
             TabSpecificField.DATA_PRODUCTS,
-          ],
+          ].join(','),
           include: Include.All,
         }
       );

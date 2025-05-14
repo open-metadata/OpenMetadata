@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import {
-  CustomPropertyFollowSupportedList,
-  CustomPropertySupportedEntityList,
-} from '../../constant/customProperty';
+import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { FollowSupportedServices } from '../../constant/service';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -161,7 +159,7 @@ entities.forEach((EntityClass) => {
         await afterAction();
       });
     }
-    if (CustomPropertyFollowSupportedList.includes(entity.endpoint)) {
+    if (FollowSupportedServices.includes(entity.endpoint)) {
       test(`Follow & Un-follow entity for Database Entity`, async ({
         page,
       }) => {

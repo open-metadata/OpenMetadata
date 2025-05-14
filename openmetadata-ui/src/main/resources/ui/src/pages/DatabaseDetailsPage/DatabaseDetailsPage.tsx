@@ -192,7 +192,7 @@ const DatabaseDetails: FunctionComponent = () => {
         TabSpecificField.EXTENSION,
         TabSpecificField.DATA_PRODUCTS,
         TabSpecificField.FOLLOWERS,
-      ],
+      ].join(','),
       include: Include.All,
     })
       .then((res) => {
