@@ -12,18 +12,14 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Drawer, Row, Typography } from 'antd';
+import { Col, Drawer, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,6 +33,7 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
@@ -164,25 +161,26 @@ const EdgeInfoDrawer = ({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <div className="d-flex items-center m-b-xs">
+            <div className="d-flex items-center m-b-xs gap-2">
               <Typography.Paragraph className="right-panel-label m-b-0">
                 {`${t('label.sql-function')}`}
               </Typography.Paragraph>
               {hasEditAccess && (
-                <Button
-                  className="p-0 flex-center"
+                <EditIconButton
+                  newLook
                   data-testid="edit-function"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                   size="small"
-                  type="text"
+                  title={t('label.edit-entity', {
+                    entity: t('label.sql-function'),
+                  })}
                   onClick={() => {
-                    setSqlFunction(functionValue || '');
+                    setSqlFunction(functionValue ?? '');
                     setShowSqlFunctionModal(true);
                   }}
                 />
               )}
             </div>
-            <Typography.Text className="m-b-0">
+            <Typography.Text className="m-b-0" data-testid="sql-function">
               {functionValue ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
           </Col>
@@ -210,17 +208,18 @@ const EdgeInfoDrawer = ({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <div className="d-flex items-center m-b-xs">
-              <Typography.Paragraph className="right-panel-label m-b-0">
+            <div className="d-flex items-center m-b-xs gap-2">
+              <Typography.Paragraph className="right-panel-label m-b-0 ">
                 {`${t('label.sql-uppercase-query')}`}
               </Typography.Paragraph>
               {hasEditAccess && (
-                <Button
-                  className="p-0 flex-center"
+                <EditIconButton
+                  newLook
                   data-testid="edit-sql"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                   size="small"
-                  type="text"
+                  title={t('label.edit-entity', {
+                    entity: t('label.sql-uppercase-query'),
+                  })}
                   onClick={() => setShowSqlQueryModal(true)}
                 />
               )}

@@ -55,7 +55,7 @@ export const ModalWithFunctionEditor = ({
       destroyOnClose
       className="function-editor"
       closable={false}
-      data-testid="function-editor"
+      data-testid="function-editor-modal"
       footer={[
         <Button
           data-testid="cancel"
