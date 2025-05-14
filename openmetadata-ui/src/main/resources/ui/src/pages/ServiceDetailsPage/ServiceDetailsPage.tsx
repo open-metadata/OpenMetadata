@@ -139,7 +139,6 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
@@ -228,22 +227,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
 
-  const { followers = [] } = useMemo(
+  const { isFollowing, followers = [] } = useMemo(
     () => ({
-      ...serviceDetails,
-      tier: getTierTags(serviceDetails.tags ?? []),
-      apiEndpointTags: getTagsWithoutTier(serviceDetails.tags ?? []),
-      entityName: getEntityName(serviceDetails),
+      isFollowing: serviceDetails?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: serviceDetails?.followers ?? [],
     }),
-    [serviceDetails]
-  );
-
-  const { isFollowing } = useMemo(
-    () => ({
-      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
-      followersCount: followers?.length ?? 0,
-    }),
-    [followers, currentUser]
+    [serviceDetails, currentUser]
   );
   const { CollateAIAgentsWidget } = useMemo(
     () => serviceUtilClassBase.getAgentsTabWidgets(),

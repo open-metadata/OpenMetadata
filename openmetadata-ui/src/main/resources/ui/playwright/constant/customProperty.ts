@@ -32,6 +32,11 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.METRIC,
   EntityTypeEndpoint.Domain,
 ];
+export const CustomPropertyFollowSupportedList = [
+  EntityTypeEndpoint.DatabaseService,
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
   'Entity Reference',

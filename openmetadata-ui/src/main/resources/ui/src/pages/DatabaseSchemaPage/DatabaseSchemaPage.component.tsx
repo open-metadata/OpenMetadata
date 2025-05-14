@@ -83,7 +83,6 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -118,22 +117,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const { followers = [] } = useMemo(
+  const { isFollowing, followers = [] } = useMemo(
     () => ({
-      ...databaseSchema,
-      tier: getTierTags(databaseSchema.tags ?? []),
-      apiEndpointTags: getTagsWithoutTier(databaseSchema.tags ?? []),
-      entityName: getEntityName(databaseSchema),
+      isFollowing: databaseSchema?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: databaseSchema?.followers ?? [],
     }),
-    [databaseSchema]
-  );
-
-  const { isFollowing } = useMemo(
-    () => ({
-      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
-      followersCount: followers?.length ?? 0,
-    }),
-    [followers, currentUser]
+    [currentUser, databaseSchema]
   );
   const extraDropdownContent = useMemo(
     () =>

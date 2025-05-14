@@ -84,7 +84,7 @@ import {
   getExplorePath,
   getVersionPath,
 } from '../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -192,7 +192,7 @@ const DatabaseDetails: FunctionComponent = () => {
         TabSpecificField.EXTENSION,
         TabSpecificField.DATA_PRODUCTS,
         TabSpecificField.FOLLOWERS,
-      ].join(','),
+      ],
       include: Include.All,
     })
       .then((res) => {
@@ -340,22 +340,14 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
-  const { followers = [] } = useMemo(
+  const { isFollowing, followers = [] } = useMemo(
     () => ({
-      ...database,
-      tier: getTierTags(database.tags ?? []),
-      apiEndpointTags: getTagsWithoutTier(database.tags ?? []),
-      entityName: getEntityName(database),
+      isFollowing: database?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: database?.followers ?? [],
     }),
-    [database]
-  );
-
-  const { isFollowing } = useMemo(
-    () => ({
-      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
-      followersCount: followers?.length ?? 0,
-    }),
-    [followers, currentUser]
+    [database, currentUser]
   );
   const handleRestoreDatabase = useCallback(async () => {
     try {
@@ -467,7 +459,7 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       const res = await addFollowers(
         databaseId,
-        currentUser?.id ?? '',
+        USERId ?? '',
         GlobalSettingOptions.DATABASES
       );
       const { newValue } = res.changeDescription.fieldsAdded[0];

@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import {
+  CustomPropertyFollowSupportedList,
+  CustomPropertySupportedEntityList,
+} from '../../constant/customProperty';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -158,6 +161,14 @@ entities.forEach((EntityClass) => {
         await afterAction();
       });
     }
+    if (CustomPropertyFollowSupportedList.includes(entity.endpoint)) {
+      test(`Follow & Un-follow entity for Database Entity`, async ({
+        page,
+      }) => {
+        const entityName = entity.entityResponseData?.['displayName'];
+        await entity.followUnfollowEntity(page, entityName);
+      });
+    }
 
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
@@ -199,44 +210,6 @@ entities.forEach((EntityClass) => {
         deleteEntity.entity.name,
         deleteEntity.entityResponseData?.['displayName']
       );
-    });
-  });
-});
-
-test.describe('Database Entity Follow/Unfollow', () => {
-  const entities = [new DatabaseClass(), new DatabaseSchemaClass()];
-
-  entities.forEach((entity) => {
-    test.describe(entity.constructor.name, () => {
-      test.beforeAll(
-        'Setup pre-requests for Database Entity',
-        async ({ browser }) => {
-          const { apiContext, afterAction } = await createNewPage(browser);
-          await entity.create(apiContext);
-          await afterAction();
-        }
-      );
-
-      test.beforeEach(
-        'Visit entity details page for Database Entity',
-        async ({ page }) => {
-          await redirectToHomePage(page);
-          await entity.visitEntityPage(page);
-        }
-      );
-
-      test(`Follow & Un-follow entity for Database Entity`, async ({
-        page,
-      }) => {
-        const entityName = entity.entityResponseData?.['displayName'];
-        await entity.followUnfollowEntity(page, entityName);
-      });
-
-      test.afterAll('Cleanup for Database Entity', async ({ browser }) => {
-        const { apiContext, afterAction } = await createNewPage(browser);
-        await entity.delete(apiContext);
-        await afterAction();
-      });
     });
   });
 });
