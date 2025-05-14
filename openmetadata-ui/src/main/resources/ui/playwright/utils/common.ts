@@ -121,13 +121,13 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
+  await page.waitForSelector('[data-testid="alert-bar"]', {
+    state: 'visible',
+  });
+
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
-  await page.waitForSelector('[data-testid="alert-icon"]');
-
   await expect(page.getByTestId('alert-icon')).toBeVisible();
-
-  await page.waitForSelector('[data-testid="alert-icon-close"]');
 
   await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
