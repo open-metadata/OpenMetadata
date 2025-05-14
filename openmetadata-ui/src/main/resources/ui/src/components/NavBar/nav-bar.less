@@ -10,113 +10,112 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- @import (reference) '../../styles/variables.less';
+@import (reference) '../../styles/variables.less';
 
- .navbar-container {
-   display: flex;
-   align-items: center;
-   justify-content: space-between;
- 
-   > div {
-     height: 40px;
- 
-     .ant-input-wrapper.ant-input-group,
-     .ant-input-affix-wrapper {
-       height: 40px;
-     }
-   }
- 
-   .search-container {
-     width: 35vw;
-   }
- 
-   .app-user-icon {
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
-     cursor: pointer;
- 
-     .username {
-       font-weight: 500;
-       line-height: 21px;
-     }
-   }
- }
- 
- .domain-dropdown-menu {
-   max-height: 400px;
-   overflow-y: auto;
- }
- 
- .slide-in-top {
-   animation: slide-in-top 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
- }
- 
- @keyframes slide-in-top {
-   0% {
-     transform: translate(-50%, 100%);
-   }
- 
-   100% {
-     transform: translate(-50%, 0);
-   }
- }
- 
- .ant-btn.domain-nav-btn {
-   background-color: @white;
-   border: 1px solid @grey-15;
-   color: @text-color;
-   height: 40px;
- 
-   .domain-text {
-     max-width: 15vw;
-     color: inherit;
-   }
- 
-   &:hover,
-   &:focus {
-     background-color: @primary-button-background;
-     border: 1px solid @alert-info-icon-bg-1;
-     color: @text-color;
-   }
- 
-   &.domain-active {
-     color: @primary-color;
-     border: 1px solid @primary-color;
-     background-color: @primary-button-background;
-   }
- }
- 
- .ant-alert.ant-alert-info.refresh-alert {
-   width: 470px;
-   bottom: 30px;
-   align-items: center;
-   z-index: 9999;
-   margin: 0 auto;
-   box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
-   border-radius: 10px;
-   border: 1px solid @text-color;
-   background: @text-color;
-   color: @white;
-   position: fixed;
-   left: 50%;
-   transform: translateX(-50%);
- 
-   .ant-alert-message {
-     color: @white;
-   }
- 
-   .ant-alert-description {
-     color: @grey-4;
-   }
- 
-   .ant-alert-content {
-     border-right: 1px solid @white;
-   }
- 
-   .ant-btn {
-     font-weight: 700;
-     color: @white;
-   }
- }
- 
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  > div {
+    height: 40px;
+
+    .ant-input-wrapper.ant-input-group,
+    .ant-input-affix-wrapper {
+      height: 40px;
+    }
+  }
+
+  .search-container {
+    width: 35vw;
+  }
+
+  .app-user-icon {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+
+    .username {
+      font-weight: 500;
+      line-height: 21px;
+    }
+  }
+}
+
+.domain-dropdown-menu {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.slide-in-top {
+  animation: slide-in-top 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes slide-in-top {
+  0% {
+    transform: translate(-50%, 100%);
+  }
+
+  100% {
+    transform: translate(-50%, 0);
+  }
+}
+
+.ant-btn.domain-nav-btn {
+  background-color: @white;
+  border: 1px solid @grey-15;
+  color: @text-color;
+  height: 40px;
+
+  .domain-text {
+    max-width: 15vw;
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
+    background-color: @primary-button-background;
+    border: 1px solid @alert-info-icon-bg-1;
+    color: @text-color;
+  }
+
+  &.domain-active {
+    color: @primary-color;
+    border: 1px solid @primary-color;
+    background-color: @primary-button-background;
+  }
+}
+
+.ant-alert.ant-alert-info.refresh-alert {
+  width: 470px;
+  bottom: 30px;
+  align-items: center;
+  z-index: 9999;
+  margin: 0 auto;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  border: 1px solid @text-color;
+  background: @text-color;
+  color: @white;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+
+  .ant-alert-message {
+    color: @white;
+  }
+
+  .ant-alert-description {
+    color: @grey-4;
+  }
+
+  .ant-alert-content {
+    border-right: 1px solid @white;
+  }
+
+  .ant-btn {
+    font-weight: 700;
+    color: @white;
+  }
+}

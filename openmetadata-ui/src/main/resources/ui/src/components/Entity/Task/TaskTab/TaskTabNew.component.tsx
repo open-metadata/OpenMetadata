@@ -48,7 +48,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -435,6 +434,8 @@ export const TaskTabNew = ({
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
 
+  const shouldEditAssignee =
+    (isCreator || hasEditAccess) && !isTaskClosed && owners.length === 0;
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
@@ -838,6 +839,12 @@ export const TaskTabNew = ({
       );
       setUsersList(filterData);
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.assignee'),
+        })
+      );
       setUsersList([]);
     }
   }, []);
@@ -857,6 +864,10 @@ export const TaskTabNew = ({
   useEffect(() => {
     setTaskAction(latestAction);
   }, [latestAction]);
+
+  const handleEditClick = () => {
+    setIsEditAssignee(true);
+  };
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeaderNew thread={taskThread} />
@@ -937,13 +948,13 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex items-center gap-2 text-grey-muted" span={8}>
+              <Col className="flex gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex items-center gap-2" span={16}>
+              <Col className="flex gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
@@ -965,24 +976,15 @@ export const TaskTabNew = ({
                   </div>
                 ) : (
                   <OwnerLabel
+                    isAssignee
                     avatarSize={24}
+                    hasPermission={shouldEditAssignee}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}
                     showLabel={false}
+                    onEditClick={handleEditClick}
                   />
                 )}
-                {(isCreator || hasEditAccess) &&
-                !isTaskClosed &&
-                owners.length === 0 ? (
-                  <Button
-                    className="flex-center p-0 h-auto"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
               </Col>
             </>
           )}
