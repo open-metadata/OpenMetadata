@@ -44,6 +44,13 @@ import org.openmetadata.service.util.JsonUtils;
 @Getter
 @Setter
 public class OpenMetadataApplicationConfig extends Configuration {
+
+  @Getter @JsonProperty private String basePath;
+
+  @Getter
+  @JsonProperty("assets")
+  private Map<String, String> assets;
+
   @JsonProperty("database")
   @NotNull
   @Valid
