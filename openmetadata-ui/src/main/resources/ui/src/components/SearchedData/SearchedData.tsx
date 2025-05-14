@@ -116,7 +116,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
-                  className="text-center m-b-sm"
+                  className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
