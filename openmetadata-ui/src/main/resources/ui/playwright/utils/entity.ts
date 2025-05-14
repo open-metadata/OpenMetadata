@@ -41,6 +41,7 @@ export const visitEntityPage = async (data: {
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
+  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -1302,7 +1303,8 @@ export const hardDeleteEntity = async (
   endPoint: EntityTypeEndpoint
 ) => {
   await page.click('[data-testid="manage-button"]');
-  await page.getByTestId('delete-button').click();
+  await page.waitForSelector('[data-testid="delete-button"]');
+  await page.click('[data-testid="delete-button"]');
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
