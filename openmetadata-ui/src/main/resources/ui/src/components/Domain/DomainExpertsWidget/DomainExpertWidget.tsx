@@ -15,14 +15,15 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { default as React, useMemo } from 'react';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TagButton from '../../common/TagButton/TagButton.component';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
@@ -69,53 +70,44 @@ export const DomainExpertWidget = () => {
         data-testid="domain-expert-heading-name">
         {t('label.expert-plural')}
       </Typography.Text>
-      {editOwnerPermission && domain.experts && domain.experts.length > 0 && (
+      {editOwnerPermission && (
         <UserSelectableList
           hasPermission
           popoverProps={{ placement: 'topLeft' }}
           selectedUsers={domain.experts ?? []}
           onUpdate={handleExpertsUpdate}>
-          <EditIconButton
-            newLook
-            data-testid="edit-expert-button"
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.expert-plural'),
-            })}
-          />
+          {isEmpty(domain.experts) ? (
+            <PlusIconButton
+              data-testid="add-expert"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.expert-plural'),
+              })}
+            />
+          ) : (
+            <EditIconButton
+              newLook
+              data-testid="edit-expert-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.expert-plural'),
+              })}
+            />
+          )}
         </UserSelectableList>
       )}
     </div>
   );
 
-  const content = (
-    <>
-      <div>
-        {getOwnerVersionLabel(
-          domain,
-          isVersionView ?? false,
-          TabSpecificField.EXPERTS,
-          editAllPermission
-        )}
-      </div>
-
-      <div>
-        {editOwnerPermission && domain.experts?.length === 0 && (
-          <UserSelectableList
-            hasPermission={editOwnerPermission}
-            popoverProps={{ placement: 'topLeft' }}
-            selectedUsers={domain.experts ?? []}
-            onUpdate={handleExpertsUpdate}>
-            <TagButton
-              className="text-primary cursor-pointer"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserSelectableList>
-        )}
-      </div>
-    </>
+  const content = isEmpty(domain.experts) ? null : (
+    <div>
+      {getOwnerVersionLabel(
+        domain,
+        isVersionView ?? false,
+        TabSpecificField.EXPERTS,
+        editAllPermission
+      )}
+    </div>
   );
 
   return (

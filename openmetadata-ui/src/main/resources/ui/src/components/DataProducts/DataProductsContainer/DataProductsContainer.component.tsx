@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -26,8 +25,10 @@ import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import DataProductsSelectForm from '../DataProductSelectForm/DataProductsSelectForm';
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -139,6 +140,13 @@ const DataProductsContainer = ({
           <Typography.Text className={classNames('text-sm font-medium')}>
             {t('label.data-product-plural')}
           </Typography.Text>
+          {showAddTagButton && (
+            <PlusIconButton
+              size="small"
+              title={t('label.add-data-product')}
+              onClick={handleAddClick}
+            />
+          )}
           {hasPermission && !isUndefined(activeDomain) && (
             <Row gutter={12}>
               {!isEmpty(dataProducts) && (
@@ -159,41 +167,26 @@ const DataProductsContainer = ({
         </Space>
       )
     );
-  }, [showHeader, dataProducts, hasPermission]);
-
-  const addTagButton = useMemo(
-    () =>
-      showAddTagButton ? (
-        <Col
-          className="m-t-xss"
-          data-testid="add-data-product"
-          onClick={handleAddClick}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </Col>
-      ) : null,
-    [showAddTagButton]
-  );
+  }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
 
   const cardProps = useMemo(() => {
     return {
       title: header,
     };
-  }, [header]);
+  }, [header, showAddTagButton, isEditMode]);
 
   return (
     <ExpandableCard
       cardProps={cardProps}
       dataTestId="data-products-container"
       isExpandDisabled={isEmpty(dataProducts)}>
-      {!isEditMode && (
+      {isEditMode ? (
+        autoCompleteFormSelectContainer
+      ) : isEmpty(renderDataProducts) ? null : (
         <Row data-testid="data-products-list">
-          <Col className="flex flex-wrap gap-2">
-            {addTagButton}
-            {renderDataProducts}
-          </Col>
+          <Col className="flex flex-wrap gap-2">{renderDataProducts}</Col>
         </Row>
       )}
-      {isEditMode && autoCompleteFormSelectContainer}
     </ExpandableCard>
   );
 };
