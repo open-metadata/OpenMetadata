@@ -106,7 +106,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
-      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
+      List.of(
+          ScheduleType.Scheduled,
+          ScheduleType.ScheduledOrManual,
+          ScheduleType.NoSchedule,
+          ScheduleType.OnlyManual);
   private final AppMapper mapper = new AppMapper();
 
   @Override
