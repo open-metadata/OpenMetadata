@@ -437,6 +437,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
+    "faker>=37.0.0",
 }
 
 if sys.version_info >= (3, 9):
