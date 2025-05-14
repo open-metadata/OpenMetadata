@@ -148,6 +148,11 @@ jobs:
     needs: pw-ci-mysql-branch
     runs-on: ubuntu-latest
     if: ${{ !failure() || !cancelled() }}
+    env:
+      # Recommended: pass the GitHub token lets this action correctly
+      # determine the unique run id necessary to re-run the checks
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
