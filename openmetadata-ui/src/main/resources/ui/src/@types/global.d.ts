@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,6 @@
  *  limitations under the License.
  */
 
-import { createBrowserHistory } from 'history';
-
-export const getBasePath = () => {
-  return window.BASE_PATH !== '${basePath}'
-    ? window.BASE_PATH?.slice(0, -1) ?? ''
-    : '';
-};
-
-export const history = createBrowserHistory(
-  getBasePath()
-    ? {
-        basename: getBasePath(),
-      }
-    : {}
-);
+interface Window {
+  BASE_PATH?: string;
+}

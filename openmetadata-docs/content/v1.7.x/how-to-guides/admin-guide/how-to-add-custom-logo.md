@@ -23,6 +23,10 @@ alt="Custom Logo Setting"
 
 2. Enter the values in the edit form and **Save** the changes.
 
+For logos, ensure the following sizing requirements:  
+- **Monogram/Favicon**: Use a 1:1 aspect ratio.
+- **Logo**: Use a 16:9 aspect ratio. 
+
 {% image
 src="/images/v1.7/how-to-guides/custom-logo/custom-logo-form.png"
 alt="custom-logo-form"
