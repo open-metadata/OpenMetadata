@@ -42,6 +42,7 @@ export enum FieldTypes {
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',
   CRON_EDITOR = 'cron_editor',
+  TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
 }
 
 export enum HelperTextType {

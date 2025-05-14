@@ -117,6 +117,9 @@ const AddDomainForm = ({
         selectProps: {
           'data-testid': 'glossary-terms-container',
         },
+        open: false,
+        hasNoActionButtons: true,
+        isTreeSelect: true,
         tagType: TagSource.Glossary,
         placeholder: t('label.select-field', {
           field: t('label.glossary-term-plural'),
@@ -248,7 +251,7 @@ const AddDomainForm = ({
       style,
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
-      tags: [...(formData.tags || []), ...(formData.glossaryTerms || [])],
+      tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
     } as CreateDomain | CreateDataProduct;
 
     onSubmit(data);
