@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.HashMap;
+import java.util.Map;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -52,6 +54,14 @@ public class ConfigResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
+  }
+
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Map<String, String> getConfig() {
+    Map<String, String> config = new HashMap<>();
+    config.put("basePath", openMetadataApplicationConfig.getBasePath());
+    return config;
   }
 
   @GET

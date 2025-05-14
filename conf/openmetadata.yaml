@@ -14,9 +14,15 @@ clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
+assets:
+  resourcePath: /assets/
+  uriPath: ${BASE_PATH:-/}
+
+basePath: ${BASE_PATH:-/}
 
 server:
-  rootPath: '/api/*'
+  applicationContextPath: ${BASE_PATH:-/}
+  rootPath: ${BASE_PATH:-/}api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}

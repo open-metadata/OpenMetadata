@@ -18,7 +18,6 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
-const subPath = process.env.APP_SUB_PATH ?? '';
 const devServerTarget =
   process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
@@ -37,7 +36,7 @@ module.exports = {
     // Clean the output directory before emit.
     clean: true,
     // Ensures bundle is served from absolute path as opposed to relative
-    publicPath: `${subPath}/`,
+    publicPath: `/`,
   },
 
   // Loaders
@@ -199,11 +198,6 @@ module.exports = {
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
       disableDotRule: true,
-      ...(subPath
-        ? {
-            index: `${subPath}/index.html`,
-          }
-        : {}),
     },
     // Proxy configuration
     proxy: [

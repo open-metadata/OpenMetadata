@@ -20,7 +20,6 @@ const TerserPlugin = require('terser-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const outputPath = path.join(__dirname, 'dist/assets');
-const subPath = process.env.APP_SUB_PATH ?? '';
 
 module.exports = {
   cache: {
@@ -39,10 +38,12 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: '[name].[contenthash].js', // Use contenthash for unique filenames
-    chunkFilename: '[name].[contenthash].js', // Ensure unique chunk filenames
-    clean: true, // Clean the output directory before emit
-    publicPath: `${subPath ?? ''}/`,
+    filename: '[name].[fullhash].js',
+    chunkFilename: '[name].[fullhash].js',
+    // Clean the output directory before emit.
+    clean: true,
+    // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: '/',
   },
 
   // Loaders
