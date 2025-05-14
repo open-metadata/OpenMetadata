@@ -59,11 +59,11 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  addSchemaFollower,
+  addDatabaseFollower,
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
-  removeSchemaFollower,
+  removeDatabaseFollower,
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
@@ -183,13 +183,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNERS},
-      ${TabSpecificField.TAGS},
-      ${TabSpecificField.DOMAIN},
-      ${TabSpecificField.VOTES},
-      ${TabSpecificField.EXTENSION},
-      ${TabSpecificField.DATA_PRODUCTS},
-      ${TabSpecificField.FOLLOWERS}`,
+      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -460,9 +454,9 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
-  const followSchema = useCallback(async () => {
+  const followDatabase = useCallback(async () => {
     try {
-      const res = await addSchemaFollower(databaseId, currentUser?.id ?? '');
+      const res = await addDatabaseFollower(databaseId, currentUser?.id ?? '');
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
       setDatabase((prev) => {
@@ -481,9 +475,9 @@ const DatabaseDetails: FunctionComponent = () => {
       );
     }
   }, [USERId, databaseId]);
-  const unFollowSchema = useCallback(async () => {
+  const unfollowDatabase = useCallback(async () => {
     try {
-      const res = await removeSchemaFollower(databaseId, USERId);
+      const res = await removeDatabaseFollower(databaseId, USERId);
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setDatabase((pre) => {
         if (!pre) {
@@ -508,8 +502,8 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [USERId, database]);
 
   const handleFollowClick = useCallback(async () => {
-    isFollowing ? await unFollowSchema() : await followSchema();
-  }, [isFollowing, unFollowSchema, followSchema]);
+    isFollowing ? await unfollowDatabase() : await followDatabase();
+  }, [isFollowing, unfollowDatabase, followDatabase]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

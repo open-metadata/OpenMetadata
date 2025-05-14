@@ -149,11 +149,9 @@ export const DataAssetsHeader = ({
       (type) => type !== EntityType.DATABASE_SERVICE
     );
 
-    return [
-      // EntityType.DATABASE,
-      EntityType.API_COLLECTION,
-      ...filteredServiceTypes,
-    ].includes(entityType);
+    return [EntityType.API_COLLECTION, ...filteredServiceTypes].includes(
+      entityType
+    );
   }, [entityType]);
 
   const hasFollowers = 'followers' in dataAsset;

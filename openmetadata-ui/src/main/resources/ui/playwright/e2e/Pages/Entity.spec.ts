@@ -17,6 +17,7 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -57,6 +58,7 @@ const entities = [
   SearchIndexClass,
   DashboardDataModelClass,
   MetricClass,
+  DatabaseSchemaClass,
 ] as const;
 
 // use the admin user to login

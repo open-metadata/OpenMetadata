@@ -740,8 +740,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN,
         {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
-            isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS
-          },${isMetadataService ? '' : TabSpecificField.DOMAIN}`,
+            TabSpecificField.FOLLOWERS
+          },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
+            isMetadataService ? '' : TabSpecificField.DOMAIN
+          }`,
           include: Include.All,
         }
       );

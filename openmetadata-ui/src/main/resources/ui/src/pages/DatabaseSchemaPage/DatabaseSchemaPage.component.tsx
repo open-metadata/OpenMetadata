@@ -193,8 +193,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          // eslint-disable-next-line max-len
-          fields: `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_SUMMARY,
+            TabSpecificField.TAGS,
+            TabSpecificField.DOMAIN,
+            TabSpecificField.VOTES,
+            TabSpecificField.EXTENSION,
+            TabSpecificField.FOLLOWERS,
+            TabSpecificField.DATA_PRODUCTS,
+          ].join(','),
           include: Include.All,
         }
       );
@@ -504,7 +512,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.USAGE_SUMMARY,
             TabSpecificField.TAGS,
             TabSpecificField.VOTES,
-          ],
+          ].join(','),
           include: Include.All,
         }
       );

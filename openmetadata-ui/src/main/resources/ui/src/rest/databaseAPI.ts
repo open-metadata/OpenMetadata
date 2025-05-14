@@ -95,7 +95,7 @@ export const addSchemaFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
   >(
-    `/databaseSchema/${id}/followers`,
+    `databaseSchemas/${id}/followers`,
     userId,
     APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
@@ -103,7 +103,32 @@ export const addSchemaFollower = async (id: string, userId: string) => {
   return response.data;
 };
 
+export const addDatabaseFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`databases/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+
+  return response.data;
+};
+
 export const removeSchemaFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(
+    `/databaseSchemas/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeDatabaseFollower = async (id: string, userId: string) => {
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
@@ -116,7 +141,6 @@ export const removeSchemaFollower = async (id: string, userId: string) => {
 
   return response.data;
 };
-
 export const getDatabaseSchemas = async ({
   include = Include.NonDeleted,
   databaseName,
