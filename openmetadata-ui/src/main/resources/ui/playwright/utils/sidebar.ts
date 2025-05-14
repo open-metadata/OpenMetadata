@@ -32,17 +32,7 @@ export const sidebarClick = async (page: Page, id: string) => {
     await page.hover('[data-testid="left-sidebar"]');
     await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
-
-    await page.waitForSelector('.ant-menu-inline', { state: 'visible' });
-
-    await page.evaluateHandle((selector) => {
-      const element = document.querySelector(selector);
-      if (element) {
-        (element as HTMLElement).click();
-      }
-    }, `[data-testid="app-bar-item-${items[1]}"]`);
-
-    await page.click(`[data-testid="${items[0]}"]`);
+    await page.click(`[data-testid="app-bar-item-${items[1]}"]`);
   } else {
     await page.click(`[data-testid="app-bar-item-${id}"]`);
   }
