@@ -138,8 +138,28 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+  merge-reports:
+    needs: pw-ci-postgresql-branch
+    runs-on: ubuntu-latest
+    if: ${{ !failure() || !cancelled() }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.19.0
+
       - name: Download All Shard Reports
-        if: ${{ matrix.shardIndex == 1 }}
         run: |
           mkdir -p blob-reports
           for i in {1..4}; do
@@ -148,7 +168,6 @@ jobs:
 
       - name: Merge Reports and Generate Slack Notification
         working-directory: openmetadata-ui/src/main/resources/ui/
-        if: ${{ matrix.shardIndex == 1 }}
         env:
           RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -158,9 +177,3 @@ jobs:
           ls -lahtr
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
           npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
-
-      - name: Clean Up
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
