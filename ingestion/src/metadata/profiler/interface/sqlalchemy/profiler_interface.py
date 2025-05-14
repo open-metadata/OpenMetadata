@@ -445,7 +445,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                             backoff = min(
                                 initial_backoff * (2 ** (retry_count - 1)), max_backoff
                             )
-                            logger.info(
+                            logger.debug(
                                 f"Connection error detected, retrying ({retry_count}/{max_retries}) "
                                 f"after {backoff:.2f} seconds..."
                             )
