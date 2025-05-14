@@ -29,9 +29,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
-from metadata.ingestion.source.pipeline.openlineage.utils import (
-    FQNNotFoundException,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -41,8 +38,6 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Timestamp,
 )
-from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
-
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -50,6 +45,8 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
@@ -202,18 +199,19 @@ class AirbyteSource(PipelineServiceSource):
         try:
             if self.get_db_service_names():
                 return self._get_table_fqn_from_om(table_details)
-            else:
-                return fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name="*",
-                    database_name=table_details.database,
-                    schema_name=table_details.schema,
-                    table_name=table_details.name,
-                )
+
+            return fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name="*",
+                database_name=table_details.database,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
+            )
         except FQNNotFoundException:
             return None
 
+    # pylint: disable=too-many-locals
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirbytePipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
