@@ -24,6 +24,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './test-summary-custom-tooltip.less';
 
 const TestSummaryCustomTooltip = (
   props: TooltipProps<string | number, string>
@@ -98,7 +99,9 @@ const TestSummaryCustomTooltip = (
           {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
-      <ul data-testid="test-summary-tooltip-container">
+      <ul
+        className="test-summary-tooltip-container"
+        data-testid="test-summary-tooltip-container">
         {data.map(tooltipRender)}
       </ul>
     </Card>

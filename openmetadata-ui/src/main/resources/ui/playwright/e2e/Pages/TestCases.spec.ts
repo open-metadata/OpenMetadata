@@ -203,7 +203,7 @@ test('Custom SQL Query', async ({ page }) => {
         .getByTestId('code-mirror-container')
         .getByRole('textbox')
         .fill(testCase.sqlQuery);
-      await page.getByLabel('Strategy:').click();
+      await page.getByLabel('Strategy').click();
       await page.getByTitle('ROWS').click();
       await page.fill('#tableTestForm_params_threshold', '23');
       const createTestCaseResponse = page.waitForResponse(
