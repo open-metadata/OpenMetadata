@@ -40,6 +40,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -62,10 +63,10 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  addSchemaFollower,
+  addFollowers,
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
-  removeSchemaFollower,
+  removeFollowers,
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
@@ -533,9 +534,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
   const followSchema = useCallback(async () => {
     try {
-      const res = await addSchemaFollower(
+      const res = await addFollowers(
         databaseSchemaId,
-        currentUser?.id ?? ''
+        currentUser?.id ?? '',
+        GlobalSettingOptions.DATABASE_SCHEMA
       );
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
@@ -557,7 +559,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [USERId, databaseSchemaId]);
   const unFollowSchema = useCallback(async () => {
     try {
-      const res = await removeSchemaFollower(databaseSchemaId, USERId);
+      const res = await removeFollowers(
+        databaseSchemaId,
+        USERId,
+        GlobalSettingOptions.DATABASE_SCHEMA
+      );
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setDatabaseSchema((pre) => {
         if (!pre) {

@@ -37,6 +37,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -59,11 +60,11 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  addDatabaseFollower,
+  addFollowers,
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
-  removeDatabaseFollower,
+  removeFollowers,
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
@@ -464,7 +465,11 @@ const DatabaseDetails: FunctionComponent = () => {
   };
   const followDatabase = useCallback(async () => {
     try {
-      const res = await addDatabaseFollower(databaseId, currentUser?.id ?? '');
+      const res = await addFollowers(
+        databaseId,
+        currentUser?.id ?? '',
+        GlobalSettingOptions.DATABASES
+      );
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
       setDatabase((prev) => {
@@ -485,7 +490,11 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [USERId, databaseId]);
   const unfollowDatabase = useCallback(async () => {
     try {
-      const res = await removeDatabaseFollower(databaseId, USERId);
+      const res = await removeFollowers(
+        databaseId,
+        USERId,
+        GlobalSettingOptions.DATABASES
+      );
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setDatabase((pre) => {
         if (!pre) {

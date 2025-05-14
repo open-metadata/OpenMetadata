@@ -88,56 +88,32 @@ export const patchDatabaseSchemaDetails = async (
   return response.data;
 };
 
-export const addSchemaFollower = async (id: string, userId: string) => {
+export const addFollowers = async (
+  id: string,
+  userId: string,
+  path: string
+) => {
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(
-    `databaseSchemas/${id}/followers`,
-    userId,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
+  >(`${path}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
 
-export const addDatabaseFollower = async (id: string, userId: string) => {
-  const response = await APIClient.put<
-    string,
-    AxiosResponse<{
-      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
-    }>
-  >(`databases/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
-
-  return response.data;
-};
-
-export const removeSchemaFollower = async (id: string, userId: string) => {
+export const removeFollowers = async (
+  id: string,
+  userId: string,
+  path: string
+) => {
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(
-    `/databaseSchemas/${id}/followers/${userId}`,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
-
-  return response.data;
-};
-
-export const removeDatabaseFollower = async (id: string, userId: string) => {
-  const response = await APIClient.delete<
-    string,
-    AxiosResponse<{
-      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
-    }>
-  >(
-    `/databases/${id}/followers/${userId}`,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
+  >(`${path}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
