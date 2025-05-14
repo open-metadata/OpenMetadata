@@ -287,7 +287,9 @@ describe('EntityAttachmentProvider', () => {
   it('handles upload error with string error', async () => {
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
     const errorMessage = 'Upload failed';
-    mockOnImageUpload.mockRejectedValue(errorMessage);
+    mockOnImageUpload.mockRejectedValue({
+      response: { data: { message: errorMessage } },
+    });
 
     render(
       <EntityAttachmentProvider entityType={EntityType.TABLE}>
