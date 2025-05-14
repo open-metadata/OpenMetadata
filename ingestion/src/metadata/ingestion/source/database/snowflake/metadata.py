@@ -683,24 +683,28 @@ class SnowflakeSource(
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[SnowflakeStoredProcedure]:
-        results = self.engine.execute(
-            query.format(
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
-                account_usage=self.service_connection.accountUsageSchema,
-            )
-        ).all()
-        for row in results:
-            stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
-            if stored_procedure.definition is None:
-                logger.debug(
-                    f"Missing ownership permissions on procedure {stored_procedure.name}."
-                    " Trying to fetch description via DESCRIBE."
+        try:
+            results = self.engine.execute(
+                query.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    account_usage=self.service_connection.accountUsageSchema,
                 )
-                stored_procedure.definition = self.describe_procedure_definition(
-                    stored_procedure
-                )
-            yield stored_procedure
+            ).all()
+            for row in results:
+                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+                if stored_procedure.definition is None:
+                    logger.debug(
+                        f"Missing ownership permissions on procedure {stored_procedure.name}."
+                        " Trying to fetch description via DESCRIBE."
+                    )
+                    stored_procedure.definition = self.describe_procedure_definition(
+                        stored_procedure
+                    )
+                yield stored_procedure
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching stored procedures: {exc}")
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -720,19 +724,27 @@ class SnowflakeSource(
         Then, if the procedure is created with `EXECUTE AS CALLER`, we can still try to
         get the definition with a DESCRIBE.
         """
-        if stored_procedure.procedure_type == StoredProcedureType.StoredProcedure.value:
-            query = SNOWFLAKE_DESC_STORED_PROCEDURE
-        else:
-            query = SNOWFLAKE_DESC_FUNCTION
-        res = self.engine.execute(
-            query.format(
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
-                procedure_name=stored_procedure.name,
-                procedure_signature=stored_procedure.unquote_signature(),
+        try:
+            if (
+                stored_procedure.procedure_type
+                == StoredProcedureType.StoredProcedure.value
+            ):
+                query = SNOWFLAKE_DESC_STORED_PROCEDURE
+            else:
+                query = SNOWFLAKE_DESC_FUNCTION
+            res = self.engine.execute(
+                query.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    procedure_name=stored_procedure.name,
+                    procedure_signature=stored_procedure.unquote_signature(),
+                )
             )
-        )
-        return dict(res.all()).get("body", "")
+            return dict(res.all()).get("body", "")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching stored procedure definition: {exc}")
+            return ""
 
     def yield_stored_procedure(
         self, stored_procedure: SnowflakeStoredProcedure

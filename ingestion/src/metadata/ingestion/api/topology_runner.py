@@ -71,14 +71,22 @@ class TopologyRunnerMixin(Generic[C]):
     cache = defaultdict(dict)
     queue = Queue()
 
+    def _run_node_producer(self, node: TopologyNode) -> Iterable[Entity]:
+        """Run the node producer"""
+        try:
+            node_producer = getattr(self, node.producer)
+            yield from node_producer() or []
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error running node producer: {exc}")
+
     def _multithread_process_node(
         self, node: TopologyNode, threads: int
     ) -> Iterable[Entity]:
         """Multithread Processing of a Node"""
-        node_producer = getattr(self, node.producer)
         child_nodes = self._get_child_nodes(node)
 
-        node_entities = list(node_producer() or [])
+        node_entities = list(self._run_node_producer(node) or [])
         node_entities_length = len(node_entities)
 
         if node_entities_length == 0:
@@ -120,10 +128,9 @@ class TopologyRunnerMixin(Generic[C]):
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Processing of a Node in a single thread."""
-        node_producer = getattr(self, node.producer)
         child_nodes = self._get_child_nodes(node)
 
-        for node_entity in node_producer() or []:
+        for node_entity in self._run_node_producer(node) or []:
             for stage in node.stages:
                 yield from self._process_stage(
                     stage=stage, node_entity=node_entity, child_nodes=child_nodes
@@ -217,6 +224,17 @@ class TopologyRunnerMixin(Generic[C]):
             else []
         )
 
+    def _run_stage_processor(
+        self, stage: NodeStage, node_entity: Any
+    ) -> Iterable[Entity]:
+        """Run the stage processor"""
+        try:
+            stage_fn = getattr(self, stage.processor)
+            yield from stage_fn(node_entity) or []
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error running stage processor: {exc}")
+
     def _process_stage(
         self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]
     ) -> Iterable[Entity]:
@@ -230,8 +248,9 @@ class TopologyRunnerMixin(Generic[C]):
         """
         logger.debug(f"Processing stage: {stage}")
 
-        stage_fn = getattr(self, stage.processor)
-        for entity_request in stage_fn(node_entity) or []:
+        for entity_request in (
+            self._run_stage_processor(stage=stage, node_entity=node_entity) or []
+        ):
             try:
                 # yield and make sure the data is updated
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
