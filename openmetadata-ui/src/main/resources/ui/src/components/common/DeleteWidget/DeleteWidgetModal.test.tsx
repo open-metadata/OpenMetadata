@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
@@ -40,10 +39,6 @@ const mockOnLogoutHandler = jest.fn();
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
   startCase: jest.fn(),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({

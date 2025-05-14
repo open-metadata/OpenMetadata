@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
-import { get, sortBy } from 'lodash';
+
 import {
-  AsyncFetchListValues,
+  AntdConfig,
   Config,
   Fields,
+  ListValues,
   Operators,
   SelectFieldSettings,
-} from 'react-awesome-query-builder';
-import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+} from '@react-awesome-query-builder/antd';
+import { t } from 'i18next';
+import { get, sortBy } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
@@ -146,7 +147,7 @@ class JSONLogicSearchClassBase {
   }) => {
     return (search) => {
       return searchData(
-        search ?? '',
+        Array.isArray(search) ? search.join(',') : search ?? '',
         1,
         PAGE_SIZE_BASE,
         '',
@@ -237,9 +238,10 @@ class JSONLogicSearchClassBase {
     },
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getCommonConfig = (_: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
   }) => {
     return {
       [EntityReferenceFields.SERVICE]: {
@@ -351,10 +353,10 @@ class JSONLogicSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions = Promise.resolve([]),
+    tierOptions,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
       ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
@@ -398,7 +400,7 @@ class JSONLogicSearchClassBase {
   };
 
   public getQbConfigs: (
-    tierOptions: Promise<AsyncFetchListValues>,
+    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
   ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {

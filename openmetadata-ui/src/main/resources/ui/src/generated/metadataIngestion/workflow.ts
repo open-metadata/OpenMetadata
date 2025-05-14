@@ -4313,7 +4313,7 @@ export interface Pipeline {
     /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -4469,6 +4469,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -5031,19 +5032,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**

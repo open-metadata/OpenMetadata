@@ -13,11 +13,12 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
-import { t } from 'i18next';
+
 import { isArray, isObject, startCase } from 'lodash';
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
+  const { t } = useTranslation();
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
   };

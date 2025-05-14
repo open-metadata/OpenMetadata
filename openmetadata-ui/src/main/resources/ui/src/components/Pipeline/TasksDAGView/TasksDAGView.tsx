@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
+import { Fragment, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,

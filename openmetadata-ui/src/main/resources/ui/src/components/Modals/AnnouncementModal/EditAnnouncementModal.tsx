@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DatePicker, Form, Input, Modal, Space } from 'antd';
+import { Form, Input, Modal, Space } from 'antd';
 import moment from 'moment';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
@@ -21,6 +21,7 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getField } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DatePicker from '../../common/DatePicker/DatePicker';
 import { CreateAnnouncement } from './AddAnnouncementModal';
 import './announcement-modal.less';
 

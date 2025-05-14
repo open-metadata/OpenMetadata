@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { addDomains } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -74,12 +73,10 @@ jest.mock('../AddDomainForm/AddDomainForm.component', () => {
     </div>
   ));
 });
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AddDomain', () => {
@@ -111,7 +108,7 @@ describe('AddDomain', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Should show error message when api fails', async () => {

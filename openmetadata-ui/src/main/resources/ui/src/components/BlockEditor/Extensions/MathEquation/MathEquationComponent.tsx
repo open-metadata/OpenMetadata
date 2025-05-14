@@ -16,7 +16,7 @@ import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
-import React, { FC } from 'react';
+import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -28,12 +28,10 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
   editor,
 }) => {
   const { t } = useTranslation();
-  const inputRef = React.useRef<TextAreaRef>(null);
+  const inputRef = useRef<TextAreaRef>(null);
   const equation = node.attrs.math_equation;
 
-  const [isEditing, setIsEditing] = React.useState(
-    Boolean(node.attrs.isEditing)
-  );
+  const [isEditing, setIsEditing] = useState(Boolean(node.attrs.isEditing));
 
   const handleSaveEquation = () => {
     updateAttributes({

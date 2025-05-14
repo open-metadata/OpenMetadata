@@ -12,9 +12,9 @@
  */
 
 import { Space, Typography } from 'antd';
-import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
@@ -44,6 +44,7 @@ const GlossaryTermReferences = () => {
     isVersionView,
     permissions,
   } = useGenericContext<GlossaryTerm>();
+  const { t } = useTranslation();
 
   const handleReferencesSave = async (
     newReferences: TermReference[],

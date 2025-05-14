@@ -13,7 +13,7 @@
 
 import { Divider } from 'antd';
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { FeedListSeparatorProp } from '../ActivityFeedList/ActivityFeedList.interface';
 import './feed-list-separator.less';
 

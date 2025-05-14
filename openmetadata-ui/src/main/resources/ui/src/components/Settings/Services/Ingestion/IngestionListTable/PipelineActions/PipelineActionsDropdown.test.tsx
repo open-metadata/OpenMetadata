@@ -13,20 +13,10 @@
 
 import { act, render, screen } from '@testing-library/react';
 
-import React from 'react';
-
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { mockPipelineActionsDropdownProps } from '../../../../../../mocks/IngestionListTable.mock';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
-
-const mockPush = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
-}));
 
 jest.mock(
   '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',

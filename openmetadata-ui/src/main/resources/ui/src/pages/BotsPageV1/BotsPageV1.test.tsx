@@ -12,15 +12,12 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import BotsPageV1 from './BotsPageV1.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../components/Settings/Bot/BotListV1/BotListV1.component', () =>
@@ -47,7 +44,7 @@ describe('BotsPageV1 component', () => {
 
     userEvent.click(screen.getByRole('button', { name: 'Add Bot' }));
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('Bot deleted should not present by default', () => {

@@ -13,7 +13,7 @@
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';

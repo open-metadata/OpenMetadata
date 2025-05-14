@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';

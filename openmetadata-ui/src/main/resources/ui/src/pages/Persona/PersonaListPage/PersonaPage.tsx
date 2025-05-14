@@ -13,7 +13,7 @@
 import { Button, Col, Row, Skeleton, Space } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';

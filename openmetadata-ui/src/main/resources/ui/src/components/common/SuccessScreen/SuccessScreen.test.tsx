@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';

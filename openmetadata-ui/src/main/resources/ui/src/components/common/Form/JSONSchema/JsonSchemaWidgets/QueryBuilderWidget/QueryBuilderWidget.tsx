@@ -23,10 +23,7 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { debounce, isEmpty, isUndefined } from 'lodash';
-import Qs from 'qs';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+
 import {
   Builder,
   Config,
@@ -34,7 +31,12 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import 'antd/dist/antd.css';
+import { debounce, isEmpty, isUndefined } from 'lodash';
+import Qs from 'qs';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   EntityFields,
   EntityReferenceFields,
@@ -86,6 +88,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
   const isSearchIndexUpdatedInContext = searchIndexFromContext === searchIndex;
   const [initDone, setInitDone] = useState<boolean>(false);
+  const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
 
   const fetchEntityCount = useCallback(
@@ -191,7 +194,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         ) as JsonTree;
 
         if (Object.keys(parsedTree).length > 0) {
-          const tree = QbUtils.checkTree(QbUtils.loadTree(parsedTree), config);
+          const tree = QbUtils.Validation.sanitizeTree(
+            QbUtils.loadTree(parsedTree),
+            config
+          );
           onTreeUpdate(tree, config);
           // Fetch count for default value
           debouncedFetchEntityCount(parsedValue);
@@ -208,12 +214,12 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           ) as JsonTree;
 
           if (Object.keys(parsedTree).length > 0) {
-            const tree1 = QbUtils.checkTree(
+            const tree1 = QbUtils.Validation.sanitizeTree(
               QbUtils.loadTree(parsedTree),
               config
             );
             if (tree1) {
-              onTreeUpdate(tree1, config);
+              onTreeUpdate(tree1 as unknown as ImmutableTree, config);
             }
           }
         } catch (e) {

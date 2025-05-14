@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React from 'react';
@@ -56,6 +56,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 

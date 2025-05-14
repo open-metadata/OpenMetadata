@@ -16,9 +16,9 @@ import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -64,7 +64,7 @@ const TestSuitePipelineTab = ({
   const { permissions } = usePermissionProvider();
   const pipelinePaging = usePaging(PAGE_SIZE_BASE);
   const { pageSize, handlePagingChange } = pipelinePaging;
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
@@ -135,7 +135,7 @@ const TestSuitePipelineTab = ({
   );
 
   const handleAddPipelineRedirection = () => {
-    history.push({
+    navigate({
       pathname: getTestSuiteIngestionPath(testSuiteFQN),
       search: isLogicalTestSuite
         ? QueryString.stringify({ testSuiteId: testSuite?.id })

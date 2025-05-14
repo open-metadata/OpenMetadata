@@ -16,12 +16,11 @@ import {
   findByRole,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Form } from 'antd';
 import { isString } from 'lodash';
-import React from 'react';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -75,7 +74,7 @@ describe('DestinationSelectItem component', () => {
       userEvent.click(categorySelect);
     });
 
-    await waitForElement(() =>
+    await waitFor(() =>
       screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
     );
 
@@ -125,7 +124,7 @@ describe('DestinationSelectItem component', () => {
       userEvent.click(categorySelect);
     });
 
-    await waitForElement(() =>
+    await waitFor(() =>
       screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
     );
     screen.debug(

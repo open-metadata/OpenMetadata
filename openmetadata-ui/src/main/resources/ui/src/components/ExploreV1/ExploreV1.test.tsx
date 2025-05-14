@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
@@ -26,7 +25,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),

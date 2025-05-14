@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -59,16 +59,17 @@ import {
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const EditIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
-  const { ingestionType, serviceCategory } = useParams<{
+  const { ingestionType, serviceCategory } = useRequiredParams<{
     ingestionType: string;
     serviceCategory: string;
   }>();
   const { fqn: serviceFQN, ingestionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(
     {} as IngestionPipeline
@@ -97,7 +98,7 @@ const EditIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getServiceByFQN(serviceCategory, serviceFQN)
+      getServiceByFQN(serviceCategory as ServiceCategory, serviceFQN)
         .then((resService) => {
           if (resService) {
             setServiceData(resService as ServicesUpdateRequest);
@@ -112,7 +113,12 @@ const EditIngestionPage = () => {
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
-            setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
+            setErrorMsg(
+              getEntityMissingError(
+                serviceCategory as ServiceCategory,
+                serviceFQN
+              )
+            );
           } else {
             const errTextService = t('server.entity-fetch-error', {
               entity: t('label.service-detail-lowercase-plural'),
@@ -215,14 +221,14 @@ const EditIngestionPage = () => {
   };
 
   const goToSettingsPage = () => {
-    history.push(getSettingsPathFromPipelineType(ingestionType));
+    navigate(getSettingsPathFromPipelineType(ingestionType as PipelineType));
   };
 
   const goToService = () => {
-    history.push(
+    navigate(
       getServiceDetailsPath(
         serviceFQN,
-        serviceCategory,
+        serviceCategory as ServiceCategory,
         EntityTabs.AGENTS,
         ServiceAgentSubTabs.METADATA
       )
@@ -243,8 +249,8 @@ const EditIngestionPage = () => {
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
       isSettingsPipeline,
-      ingestionType,
-      serviceCategory,
+      ingestionType as PipelineType,
+      serviceCategory as ServiceCategory,
       serviceFQN,
       INGESTION_ACTION_TYPE.EDIT,
       serviceData
@@ -262,7 +268,7 @@ const EditIngestionPage = () => {
           handleCancelClick={handleCancelClick}
           handleViewServiceClick={handleCancelClick}
           heading={getIngestionHeadingName(
-            ingestionType,
+            ingestionType as PipelineType,
             INGESTION_ACTION_TYPE.EDIT
           )}
           ingestionAction={ingestionAction}

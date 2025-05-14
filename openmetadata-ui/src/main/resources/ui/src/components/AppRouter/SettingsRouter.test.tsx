@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter, Route } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import SettingsRouter from './SettingsRouter';

@@ -12,16 +12,13 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import DataInsightHeader from './DataInsightHeader.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn(() => ({ tab: 'tab' })),
 }));
 
@@ -101,7 +98,7 @@ describe('DataInsightHeader component', () => {
       })
     );
 
-    expect(mockPush).toHaveBeenCalledWith(ROUTES.ADD_KPI);
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.ADD_KPI);
 
     expect(screen.getAllByText('SearchDropdown')).toHaveLength(2);
     expect(

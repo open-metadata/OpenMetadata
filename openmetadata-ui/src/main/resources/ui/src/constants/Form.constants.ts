@@ -12,27 +12,28 @@
  */
 
 import { Rule } from 'antd/lib/form';
-import { t } from 'i18next';
+
+import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
 export const NAME_FIELD_RULES: Rule[] = [
   {
     required: true,
-    message: t('label.field-required', {
-      field: t('label.name'),
+    message: i18n.t('label.field-required', {
+      field: i18n.t('label.name'),
     }),
   },
   {
     min: 1,
     max: 128,
-    message: t('message.entity-size-in-between', {
-      entity: t('label.name'),
+    message: i18n.t('message.entity-size-in-between', {
+      entity: i18n.t('label.name'),
       min: 1,
       max: 128,
     }),
   },
   {
     pattern: ENTITY_NAME_REGEX,
-    message: t('message.entity-name-validation'),
+    message: i18n.t('message.entity-name-validation'),
   },
 ];

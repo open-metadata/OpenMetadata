@@ -38,7 +38,7 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
   },
 });
 const mockShowErrorToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
@@ -141,9 +141,7 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../../constants/constants', () => ({
@@ -272,13 +270,13 @@ describe('AppRunsHistory', () => {
     });
   });
 
-  it('onclick of logs button should call history.push method of external apps', async () => {
+  it('onclick of logs button should call navigate method of external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     userEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockPush).toHaveBeenCalledWith('logs viewer path');
+    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
   });
 
   it('checking behaviour of component when no prop is passed', async () => {

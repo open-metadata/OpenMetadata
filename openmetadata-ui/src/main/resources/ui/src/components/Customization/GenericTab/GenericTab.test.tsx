@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';

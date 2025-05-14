@@ -46,8 +46,7 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
-const mockPush = jest.fn();
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../rest/observabilityAPI', () => ({
   getObservabilityAlertByFQN: jest.fn().mockImplementation(() =>
@@ -93,10 +92,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {
@@ -158,6 +154,6 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

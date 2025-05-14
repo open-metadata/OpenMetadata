@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosResponse } from 'axios';
-import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import axiosClient from '../../../rest';
@@ -38,7 +37,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({

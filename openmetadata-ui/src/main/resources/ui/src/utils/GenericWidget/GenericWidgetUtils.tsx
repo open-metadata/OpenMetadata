@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { ExtensionTable } from '../../components/common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';

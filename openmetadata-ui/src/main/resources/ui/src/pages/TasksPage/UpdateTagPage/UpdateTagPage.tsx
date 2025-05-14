@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -58,6 +58,7 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
@@ -66,11 +67,11 @@ import { EntityData, Option } from '../TasksPage.interface';
 const UpdateTag = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
@@ -88,7 +89,7 @@ const UpdateTag = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType, fqn),
+    () => getTaskEntityFQN(entityType as EntityType, fqn),
     [fqn, entityType]
   );
 
@@ -101,7 +102,7 @@ const UpdateTag = () => {
     () =>
       getTaskMessage({
         value,
-        entityType,
+        entityType: entityType as EntityType,
         entityData,
         field,
         startMessage: 'Update tags',
@@ -109,15 +110,15 @@ const UpdateTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
     return getColumnObject(
       column[0],
-      getEntityColumnsDetails(entityType, entityData),
-      entityType,
+      getEntityColumnsDetails(entityType as EntityType, entityData),
+      entityType as EntityType,
       chartData
     );
   }, [field, entityData, chartData, entityType]);
@@ -170,9 +171,9 @@ const UpdateTag = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
-            entityType,
+            entityType as EntityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
@@ -185,7 +186,7 @@ const UpdateTag = () => {
 
   useEffect(() => {
     fetchEntityDetail(
-      entityType,
+      entityType as EntityType,
       entityFQN as string,
       setEntityData,
       setChartData
@@ -228,7 +229,7 @@ const UpdateTag = () => {
           <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
+                ...getBreadCrumbList(entityData, entityType as EntityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -342,7 +343,7 @@ const UpdateTag = () => {
             source={
               {
                 ...entityData,
-                entityType,
+                entityType: entityType as EntityType,
               } as SearchedDataProps['data'][number]['_source']
             }
           />

@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Editor } from '@tiptap/react';
-import React from 'react';
 import BlockMenu from './BlockMenu';
 
 const mockDeleteSelection = jest.fn();

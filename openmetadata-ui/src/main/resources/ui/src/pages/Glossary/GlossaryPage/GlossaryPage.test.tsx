@@ -22,10 +22,6 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
-  useHistory: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),

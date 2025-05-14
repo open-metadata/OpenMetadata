@@ -26,7 +26,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';

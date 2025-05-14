@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import FormCardSection from './FormCardSection';
 
 describe('FormCardSection component', () => {

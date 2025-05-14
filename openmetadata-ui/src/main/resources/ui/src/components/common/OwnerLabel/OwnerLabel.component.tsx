@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { reverse } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';

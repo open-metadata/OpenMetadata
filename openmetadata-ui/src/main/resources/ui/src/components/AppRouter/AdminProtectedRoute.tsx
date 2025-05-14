@@ -11,28 +11,30 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import { Redirect, Route, RouteProps } from 'react-router-dom';
+import { Navigate, Route, RouteProps, useLocation } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 
-interface AdminProtectedRouteProps extends RouteProps {
+type AdminProtectedRouteProps = RouteProps & {
   hasPermission?: boolean;
-}
+};
 
-const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
+const AdminProtectedRoute = ({
+  hasPermission,
+  ...routeProps
+}: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
-  const hasPermission = Boolean(routeProps.hasPermission);
+  const location = useLocation();
 
   if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
   } else if (!hasPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  } else {
-    return <Redirect to={ROUTES.SIGNIN} />;
   }
+
+  return <Navigate replace state={{ from: location }} to={ROUTES.SIGNIN} />;
 };
 
 export default AdminProtectedRoute;

@@ -14,7 +14,7 @@
 /* eslint-disable */
 
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   formatContent,
   formatValueBasedOnContent,
@@ -34,7 +34,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       readonly,
       className,
       style,
-      placeholder,
+      placeHolder,
       onTextChange,
     }: RichTextEditorProp,
     ref
@@ -53,12 +53,18 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
 
         return formatValueBasedOnContent(backendFormat);
       },
+      clearEditorContent() {
+        // editorRef.current?.editor?.setContent('');
+      },
+      setEditorContent(_content: string) {
+        // editorRef.current?.editor?.setContent(content);
+      },
     }));
 
     return (
       <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
-          placeholder={placeholder}
+          placeholder={placeHolder}
           ref={editorRef}
           autoFocus={autofocus}
           content={initialValue}

@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';

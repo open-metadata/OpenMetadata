@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { getImageWithResolutionAndFallback } from '../../../../../utils/ProfilerUtils';
 import { mockUserData } from '../../mocks/User.mocks';
 import UserProfileImage from './UserProfileImage.component';

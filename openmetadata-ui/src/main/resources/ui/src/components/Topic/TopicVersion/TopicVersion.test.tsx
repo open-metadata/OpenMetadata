@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
@@ -60,9 +59,6 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockReturnValue({
     tab: 'topics',
   }),

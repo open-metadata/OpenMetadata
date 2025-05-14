@@ -25,13 +25,7 @@ import {
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';

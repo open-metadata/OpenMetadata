@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -231,14 +231,10 @@ const mockUseParams = jest.fn().mockReturnValue({
   tab: 'schema',
 });
 
-const mockPush = jest.fn();
-const mockReplace = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    replace: mockReplace,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
@@ -389,7 +385,10 @@ describe('Container Page Component', () => {
 
     userEvent.click(childrenTab);
 
-    expect(mockReplace).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.any,
+      expect.objectContaining({ replace: true })
+    );
   });
 
   it('children should render on children tab', async () => {

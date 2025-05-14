@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ModalWithMarkdownEditor } from './ModalWithMarkdownEditor';
 

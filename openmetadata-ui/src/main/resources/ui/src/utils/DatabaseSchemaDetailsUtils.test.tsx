@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 
@@ -30,9 +29,6 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 describe('ExtraDatabaseSchemaDropdownOptions', () => {
   it('should render import button when user has editAll permission', () => {

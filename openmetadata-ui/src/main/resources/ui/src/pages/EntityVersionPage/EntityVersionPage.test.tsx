@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import EntityVersionPage from './EntityVersionPage.component';
@@ -24,7 +23,6 @@ let mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

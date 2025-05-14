@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,30 @@
  *  limitations under the License.
  */
 
-import { createBrowserHistory } from 'history';
-import process from 'process';
+// Reset styles for Ant Design v5
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+#root {
+  height: 100%;
+  width: 100%;
+}
 
-export const history = createBrowserHistory(
-  subPath
-    ? {
-        basename: subPath,
-      }
-    : {}
-);
+// Ensure the main container takes full height
+.main-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// Content wrapper should take remaining space
+.content-wrapper {
+  flex: 1;
+  overflow: auto;
+}

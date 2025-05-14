@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { t } from '../utils/i18n';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {

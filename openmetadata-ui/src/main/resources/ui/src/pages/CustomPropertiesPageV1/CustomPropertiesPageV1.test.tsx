@@ -12,17 +12,14 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: EntityTabs.CUSTOM_PROPERTIES,
   }),
@@ -145,7 +142,7 @@ describe('CustomPropertiesPageV1 component', () => {
       })
     );
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('failed in fetch entityType should not fetch permission', async () => {

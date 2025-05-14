@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
@@ -71,10 +71,6 @@ const formData = {
   supportsProfiler: true,
   supportsQueryComment: true,
 };
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
   getDatabaseConfig: jest.fn().mockReturnValue({

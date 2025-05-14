@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../enums/entity.enum';
+
 export interface IngestionPipelineLogByIdInterface {
   application_task?: string;
   ingestion_task?: string;
@@ -27,6 +29,6 @@ export interface IngestionPipelineLogByIdInterface {
 }
 
 export interface LogViewerParams {
-  logEntityType: string;
+  logEntityType: EntityType;
   fqn: string;
 }

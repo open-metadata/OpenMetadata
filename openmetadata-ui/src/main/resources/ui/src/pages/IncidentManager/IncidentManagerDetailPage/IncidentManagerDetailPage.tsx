@@ -14,9 +14,9 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -42,6 +42,7 @@ import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
@@ -49,12 +50,11 @@ import { useTestCaseStore } from './useTestCase.store';
 
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const location =
-    useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
 
   const { fqn: testCaseFQN } = useFqn();
 
@@ -154,7 +154,7 @@ const IncidentManagerDetailPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getIncidentManagerDetailPagePath(
           testCaseFQN,
           activeKey as IncidentManagerTabs
@@ -268,7 +268,7 @@ const IncidentManagerDetailPage = () => {
             <Col className="d-flex justify-end" span={1}>
               <ManageButton
                 isRecursiveDelete
-                afterDeleteAction={() => history.push(ROUTES.INCIDENT_MANAGER)}
+                afterDeleteAction={() => navigate(ROUTES.INCIDENT_MANAGER)}
                 allowSoftDelete={false}
                 canDelete={hasDeletePermission}
                 displayName={testCase.displayName}

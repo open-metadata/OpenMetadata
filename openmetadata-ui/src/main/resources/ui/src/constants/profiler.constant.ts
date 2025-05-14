@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
@@ -36,6 +35,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
+import { t } from '../utils/i18n';
 import i18n from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 
