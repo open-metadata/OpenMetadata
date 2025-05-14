@@ -714,7 +714,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page2.waitForLoadState('networkidle');
       // Count for task should be 1 both open and closed
 
-      checkTaskCountInActivityFeed(page2, 1, 1);
+      await checkTaskCountInActivityFeed(page2, 1, 1);
 
       // Should not see the close button
       expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
@@ -730,7 +730,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await toastNotification(page2, /Task resolved successfully/);
 
       await page2.waitForLoadState('networkidle');
-      checkTaskCountInActivityFeed(page2, 0, 2);
+      await checkTaskCountInActivityFeed(page2, 0, 2);
 
       await afterActionUser2();
     });
