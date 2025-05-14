@@ -14,7 +14,9 @@
 import { createBrowserHistory } from 'history';
 
 export const getBasePath = () => {
-  return window.BASE_PATH?.slice(0, -1) ?? '';
+  return window.BASE_PATH !== '${basePath}'
+    ? window.BASE_PATH?.slice(0, -1) ?? ''
+    : '';
 };
 
 export const history = createBrowserHistory(
