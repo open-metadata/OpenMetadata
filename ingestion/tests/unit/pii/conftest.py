@@ -8,12 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import TypeVar
+from typing import Callable
 
 import pytest
 from faker import Faker
-
-T = TypeVar("T")
 
 
 @pytest.fixture
@@ -22,3 +20,15 @@ def fake() -> Faker:
     fake = Faker()
     fake.seed_instance(1234)
     return fake
+
+
+@pytest.fixture
+def local_fake_factory() -> Callable[[str], Faker]:
+    """Return a local fake factory"""
+
+    def fake_factory(locale: str) -> Faker:
+        fake = Faker(locale)
+        fake.seed_instance(1234)
+        return fake
+
+    return fake_factory
