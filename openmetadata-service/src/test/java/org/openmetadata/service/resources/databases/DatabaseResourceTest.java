@@ -333,7 +333,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         database.getUsageSummary(),
         database.getLocation());
 
-    fields = "owners,databaseSchemas,usageSummary,location,tags";
+    fields = "owners,databaseSchemas,usageSummary,location,tags,followers";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

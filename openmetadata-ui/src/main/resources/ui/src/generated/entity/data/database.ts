@@ -60,6 +60,10 @@ export interface Database {
      */
     extension?: any;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
      */
     fullyQualifiedName?: string;
