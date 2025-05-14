@@ -1279,6 +1279,7 @@
     "source-plural": "แหล่งที่มาหลายรายการ",
     "source-url": "URL แหล่งที่มา",
     "specific-data-asset-plural": "สินทรัพย์ข้อมูลเฉพาะ",
+    "sql-function": "ฟังก์ชัน SQL",
     "sql-uppercase": "SQL",
     "sql-uppercase-query": "คำสั่ง SQL",
     "sso-uppercase": "SSO",
