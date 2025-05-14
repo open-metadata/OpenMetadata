@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.jobs.GenericBackgroundWorker.NO_JOB_SLEEP_SECONDS;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -251,7 +252,7 @@ public class BackgroundJobWorkerTest extends OpenMetadataApplicationTest {
         "Job should not be completed yet");
 
     // Wait for the next run cycle
-    Thread.sleep(delayInMillis + 10 * 10000);
+    Thread.sleep(delayInMillis + NO_JOB_SLEEP_SECONDS);
     Optional<BackgroundJob> jobAfterDelay = Entity.getJobDAO().fetchJobById(jobId);
     assertTrue(jobAfterDelay.isPresent(), "Job should still exist after delay");
     assertEquals(
