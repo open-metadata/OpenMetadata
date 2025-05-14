@@ -108,6 +108,7 @@ export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const LOG_ENTITY_NAME = ':logEntityName';
+export const LOG_RUN_ID = ':logRunId';
 export const PLACEHOLDER_ACTION = ':action';
 
 export const pagingObject = { after: '', before: '', total: 0 };
@@ -252,7 +253,7 @@ export const ROUTES = {
   INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
-  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
+  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs/${LOG_RUN_ID}`,
 
   DATA_INSIGHT: `/data-insights`,
   DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,

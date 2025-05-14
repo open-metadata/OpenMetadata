@@ -19,6 +19,29 @@ import { getApplicationLogs } from '../../rest/applicationAPI';
 import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
 
+/**
+ * Format long log messages by adding line breaks for better readability max length 250
+ * @param message log message to format
+ * @returns formatted message with line breaks
+ */
+export const formatLogMessage = (message: string): string => {
+  if (message.length <= 250) {
+    return message;
+  }
+
+  const lines = message.split('\n');
+
+  const formattedLines = lines.map((line) => {
+    if (line.length > 250) {
+      return line.match(/.{1,250}/g)?.join('\n') || line;
+    }
+
+    return line;
+  });
+
+  return formattedLines.join('\n');
+};
+
 export const getLogsFromResponse = (
   res: IngestionPipelineLogByIdInterface,
   pipelineType: string

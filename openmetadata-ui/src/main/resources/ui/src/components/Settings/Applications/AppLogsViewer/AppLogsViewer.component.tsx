@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Badge,
   Button,
@@ -23,14 +22,16 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { capitalize, isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
-import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
+import { useHistory } from 'react-router-dom';
+import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
+import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
@@ -39,8 +40,9 @@ import { AppLogsViewerProps } from './AppLogsViewer.interface';
 
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
-
-  const { successContext, failureContext, timestamp, status } = data;
+  const history = useHistory();
+  const { successContext, failureContext, timestamp, startTime, appName } =
+    data;
 
   const handleJumpToEnd = () => {
     const logsBody = document.getElementsByClassName(
@@ -95,20 +97,6 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             <Space wrap direction="horizontal" size={0}>
               <div className="flex">
                 <span className="text-grey-muted">{`${t(
-                  'label.status'
-                )}:`}</span>
-
-                <Space align="center" className="m-l-xs" size={8}>
-                  <Icon
-                    component={STATUS_ICON[status as keyof typeof STATUS_ICON]}
-                    style={ICON_DIMENSION}
-                  />
-                  <span>{capitalize(status)}</span>
-                </Space>
-              </div>
-              <Divider type="vertical" />
-              <div className="flex">
-                <span className="text-grey-muted">{`${t(
                   'label.index-states'
                 )}:`}</span>
                 <span className="m-l-xs">
@@ -154,6 +142,21 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   {timestamp ? formatDateTimeWithTimezone(timestamp) : '--'}
                 </span>
               </div>
+              <Divider type="vertical" />
+              <Button
+                type="link"
+                onClick={() => {
+                  history.push(
+                    getLogsViewerPath(
+                      GlobalSettingOptions.APPLICATIONS,
+                      appName ?? '',
+                      appName ?? '',
+                      startTime?.toString() ?? ''
+                    )
+                  );
+                }}>
+                {t('label.show-log-plural')}
+              </Button>
             </Space>
           </Col>
         </Row>

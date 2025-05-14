@@ -29,4 +29,5 @@ export interface IngestionPipelineLogByIdInterface {
 export interface LogViewerParams {
   logEntityType: string;
   fqn: string;
+  logRunId?: string;
 }

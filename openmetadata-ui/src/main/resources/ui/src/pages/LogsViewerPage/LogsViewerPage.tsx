@@ -45,6 +45,7 @@ import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
+  getApplicationRunById,
   getExternalApplicationRuns,
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
@@ -52,11 +53,15 @@ import {
   getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   downloadAppLogs,
   downloadIngestionLog,
+  formatLogMessage,
 } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -65,7 +70,7 @@ import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useParams<LogViewerParams>();
+  const { logEntityType, logRunId } = useParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -96,10 +101,35 @@ const LogsViewerPage = () => {
           startTs: oneDayAgo,
           endTs: currentTime,
         });
-
-        const logs = await getLatestApplicationRuns(ingestionName);
         setAppRuns(data);
-        setLogs(logs.data_insight_task || logs.application_task);
+        if (logRunId) {
+          const logs = await getApplicationRunById(logRunId, ingestionName);
+          const records = logs.data ?? [];
+          let formattedLogs = ' ';
+          if (records.length > 0) {
+            formattedLogs = records
+              .map((record) => {
+                const level = record.level ?? '';
+                let message = record.message ?? '';
+
+                const timestamp = record.timestamp
+                  ? customFormatDateTime(
+                      record.timestamp,
+                      'yyyy-MM-dd HH:mm:ss'
+                    )
+                  : '';
+
+                message = formatLogMessage(message);
+
+                return `[${timestamp}] ${level}     ${message}`.trim();
+              })
+              .join('\n');
+          }
+          setLogs(formattedLogs);
+        } else {
+          const logs = await getLatestApplicationRuns(ingestionName);
+          setLogs(logs.data_insight_task || logs.application_task);
+        }
 
         return;
       }
