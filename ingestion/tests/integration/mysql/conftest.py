@@ -54,8 +54,8 @@ def mysql_container(tmp_path_factory):
         engine.dispose()
         assert_dangling_connections(container, 1)
         yield container
-        assert_dangling_connections(container, 1) # 1 has `SHOW PROCESSLIST` is opened
-    
+        assert_dangling_connections(container, 1)  # 1 has `SHOW PROCESSLIST` is opened
+
 
 def assert_dangling_connections(container, max_connections):
     engine = create_engine(container.get_connection_url())
