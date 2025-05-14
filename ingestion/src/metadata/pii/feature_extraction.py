@@ -13,6 +13,7 @@ import re
 from collections import defaultdict
 from typing import List, Mapping, Optional, Sequence, Set
 
+from numba.cuda.cudadrv.devicearray import lru_cache
 from presidio_analyzer import AnalyzerEngine
 
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
@@ -61,8 +62,20 @@ def extract_pii_tags(
     return entity_scores
 
 
+def split_column_name(column_name: str) -> List[str]:
+    """
+    Split a column name into its components.
+    This is used for passing column names to the analyzer as context.
+    """
+    # Split by common delimiters
+    delimiters = ["_", "-", " ", ".", "/"]
+    regex_pattern = "|".join(map(re.escape, delimiters))
+    return list(re.split(regex_pattern, column_name.lower()))
+
+
 def extract_pii_from_column_names(
-    patterns: Mapping[PIITag, Set[re.Pattern]], text: str
+    column_name: str,
+    patterns: Optional[Mapping[PIITag, Set[re.Pattern]]] = None,
 ) -> Set[PIITag]:
     """
     Extract PII entities from a text using regex patterns.
@@ -70,15 +83,19 @@ def extract_pii_from_column_names(
     assigning scores. This is intended to be used for column names
     as a hint that the column might contain PII.
     """
+    if patterns is None:
+        patterns = _pii_column_name_patterns()
+
     results = set()
     for pii_type, patterns in patterns.items():
         for pattern in patterns:
-            if pattern.match(text) is not None:
+            if pattern.match(column_name) is not None:
                 results.add(pii_type)
     return results
 
 
-def pii_column_name_patterns() -> Mapping[PIITag, Set[re.Pattern]]:
+@lru_cache
+def _pii_column_name_patterns() -> Mapping[PIITag, Set[re.Pattern]]:
     """
     Analyzes column names for PII patterns.
     A match is considered as a potential PII, but not a guarantee.

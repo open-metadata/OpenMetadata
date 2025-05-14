@@ -12,7 +12,7 @@
 from metadata.pii.feature_extraction import (
     extract_pii_from_column_names,
     extract_pii_tags,
-    pii_column_name_patterns,
+    split_column_name,
 )
 from metadata.pii.presidio_utils import build_analyzer_engine, set_presidio_logger_level
 from metadata.pii.tags import PIITag
@@ -91,7 +91,6 @@ def test_extract_pii_from_column_names():
     """
     Test the extract_pii_from_column_names function with various column names.
     """
-    patterns = pii_column_name_patterns()
 
     pii_tag_to_column_names = {
         PIITag.US_BANK_NUMBER: ["bank_account", "bank_number", "account_number"],
@@ -116,5 +115,25 @@ def test_extract_pii_from_column_names():
 
     for pii_tag, column_names in pii_tag_to_column_names.items():
         for column_name in column_names:
-            extracted_pii_tags = extract_pii_from_column_names(patterns, column_name)
+            extracted_pii_tags = extract_pii_from_column_names(column_name)
             assert pii_tag in extracted_pii_tags, (pii_tag, column_name)
+
+
+def test_split_column_name():
+    """
+    Test the split_column_name function with various column names.
+    """
+
+    column_names_split = [
+        ("user_id", ["user", "id"]),
+        ("user-name", ["user", "name"]),
+        ("user name", ["user", "name"]),
+        ("user.name", ["user", "name"]),
+        ("user/name", ["user", "name"]),
+        ("user-id", ["user", "id"]),
+        ("user-id-123", ["user", "id", "123"]),
+        ("user_id_123", ["user", "id", "123"]),
+    ]
+
+    for column_name, components in column_names_split:
+        assert components == split_column_name(column_name), column_name
