@@ -10,25 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
-import { EntityReference } from '../../../generated/tests/testCase';
-
-export interface OwnerLabelProps {
-  owners?: EntityReference[];
-  showLabel?: boolean;
-  className?: string;
-  onUpdate?: (owners?: EntityReference[]) => void;
-  hasPermission?: boolean;
-  ownerDisplayName?: ReactNode[];
-  placeHolder?: string;
-  maxVisibleOwners?: number;
-  multiple?: {
-    user: boolean;
-    team: boolean;
-  };
-  tooltipText?: string;
-  isCompactView?: boolean;
-  avatarSize?: number;
-  isAssignee?: boolean;
-  onEditClick?: () => void;
+.test-summary-tooltip-container {
+  max-height: 150px;
+  overflow: auto;
 }
