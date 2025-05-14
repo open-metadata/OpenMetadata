@@ -194,7 +194,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.EXTENSION,
             TabSpecificField.FOLLOWERS,
             TabSpecificField.DATA_PRODUCTS,
-          ].join(','),
+          ],
           include: Include.All,
         }
       );
@@ -504,7 +504,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.USAGE_SUMMARY,
             TabSpecificField.TAGS,
             TabSpecificField.VOTES,
-          ].join(','),
+          ],
           include: Include.All,
         }
       );
@@ -527,7 +527,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     try {
       const res = await addFollowers(
         databaseSchemaId,
-        currentUser?.id ?? '',
+        USERId ?? '',
         GlobalSettingOptions.DATABASE_SCHEMA
       );
       const { newValue } = res.changeDescription.fieldsAdded[0];

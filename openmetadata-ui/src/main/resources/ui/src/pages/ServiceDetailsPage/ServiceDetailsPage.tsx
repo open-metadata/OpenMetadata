@@ -754,7 +754,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const followService = useCallback(async () => {
     try {
-      const res = await addServiceFollower(serviceId, currentUser?.id ?? '');
+      const res = await addServiceFollower(serviceId, USERId ?? '');
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
       setServiceDetails((prev) => {
