@@ -39,6 +39,10 @@ class SupportedTypes(Enum):
     TSV = "tsv"
     AVRO = "avro"
     PARQUET = "parquet"
+    PARQUET_PQ = "pq"
+    PARQUET_PQT = "pqt"
+    PARQUET_PARQ = "parq"
+    PARQUET_SNAPPY = "parquet.snappy"
     JSON = "json"
     JSONGZ = "json.gz"
     JSONZIP = "json.zip"
@@ -52,6 +56,10 @@ DF_READER_MAP = {
     SupportedTypes.TSV.value: TSVDataFrameReader,
     SupportedTypes.AVRO.value: AvroDataFrameReader,
     SupportedTypes.PARQUET.value: ParquetDataFrameReader,
+    SupportedTypes.PARQUET_PQ.value: ParquetDataFrameReader,
+    SupportedTypes.PARQUET_PQT.value: ParquetDataFrameReader,
+    SupportedTypes.PARQUET_PARQ.value: ParquetDataFrameReader,
+    SupportedTypes.PARQUET_SNAPPY.value: ParquetDataFrameReader,
     SupportedTypes.JSON.value: JSONDataFrameReader,
     SupportedTypes.JSONGZ.value: JSONDataFrameReader,
     SupportedTypes.JSONZIP.value: JSONDataFrameReader,

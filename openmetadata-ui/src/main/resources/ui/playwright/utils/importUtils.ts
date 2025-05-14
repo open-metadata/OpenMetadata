@@ -707,6 +707,12 @@ export const pressKeyXTimes = async (
   key: string
 ) => {
   for (let i = 0; i < length; i++) {
+    const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+    const isActive = await activeCell.isVisible();
+
+    if (!isActive) {
+      await page.click('.InovuaReactDataGrid__cell--cell-active');
+    }
     await page
       .locator('.InovuaReactDataGrid__cell--cell-active')
       .press(key, { delay: 100 });

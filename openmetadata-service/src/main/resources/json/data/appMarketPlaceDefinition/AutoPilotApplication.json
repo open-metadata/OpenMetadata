@@ -12,6 +12,9 @@
   "scheduleType": "NoSchedule",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp",
+  "runtime": {
+    "enabled": true
+  },
   "appConfiguration": {
     "type": "AutoPilotApplication",
     "active": true,

@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "Usuario verificado correctamente",
     "valid-url-endpoint": "Os endpoints deben ser unha URL válida",
     "validation-error-assets": "Examina todos os teus activos que están sendo engadidos",
+    "value-must-be-greater-than": "{{field}} debe ser maior que {{minimum}}",
     "value-should-equal-to-value": "O valor debe ser igual a {{value}}.",
     "value-should-not-equal-to-value": "O valor non debe ser igual a {{value}}.",
     "version-released-try-now": "{{version}} Lançada <0>Vexa as Novidades!</0>",

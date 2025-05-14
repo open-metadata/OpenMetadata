@@ -1113,6 +1113,16 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT toId FROM entity_relationship  "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<UUID> findToIds(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "GROUP BY fromId")

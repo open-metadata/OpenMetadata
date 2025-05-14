@@ -12,14 +12,15 @@
  */
 
 import { createBrowserHistory } from 'history';
-import process from 'process';
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+export const getBasePath = () => {
+  return window.BASE_PATH?.slice(0, -1) ?? '';
+};
 
 export const history = createBrowserHistory(
-  subPath
+  getBasePath()
     ? {
-        basename: subPath,
+        basename: getBasePath(),
       }
     : {}
 );
