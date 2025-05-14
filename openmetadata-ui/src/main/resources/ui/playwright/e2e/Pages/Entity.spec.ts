@@ -17,12 +17,14 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -357,6 +359,48 @@ entities.forEach((EntityClass) => {
         deleteEntity.entity.name,
         deleteEntity.entityResponseData?.['displayName']
       );
+    });
+  });
+});
+
+test.describe('Database Entity Follow/Unfollow', () => {
+  const entities = [
+    new DatabaseClass(),
+    new DatabaseServiceClass(),
+    new DatabaseSchemaClass(),
+  ];
+
+  entities.forEach((entity) => {
+    test.describe(entity.constructor.name, () => {
+      test.beforeAll(
+        'Setup pre-requests for Database Entity',
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+          await entity.create(apiContext);
+          await afterAction();
+        }
+      );
+
+      test.beforeEach(
+        'Visit entity details page for Database Entity',
+        async ({ page }) => {
+          await redirectToHomePage(page);
+          await entity.visitEntityPage(page);
+        }
+      );
+
+      test(`Follow & Un-follow entity for Database Entity`, async ({
+        page,
+      }) => {
+        const entityName = entity.entityResponseData?.['displayName'];
+        await entity.followUnfollowEntity(page, entityName);
+      });
+
+      test.afterAll('Cleanup for Database Entity', async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await entity.delete(apiContext);
+        await afterAction();
+      });
     });
   });
 });

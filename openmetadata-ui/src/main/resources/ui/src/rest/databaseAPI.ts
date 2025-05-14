@@ -135,7 +135,7 @@ export const removeDatabaseFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
   >(
-    `/services/databaseServices/${id}/followers/${userId}`,
+    `/databases/${id}/followers/${userId}`,
     APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 

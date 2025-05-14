@@ -183,7 +183,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.DOMAIN,
+        TabSpecificField.VOTES,
+        TabSpecificField.EXTENSION,
+        TabSpecificField.DATA_PRODUCTS,
+        TabSpecificField.FOLLOWERS,
+      ].join(','),
       include: Include.All,
     })
       .then((res) => {
