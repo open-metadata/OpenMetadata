@@ -1268,11 +1268,32 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               ...pre?.data,
               edge: {
                 ...pre?.data?.edge,
+                columns: updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
                 description,
                 sqlQuery,
               },
             },
           };
+        });
+        // Update the edge in the edges array
+        setEdges((prev) => {
+          return prev.map((edge) => {
+            return edge.id === selectedEdge?.id
+              ? {
+                  ...edge,
+                  data: {
+                    ...edge.data,
+                    edge: {
+                      ...edge.data?.edge,
+                      columns:
+                        updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
+                      description,
+                      sqlQuery,
+                    },
+                  },
+                }
+              : edge;
+          });
         });
       } catch (err) {
         showErrorToast(err as AxiosError);

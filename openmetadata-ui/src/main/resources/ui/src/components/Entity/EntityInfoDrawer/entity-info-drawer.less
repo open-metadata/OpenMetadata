@@ -79,3 +79,20 @@
     color: @aborted-color;
   }
 }
+
+.edge-info-drawer {
+  .summary-panel-card {
+    .ant-btn-sm {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .ant-space.schema-description {
+      gap: 8px !important; // needed to override inline styles
+    }
+  }
+}
