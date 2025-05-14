@@ -257,7 +257,8 @@ public interface SearchClient {
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted) throws IOException;
+  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+      throws IOException;
 
   Response aggregate(AggregationRequest request) throws IOException;
 

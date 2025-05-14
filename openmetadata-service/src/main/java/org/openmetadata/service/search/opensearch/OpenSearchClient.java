@@ -1387,9 +1387,10 @@ public class OpenSearchClient implements SearchClient {
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    BoolQueryBuilder query = QueryBuilders.boolQuery()
-      .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
-      .filter(QueryBuilders.termQuery("deleted", deleted));
+    BoolQueryBuilder query =
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
+            .filter(QueryBuilders.termQuery("deleted", deleted));
     searchSourceBuilder.query(query);
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
