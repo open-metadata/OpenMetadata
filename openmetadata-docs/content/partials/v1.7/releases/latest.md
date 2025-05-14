@@ -49,7 +49,7 @@ With OpenMetadata AutoPilot, you can get all of your metadata with just one clic
 
 ### Accelerating Onboarding New Services with Collate AI Agents
 
-{%  youtube videoId="mn4edHpHZWo" start="0:00" end="1:45" width="800px" height="450px" /%}
+{%  youtube videoId="PKvKWZ8vseU" start="0:00" end="1:45" width="800px" height="450px" /%}
 
 At Collate, we’re taking the AutoPilot experience one step further by adding AI Agents to the mix. Based on the information extracted from the Metadata Agents, Collate AI Agents will automatically generate tiers, descriptions, and Data Quality tests:
 
@@ -127,7 +127,7 @@ Combined with the improvements around Search Relevancy, Customizable UI for Pers
 
 ### Activating your Metadata in Collate with Reverse Metadata
 
-{%  youtube videoId="3RVTwfbgvLQ" start="0:00" end="2:16" width="800px" height="450px" /%}
+{%  youtube videoId="EWYDfhCgW8k" start="0:00" end="2:16" width="800px" height="450px" /%}
 
 Thanks to Collate’s collaboration and automation features, it’s simple to add tags, descriptions, and owners to all your assets. But how can we ensure this metadata is seen and used by the source systems as well?
 
