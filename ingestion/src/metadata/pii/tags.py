@@ -9,7 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import enum
-from typing import Collection
+from typing import List
+
+
+class PIISensitivityTags(enum.Enum):
+    SENSITIVE = "Sensitive"
+    NONSENSITIVE = "NonSensitive"
 
 
 @enum.unique
@@ -31,6 +36,7 @@ class PIITag(enum.Enum):
     PHONE_NUMBER = "PHONE_NUMBER"
     MEDICAL_LICENSE = "MEDICAL_LICENSE"
     URL = "URL"
+    ORGANIZATION = "ORGANIZATION"  # Organization Name, not listed in Presidio website but used in the code
 
     # USA
     US_BANK_NUMBER = "US_BANK_NUMBER"
@@ -76,29 +82,27 @@ class PIITag(enum.Enum):
     # Finland
     FI_PERSONAL_IDENTITY_CODE = "FI_PERSONAL_IDENTITY_CODE"
 
+    @classmethod
+    def values(cls) -> List[str]:
+        """
+        Get all the values of the enum as a set of strings.
+        """
+        return [tag.value for tag in cls]
 
-class SensitivityLevel(enum.Enum):
-    SENSITIVE = "Sensitive"
-    NONSENSITIVE = "NonSensitive"
+    def sensitivity(self) -> PIISensitivityTags:
+        """
+        Get the sensitivity level of the PII tag.
+        This map is opinionated and can be changed in the future according to users' needs.
+        """
+        if self in DEFAULT_NON_PII_SENSITIVE:
+            return PIISensitivityTags.NONSENSITIVE
+        return PIISensitivityTags.SENSITIVE
 
 
-DEFAULT_NON_SENSITIVE_PII = (
+DEFAULT_NON_PII_SENSITIVE = (
     PIITag.DATE_TIME,
     PIITag.NRP,
     PIITag.LOCATION,
     PIITag.PHONE_NUMBER,
     PIITag.URL,
 )
-
-
-def pii_tag_to_sensitivity_level(
-    tag: PIITag, non_sensitive_tags: Collection[PIITag] = DEFAULT_NON_SENSITIVE_PII
-) -> SensitivityLevel:
-    """
-    Transform PII tag to a sensitivity level.
-
-    This map is opinionated and can be changed in the future according to users' needs.
-    """
-    if tag in non_sensitive_tags:
-        return SensitivityLevel.NONSENSITIVE
-    return SensitivityLevel.SENSITIVE
