@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import TagButton from '../../../components/common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
@@ -30,7 +31,7 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
+const TableConstraints = () => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data, permissions, onUpdate } = useGenericContext<Table>();
@@ -58,18 +59,14 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
 
   const header = (
     <Space size="middle">
-      <Typography.Text
-        className={classNames({
-          'text-sm font-medium': newLook,
-          'right-panel-label': !newLook,
-        })}>
+      <Typography.Text className={classNames('text-sm font-medium')}>
         {t('label.table-constraints')}
       </Typography.Text>
 
       {hasPermission && !isEmpty(data?.tableConstraints) && (
         <EditIconButton
+          newLook
           data-testid="edit-table-constraint-button"
-          newLook={newLook}
           size="small"
           onClick={handleOpenEditConstraintModal}
         />
@@ -79,8 +76,6 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
 
   const content = (
     <Space className="w-full new-header-border-card" direction="vertical">
-      {newLook ? null : header}
-
       {hasPermission && isEmpty(data?.tableConstraints) && (
         <TagButton
           className="text-primary cursor-pointer"
@@ -179,15 +174,15 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
     </Space>
   );
 
-  if (newLook) {
-    return (
-      <Card className="w-full new-header-border-card" title={header}>
-        {content}
-      </Card>
-    );
-  }
-
-  return content;
+  return (
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      isExpandDisabled={isEmpty(data?.tableConstraints)}>
+      {content}
+    </ExpandableCard>
+  );
 };
 
 export default TableConstraints;

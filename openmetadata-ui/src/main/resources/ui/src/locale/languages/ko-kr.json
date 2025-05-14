@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "사용자가 성공적으로 확인되었습니다",
     "valid-url-endpoint": "엔드포인트는 유효한 URL이어야 합니다",
     "validation-error-assets": "추가 중인 모든 자산을 검토하세요",
+    "value-must-be-greater-than": "{{field}}는 {{minimum}}보다 커야 합니다",
     "value-should-equal-to-value": "값은 {{value}}와(과) 같아야 합니다.",
     "value-should-not-equal-to-value": "값은 {{value}}와(과) 같지 않아야 합니다.",
     "version-released-try-now": "{{version}} 출시됨 <0>새로운 기능 확인하기!</0>",

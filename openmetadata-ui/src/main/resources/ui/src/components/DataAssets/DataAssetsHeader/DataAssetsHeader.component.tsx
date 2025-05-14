@@ -691,23 +691,21 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            {(dataAsset as Table)?.certification && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <ExtraInfoLabel
-                  label={t('label.certification')}
-                  value={
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
-                  }
-                />
-              </>
-            )}
+            <Divider className="self-center vertical-divider" type="vertical" />
+            <ExtraInfoLabel
+              dataTestId="certification-label"
+              label={t('label.certification')}
+              value={
+                (dataAsset as Table).certification ? (
+                  <CertificationTag
+                    showName
+                    certification={(dataAsset as Table).certification!}
+                  />
+                ) : (
+                  t('label.no-entity', { entity: t('label.certification') })
+                )
+              }
+            />
             {extraInfo}
           </div>
           <div className="mt-2">
