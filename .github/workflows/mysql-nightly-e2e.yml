@@ -166,9 +166,9 @@ jobs:
 
       - name: Download All Shard Reports
         run: |
-          mkdir -p blob-reports
+          mkdir -p openmetadata-ui/src/main/resources/ui/blob-reports
           for i in {1..4}; do
-            gh run download ${{ github.run_id }} -n playwright-report-$i -D blob-reports/shard-$i
+            gh run download ${{ github.run_id }} -n playwright-report-$i -D openmetadata-ui/src/main/resources/ui/blob-reports/shard-$i
           done
 
       - name: Merge Reports and Generate Slack Notification
