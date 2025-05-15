@@ -346,8 +346,7 @@ class S3Source(StorageServiceSource):
         try:
             prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
             if prefix:
-                kwargs = {"Bucket": bucket_response.name}
-                kwargs["Prefix"] = prefix
+                kwargs = {"Bucket": bucket_response.name, "Prefix": prefix}
                 response = list_s3_objects(self.s3_client, **kwargs)
                 # total depth is depth of prefix + depth of the metadata entry
                 total_depth = metadata_entry.depth + len(prefix[:-1].split("/"))
@@ -465,8 +464,7 @@ class S3Source(StorageServiceSource):
         parent: Optional[EntityReference] = None,
     ):
         bucket_name = bucket_response.name
-        kwargs = {"Bucket": bucket_name}
-        kwargs["Prefix"] = metadata_entry.dataPath
+        kwargs = {"Bucket": bucket_name, "Prefix": metadata_entry.dataPath}
         response = list_s3_objects(self.s3_client, **kwargs)
         candidate_keys = [
             entry["Key"]
