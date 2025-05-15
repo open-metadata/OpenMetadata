@@ -8,7 +8,7 @@ slug: /connectors/dashboard/powerbi
   stage="PROD"
   platform="OpenMetadata"
   availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage", "Column Lineage", "Owners"]
-  unavailableFeatures=["Usage"]
+  unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the PowerBI connector.
