@@ -32,6 +32,7 @@ import {
   servicesDisplayName,
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -40,7 +41,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';

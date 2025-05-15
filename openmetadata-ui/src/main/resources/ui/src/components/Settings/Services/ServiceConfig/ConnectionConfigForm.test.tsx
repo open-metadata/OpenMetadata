@@ -187,12 +187,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    reason: 'reason message',
-    isAirflowAvailable: true,
-  })),
-}));
+jest.mock(
+  '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+    })),
+  })
+);
 
 const mockHandleUpdate = jest
   .fn()

@@ -18,7 +18,7 @@ import { Alert } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
