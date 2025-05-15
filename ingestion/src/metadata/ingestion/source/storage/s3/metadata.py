@@ -64,6 +64,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import list_s3_objects
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 
 logger = ingestion_logger()
@@ -345,14 +346,13 @@ class S3Source(StorageServiceSource):
         try:
             prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
             if prefix:
-                response = self.s3_client.list_objects_v2(
-                    Bucket=bucket_response.name, Prefix=prefix
-                )
+                kwargs = {"Bucket": bucket_response.name, "Prefix": prefix}
+                response = list_s3_objects(self.s3_client, **kwargs)
                 # total depth is depth of prefix + depth of the metadata entry
                 total_depth = metadata_entry.depth + len(prefix[:-1].split("/"))
                 candidate_keys = {
                     "/".join(entry.get("Key").split("/")[:total_depth]) + "/"
-                    for entry in response[S3_CLIENT_ROOT_RESPONSE]
+                    for entry in response
                     if entry
                     and entry.get("Key")
                     and len(entry.get("Key").split("/")) > total_depth
@@ -464,12 +464,11 @@ class S3Source(StorageServiceSource):
         parent: Optional[EntityReference] = None,
     ):
         bucket_name = bucket_response.name
-        response = self.s3_client.list_objects_v2(
-            Bucket=bucket_name, Prefix=metadata_entry.dataPath
-        )
+        kwargs = {"Bucket": bucket_name, "Prefix": metadata_entry.dataPath}
+        response = list_s3_objects(self.s3_client, **kwargs)
         candidate_keys = [
             entry["Key"]
-            for entry in response[S3_CLIENT_ROOT_RESPONSE]
+            for entry in response
             if entry and entry.get("Key") and not entry.get("Key").endswith("/")
         ]
         for key in candidate_keys:
