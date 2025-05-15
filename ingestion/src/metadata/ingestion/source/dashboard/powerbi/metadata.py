@@ -531,41 +531,31 @@ class PowerbiSource(DashboardServiceSource):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue
                     if isinstance(dataset, Dataset):
-                        data_model_request = CreateDashboardDataModelRequest(
-                            name=EntityName(dataset.id),
-                            displayName=dataset.name,
-                            description=Markdown(dataset.description)
-                            if dataset.description
-                            else None,
-                            service=FullyQualifiedEntityName(
-                                self.context.get().dashboard_service
-                            ),
-                            dataModelType=DataModelType.PowerBIDataModel.value,
-                            serviceType=DashboardServiceType.PowerBI.value,
-                            columns=self._get_column_info(dataset),
-                            project=self.get_project_name(dashboard_details=dataset),
-                            owners=self.get_owner_ref(dashboard_details=dataset),
-                        )
+                        data_model_type = DataModelType.PowerBIDataModel.value
+                        datamodel_columns = self._get_column_info(dataset)
                     elif isinstance(dataset, Dataflow):
-                        data_model_request = CreateDashboardDataModelRequest(
-                            name=EntityName(dataset.id),
-                            displayName=dataset.name,
-                            description=Markdown(dataset.description)
-                            if dataset.description
-                            else None,
-                            service=FullyQualifiedEntityName(
-                                self.context.get().dashboard_service
-                            ),
-                            dataModelType=DataModelType.PowerBIDataFlow.value,
-                            serviceType=DashboardServiceType.PowerBI.value,
-                            project=self.get_project_name(dashboard_details=dataset),
-                            owners=self.get_owner_ref(dashboard_details=dataset),
-                        )
+                        data_model_type = DataModelType.PowerBIDataFlow.value
+                        datamodel_columns = []
                     else:
                         logger.warning(
                             f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
                         )
                         continue
+                    data_model_request = CreateDashboardDataModelRequest(
+                        name=EntityName(dataset.id),
+                        displayName=dataset.name,
+                        description=Markdown(dataset.description)
+                        if dataset.description
+                        else None,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        dataModelType=data_model_type,
+                        serviceType=DashboardServiceType.PowerBI.value,
+                        columns=datamodel_columns,
+                        project=self.get_project_name(dashboard_details=dataset),
+                        owners=self.get_owner_ref(dashboard_details=dataset),
+                    )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
         except Exception as exc:
@@ -920,7 +910,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
-    ) -> Optional[Union[Dataset, Dataflow]]:
+    ) -> Optional[Dataset]:
         """
         Method to search the dataset using id in the workspace dict
         """
