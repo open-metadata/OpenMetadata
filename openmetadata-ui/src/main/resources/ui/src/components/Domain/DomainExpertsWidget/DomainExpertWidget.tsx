@@ -78,7 +78,7 @@ export const DomainExpertWidget = () => {
           onUpdate={handleExpertsUpdate}>
           {isEmpty(domain.experts) ? (
             <PlusIconButton
-              data-testid="add-expert"
+              data-testid="Add"
               size="small"
               title={t('label.add-entity', {
                 entity: t('label.expert-plural'),
