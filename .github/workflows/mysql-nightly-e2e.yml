@@ -171,14 +171,33 @@ jobs:
             gh run download ${{ github.run_id }} -n playwright-report-$i -D openmetadata-ui/src/main/resources/ui/blob-reports/shard-$i
           done
 
+          # Wait for all downloads to complete and verify
+          echo "Verifying downloaded reports..."
+          for i in {1..4}; do
+            while [ ! -d "openmetadata-ui/src/main/resources/ui/blob-reports/shard-$i" ]; do
+              echo "Waiting for shard-$i to download..."
+              sleep 5
+            done
+            echo "Shard-$i downloaded successfully"
+          done
+
+          # Verify we have the expected number of report directories
+          report_count=$(ls -d openmetadata-ui/src/main/resources/ui/blob-reports/shard-* | wc -l)
+          if [ "$report_count" -ne 4 ]; then
+            echo "Error: Expected 4 report directories, but found $report_count"
+            exit 1
+          fi
+
       - name: Merge Reports and Generate Slack Notification
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
-          RUN_TITLE: "MySQL Test for OSS Release: ${{ inputs.branch }}"
+          RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
           echo "List Current Directory"
           ls -lahtr
+          echo "Checking blob-reports directory contents:"
+          ls -lahtr ./blob-reports/
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
           npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
