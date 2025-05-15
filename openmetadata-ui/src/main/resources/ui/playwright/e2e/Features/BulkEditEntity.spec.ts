@@ -192,20 +192,10 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user1.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
       ).toBeVisible();
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user2.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
