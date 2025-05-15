@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
+import {
+  cloneDeep,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  set,
+  uniqBy,
+} from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,18 +45,29 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { updateFieldTags } from '../../../../../utils/TableUtils';
+import {
+  prepareConstraintIcon,
+  updateFieldTags,
+} from '../../../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
+import { UpdatedColumnFieldData } from '../../../../Database/SchemaTable/SchemaTable.interface';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
+import EntityNameModal from '../../../../Modals/EntityNameModal/EntityNameModal.component';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const {
     data: dataModel,
     permissions,
@@ -60,10 +79,18 @@ const ModelTab = () => {
     deleted: isReadOnly,
   } = dataModel;
 
+  const { tableColumns, deleted } = useMemo(
+    () => ({
+      tableColumns: dataModel?.columns ?? [],
+      deleted: dataModel?.deleted,
+    }),
+    [dataModel]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
+    editDisplayNamePermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -71,6 +98,8 @@ const ModelTab = () => {
       hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
       hasEditGlossaryTermPermission:
         permissions.EditAll || permissions.EditGlossaryTerms,
+      editDisplayNamePermission:
+        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
     };
   }, [permissions]);
 
@@ -117,6 +146,59 @@ const ModelTab = () => {
     [editColumnDescription, data]
   );
 
+  const handleEditDisplayNameClick = (record: Column) => {
+    setEditColumnDisplayName(record);
+  };
+  const updateColumnFields = ({
+    fqn,
+    field,
+    value,
+    columns,
+  }: UpdatedColumnFieldData) => {
+    columns?.forEach((col) => {
+      if (col.fullyQualifiedName === fqn) {
+        set(col, field, value);
+      } else {
+        updateColumnFields({
+          fqn,
+          field,
+          value,
+          columns: col.children as Column[],
+        });
+      }
+    });
+  };
+  const handleColumnUpdate = async (updatedColumns: Column[]) => {
+    if (dataModel && !isEqual(tableColumns, updatedColumns)) {
+      const updatedTableDetails = {
+        ...dataModel,
+        columns: updatedColumns,
+      };
+      await onUpdate(updatedTableDetails);
+    }
+  };
+
+  const handleEditColumnData = async (data: EntityName) => {
+    const { displayName } = data as EntityNameWithAdditionFields;
+    if (
+      !isUndefined(editColumnDisplayName) &&
+      editColumnDisplayName.fullyQualifiedName
+    ) {
+      const tableCols = cloneDeep(tableColumns);
+
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(displayName) ? undefined : displayName,
+        field: 'displayName',
+        columns: tableCols,
+      });
+
+      await handleColumnUpdate(tableCols);
+      setEditColumnDisplayName(undefined);
+    } else {
+      setEditColumnDisplayName(undefined);
+    }
+  };
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -126,9 +208,43 @@ const ModelTab = () => {
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
-        render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
-        ),
+        render: (name: Column['name'], record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+              <div className="d-inline-flex items-baseline">
+                {prepareConstraintIcon({
+                  columnName: name,
+                  columnConstraint: record.constraint,
+                })}
+                <Typography.Text
+                  className="m-b-0 d-block break-word"
+                  data-testid="column-name">
+                  {name}
+                </Typography.Text>
+              </div>
+              {!isEmpty(displayName) ? (
+                // It will render displayName fallback to name
+                <Typography.Text
+                  className="m-b-0 d-block break-word"
+                  data-testid="column-display-name">
+                  {name}
+                </Typography.Text>
+              ) : null}
+
+              {editDisplayNamePermission && (
+                <Tooltip placement="right" title={t('label.edit')}>
+                  <EditIconButton
+                    className="cursor-pointer hover-cell-icon w-fit-content"
+                    data-testid="edit-displayName-button"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
+                </Tooltip>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: t('label.type'),
@@ -255,6 +371,17 @@ const ModelTab = () => {
             onSave={handleColumnDescriptionChange}
           />
         </EntityAttachmentProvider>
+      )}
+      {editColumnDisplayName && (
+        <EntityNameModal
+          entity={editColumnDisplayName}
+          title={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${editColumnDisplayName?.name}"`}
+          visible={Boolean(editColumnDisplayName)}
+          onCancel={() => setEditColumnDisplayName(undefined)}
+          onSave={handleEditColumnData}
+        />
       )}
     </>
   );
