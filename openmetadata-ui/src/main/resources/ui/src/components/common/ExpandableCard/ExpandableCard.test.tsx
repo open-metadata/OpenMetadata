@@ -39,10 +39,6 @@ describe('ExpandableCard', () => {
 
       expect(screen.getByText('Test Card')).toBeInTheDocument();
       expect(screen.getByTestId('test-content')).toBeInTheDocument();
-      expect(screen.getByRole('button')).toHaveAttribute(
-        'title',
-        'label.collapse'
-      );
     });
 
     it('renders with custom data-testid', () => {

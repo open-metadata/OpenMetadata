@@ -29,7 +29,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import DataProductsSelectForm from '../DataProductSelectForm/DataProductsSelectForm';
+import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
@@ -78,11 +78,13 @@ const DataProductsContainer = ({
 
   const autoCompleteFormSelectContainer = useMemo(() => {
     return (
-      <DataProductsSelectForm
+      <DataProductsSelectList
+        open
         defaultValue={(dataProducts ?? []).map(
           (item) => item.fullyQualifiedName ?? ''
         )}
-        fetchApi={fetchAPI}
+        fetchOptions={fetchAPI}
+        mode="multiple"
         placeholder={t('label.data-product-plural')}
         onCancel={handleCancel}
         onSubmit={handleSave}
