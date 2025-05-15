@@ -708,14 +708,14 @@ export const DataAssetsHeader = ({
             />
             {extraInfo}
           </div>
-          <div className="mt-2">
-            {activeAnnouncement && (
+          {activeAnnouncement && (
+            <div className="m-t-sm d-flex justify-end">
               <AnnouncementCard
                 announcement={activeAnnouncement}
                 onClick={handleOpenAnnouncementDrawer}
               />
-            )}
-          </div>
+            </div>
+          )}
         </Col>
       </Row>
 
