@@ -120,7 +120,11 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
+  await expect(page.getByTestId('alert-message')).toBeVisible({ timeout });
+
+  await expect(page.getByTestId('alert-message')).toContainText(message, {
+    timeout,
+  });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 

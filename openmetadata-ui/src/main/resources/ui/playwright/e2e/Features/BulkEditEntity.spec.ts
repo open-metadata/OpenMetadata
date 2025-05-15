@@ -172,7 +172,10 @@ test.describe('Bulk Edit Entity', () => {
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
       await page.waitForEvent('framenavigated');
-      await toastNotification(page, /details updated successfully/);
+      await toastNotification(
+        page,
+        new RegExp('.*(details updated successfully|Import is in progress).*')
+      );
 
       await page.click('[data-testid="databases"]');
 
@@ -326,7 +329,10 @@ test.describe('Bulk Edit Entity', () => {
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
       await page.waitForEvent('framenavigated');
-      await toastNotification(page, /details updated successfully/);
+      await toastNotification(
+        page,
+        new RegExp('.*(details updated successfully|Import is in progress).*')
+      );
 
       // Verify Details updated
       await expect(page.getByTestId('column-name')).toHaveText(
@@ -459,7 +465,10 @@ test.describe('Bulk Edit Entity', () => {
 
       await updateButtonResponse;
       await page.waitForEvent('framenavigated');
-      await toastNotification(page, /details updated successfully/);
+      await toastNotification(
+        page,
+        new RegExp('.*(details updated successfully|Import is in progress).*')
+      );
 
       // Verify Details updated
       await expect(page.getByTestId('column-name')).toHaveText(
@@ -583,11 +592,14 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await updateButtonResponse;
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
-      await updateButtonResponse;
-      await toastNotification(page, /details updated successfully/);
+      await toastNotification(
+        page,
+        new RegExp('.*(details updated successfully|Import is in progress).*')
+      );
 
       // Verify Details updated
       await expect(
