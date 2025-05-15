@@ -79,6 +79,7 @@ import {
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
@@ -140,6 +141,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const history = useHistory();
   const { isTourOpen, isTourPage } = useTourProvider();
   const { appPreferences } = useApplicationStore();
+  const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -1268,11 +1270,32 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               ...pre?.data,
               edge: {
                 ...pre?.data?.edge,
+                columns: updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
                 description,
                 sqlQuery,
               },
             },
           };
+        });
+        // Update the edge in the edges array
+        setEdges((prev) => {
+          return prev.map((edge) => {
+            return edge.id === selectedEdge?.id
+              ? {
+                  ...edge,
+                  data: {
+                    ...edge.data,
+                    edge: {
+                      ...edge.data?.edge,
+                      columns:
+                        updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
+                      description,
+                      sqlQuery,
+                    },
+                  },
+                }
+              : edge;
+          });
         });
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -1641,6 +1664,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       <div
         className={classNames('lineage-root', {
           'full-screen-lineage': isFullScreen,
+          'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
+          'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />

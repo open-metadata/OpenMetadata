@@ -36,7 +36,6 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
-  LineageEdge,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
@@ -380,36 +379,28 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
-    const lineageRes = await lineageReq;
-    const jsonRes = await lineageRes.json();
-    const edge: LineageEdge = [...Object.values(jsonRes.downstreamEdges)][0];
-    const columnData = edge.columns[0];
+    await lineageReq;
 
-    const newEdge = {
-      edge: {
-        fromEntity: {
-          id: edge.fromEntity.id,
-          type: edge.fromEntity.type,
-        },
-        toEntity: {
-          id: edge.toEntity.id,
-          type: edge.toEntity.type,
-        },
-        lineageDetails: {
-          columnsLineage: [
-            {
-              fromColumns: [columnData.fromColumns[0]],
-              function: 'count',
-              toColumn: columnData.toColumn,
-            },
-          ],
-          description: 'test',
-        },
-      },
-    };
-    await apiContext.put(`/api/v1/lineage`, {
-      data: newEdge,
-    });
+    await page
+      .locator(
+        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
+          targetColName
+        )}"]`
+      )
+      .dispatchEvent('click');
+
+    await page.getByTestId('edit-function').click();
+
+    // wait for the modal to be visible
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await page.getByTestId('sql-function-input').fill('count');
+    const saveRes = page.waitForResponse('/api/v1/lineage');
+    await page.getByTestId('save').click();
+    await saveRes;
+
+    await expect(page.getByTestId('sql-function')).toContainText('count');
+
     const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq1;
@@ -427,7 +418,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     await page.locator('.edge-info-drawer').isVisible();
 
-    await expect(page.locator('[data-testid="Function"]')).toContainText(
+    await expect(page.locator('[data-testid="sql-function"]')).toContainText(
       'count'
     );
   } finally {
