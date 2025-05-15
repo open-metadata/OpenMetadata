@@ -61,7 +61,6 @@ import {
   EnumCleanupArgs,
   JobType,
 } from '../../generated/jobs/backgroundJob';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
