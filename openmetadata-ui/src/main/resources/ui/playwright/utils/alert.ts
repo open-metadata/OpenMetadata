@@ -819,20 +819,16 @@ export const waitForRecentEventsToFinishExecution = async (
   await expect
     .poll(
       async () => {
-        try {
-          const response = await apiContext
-            .get(
-              `/api/v1/events/subscriptions/name/${name}/eventsRecord?listCountOnly=true`
-            )
-            .then((res) => res.json());
+        const response = await apiContext
+          .get(
+            `/api/v1/events/subscriptions/name/${name}/eventsRecord?listCountOnly=true`
+          )
+          .then((res) => res.json());
 
-          return (
-            response.pendingEventsCount === 0 &&
-            response.totalEventsCount === totalEventsCount
-          );
-        } catch (error) {
-          return false;
-        }
+        return (
+          response.pendingEventsCount === 0 &&
+          response.totalEventsCount === totalEventsCount
+        );
       },
       {
         // Custom expect message for reporting, optional.
