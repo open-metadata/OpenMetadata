@@ -598,7 +598,10 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByTestId('loader')
+  ).toBeHidden();
+  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
   await expect(
     page.getByTestId('glossary-terms-table').getByText('Terms')
