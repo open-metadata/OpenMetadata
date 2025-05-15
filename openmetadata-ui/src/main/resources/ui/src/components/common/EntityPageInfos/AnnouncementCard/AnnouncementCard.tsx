@@ -56,6 +56,7 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
           data-testid="announcement-message"
           markdown={message}
           reducePreviewLineClass="max-one-line"
+          showReadMoreBtn={false}
         />
       )}
     </Card>
