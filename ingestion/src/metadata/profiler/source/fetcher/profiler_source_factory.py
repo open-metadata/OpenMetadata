@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksType,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlType,
+)
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
 
@@ -79,10 +82,20 @@ class ProfilerSourceFactory:
 
         return DataBricksProfilerSource
 
+    @staticmethod
+    def mssql() -> Type[ProfilerSourceInterface]:
+        """Lazy loading of the MSSQL source"""
+        from metadata.profiler.source.database.mssql.profiler_source import (
+            MssqlProfilerSource,
+        )
+
+        return MssqlProfilerSource
+
 
 source = {
     BigqueryType.BigQuery.value.lower(): ProfilerSourceFactory.bigquery,
     DatabricksType.Databricks.value.lower(): ProfilerSourceFactory.databricks,
+    MssqlType.Mssql.value.lower(): ProfilerSourceFactory.mssql,
 }
 
 profiler_source_factory = ProfilerSourceFactory()
