@@ -1,7 +1,7 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
+/*
+This class should be removed once we migrate to Jakarta.
+*/
+
 
 package org.openmetadata;
 
