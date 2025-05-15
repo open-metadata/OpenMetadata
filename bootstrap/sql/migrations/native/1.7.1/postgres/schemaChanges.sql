@@ -18,3 +18,15 @@ WHERE
     json,                                           
     '$.parameterDefinition[*] ? (@.name == "operator")' 
   );
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+    jsonb_set(
+        json,
+        '{connection,config}',
+        (json->'connection'->'config') - 'siteUrl' - 'apiVersion' - 'env'
+    ),
+    '{connection}',
+    json->'connection'
+)
+WHERE serviceType = 'Tableau';

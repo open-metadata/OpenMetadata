@@ -732,6 +732,7 @@ export enum DataModelType {
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
+    PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",

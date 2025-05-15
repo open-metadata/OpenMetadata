@@ -470,7 +470,7 @@ export const DataAssetsHeader = ({
               isCustomizedView ? { ...link, url: '', noLink: true } : link
             )}
           />
-          <Row>
+          <Row gutter={[20, 0]}>
             <Col className="w-min-0" flex="1">
               <EntityHeaderTitle
                 badge={alertBadge}
@@ -488,8 +488,8 @@ export const DataAssetsHeader = ({
                 serviceName={dataAssetServiceName}
               />
             </Col>
-            <Col className="flex items-center ">
-              <Space className="">
+            <Col className="flex items-center">
+              <Space>
                 <ButtonGroup
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
@@ -571,6 +571,13 @@ export const DataAssetsHeader = ({
                     onRestoreEntity={onRestoreDataAsset}
                   />
                 </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
               </Space>
             </Col>
           </Row>
@@ -707,14 +714,6 @@ export const DataAssetsHeader = ({
               }
             />
             {extraInfo}
-          </div>
-          <div className="mt-2">
-            {activeAnnouncement && (
-              <AnnouncementCard
-                announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementDrawer}
-              />
-            )}
           </div>
         </Col>
       </Row>
