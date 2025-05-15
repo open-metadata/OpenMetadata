@@ -99,7 +99,7 @@ class SamplerProcessor(Processor):
                 data=sampler_interface.generate_sample_data(),
                 store=self.source_config.storeSampleData,
             )
-
+            sampler_interface.close()
             return Either(
                 right=SamplerResponse(
                     table=entity,

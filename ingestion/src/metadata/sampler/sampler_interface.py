@@ -245,3 +245,6 @@ class SamplerInterface(ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
             raise err
+
+    def close(self):
+        """Default noop"""
