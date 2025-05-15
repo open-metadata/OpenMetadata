@@ -598,9 +598,13 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await page.waitForTimeout(1000);
-
   await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByTestId('loader')
+  ).toBeHidden();
+  await expect(
+    page.getByTestId('glossary-right-panel-owner-link').getByTestId('loader')
+  ).toBeHidden();
 
   await expect(
     page.getByTestId('glossary-terms-table').getByText('Terms')
