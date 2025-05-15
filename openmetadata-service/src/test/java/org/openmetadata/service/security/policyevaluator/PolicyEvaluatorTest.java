@@ -1,17 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.openmetadata.schema.type.MetadataOperation.ALL;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.schema.type.MetadataOperation.DELETE;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_CUSTOM_FIELDS;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_QUERIES;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_USAGE;
+import static org.openmetadata.schema.type.MetadataOperation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -113,8 +103,20 @@ class PolicyEvaluatorTest {
   void trimPermissions_withAllowAccess_trimmed() {
     List<Permission> permissions =
         getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
+    // trim works only for permissions starting with "EDIT" or "VIEW"
     List<MetadataOperation> expectedOperations =
-        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
+        Arrays.asList(
+            ALL,
+            DELETE,
+            CREATE,
+            CREATE_INGESTION_PIPELINE_AUTOMATOR,
+            VIEW_ALL,
+            EDIT_ALL,
+            DELETE_TEST_CASE_FAILED_ROWS_SAMPLE,
+            DEPLOY,
+            TRIGGER,
+            KILL,
+            GENERATE_TOKEN);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
     assertEqualsPermissions(expectedOperations, actual);
   }
@@ -122,8 +124,20 @@ class PolicyEvaluatorTest {
   @Test
   void trimPermissions_withDenyAccess_trimmed() {
     List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.DENY);
+    // trim works only for permissions starting with "EDIT" or "VIEW"
     List<MetadataOperation> expectedOperations =
-        Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
+        Arrays.asList(
+            ALL,
+            DELETE,
+            CREATE,
+            CREATE_INGESTION_PIPELINE_AUTOMATOR,
+            VIEW_ALL,
+            EDIT_ALL,
+            DELETE_TEST_CASE_FAILED_ROWS_SAMPLE,
+            DEPLOY,
+            TRIGGER,
+            KILL,
+            GENERATE_TOKEN);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
     assertEqualsPermissions(expectedOperations, actual);
   }
