@@ -83,8 +83,8 @@ TALEAU_GET_CUSTOM_SQL_QUERY = """
   customSQLTables {
     name
     id
-    downstreamWorkbooks {
-      luid
+    downstreamDatasources{
+      id
       name
     }
     query

@@ -240,8 +240,6 @@ class OMetaServiceTest(TestCase):
                     "authType": {"username": "tb_user", "password": "tb_pwd"},
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
-                    "apiVersion": "3.15",
-                    "env": "tableau_prod",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},
@@ -353,8 +351,6 @@ class OMetaServiceTest(TestCase):
                     "authType": {"username": "tb_user", "password": "tb_pwd"},
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
-                    "apiVersion": "3.15",
-                    "env": "tableau_prod",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},

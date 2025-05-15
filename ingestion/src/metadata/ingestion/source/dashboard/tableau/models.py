@@ -13,7 +13,7 @@
 Tableau Source Model module
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel, ConfigDict, Field, validator
 
@@ -75,21 +75,12 @@ class TableauOwner(TableauBaseModel):
     email: Optional[str] = None
 
 
-def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[TableauTag]:
-    if isinstance(raw, List):
-        return raw
-    tags = []
-    for tag in raw.get("tag", []):
-        tags.append(TableauTag(**tag))
-    return tags
-
-
-class TableauWorkbook(BaseModel):
+class TableauDatasource(BaseModel):
     """
-    Model for downstream workbook information
+    Model for downstream datasource information
     """
 
-    luid: Optional[str] = None
+    id: Optional[str] = None
     name: Optional[str] = None
 
 
@@ -99,7 +90,7 @@ class CustomSQLTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
-    downstreamWorkbooks: Optional[List[TableauWorkbook]] = None
+    downstreamDatasources: Optional[List[TableauDatasource]] = None
     query: Optional[str] = None
 
 
@@ -178,8 +169,7 @@ class TableauChart(TableauBaseModel):
     """
 
     owner: Optional[TableauOwner] = None
-    tags: Optional[List[TableauTag]] = []
-    _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
+    tags: Optional[Set] = []
     contentUrl: Optional[str] = ""
     sheetType: Optional[str] = ChartType.Other.value
 
@@ -194,12 +184,12 @@ class TableauDashboard(TableauBaseModel):
     project: Optional[TableauBaseModel] = None
     description: Optional[str] = None
     owner: Optional[TableauOwner] = None
-    tags: Optional[List[TableauTag]] = []
-    _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
+    tags: Optional[Set] = []
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []
     custom_sql_queries: Optional[List[str]] = None
+    user_views: Optional[int] = None
 
 
 class TableAndQuery(BaseModel):
