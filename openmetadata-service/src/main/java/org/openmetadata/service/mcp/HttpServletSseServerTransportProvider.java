@@ -2,7 +2,7 @@
 This class should be removed once we migrate to Jakarta.
 */
 
-package org.openmetadata;
+package org.openmetadata.service.mcp;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +24,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.openmetadata.service.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -47,17 +48,16 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   private final AtomicBoolean isClosing;
   private McpServerSession.Factory sessionFactory;
 
-  public HttpServletSseServerTransportProvider(
-      ObjectMapper objectMapper, String messageEndpoint, String sseEndpoint) {
-    this.sessions = new ConcurrentHashMap();
+  public HttpServletSseServerTransportProvider(String messageEndpoint, String sseEndpoint) {
+    this.sessions = new ConcurrentHashMap<>();
     this.isClosing = new AtomicBoolean(false);
-    this.objectMapper = objectMapper;
+    this.objectMapper = JsonUtils.getObjectMapper();
     this.messageEndpoint = messageEndpoint;
     this.sseEndpoint = sseEndpoint;
   }
 
-  public HttpServletSseServerTransportProvider(ObjectMapper objectMapper, String messageEndpoint) {
-    this(objectMapper, messageEndpoint, "/sse");
+  public HttpServletSseServerTransportProvider(String messageEndpoint) {
+    this(messageEndpoint, "/sse");
   }
 
   public void setSessionFactory(McpServerSession.Factory sessionFactory) {

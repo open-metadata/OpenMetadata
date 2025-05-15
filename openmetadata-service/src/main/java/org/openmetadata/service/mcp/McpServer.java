@@ -3,21 +3,24 @@ package org.openmetadata.service.mcp;
 import static org.openmetadata.service.search.SearchUtil.searchMetadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.setup.Environment;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import javax.servlet.DispatcherType;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.openmetadata.HttpServletSseServerTransportProvider;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.mcp.tools.CreateGlossaryTerm;
 import org.openmetadata.service.mcp.tools.PatchEntity;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -25,7 +28,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class McpServer {
   public McpServer() {}
 
-  public void initializeMcpServer(Environment environment) {
+  public void initializeMcpServer(Environment environment, OpenMetadataApplicationConfig config) {
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -34,7 +37,7 @@ public class McpServer {
             .build();
 
     HttpServletSseServerTransportProvider transport =
-        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/messages", "/mcp/sse");
+        new HttpServletSseServerTransportProvider("/mcp/messages", "/mcp/sse");
     McpSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(transport)
             .serverInfo("openmetadata-mcp", "0.1.0")
@@ -47,6 +50,13 @@ public class McpServer {
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     ServletHolder servletHolder = new ServletHolder(transport);
     contextHandler.addServlet(servletHolder, "/mcp/*");
+
+    McpAuthFilter authFilter =
+        new McpAuthFilter(
+            new JwtFilter(
+                config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
+    contextHandler.addFilter(
+        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
   }
 
   public void addTools(McpSyncServer server) {
