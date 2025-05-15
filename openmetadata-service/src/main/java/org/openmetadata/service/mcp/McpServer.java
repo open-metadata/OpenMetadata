@@ -34,7 +34,7 @@ public class McpServer {
             .build();
 
     HttpServletSseServerTransportProvider transport =
-        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/message", "/mcp/sse");
+        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/messages", "/mcp/sse");
     McpSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(transport)
             .serverInfo("openmetadata-mcp", "0.1.0")
