@@ -23,19 +23,11 @@ from presidio_analyzer import (
     predefined_recognizers,
 )
 from presidio_analyzer.nlp_engine import SpacyNlpEngine
-from spacy.cli import download
 
-from metadata.pii.constants import SPACY_EN_MODEL
+from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.logger import METADATA_LOGGER, pii_logger
 
 logger = pii_logger()
-
-PRESIDIO_LOGGER = "presidio-analyzer"
-
-# Supported language for Presidio.
-# Don't change this unless you know what you are doing.
-# We are doing some tricks to make Presidio work for our use case.
-SUPPORTED_LANG = "en"
 
 
 def build_analyzer_engine(
@@ -86,11 +78,15 @@ def _load_spacy_model(model_name: str) -> None:
     """
 
     try:
-        spacy.load(model_name)
+        _ = spacy.load(model_name)
     except OSError:
+        from spacy.cli.download import (
+            download,  # pyright: ignore[reportUnknownVariableType]
+        )
+
         logger.warning(f"Downloading {model_name} language model for the spaCy")
         download(model_name)
-        spacy.load(model_name)
+        _ = spacy.load(model_name)
 
     return None
 
@@ -111,7 +107,9 @@ def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
         if issubclass(cls, PatternRecognizer):
             try:
                 # Try to instantiate the recognizer
-                yield cls(supported_language=SUPPORTED_LANG)  # type: ignore
+                yield cls(
+                    supported_language=SUPPORTED_LANG
+                )  # pyright: ignore[reportCallIssue]
             except Exception as e:
                 logger.warning(e)
         elif cls == predefined_recognizers.PhoneRecognizer:

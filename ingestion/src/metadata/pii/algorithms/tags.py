@@ -8,11 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Definition of tags for the PII algorithms.
+These tags currently belong to the layer logic of the algorithms.
+"""
 import enum
 from typing import List
 
 
-class PIISensitivityTags(enum.Enum):
+class PIISensitivityTag(enum.Enum):
     SENSITIVE = "Sensitive"
     NONSENSITIVE = "NonSensitive"
 
@@ -89,14 +93,14 @@ class PIITag(enum.Enum):
         """
         return [tag.value for tag in cls]
 
-    def sensitivity(self) -> PIISensitivityTags:
+    def sensitivity(self) -> PIISensitivityTag:
         """
         Get the sensitivity level of the PII tag.
         This map is opinionated and can be changed in the future according to users' needs.
         """
         if self in DEFAULT_NON_PII_SENSITIVE:
-            return PIISensitivityTags.NONSENSITIVE
-        return PIISensitivityTags.SENSITIVE
+            return PIISensitivityTag.NONSENSITIVE
+        return PIISensitivityTag.SENSITIVE
 
 
 DEFAULT_NON_PII_SENSITIVE = (

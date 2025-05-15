@@ -8,27 +8,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Callable
-
-import pytest
-from faker import Faker
-
-
-@pytest.fixture
-def fake() -> Faker:
-    """Return a Faker instance"""
-    fake = Faker()
-    fake.seed_instance(1234)
-    return fake
+from metadata.pii.algorithms.presidio_utils import (
+    build_analyzer_engine,
+    set_presidio_logger_level,
+)
+from metadata.pii.algorithms.tags import PIITag
+from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
 
 
-@pytest.fixture
-def local_fake_factory() -> Callable[[str], Faker]:
-    """Return a local fake factory"""
+def test_analyzer_supports_all_expected_pii_entities():
+    """
+    Here we check that the analyzer can potentially detect all our PII entities.
+    """
+    set_presidio_logger_level()
+    analyzer = build_analyzer_engine()
 
-    def fake_factory(locale: str) -> Faker:
-        fake = Faker(locale)
-        fake.seed_instance(1234)
-        return fake
-
-    return fake_factory
+    entities = set(PIITag.values())
+    supported_entities = set(analyzer.get_supported_entities(SUPPORTED_LANG))
+    assert entities <= supported_entities
