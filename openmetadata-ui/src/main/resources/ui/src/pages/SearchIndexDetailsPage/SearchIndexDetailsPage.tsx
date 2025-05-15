@@ -151,6 +151,7 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    editAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -175,6 +176,7 @@ function SearchIndexDetailsPage() {
       viewSampleDataPermission:
         searchIndexPermissions.ViewAll || searchIndexPermissions.ViewSampleData,
       viewAllPermission: searchIndexPermissions.ViewAll,
+      editAllPermission: searchIndexPermissions.EditAll,
     }),
     [searchIndexPermissions, deleted]
   );
@@ -309,6 +311,7 @@ function SearchIndexDetailsPage() {
     const allTabs = searchIndexClassBase.getSearchIndexDetailPageTabs({
       searchIndexDetails: searchIndexDetails ?? ({} as SearchIndex),
       viewAllPermission,
+      editAllPermission,
       feedCount,
       activeTab,
       getEntityFeedCount,

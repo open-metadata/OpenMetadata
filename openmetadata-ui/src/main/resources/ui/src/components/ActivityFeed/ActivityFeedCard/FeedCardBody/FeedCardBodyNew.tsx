@@ -15,7 +15,10 @@ import { Button, Card, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  CardStyle,
+  ThreadType,
+} from '../../../../generated/entity/feed/thread';
 import {
   getEntityFQN,
   getEntityType,
@@ -91,7 +94,11 @@ const FeedCardBodyNew = ({
     return (
       <RichTextEditorPreviewerNew
         className="text-wrap"
-        markdown={getFrontEndFormat(feed.message)}
+        markdown={getFrontEndFormat(
+          feed.type === ThreadType.Announcement
+            ? feed.announcement?.description ?? ''
+            : feed.message ?? ''
+        )}
       />
     );
   }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);

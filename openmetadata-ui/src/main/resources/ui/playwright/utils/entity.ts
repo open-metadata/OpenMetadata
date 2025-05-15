@@ -807,32 +807,34 @@ const announcementForm = async (
   await page.locator(descriptionBox).fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
-  const announcementSubmit = page.waitForResponse(
-    '/api/v1/feed?entityLink=*type=Announcement*'
-  );
   await page.click('#announcement-submit');
-  await announcementSubmit;
-  await page.click('[data-testid="announcement-close"]');
-  await page.click('[data-testid="alert-icon-close"]');
 };
 
 export const createAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  isForActivityFeedTab: boolean
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
+  if (isForActivityFeedTab) {
+    const activityFeedSelector = page.locator(
+      'div[role="tab"][id^="rc-tabs-"][id$="-activity_feed"]'
+    );
+    await activityFeedSelector.click(); // For Activity Feed
+    await page.getByTestId('announcement-sub-tab').click();
+  } else {
+    await page.getByText('Announcements').click(); // For Service page
+  }
+
+  await expect(page.getByTestId('no-data-placeholder-container')).toContainText(
+    'No Announcements, Click on add announcement to add one.'
+  );
+
+  await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
   const endDate = customFormatDateTime(
     getEpochMillisForFutureDays(5),
     'yyyy-MM-dd'
   );
-
-  await expect(page.getByTestId('announcement-error')).toContainText(
-    'No Announcements, Click on add announcement to add one.'
-  );
-
-  await page.getByTestId('add-announcement').click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(
     'Make an announcement'
@@ -841,9 +843,17 @@ export const createAnnouncement = async (
   await announcementForm(page, { ...data, startDate, endDate });
 
   await page.reload();
-  await page.getByTestId('announcement-card').isVisible();
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await page.getByTestId('announcement-filter-icon').click();
+  const activeAnnouncementsOption = page.getByTestId('active-announcements');
+
+  await activeAnnouncementsOption.click();
+
+  await expect(feedDataCard).toBeVisible();
+  await expect(feedDataCard).toContainText(data.title);
 
   // TODO: Review redirection flow for announcement @Ashish8689
   // await redirectToHomePage(page);
@@ -868,17 +878,12 @@ export const createAnnouncement = async (
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
+  await page.click('[data-testid="activity-feed-card-v2"]');
 
-  await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
-  );
+  await expect(page.locator('.comments-input-field')).toBeVisible();
 
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
-
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
-
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.locator('.comments-input-field').scrollIntoViewIfNeeded();
+  await page.locator('.comments-input-field').click();
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
@@ -891,16 +896,14 @@ export const replyAnnouncement = async (page: Page) => {
   await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
   await page.click('[data-testid="send-button"]');
 
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message');
-  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
-    '1 replies'
-  );
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
+
+  await expect(feedDataCard).toContainText('1 Reply');
 
   // Edit the reply message
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
+  await page.hover('[data-testid="feed-replies"]');
   await page.click('[data-testid="edit-message"]');
 
   await page.fill(
@@ -908,24 +911,19 @@ export const replyAnnouncement = async (page: Page) => {
     'Reply message edited'
   );
 
-  await page.click('[data-testid="save-button"]');
+  await page.click('[data-testid="send-button"]');
 
   await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
+    page.locator(
+      '#feed-panel [data-testid="feed-replies"] [data-testid="viewer-container"]'
+    )
   ).toHaveText('Reply message edited');
-
-  await page.reload();
 };
 
 export const deleteAnnouncement = async (page: Page) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
-
-  await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
+  const feedcard = page.locator('#feedData').getByTestId('feedcardbodyV1');
+  await feedcard.waitFor({ state: 'visible' });
+  await feedcard.hover();
 
   await page.click('[data-testid="delete-message"]');
   const modalText = await page.textContent('.ant-modal-body');
@@ -941,10 +939,24 @@ export const deleteAnnouncement = async (page: Page) => {
 
 export const createInactiveAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  isForActivityFeedTab: boolean
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
+  if (isForActivityFeedTab) {
+    const activityFeedSelector = page.locator(
+      'div[role="tab"][id^="rc-tabs-"][id$="-activity_feed"]'
+    );
+    await activityFeedSelector.click(); // For Activity Feed
+    await page.getByTestId('announcement-sub-tab').click();
+  } else {
+    await page.getByText('Announcements').click(); // For Service page
+  }
+
+  await expect(page.getByTestId('no-data-placeholder-container')).toContainText(
+    'No Announcements, Click on add announcement to add one.'
+  );
+
+  await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(
     getEpochMillisForFutureDays(6),
     'yyyy-MM-dd'
@@ -954,15 +966,25 @@ export const createInactiveAnnouncement = async (
     'yyyy-MM-dd'
   );
 
-  await page.getByTestId('add-announcement').click();
-
   await expect(page.locator('.ant-modal-header')).toContainText(
     'Make an announcement'
   );
 
   await announcementForm(page, { ...data, startDate, endDate });
-  await page.getByTestId('inActive-announcements').isVisible();
+
   await page.reload();
+  await page.getByTestId('announcement-filter-icon').click();
+  const inactiveAnnouncementsOption = page.getByTestId(
+    'inactive-announcements'
+  );
+
+  await inactiveAnnouncementsOption.click();
+
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
+
+  await expect(feedDataCard).toContainText(data.title);
 };
 
 export const updateDisplayNameForEntity = async (
@@ -1147,11 +1169,6 @@ export const deletedEntityCommonChecks = async ({
     // only two menu options (restore and delete) should be present
     await expect(
       page.locator(
-        '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
-      )
-    ).toBeHidden();
-    await expect(
-      page.locator(
         '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
       )
     ).toBeHidden();
@@ -1171,11 +1188,6 @@ export const deletedEntityCommonChecks = async ({
       )
     ).toBeVisible();
   } else {
-    await expect(
-      page.locator(
-        '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
-      )
-    ).toBeVisible();
     await expect(
       page.locator(
         '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'

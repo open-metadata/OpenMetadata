@@ -482,6 +482,9 @@ export const getFeedCounts = async (
         totalTasksCount,
         totalCount,
         mentionCount,
+        activeAnnouncementCount,
+        inactiveAnnouncementCount,
+        totalAnnouncementCount,
       } = res.reduce((acc, item) => {
         const conversationCount =
           acc.conversationCount + (item.conversationCount || 0);
@@ -495,6 +498,13 @@ export const getFeedCounts = async (
           closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
           totalCount: conversationCount + totalTasksCount,
           mentionCount: acc.mentionCount + (item.mentionCount || 0),
+          activeAnnouncementCount:
+            acc.activeAnnouncementCount + (item.activeAnnouncementCount || 0),
+          inactiveAnnouncementCount:
+            acc.inactiveAnnouncementCount +
+            (item.inactiveAnnouncementCount || 0),
+          totalAnnouncementCount:
+            acc.totalAnnouncementCount + (item.totalAnnouncementCount || 0),
         };
       }, FEED_COUNT_INITIAL_DATA);
 
@@ -505,6 +515,9 @@ export const getFeedCounts = async (
         closedTaskCount,
         totalCount,
         mentionCount,
+        activeAnnouncementCount,
+        inactiveAnnouncementCount,
+        totalAnnouncementCount,
       });
     } else {
       throw t('server.entity-feed-fetch-error');

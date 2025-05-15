@@ -55,6 +55,9 @@ interface ActivityFeedCardNewProps {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  onSave?: (message: string) => void;
+  updateAnnouncementThreads?: () => void;
+  isAnnouncementTab?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -66,6 +69,9 @@ const ActivityFeedCardNew = ({
   isActive,
   isForFeedTab,
   isOpenInDrawer = false,
+  onSave: onSaveAnnouncement,
+  updateAnnouncementThreads,
+  isAnnouncementTab,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -75,7 +81,7 @@ const ActivityFeedCardNew = ({
   }, [feed.about]);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedThread, postFeed } = useActivityFeedProvider();
+  const { postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
@@ -89,7 +95,7 @@ const ActivityFeedCardNew = ({
   }, [feed.id]);
 
   const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
+    postFeed(message, feed?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
@@ -192,7 +198,8 @@ const ActivityFeedCardNew = ({
             showThread || isPost || isOpenInDrawer,
         },
         { 'activity-feed-reply-card': isPost },
-        { 'active-card is-active': isActive }
+        { 'active-card is-active': isActive },
+        { 'p-0': isAnnouncementTab }
       )}
       data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
@@ -284,13 +291,14 @@ const ActivityFeedCardNew = ({
               isForFeedTab={isForFeedTab}
               isPost={isPost}
               post={post}
+              updateAnnouncementThreads={updateAnnouncementThreads}
             />
           )}
         </Space>
       </Space>
       {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
-          {(showActivityFeedEditor || isOpenInDrawer) && (
+          {(showActivityFeedEditor || isOpenInDrawer || isAnnouncementTab) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>
@@ -305,7 +313,7 @@ const ActivityFeedCardNew = ({
                     isOpenInDrawer,
                 }
               )}
-              onSave={onSave}
+              onSave={isAnnouncementTab ? onSaveAnnouncement : onSave}
             />
           ) : (
             <div className="d-flex gap-2">
@@ -339,9 +347,11 @@ const ActivityFeedCardNew = ({
                   <CommentCard
                     closeFeedEditor={closeFeedEditor}
                     feed={feed}
+                    isAnnouncementTab={isAnnouncementTab}
                     isLastReply={index === arr.length - 1}
                     key={reply.id}
                     post={reply}
+                    updateAnnouncementThreads={updateAnnouncementThreads}
                   />
                 ))}
             </Col>

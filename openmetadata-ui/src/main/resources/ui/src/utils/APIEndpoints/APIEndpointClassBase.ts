@@ -44,6 +44,7 @@ export interface APIEndpointDetailPageTabProps {
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   editLineagePermission: boolean;
+  editAllPermission: boolean;
   labelMap: Record<EntityTabs, string>;
 }
 

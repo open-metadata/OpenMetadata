@@ -39,6 +39,7 @@ export const getApiEndpointDetailsPageTabs = ({
   viewAllPermission,
   editLineagePermission,
   labelMap,
+  editAllPermission,
 }: APIEndpointDetailPageTabProps) => {
   return [
     {
@@ -71,6 +72,7 @@ export const getApiEndpointDetailsPageTabs = ({
           entityType={EntityType.API_ENDPOINT}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchAPIEndpointDetails}
           onUpdateFeedCount={handleFeedCount}
