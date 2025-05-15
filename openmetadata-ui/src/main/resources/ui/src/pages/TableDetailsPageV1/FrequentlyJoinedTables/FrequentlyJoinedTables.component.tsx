@@ -69,7 +69,8 @@ export const FrequentlyJoinedTables = () => {
       cardProps={{
         title: t('label.frequently-joined-table-plural'),
       }}
-      dataTestId="frequently-joint-data-container">
+      dataTestId="frequently-joint-data-container"
+      isExpandDisabled={isEmpty(joinedTables)}>
       {content}
     </ExpandableCard>
   );

@@ -12,6 +12,7 @@
  */
 import { Typography } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -76,7 +77,8 @@ export const OwnerLabelV2 = <
       cardProps={{
         title: header,
       }}
-      dataTestId={dataTestId}>
+      dataTestId={dataTestId}
+      isExpandDisabled={isEmpty(data.owners)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,

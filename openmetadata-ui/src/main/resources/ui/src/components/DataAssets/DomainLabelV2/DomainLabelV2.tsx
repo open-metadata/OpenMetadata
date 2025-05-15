@@ -182,7 +182,8 @@ export const DomainLabelV2 = <
                 {selectableList}
               </div>
             ),
-          }}>
+          }}
+          isExpandDisabled={!Array.isArray(domainLink)}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>

@@ -889,12 +889,10 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
