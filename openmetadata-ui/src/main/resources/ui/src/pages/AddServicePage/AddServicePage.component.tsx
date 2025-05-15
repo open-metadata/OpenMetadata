@@ -27,6 +27,7 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
+import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -34,6 +35,7 @@ import {
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -62,6 +64,7 @@ const AddServicePage = () => {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
+  const { platform } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
@@ -303,8 +306,10 @@ const AddServicePage = () => {
   );
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
-  }, []);
+    if (platform === AIRFLOW_HYBRID) {
+      serviceUtilClassBase.getExtraInfo();
+    }
+  }, [platform]);
 
   return (
     <ResizablePanels

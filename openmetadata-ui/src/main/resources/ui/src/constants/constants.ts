@@ -84,6 +84,7 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
