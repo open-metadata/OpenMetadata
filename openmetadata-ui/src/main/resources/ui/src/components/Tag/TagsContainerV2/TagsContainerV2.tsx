@@ -175,6 +175,7 @@ const TagsContainerV2 = ({
       showAddTagButton ? (
         <PlusIconButton
           className="m-t-xss"
+          data-testid="add-tag"
           size="small"
           title={t('label.add-entity', {
             entity: isGlossaryType

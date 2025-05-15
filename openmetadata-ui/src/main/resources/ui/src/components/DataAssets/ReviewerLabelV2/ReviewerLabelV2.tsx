@@ -92,6 +92,7 @@ export const ReviewerLabelV2 = <
               />
             ) : (
               <PlusIconButton
+                data-testid="Add"
                 size="small"
                 title={t('label.add-entity', {
                   entity: t('label.reviewer-plural'),

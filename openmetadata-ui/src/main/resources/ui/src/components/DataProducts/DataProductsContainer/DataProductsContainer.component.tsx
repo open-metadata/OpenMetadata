@@ -144,6 +144,7 @@ const DataProductsContainer = ({
           </Typography.Text>
           {showAddTagButton && (
             <PlusIconButton
+              data-testid="add-data-product"
               size="small"
               title={t('label.add-data-product')}
               onClick={handleAddClick}
