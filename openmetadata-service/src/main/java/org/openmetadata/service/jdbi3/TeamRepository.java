@@ -194,7 +194,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, false);
   }
 
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
@@ -203,7 +203,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, false);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {

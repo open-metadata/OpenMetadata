@@ -2625,7 +2625,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String fromEntity,
       Relationship relationship,
       BulkAssets request,
-      boolean isAdd) {
+      boolean isAdd,
+      boolean clearExistingRelationsToTarget) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -2635,6 +2636,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (EntityReference ref : request.getAssets()) {
       // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+      if (isAdd && clearExistingRelationsToTarget) {
+        // Clear existing domain links, as the entity can belong to only one domain , so cleaning up
+        // the previousDomain for the entity to be added as asset
+        deleteTo(ref.getId(), ref.getType(), relationship, fromEntity);
+
+        // Remove existing data products linked to other domain
+        List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+        DataProductRepository dataProductRepository =
+            (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
+        List<UUID> dataProductIdsToDelete =
+            dataProducts.stream()
+                .filter(
+                    dataProduct -> {
+                      EntityReference associatedDomain =
+                          dataProductRepository.getFromEntityRef(
+                              dataProduct.getId(), Relationship.HAS, DOMAIN, false);
+                      return associatedDomain != null && !associatedDomain.getId().equals(entityId);
+                    })
+                .map(EntityReference::getId)
+                .collect(Collectors.toList());
+
+        if (!dataProductIdsToDelete.isEmpty()) {
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  ref.getId(),
+                  dataProductIdsToDelete,
+                  DATA_PRODUCT,
+                  ref.getType(),
+                  relationship.ordinal());
+        }
+      }
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
@@ -3485,6 +3518,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDataProducts() {
       if (!supportsDataProducts) {
         return;
+      }
+      // Clean up data products associated with the old domain
+      if (!nullOrEmpty(original.getDomain()) && original.getDomain() != updated.getDomain()) {
+        removeDomainDataProducts(original.getDomain(), updated);
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());

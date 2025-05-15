@@ -112,7 +112,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, true);
     // Add assets to domain
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
@@ -125,7 +125,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, true);
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), domain.getEntityReference());

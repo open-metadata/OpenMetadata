@@ -124,7 +124,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+        bulkAssetsOperation(
+            dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, false);
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
@@ -137,7 +138,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+        bulkAssetsOperation(
+            dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, false);
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.removeDataProductsLineage(
