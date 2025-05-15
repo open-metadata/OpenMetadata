@@ -843,7 +843,7 @@ export const createAnnouncement = async (
   await page.reload();
   await page.getByTestId('announcement-card').isVisible();
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
 
   // TODO: Review redirection flow for announcement @Ashish8689
   // await redirectToHomePage(page);
