@@ -135,7 +135,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          path: openmetadata-ui/src/main/resources/ui/blob-report
           retention-days: 5
 
       - name: Clean Up
