@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Form, Row, Space, Typography } from 'antd';
+import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -39,6 +39,7 @@ import {
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   CommentIconButton,
   EditIconButton,
@@ -422,12 +423,12 @@ const TagsContainerV2 = ({
 
   if (newLook) {
     return (
-      <Card
-        className={classNames('w-full', {
-          'new-header-border-card': newLook,
-        })}
-        data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
-        title={header}>
+      <ExpandableCard
+        cardProps={{
+          title: header,
+        }}
+        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
+        isExpandDisabled={isEmpty(tags?.[tagType])}>
         {suggestionDataRender ?? (
           <>
             {tagBody}
@@ -439,7 +440,7 @@ const TagsContainerV2 = ({
             )}
           </>
         )}
-      </Card>
+      </ExpandableCard>
     );
   }
 

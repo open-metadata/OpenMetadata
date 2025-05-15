@@ -42,7 +42,7 @@ public class SearchServiceResourceTest
         SearchService.class,
         SearchServiceResource.SearchServiceList.class,
         "services/searchServices",
-        "owners");
+        SearchServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -186,7 +186,7 @@ public class SearchServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

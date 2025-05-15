@@ -144,16 +144,15 @@ export const DataAssetsHeader = ({
     ) : null;
   }, [dataAsset]);
 
-  const excludeEntityService = useMemo(
-    () =>
-      [
-        EntityType.DATABASE,
-        EntityType.DATABASE_SCHEMA,
-        EntityType.API_COLLECTION,
-        ...SERVICE_TYPES,
-      ].includes(entityType),
-    [entityType]
-  );
+  const excludeEntityService = useMemo(() => {
+    const filteredServiceTypes = SERVICE_TYPES.filter(
+      (type) => type !== EntityType.DATABASE_SERVICE
+    );
+
+    return [EntityType.API_COLLECTION, ...filteredServiceTypes].includes(
+      entityType
+    );
+  }, [entityType]);
 
   const hasFollowers = 'followers' in dataAsset;
 
@@ -692,23 +691,21 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            {(dataAsset as Table)?.certification && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <ExtraInfoLabel
-                  label={t('label.certification')}
-                  value={
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
-                  }
-                />
-              </>
-            )}
+            <Divider className="self-center vertical-divider" type="vertical" />
+            <ExtraInfoLabel
+              dataTestId="certification-label"
+              label={t('label.certification')}
+              value={
+                (dataAsset as Table).certification ? (
+                  <CertificationTag
+                    showName
+                    certification={(dataAsset as Table).certification!}
+                  />
+                ) : (
+                  t('label.no-entity', { entity: t('label.certification') })
+                )
+              }
+            />
             {extraInfo}
           </div>
           <div className="mt-2">

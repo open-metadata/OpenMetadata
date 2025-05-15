@@ -35,7 +35,14 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -91,7 +98,6 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh");
 

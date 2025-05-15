@@ -40,7 +40,7 @@ public class StorageServiceResourceTest
         StorageService.class,
         StorageServiceResource.StorageServiceList.class,
         "services/storageServices",
-        "owners");
+        StorageServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -186,7 +186,7 @@ public class StorageServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
