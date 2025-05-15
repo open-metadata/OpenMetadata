@@ -446,6 +446,28 @@ export const addAssetsToDataProduct = async (
   await assetsAddRes;
 
   await checkAssetsCount(page, assets.length);
+
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    await page
+      .locator(
+        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.DataProducts')
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProductFqn}`)
+    ).toBeVisible();
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -625,7 +647,13 @@ export const addTagsAndGlossaryToDomain = async (
     const input = page.locator(`${container} #tagsForm_tags`);
     await input.click();
     await input.fill(value);
-    await page.getByTestId(`tag-${value}`).click();
+    const tag = page.getByTestId(`tag-${value}`);
+    if (containerType === 'glossary') {
+      // To avoid clicking on white space between checkbox and text
+      await tag.locator('.ant-select-tree-checkbox').click();
+    } else {
+      await tag.click();
+    }
 
     // Save and wait for response
     const updateResponse = page.waitForResponse(

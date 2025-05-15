@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useMemo } from 'react';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -18,6 +18,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -61,41 +62,46 @@ export const ReviewerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
-  const header = (
-    <div className="d-flex items-center gap-2">
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="heading-name">
-        {t('label.reviewer-plural')}
-      </Typography.Text>
-      {hasEditReviewerAccess && hasReviewers && (
-        <UserTeamSelectableList
-          previewSelected
-          hasPermission={hasEditReviewerAccess}
-          label={t('label.reviewer-plural')}
-          listHeight={200}
-          multiple={{ user: true, team: false }}
-          owner={assignedReviewers ?? []}
-          popoverProps={{ placement: 'topLeft' }}
-          onUpdate={handleReviewerSave}>
-          <EditIconButton
-            newLook
-            data-testid="edit-reviewer-button"
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.reviewer-plural'),
-            })}
-          />
-        </UserTeamSelectableList>
-      )}
-    </div>
+  const header = useMemo(
+    () => (
+      <div className="d-flex items-center gap-2">
+        <Typography.Text
+          className="text-sm font-medium"
+          data-testid="heading-name">
+          {t('label.reviewer-plural')}
+        </Typography.Text>
+        {hasEditReviewerAccess && hasReviewers && (
+          <UserTeamSelectableList
+            previewSelected
+            hasPermission={hasEditReviewerAccess}
+            label={t('label.reviewer-plural')}
+            listHeight={200}
+            multiple={{ user: true, team: false }}
+            owner={assignedReviewers ?? []}
+            popoverProps={{ placement: 'topLeft' }}
+            onUpdate={handleReviewerSave}>
+            <EditIconButton
+              newLook
+              data-testid="edit-reviewer-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+            />
+          </UserTeamSelectableList>
+        )}
+      </div>
+    ),
+    [data, permissions, handleReviewerSave]
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="glossary-reviewer"
-      title={header}>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="glossary-reviewer"
+      isExpandDisabled={!hasReviewers}>
       <div data-testid="glossary-reviewer-name">
         {getOwnerVersionLabel(
           data,
@@ -123,6 +129,6 @@ export const ReviewerLabelV2 = <
           />
         </UserTeamSelectableList>
       )}
-    </Card>
+    </ExpandableCard>
   );
 };

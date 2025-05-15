@@ -21,6 +21,7 @@
 .react-grid-layout {
   position: relative;
   transition: height 500ms ease;
+  min-height: 100%;
 }
 
 .svg-icon:not(.hidden) {

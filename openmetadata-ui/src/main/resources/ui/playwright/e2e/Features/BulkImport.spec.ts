@@ -117,7 +117,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -366,15 +367,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -579,15 +582,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -769,12 +774,17 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
 
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -874,15 +884,15 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
-        await page.waitForSelector('.message-banner-wrapper', {
-          state: 'detached',
-        });
-
         await toastNotification(page, /details updated successfully/);
       }
     );

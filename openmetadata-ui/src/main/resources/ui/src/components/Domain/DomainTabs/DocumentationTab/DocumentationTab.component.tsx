@@ -134,7 +134,6 @@ const DocumentationTab = ({
         className: 'domain-resizable-panel-container',
         children: (
           <DescriptionV1
-            newLook
             removeBlur
             wrapInCard
             description={description}
@@ -181,16 +180,13 @@ const DocumentationTab = ({
               }
             />
 
-            <DomainExpertWidget newLook />
+            <DomainExpertWidget />
 
-            {type === DocumentationEntity.DOMAIN && (
-              <DomainTypeWidget newLook />
-            )}
+            {type === DocumentationEntity.DOMAIN && <DomainTypeWidget />}
 
             {domain && type === DocumentationEntity.DATA_PRODUCT && (
               <CustomPropertyTable<EntityType.DATA_PRODUCT>
                 isRenderedInRightPanel
-                newLook
                 entityType={EntityType.DATA_PRODUCT}
                 hasEditAccess={Boolean(editCustomAttributePermission)}
                 hasPermission={Boolean(viewAllPermission)}

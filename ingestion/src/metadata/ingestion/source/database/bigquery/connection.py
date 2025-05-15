@@ -89,9 +89,14 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
         and connection.credentials.gcpConfig.projectId
     ):
-        return (
-            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
-        )
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{project_id}"
 
     return f"{connection.scheme.value}://"
 
