@@ -1917,6 +1917,7 @@ export interface PrivateConfig {
     /**
      * WAII API host URL
      */
+    waiiInstance: string;
 }
 
 /**
