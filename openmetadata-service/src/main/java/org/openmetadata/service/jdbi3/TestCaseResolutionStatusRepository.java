@@ -374,10 +374,11 @@ public class TestCaseResolutionStatusRepository
 
   public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
     // if originEntityFQN is present, we need to join with test_case table
-    if (filter.getQueryParam("originEntityFQN") != null) {
+    if ((filter.getQueryParam("originEntityFQN") != null)
+        || (filter.getQueryParam("include") != null)) {
       condition =
           """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) tc \
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
               ON entityFQNHash = testCaseHash
               """
               + condition;

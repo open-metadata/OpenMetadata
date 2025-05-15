@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -137,6 +138,12 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN,
@@ -159,10 +166,10 @@ public class TestCaseResolutionStatusResource
     }
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("assignee", assignee);
-    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
+    filter.addQueryParam("entityFQNHashz", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
