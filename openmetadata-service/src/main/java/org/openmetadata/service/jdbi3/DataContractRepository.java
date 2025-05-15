@@ -52,12 +52,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  public void setFields(DataContract dataContract, Fields fields) {
-  }
+  public void setFields(DataContract dataContract, Fields fields) {}
 
   @Override
-  public void clearFields(DataContract dataContract, Fields fields) {
-  }
+  public void clearFields(DataContract dataContract, Fields fields) {}
 
   @Override
   public void prepare(DataContract dataContract, boolean update) {

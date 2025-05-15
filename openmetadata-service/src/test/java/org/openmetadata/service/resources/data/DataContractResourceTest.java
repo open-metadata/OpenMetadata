@@ -51,7 +51,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private static final String C3 = "description";
   private static final String EMAIL_COL = "email";
 
-
   public DataContractResourceTest() {
     super(
         org.openmetadata.service.Entity.DATA_CONTRACT,
@@ -72,31 +71,31 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         new org.openmetadata.service.resources.databases.TableResourceTest();
 
     org.openmetadata.schema.api.data.CreateTable createTable =
-        tableResourceTest.createRequest(tableName)
-        .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-        .withColumns(List.of(
-            new org.openmetadata.schema.type.Column()
-                .withName(C1)
-                .withDisplayName("ID")
-                .withDataType(org.openmetadata.schema.type.ColumnDataType.INT),
-            new org.openmetadata.schema.type.Column()
-                .withName(C2)
-                .withDisplayName("Name")
-                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
-            new org.openmetadata.schema.type.Column()
-                .withName(C3)
-                .withDisplayName("Description")
-                .withDataType(org.openmetadata.schema.type.ColumnDataType.TEXT),
-            new org.openmetadata.schema.type.Column()
-                .withName(EMAIL_COL)
-                .withDisplayName("Email")
-                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)
-        ))
-        .withTableConstraints(List.of());
+        tableResourceTest
+            .createRequest(tableName)
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new org.openmetadata.schema.type.Column()
+                        .withName(C1)
+                        .withDisplayName("ID")
+                        .withDataType(org.openmetadata.schema.type.ColumnDataType.INT),
+                    new org.openmetadata.schema.type.Column()
+                        .withName(C2)
+                        .withDisplayName("Name")
+                        .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
+                    new org.openmetadata.schema.type.Column()
+                        .withName(C3)
+                        .withDisplayName("Description")
+                        .withDataType(org.openmetadata.schema.type.ColumnDataType.TEXT),
+                    new org.openmetadata.schema.type.Column()
+                        .withName(EMAIL_COL)
+                        .withDisplayName("Email")
+                        .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)))
+            .withTableConstraints(List.of());
 
-   Table createdTable = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+    Table createdTable = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     return createdTable;
-
   }
 
   @Override
@@ -117,7 +116,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
           .withStatus(ContractStatus.Draft);
     }
   }
-
 
   /**
    * Creates a data contract request for a specific test table
