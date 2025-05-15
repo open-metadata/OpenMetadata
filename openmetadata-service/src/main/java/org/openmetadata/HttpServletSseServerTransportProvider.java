@@ -2,7 +2,6 @@
 This class should be removed once we migrate to Jakarta.
 */
 
-
 package org.openmetadata;
 
 import com.fasterxml.jackson.core.type.TypeReference;
