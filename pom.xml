@@ -101,7 +101,7 @@
     <flyway.version>9.22.3</flyway.version>
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
-    <mysql.connector.version>9.1.0</mysql.connector.version>
+    <mysql.connector.version>9.3.0</mysql.connector.version>
     <postgres.connector.version>42.7.4</postgres.connector.version>
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
