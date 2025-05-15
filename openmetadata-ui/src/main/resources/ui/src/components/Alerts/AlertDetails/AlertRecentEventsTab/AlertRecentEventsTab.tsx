@@ -44,6 +44,7 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -150,11 +151,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           className="p-y-lg"
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph className="w-max-500">
-            {filter === AlertRecentEventFilters.ALL
-              ? t('message.no-data-available-entity', {
+            {filter === AlertRecentEventFilters.ALL ? (
+              <Transi18next
+                i18nKey="message.no-data-available-entity"
+                renderElement={<b />}
+                values={{
                   entity: t('label.recent-event-plural'),
-                })
-              : t('message.no-data-available-for-selected-filter')}
+                }}
+              />
+            ) : (
+              t('message.no-data-available-for-selected-filter')
+            )}
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       );
