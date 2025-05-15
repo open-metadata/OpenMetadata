@@ -15,7 +15,7 @@ In the future, we might want to use larger datasets to prevent regressions
 of the classifiers. These datasets should then be stored in separate files in a format
 like CSV, JSON or Parquet.
 """
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.pii.algorithms.tags import PIITag
@@ -24,7 +24,7 @@ from metadata.pii.algorithms.tags import PIITag
 class LabeledData(TypedDict):
     """Labeled data for testing"""
 
-    column_name: str
+    column_name: Optional[str]
     column_data_type: DataType
     sample_data: list[str]
     pii_tags: List[PIITag]
@@ -132,5 +132,49 @@ indian_aadhaar_data: LabeledData = {
         "0249-3285-1294",
     ],
     "pii_tags": [PIITag.IN_AADHAAR],
+    "pii_sensitivity": True,
+}
+
+indian_pan_data: LabeledData = {
+    "column_name": None,
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "AFZPK7190K",
+        "BLQSM2938L",
+        "CWRTJ5821M",
+        "DZXNV9045A",
+        "EHYKG6752P",
+    ],
+    "pii_tags": [PIITag.IN_PAN],
+    "pii_sensitivity": True,
+}
+
+us_ssn_data: LabeledData = {
+    "column_name": None,
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "211-61-2524",
+        "123-45-6789",
+        "987-65-4321",
+        "543-21-0987",
+        "678-90-1234",
+        "876-54-3210",
+    ],
+    "pii_tags": [PIITag.US_SSN],
+    "pii_sensitivity": True,
+}
+
+# ES NIF are correctly tagged with score of 1, other entities
+# DATE_TIME, US_DRIVER_LICENSE are also tagged with score < 0.5
+# TODO: Add a new field to the LabeledData to specify the winner tag
+es_nif_data: LabeledData = {
+    "column_name": None,  # Otherwise it will be confused with a phone number
+    "column_data_type": DataType.STRING,
+    "sample_data": ["48347544A", "08163649Y", "85738706L", "01922869T", "44729355J"],
+    "pii_tags": [
+        PIITag.ES_NIF,
+        PIITag.DATE_TIME,
+        PIITag.US_DRIVER_LICENSE,  # low score
+    ],
     "pii_sensitivity": True,
 }

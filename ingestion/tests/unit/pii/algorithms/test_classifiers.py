@@ -13,8 +13,9 @@ from typing import Iterable, Tuple
 
 from metadata.pii.algorithms.classifiers import ColumnClassifier, HeuristicPIIClassifier
 from metadata.pii.algorithms.tags import PIITag
-from tests.unit.pii.algorithms.data import pii_samples
-from tests.unit.pii.algorithms.data.pii_samples import LabeledData
+
+from .data import pii_samples
+from .data.pii_samples import LabeledData
 
 
 def get_sample_data() -> Iterable[Tuple[str, LabeledData]]:
