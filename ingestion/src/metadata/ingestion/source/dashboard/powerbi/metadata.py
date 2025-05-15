@@ -59,6 +59,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -506,11 +507,14 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Dataset]:
+    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
         """
         Get All the Powerbi Datasets
         """
-        return self.context.get().workspace.datasets
+        return (
+            self.context.get().workspace.datasets
+            + self.context.get().workspace.dataflows
+        )
 
     def yield_datamodel(
         self, dashboard_details: Group
@@ -526,21 +530,42 @@ class PowerbiSource(DashboardServiceSource):
                     ):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue
-                    data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(dataset.id),
-                        displayName=dataset.name,
-                        description=Markdown(dataset.description)
-                        if dataset.description
-                        else None,
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
-                        dataModelType=DataModelType.PowerBIDataModel.value,
-                        serviceType=DashboardServiceType.PowerBI.value,
-                        columns=self._get_column_info(dataset),
-                        project=self.get_project_name(dashboard_details=dataset),
-                        owners=self.get_owner_ref(dashboard_details=dataset),
-                    )
+                    if isinstance(dataset, Dataset):
+                        data_model_request = CreateDashboardDataModelRequest(
+                            name=EntityName(dataset.id),
+                            displayName=dataset.name,
+                            description=Markdown(dataset.description)
+                            if dataset.description
+                            else None,
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
+                            dataModelType=DataModelType.PowerBIDataModel.value,
+                            serviceType=DashboardServiceType.PowerBI.value,
+                            columns=self._get_column_info(dataset),
+                            project=self.get_project_name(dashboard_details=dataset),
+                            owners=self.get_owner_ref(dashboard_details=dataset),
+                        )
+                    elif isinstance(dataset, Dataflow):
+                        data_model_request = CreateDashboardDataModelRequest(
+                            name=EntityName(dataset.id),
+                            displayName=dataset.name,
+                            description=Markdown(dataset.description)
+                            if dataset.description
+                            else None,
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
+                            dataModelType=DataModelType.PowerBIDataFlow.value,
+                            serviceType=DashboardServiceType.PowerBI.value,
+                            project=self.get_project_name(dashboard_details=dataset),
+                            owners=self.get_owner_ref(dashboard_details=dataset),
+                        )
+                    else:
+                        logger.warning(
+                            f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
+                        )
+                        continue
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
         except Exception as exc:
@@ -895,7 +920,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
-    ) -> Optional[Dataset]:
+    ) -> Optional[Union[Dataset, Dataflow]]:
         """
         Method to search the dataset using id in the workspace dict
         """
