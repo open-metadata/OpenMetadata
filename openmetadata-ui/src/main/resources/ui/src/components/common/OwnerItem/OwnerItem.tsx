@@ -26,6 +26,7 @@ interface OwnerItemProps {
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
+  isAssignee?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -34,6 +35,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   className,
   ownerDisplayName,
   avatarSize = 32,
+  isAssignee,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
@@ -78,6 +80,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <OwnerAvatar
             avatarSize={avatarSize}
             inheritedIcon={inheritedIcon}
+            isAssignee={isAssignee}
             isCompactView={isCompactView}
             owner={owner}
           />
@@ -91,6 +94,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             <OwnerAvatar
               avatarSize={avatarSize}
               inheritedIcon={inheritedIcon}
+              isAssignee={isAssignee}
               isCompactView={isCompactView}
               owner={owner}
             />

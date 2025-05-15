@@ -894,6 +894,10 @@ public class LineageRepository {
         LOG.info("Metric column level lineage is not supported");
         return new HashSet<>();
       }
+      case PIPELINE -> {
+        LOG.info("Pipeline column level lineage is not supported");
+        return new HashSet<>();
+      }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
     }

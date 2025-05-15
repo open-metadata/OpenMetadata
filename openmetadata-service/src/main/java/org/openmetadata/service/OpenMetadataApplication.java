@@ -263,7 +263,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerSamlServlets(catalogConfig, environment);
 
     // Asset Servlet Registration
-    registerAssetServlet(catalogConfig.getWebConfiguration(), environment);
+    registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
     // Register MCP
     registerMCPServer(catalogConfig, environment);
@@ -371,10 +371,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet(OMWebConfiguration webConfiguration, Environment environment) {
+  private void registerAssetServlet(
+      OpenMetadataApplicationConfig config,
+      OMWebConfiguration webConfiguration,
+      Environment environment) {
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet("/assets", "/", "index.html", webConfiguration);
+        new OpenMetadataAssetServlet(
+            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
   }
