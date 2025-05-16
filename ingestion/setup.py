@@ -434,6 +434,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
+    "faker==37.1.0",  # Fixed the version to prevent flaky tests!
 }
 
 e2e_test = {
