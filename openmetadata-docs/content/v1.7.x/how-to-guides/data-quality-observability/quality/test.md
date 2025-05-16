@@ -11,7 +11,7 @@ There is no need to fill a YAML file or a JSON config file to set up data qualit
 
 To create a test in OpenMetadata:
 
-- Navigate to the table you would like to create a test for. Click on the **Profiler & Data Quality** tab.
+- Navigate to the table you would like to create a test for. Click on the **Data Observability** tab.
 - Click on **Add Test** to select a `Table` or `Column` level test.
 
 {% image
