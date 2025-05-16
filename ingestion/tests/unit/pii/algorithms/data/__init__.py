@@ -8,17 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-PII constants
-"""
-
-PII = "PII"
-
-# Constants for Presidio
-PRESIDIO_LOGGER = "presidio-analyzer"
-SPACY_EN_MODEL = "en_core_web_md"
-
-# Supported language for Presidio.
-# Don't change this unless you know what you are doing.
-# We are doing some tricks to make Presidio work for our use case.
-SUPPORTED_LANG = "en"
