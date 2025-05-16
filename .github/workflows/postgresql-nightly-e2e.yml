@@ -131,11 +131,12 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/blob-report
+          name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report
           retention-days: 5
 
       - name: Clean Up
@@ -164,29 +165,12 @@ jobs:
         with:
           node-version: 18.19.0
 
-      - name: Download All Shard Reports
-        run: |
-          mkdir -p openmetadata-ui/src/main/resources/ui/blob-reports
-          for i in {1..4}; do
-            gh run download ${{ github.run_id }} -n playwright-report-$i -D openmetadata-ui/src/main/resources/ui/blob-reports
-          done
-
-          # Wait for all downloads to complete and verify
-          echo "Verifying downloaded reports..."
-          for i in {1..4}; do
-            while [ ! -f "openmetadata-ui/src/main/resources/ui/blob-reports/playwright-report-$i" ]; do
-              echo "Waiting for playwright-report-$i to download..."
-              sleep 5
-            done
-            echo "playwright-report-$i downloaded successfully"
-          done
-
-          # Verify we have the expected number of report files
-          report_count=$(ls -d openmetadata-ui/src/main/resources/ui/blob-reports/playwright-report-* | wc -l)
-          if [ "$report_count" -ne 4 ]; then
-            echo "Error: Expected 4 report files, but found $report_count"
-            exit 1
-          fi
+      - name: Download blob reports from GitHub Actions Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
 
       - name: Merge Reports and Generate Slack Notification
         working-directory: openmetadata-ui/src/main/resources/ui/
