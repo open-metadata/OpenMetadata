@@ -31,23 +31,29 @@ def get_source_table_details(stream: dict, source_connection: dict) -> TableDeta
     )
     source_schema = stream.get("namespace")
 
-    if source_name in [AirbyteSource.POSTGRES.value, AirbyteSource.MSSQL.value]:
-        pass
-    elif source_name in [AirbyteSource.MYSQL.value]:
+    # Check if source is supported
+    if source_name not in [
+        AirbyteSource.POSTGRES.value,
+        AirbyteSource.MSSQL.value,
+        AirbyteSource.MYSQL.value,
+        AirbyteSource.MONGODB.value,
+    ]:
+        logger.warning(
+            f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet"
+        )
+        return None
+
+    # Handle specific database configurations
+    if source_name == AirbyteSource.MYSQL.value:
         source_schema = source_database
         source_database = None
-    elif source_name in [AirbyteSource.MONGODB.value]:
+    elif source_name == AirbyteSource.MONGODB.value:
         source_schema = (
             source_connection.get("connectionConfiguration", {})
             .get("database_config", {})
             .get("database")
         )
         source_database = None
-    else:
-        logger.warning(
-            f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet"
-        )
-        return None
 
     return TableDetails(
         name=stream["name"],
@@ -70,19 +76,21 @@ def get_destination_table_details(
         "schema"
     )
 
-    if destination_name in [
+    # Check if destination is supported
+    if destination_name not in [
         AirbyteDestination.POSTGRES.value,
         AirbyteDestination.MSSQL.value,
+        AirbyteDestination.MYSQL.value,
     ]:
-        pass
-    elif destination_name in [AirbyteDestination.MYSQL.value]:
-        destination_schema = destination_database
-        destination_database = None
-    else:
         logger.warning(
             f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet"
         )
         return None
+
+    # Handle specific database configurations
+    if destination_name == AirbyteDestination.MYSQL.value:
+        destination_schema = destination_database
+        destination_database = None
 
     return TableDetails(
         name=stream["name"],
