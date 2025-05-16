@@ -374,8 +374,17 @@ const TagsContainerV2 = ({
     } else {
       return isHoriZontalLayout ? (
         horizontalLayout
-      ) : showInlineEditButton || !isEmpty(renderTags) ? (
+      ) : showInlineEditButton || !isEmpty(renderTags) || !newLook ? (
         <Row data-testid="entity-tags">
+          {showAddTagButton && (
+            <Col className="m-t-xss" onClick={handleAddClick}>
+              <TagsV1
+                startWith={TAG_START_WITH.PLUS}
+                tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+                tagType={tagType}
+              />
+            </Col>
+          )}
           {renderTags}
           {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
         </Row>
