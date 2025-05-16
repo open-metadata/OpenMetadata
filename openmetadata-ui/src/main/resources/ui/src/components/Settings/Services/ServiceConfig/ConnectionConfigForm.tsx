@@ -19,6 +19,7 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AIRFLOW_HYBRID,
   COLLATE_SAAS,
   COLLATE_SAAS_RUNNER,
   RUNNER,
@@ -59,7 +60,7 @@ const ConnectionConfigForm = ({
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -105,6 +106,17 @@ const ConnectionConfigForm = ({
       }),
     [data, serviceCategory, serviceType]
   );
+
+  const shouldShowIPAlert = useMemo(() => {
+    return (
+      !isEmpty(connSch.schema) &&
+      isAirflowAvailable &&
+      hostIp &&
+      (platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER)
+    );
+  }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
   // Remove the filters property from the schema
   // Since it'll have a separate form in the next step
@@ -162,23 +174,19 @@ const ConnectionConfigForm = ({
             {t('message.no-config-available')}
           </div>
         )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          hostIp &&
-          (ingestionRunner === COLLATE_SAAS ||
-            ingestionRunner === COLLATE_SAAS_RUNNER) && (
-            <Alert
-              data-testid="ip-address"
-              description={
-                <Transi18next
-                  i18nKey="message.airflow-host-ip-address"
-                  renderElement={<strong />}
-                  values={{ hostIp }}
-                />
-              }
-              type="info"
-            />
-          )}
+        {shouldShowIPAlert && (
+          <Alert
+            data-testid="ip-address"
+            description={
+              <Transi18next
+                i18nKey="message.airflow-host-ip-address"
+                renderElement={<strong />}
+                values={{ hostIp }}
+              />
+            }
+            type="info"
+          />
+        )}
         {!isEmpty(connSch.schema) &&
           isAirflowAvailable &&
           formRef.current?.state?.formData && (
