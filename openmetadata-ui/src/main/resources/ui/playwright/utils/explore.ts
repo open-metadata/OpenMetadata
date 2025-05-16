@@ -122,6 +122,9 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
+  await page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
   await page.getByTestId(`${filterValue}-checkbox`).check();
   await page.getByTestId('update-btn').click();
