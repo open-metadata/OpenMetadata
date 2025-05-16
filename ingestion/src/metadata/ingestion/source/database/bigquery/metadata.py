@@ -83,7 +83,9 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_VIEW_NAMES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
@@ -104,7 +106,10 @@ from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import retry_with_docker_host
+from metadata.utils.helpers import (
+    clean_up_starting_ending_double_quotes_in_string,
+    retry_with_docker_host,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -238,6 +243,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
+# pylint: disable=too-many-public-methods
 class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
@@ -347,6 +353,94 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Error setting BigQuery project IDs: {exc}")
 
+    # pylint: disable=arguments-differ
+    def _get_columns_with_constraints(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> Tuple[List, List, List]:
+        database_name = self.context.get().database
+        pk_constraints = inspector.get_pk_constraint(
+            table_name=table_name, schema=schema_name, database=database_name
+        )
+        try:
+            unique_constraints = inspector.get_unique_constraints(
+                table_name, schema_name
+            )
+        except NotImplementedError:
+            logger.debug(
+                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            unique_constraints = []
+        try:
+            foreign_constraints = inspector.get_foreign_keys(
+                table_name=table_name, schema=schema_name, database=database_name
+            )
+        except NotImplementedError:
+            logger.debug(
+                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            foreign_constraints = []
+
+        pk_columns = (
+            pk_constraints.get("constrained_columns")
+            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
+            else {}
+        )
+
+        foreign_columns = []
+        for foreign_constraint in foreign_constraints:
+            if len(foreign_constraint) > 0 and foreign_constraint.get(
+                "constrained_columns"
+            ):
+                foreign_constraint.update(
+                    {
+                        "constrained_columns": [
+                            clean_up_starting_ending_double_quotes_in_string(column)
+                            for column in foreign_constraint.get("constrained_columns")
+                        ],
+                        "referred_columns": [
+                            clean_up_starting_ending_double_quotes_in_string(column)
+                            for column in foreign_constraint.get("referred_columns")
+                        ],
+                    }
+                )
+                foreign_columns.append(foreign_constraint)
+
+        unique_columns = []
+        for constraint in unique_constraints:
+            if constraint.get("column_names"):
+                unique_columns.append(
+                    [
+                        clean_up_starting_ending_double_quotes_in_string(column)
+                        for column in constraint.get("column_names")
+                    ]
+                )
+
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column)
+            for pk_column in pk_columns
+        ]
+
+        return pk_columns, unique_columns, foreign_columns
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Get columns list
+        """
+
+        return inspector.get_columns(
+            table_name,
+            f"{db_name}.{schema_name}",
+            table_type=table_type,
+            db_name=db_name,
+        )
+
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
             inspector_details = get_inspector_details(
@@ -375,7 +469,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         table_names_and_types = (
             self.engine.execute(
                 BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.client.project, schema_name=schema_name
+                    project_id=self.context.get().database, schema_name=schema_name
                 )
             )
             or []
@@ -409,20 +503,37 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         logic on how to handle table types, e.g., material views,...
         """
 
-        view_names = self.inspector.get_view_names(schema_name) or []
+        view_names = (
+            self.engine.execute(
+                BIGQUERY_GET_VIEW_NAMES.format(
+                    project=self.context.get().database, dataset=schema_name
+                )
+            )
+            or []
+        )
 
         if self.incremental.enabled:
             view_names = [
-                view_name
+                view_name[0]
                 for view_name in view_names
-                if view_name
+                if view_name[0]
                 in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
-            TableNameAndType(name=view_name, type_=TableType.View)
+            TableNameAndType(name=view_name[0], type_=TableType.View)
             for view_name in view_names
         ]
+
+    # pylint: disable=arguments-differ
+    @calculate_execution_time()
+    def get_table_description(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:
+        schema_name = f"{self.context.get().database}.{schema_name}"
+        return super().get_table_description(
+            schema_name=schema_name, table_name=table_name, inspector=inspector
+        )
 
     def yield_tag(
         self, schema_name: str
@@ -430,7 +541,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """Build tag context"""
         try:
             # Fetching labels on the databaseSchema ( dataset ) level
-            dataset_obj = self.client.get_dataset(schema_name)
+            dataset_obj = self.client.get_dataset(
+                f"{self.context.get().database}.{schema_name}"
+            )
             if dataset_obj.labels:
                 for key, value in dataset_obj.labels.items():
                     yield from get_ometa_tag_and_classification(
@@ -477,7 +590,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         try:
             query_resp = self.client.query(
                 BIGQUERY_SCHEMA_DESCRIPTION.format(
-                    project_id=self.client.project,
+                    project_id=self.context.get().database,
                     region=self.service_connection.usageLocation,
                     schema_name=schema_name,
                 )
@@ -505,7 +618,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         3. Adds the Deleted Tables to the context
         """
         self.incremental_table_processor.set_changed_tables_map(
-            project=self.client.project,
+            project=self.context.get().database,
             dataset=schema_name,
             start_date=self.incremental.start_datetime_utc,
         )
@@ -525,6 +638,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
             ]
         )
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema in self.engine.execute(
+                BIGQUERY_GET_SCHEMA_NAMES.format(
+                    project=self.context.get().database,
+                    region=self.service_connection.usageLocation,
+                )
+            ):
+                yield schema[0]
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -575,7 +700,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             ),
         )
         if self.source_config.includeTags:
-            dataset_obj = self.client.get_dataset(schema_name)
+            dataset_obj = self.client.get_dataset(
+                f"{self.context.get().database}.{schema_name}"
+            )
             if dataset_obj.labels:
                 database_schema_request_obj.tags = []
                 for label_classification, label_tag_name in dataset_obj.labels.items():
@@ -707,7 +834,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
             if self.source_config.includeDDL:
                 schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
+                    self.connection,
+                    table_name,
+                    f"{self.context.get().database}.{schema_name}",
                 )
                 schema_definition = (
                     str(schema_definition).strip()
@@ -784,7 +913,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         try:
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
-            columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            columns = inspector.get_columns(
+                table_name, f"{database}.{schema_name}", db_name=database
+            )
             if (
                 hasattr(table, "external_data_configuration")
                 and hasattr(table.external_data_configuration, "hive_partitioning")
