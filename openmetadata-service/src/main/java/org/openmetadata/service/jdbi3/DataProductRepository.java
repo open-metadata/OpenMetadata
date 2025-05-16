@@ -219,6 +219,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+      } else {
+        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
       }
 
       success.add(new BulkResponse().withRequest(ref));

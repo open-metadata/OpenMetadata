@@ -3503,13 +3503,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
       // Clean up data products associated with the old domain
-      LOG.info("original domain == {}", original.getDomain());
-      LOG.info("updated domain == {}", updated.getDomain());
       if (!nullOrEmpty(original.getDomain()) && !original.getDomain().equals(updated.getDomain())) {
         removeDomainDataProducts(original.getDomain(), updated);
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
+        throw new IllegalArgumentException(
+            "Domain cannot be empty when data products are provided.");
+      }
       validateDataProducts(updatedDataProducts);
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
