@@ -18,6 +18,11 @@ import { Alert } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  COLLATE_SAAS,
+  COLLATE_SAAS_RUNNER,
+  RUNNER,
+} from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
@@ -50,6 +55,7 @@ const ConnectionConfigForm = ({
   disableTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
+  const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
@@ -121,6 +127,17 @@ const ConnectionConfigForm = ({
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);
 
+  useEffect(() => {
+    const current = (
+      formRef.current?.state?.formData as Record<string, unknown>
+    )?.[RUNNER];
+    if (typeof current === 'string') {
+      setIngestionRunner(current);
+    } else {
+      setIngestionRunner(undefined);
+    }
+  }, [formRef.current?.state?.formData]);
+
   return (
     <Fragment>
       <AirflowMessageBanner />
@@ -145,21 +162,23 @@ const ConnectionConfigForm = ({
             {t('message.no-config-available')}
           </div>
         )}
-        {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
-          <Alert
-            data-testid="ip-address"
-            description={
-              <Transi18next
-                i18nKey="message.airflow-host-ip-address"
-                renderElement={<strong />}
-                values={{
-                  hostIp,
-                }}
-              />
-            }
-            type="info"
-          />
-        )}
+        {!isEmpty(connSch.schema) &&
+          isAirflowAvailable &&
+          hostIp &&
+          (ingestionRunner === COLLATE_SAAS ||
+            ingestionRunner === COLLATE_SAAS_RUNNER) && (
+            <Alert
+              data-testid="ip-address"
+              description={
+                <Transi18next
+                  i18nKey="message.airflow-host-ip-address"
+                  renderElement={<strong />}
+                  values={{ hostIp }}
+                />
+              }
+              type="info"
+            />
+          )}
         {!isEmpty(connSch.schema) &&
           isAirflowAvailable &&
           formRef.current?.state?.formData && (
