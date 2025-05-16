@@ -50,6 +50,7 @@ jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
 
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
+  getServiceConfigData: jest.fn(),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
