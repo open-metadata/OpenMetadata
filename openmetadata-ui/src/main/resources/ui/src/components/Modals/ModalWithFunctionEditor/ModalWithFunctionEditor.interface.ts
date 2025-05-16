@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,26 +11,10 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../../styles/variables.less');
-
-.ant-card.announcement-card {
-  width: 340px;
-  background: @announcement-background;
-  border: 1px solid @announcement-border;
-  border-radius: 8px;
-  box-shadow: none;
-  cursor: pointer;
-  .ant-card-body {
-    padding: 8px;
-  }
-
-  .announcement-icon {
-    color: @announcement-border;
-    margin: 2px 0 0;
-  }
-  .announcement-title {
-    width: 300px;
-    font-weight: 600;
-    margin: 0;
-  }
+export interface ModalWithFunctionEditorProps {
+  header: string;
+  value: string;
+  visible: boolean;
+  onSave: (value: string) => Promise<void> | void;
+  onCancel: () => void;
 }
