@@ -198,7 +198,7 @@ def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     Args:
         kwargs (Dict): kwargs
     """
-    if kwargs.get("query_group_by_"):
+    if "query_group_by_" in kwargs:
         group_by_ = kwargs.pop("query_group_by_")
     else:
         group_by_ = None
