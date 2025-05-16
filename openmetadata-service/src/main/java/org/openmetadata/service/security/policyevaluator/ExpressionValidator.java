@@ -47,25 +47,22 @@ public class ExpressionValidator {
           "ProcessBuilder",
           "java.lang.reflect");
 
-  /**
-   * Initializes the set of allowed functions by scanning RuleEvaluator class for @Function annotations.
-   *
-   * @return Set of allowed function names
-   */
   private static Set<String> initAllowedFunctions() {
     Set<String> allowedFunctions = new HashSet<>();
     try {
-      Class<?> ruleEvaluatorClass = RuleEvaluator.class;
-      for (Method method : ruleEvaluatorClass.getDeclaredMethods()) {
-        if (method.isAnnotationPresent(Function.class)) {
-          Function annotation = method.getAnnotation(Function.class);
-          allowedFunctions.add(annotation.name());
-          LOG.debug("Added allowed function: {}", annotation.name());
-        }
+      // Classes that provide functions for policy expressions
+      List<Class<?>> evaluatorClasses =
+          Arrays.asList(
+              RuleEvaluator.class,
+              Class.forName("org.openmetadata.service.events.subscription.AlertsRuleEvaluator"));
+
+      for (Class<?> evaluatorClass : evaluatorClasses) {
+        scanClassForFunctions(evaluatorClass, allowedFunctions);
       }
+
       LOG.info("Initialized {} allowed functions for policy expressions", allowedFunctions.size());
     } catch (Exception e) {
-      LOG.error("Failed to initialize allowed functions from RuleEvaluator", e);
+      LOG.error("Failed to initialize allowed functions", e);
       // Fallback to hardcoded list if reflection fails
       allowedFunctions.addAll(
           Arrays.asList(
@@ -77,19 +74,40 @@ public class ExpressionValidator {
               "matchAnyCertification",
               "matchTeam",
               "inAnyTeam",
-              "hasAnyRole"));
+              "hasAnyRole",
+              "matchAnyEventType",
+              "matchAnyFieldChange",
+              "matchAnySource",
+              "matchUpdatedBy",
+              "matchAnyOwnerName",
+              "matchAnyEntityFqn",
+              "matchAnyEntityId",
+              "matchTestResult",
+              "filterByTableNameTestCaseBelongsTo",
+              "getTestCaseStatusIfInTestSuite",
+              "matchIngestionPipelineState",
+              "matchPipelineState",
+              "matchAnyDomain",
+              "matchConversationUser"));
       LOG.info("Using fallback list of {} allowed functions", allowedFunctions.size());
     }
     return allowedFunctions;
   }
 
-  /**
-   * Validates that the expression is safe from code injection.
-   * Checks for dangerous patterns and ensures only allowed functions are used.
-   *
-   * @param expression The expression to validate
-   * @throws IllegalArgumentException if the expression is potentially dangerous
-   */
+  private static void scanClassForFunctions(Class<?> clazz, Set<String> allowedFunctions) {
+    try {
+      for (Method method : clazz.getDeclaredMethods()) {
+        if (method.isAnnotationPresent(Function.class)) {
+          Function annotation = method.getAnnotation(Function.class);
+          allowedFunctions.add(annotation.name());
+          LOG.debug("Added allowed function from {}: {}", clazz.getSimpleName(), annotation.name());
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to scan functions from class {}", clazz.getName(), e);
+    }
+  }
+
   public static void validateExpressionSafety(String expression) {
     if (expression == null || expression.trim().isEmpty()) {
       return;
@@ -102,7 +120,7 @@ public class ExpressionValidator {
             "Expression contains potentially unsafe pattern: "
                 + pattern
                 + ". "
-                + "Only use approved policy functions from the RuleEvaluator class.");
+                + "Only use approved policy functions with @Function annotations.");
       }
     }
 
@@ -125,7 +143,7 @@ public class ExpressionValidator {
               "Function '"
                   + functionName
                   + "' is not allowed in policy expressions. "
-                  + "Only use approved functions defined in the RuleEvaluator class with @Function annotations.");
+                  + "Only use approved functions with @Function annotations in evaluator classes.");
         }
       }
     }
@@ -133,11 +151,6 @@ public class ExpressionValidator {
     LOG.debug("Validated expression contains only allowed functions: {}", foundFunctions);
   }
 
-  /**
-   * Gets the set of allowed function names that can be used in expressions.
-   *
-   * @return Unmodifiable set of allowed function names
-   */
   public static Set<String> getAllowedFunctions() {
     return new HashSet<>(ALLOWED_FUNCTIONS);
   }

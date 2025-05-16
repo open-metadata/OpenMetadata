@@ -34,9 +34,6 @@ public class URLValidator {
       Pattern.compile(
           "^(127\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|169\\.254\\.|::1|[fF][cCdD]|[fF][eE][80-9a-fA-F]:).*");
 
-  private static final Pattern LOCALHOST_PATTERN =
-      Pattern.compile("^(localhost|127\\.|::1).*", Pattern.CASE_INSENSITIVE);
-
   public static void validateURL(String urlString) {
     if (urlString == null || urlString.trim().isEmpty()) {
       throw new BadRequestException("URL cannot be empty");
@@ -44,12 +41,6 @@ public class URLValidator {
 
     String host = getString(urlString);
 
-    // Check for localhost
-    if (LOCALHOST_PATTERN.matcher(host).matches()) {
-      throw new BadRequestException("URL targeting localhost not allowed");
-    }
-
-    // Check for private IP addresses
     if (PRIVATE_IP_PATTERN.matcher(host).matches()) {
       throw new BadRequestException("URL targeting private/internal network not allowed");
     }
