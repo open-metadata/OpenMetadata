@@ -741,7 +741,12 @@ class DbtSource(DbtServiceSource):
                                     type="table",
                                 ),
                                 lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage
+                                    source=LineageSource.DbtLineage,
+                                    sqlQuery=SqlQuery(
+                                        data_model_link.datamodel.sql.root
+                                    )
+                                    if data_model_link.datamodel.sql
+                                    else None,
                                 ),
                             )
                         )

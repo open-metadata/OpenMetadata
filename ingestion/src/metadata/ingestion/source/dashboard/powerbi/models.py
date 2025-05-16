@@ -186,6 +186,12 @@ class DatasetResponse(BaseModel):
     value: List[Dataset]
 
 
+class Dataflow(BaseModel):
+    id: str = Field(alias="objectId")
+    name: str
+    description: Optional[str] = None
+
+
 class Group(BaseModel):
     """
     PowerBI Group Model
@@ -199,6 +205,7 @@ class Group(BaseModel):
     dashboards: Optional[List[PowerBIDashboard]] = []
     reports: Optional[List[PowerBIReport]] = []
     datasets: Optional[List[Dataset]] = []
+    dataflows: Optional[List[Dataflow]] = []
 
 
 class GroupsResponse(BaseModel):
