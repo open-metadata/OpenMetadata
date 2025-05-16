@@ -18,8 +18,8 @@ public class MigrationUtil {
   private static String clusterAlias;
 
   public static void removeOldDataInsightsObjects() {
-    // From 1.6.6 we implemented the support for CLUSTER_ALIAS for Data Insights. The old objects
-    // were not cleaned then.
+    // From 1.6.6 we implemented the support for CLUSTER_ALIAS for Data Insights.
+    // The old objects without CLUSTER_ALIAS were not cleaned then.
     // From 1.7.1 we removed the ILM policy.
     LOG.info("Starting cleanup of old Data Insights objects");
     SearchRepository searchRepository = Entity.getSearchRepository();
