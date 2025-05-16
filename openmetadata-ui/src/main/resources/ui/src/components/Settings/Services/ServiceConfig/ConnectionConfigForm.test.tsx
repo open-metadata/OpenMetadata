@@ -193,6 +193,7 @@ jest.mock(
     useAirflowStatus: jest.fn().mockImplementation(() => ({
       reason: 'reason message',
       isAirflowAvailable: true,
+      platform: 'Argo',
     })),
   })
 );

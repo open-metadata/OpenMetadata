@@ -27,6 +27,7 @@ like this:
       type: Kafka
       bootstrapServers: localhost:9092
       schemaRegistryURL: http://localhost:8081
+      schemaRegistryTopicSuffixName: "suffix-name"
       consumerConfig:
         "ssl.truststore.password": "password"
       schemaRegistryConfig:
