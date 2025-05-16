@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Patch the Presidio recognizer results to make adapt them to specific use cases.
+"""
 from typing import List, Protocol, Sequence
 
 from presidio_analyzer import RecognizerResult

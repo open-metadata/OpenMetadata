@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Classifier for PII detection and sensitivity tagging.
+"""
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import (
@@ -64,7 +67,6 @@ class ColumnClassifier(ABC, Generic[T]):
         The scores are a mapping of class labels to their respective scores:
         higher scores indicate a higher likelihood of the class for the given inputs.
         """
-        pass
 
 
 # Implementations

@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Preprocessing functions for the classification tasks.
+"""
 import json
 from typing import Any, List, Mapping, Optional, Sequence
 
@@ -16,6 +19,7 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 
+# pylint: disable=too-many-return-statements
 def convert_to_str(value: Any) -> Optional[str]:
     """
     Convert the given value to a string. This is a conversion
@@ -23,22 +27,21 @@ def convert_to_str(value: Any) -> Optional[str]:
     """
     if isinstance(value, str):
         return value
-    elif isinstance(value, (int, float)):
+    if isinstance(value, (int, float)):
         return str(value)
-    elif isinstance(value, bytes):
+    if isinstance(value, bytes):
         return value.decode("utf-8", errors="ignore")
-    elif isinstance(value, (Sequence, Mapping)):
+    if isinstance(value, (Sequence, Mapping)):
         try:
             return json.dumps(value, default=str)
         except (TypeError, ValueError, OverflowError) as e:
             # If the value cannot be serialized to JSON, return None
             logger.warning(f"Failed to convert value to JSON: {e}")
             return None
-    elif value is None:
+    if value is None:
         # We want to skip None values, not convert them to "None"
         return None
-    else:
-        return None
+    return None
 
 
 def preprocess_values(values: Sequence[Any]) -> List[str]:

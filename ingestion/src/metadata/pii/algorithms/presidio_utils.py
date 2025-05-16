@@ -23,6 +23,7 @@ from presidio_analyzer import (
     predefined_recognizers,
 )
 from presidio_analyzer.nlp_engine import SpacyNlpEngine
+from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.logger import METADATA_LOGGER, pii_logger
@@ -80,15 +81,10 @@ def _load_spacy_model(model_name: str) -> None:
     try:
         _ = spacy.load(model_name)
     except OSError:
-        from spacy.cli.download import (
-            download,  # pyright: ignore[reportUnknownVariableType]
-        )
 
         logger.warning(f"Downloading {model_name} language model for the spaCy")
         download(model_name)
         _ = spacy.load(model_name)
-
-    return None
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[Type[EntityRecognizer]]:
