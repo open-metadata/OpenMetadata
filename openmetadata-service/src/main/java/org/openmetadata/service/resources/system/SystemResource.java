@@ -95,7 +95,9 @@ public class SystemResource {
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.isNlqEnabled =
-        config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled();
+        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
+            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
+            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {
