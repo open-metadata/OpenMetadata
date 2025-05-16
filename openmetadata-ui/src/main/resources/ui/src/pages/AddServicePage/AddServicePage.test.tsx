@@ -15,9 +15,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AIRFLOW_HYBRID } from '../../constants/constants';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../enums/service.enum';
-import * as useAirflowStatusHook from '../../hooks/useAirflowStatus';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -43,7 +42,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   }),
 }));
 
-jest.mock('../../hooks/useAirflowStatus', () => ({
+jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     platform: 'Argo',
   })),
@@ -410,26 +409,6 @@ describe('AddServicePage', () => {
 
     expect(postService).toHaveBeenCalled();
     expect(mockSetInlineAlertDetails).toHaveBeenCalled();
-  });
-
-  it('should call getExtraInfo if platform is Hybrid', () => {
-    const mockGetExtraInfo = jest.fn();
-    jest.spyOn(useAirflowStatusHook, 'useAirflowStatus').mockReturnValue({
-      platform: AIRFLOW_HYBRID,
-      isFetchingStatus: false,
-      isAirflowAvailable: true,
-      error: undefined,
-      reason: '',
-      fetchAirflowStatus: jest.fn(),
-    });
-
-    jest
-      .spyOn(serviceUtilClassBaseModule.default, 'getExtraInfo')
-      .mockImplementation(mockGetExtraInfo);
-
-    render(<AddServicePage />, { wrapper: MemoryRouter });
-
-    expect(mockGetExtraInfo).toHaveBeenCalled();
   });
 
   it('calls getExtraInfo when platform is Hybrid', () => {
