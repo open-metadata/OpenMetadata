@@ -2556,32 +2556,30 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
     try {
-      // Use force=true to delete the policy even if it's in use
-      Request request = new Request("DELETE", "/_ilm/policy/" + policyName + "?force=true");
+      // OpenSearch uses _plugins/_ism/policies/{policyName} for ISM policies
+      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
       os.org.opensearch.client.Response response =
           client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.debug("Deleted ILM policy {}", policyName);
-      } else if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
-      } else {
-        LOG.error(
-            "Failed to delete ILM policy {}. Status: {}",
-            policyName,
-            response.getStatusLine().getStatusCode());
-        throw new IOException(
-            "Failed to delete ILM policy: " + response.getStatusLine().getReasonPhrase());
+
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ISM policy {} does not exist", policyName);
+        return;
       }
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully deleted ISM policy: {}", policyName);
     } catch (ResponseException e) {
       if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+        LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
       } else {
         throw new IOException(
-            "Failed to delete ILM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
       }
     } catch (Exception e) {
-      LOG.error("Failed to delete ILM policy {}", policyName, e);
-      throw e;
+      LOG.error("Error deleting ISM policy: {}", policyName, e);
+      throw new IOException("Failed to delete ISM policy: " + e.getMessage());
     }
   }
 
@@ -2650,20 +2648,41 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
     try {
-      // Create a request to remove the ILM policy from matching indexes
-      Request request = new Request("POST", "/" + indexPattern + "/_plugins/_ism/remove");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new IOException(
-            "Failed to detach ILM policy from indexes: "
-                + response.getStatusLine().getReasonPhrase());
+      // 1. Get all indices matching the pattern
+      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
+      catRequest.addParameter("format", "json");
+      os.org.opensearch.client.Response catResponse =
+          client.getLowLevelClient().performRequest(catRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode indices =
+          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+      if (!indices.isArray()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
       }
-      LOG.info("Successfully detached ILM policy from indexes matching pattern: {}", indexPattern);
+      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
+        String indexName = indexNode.get("index").asText();
+        try {
+          // 2. Remove ISM policy by updating settings
+          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
+          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
+          os.org.opensearch.client.Response putResponse =
+              client.getLowLevelClient().performRequest(putSettings);
+          if (putResponse.getStatusLine().getStatusCode() == 200) {
+            LOG.info("Detached ISM policy from index: {}", indexName);
+          } else {
+            LOG.warn(
+                "Failed to detach ISM policy from index: {}. Status: {}",
+                indexName,
+                putResponse.getStatusLine().getStatusCode());
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ISM policy from index: {}", indexName, e);
+        }
+      }
     } catch (Exception e) {
-      LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
-      throw new IOException("Failed to detach ILM policy from indexes: " + e.getMessage());
+      LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
+      throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
     }
   }
 }
