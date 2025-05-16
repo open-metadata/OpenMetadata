@@ -44,7 +44,9 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn(),
+  useAirflowStatus: jest.fn().mockImplementation(() => ({
+    platform: 'Argo',
+  })),
 }));
 
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
