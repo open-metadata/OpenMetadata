@@ -190,7 +190,7 @@ const TagsContainerV2 = ({
 
   const renderTags = useMemo(
     () =>
-      isEmpty(tags?.[tagType]) ? null : (
+      isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
