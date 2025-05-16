@@ -44,6 +44,10 @@ const ExpandableCard = ({
 
   return (
     <Card
+      bodyStyle={{
+        // This will prevent the card body from having padding when there is no content
+        padding: children ? undefined : '0px',
+      }}
       className={classNames(
         'new-header-border-card w-full',
         {

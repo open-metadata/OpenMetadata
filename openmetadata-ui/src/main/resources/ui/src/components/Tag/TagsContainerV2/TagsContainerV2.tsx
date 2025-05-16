@@ -43,6 +43,7 @@ import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   CommentIconButton,
   EditIconButton,
+  PlusIconButton,
   RequestIconButton,
 } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -65,7 +66,6 @@ const TagsContainerV2 = ({
   tagType,
   displayType,
   layoutType,
-  showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
   columnData,
@@ -173,29 +173,34 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col className="m-t-xss" onClick={handleAddClick}>
-          <TagsV1
-            startWith={TAG_START_WITH.PLUS}
-            tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-            tagType={tagType}
-          />
-        </Col>
+        <PlusIconButton
+          className="m-t-xss"
+          data-testid="add-tag"
+          size="small"
+          title={t('label.add-entity', {
+            entity: isGlossaryType
+              ? t('label.glossary-term')
+              : t('label.tag-plural'),
+          })}
+          onClick={handleAddClick}
+        />
       ) : null,
-    [showAddTagButton]
+    [showAddTagButton, handleAddClick, t, isGlossaryType]
   );
 
   const renderTags = useMemo(
-    () => (
-      <Col span={24}>
-        <TagsViewer
-          displayType={displayType}
-          showNoDataPlaceholder={showNoDataPlaceholder}
-          sizeCap={sizeCap}
-          tagType={tagType}
-          tags={tags?.[tagType] ?? []}
-        />
-      </Col>
-    ),
+    () =>
+      isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
+        <Col span={24}>
+          <TagsViewer
+            displayType={displayType}
+            showNoDataPlaceholder={showNoDataPlaceholder}
+            sizeCap={sizeCap}
+            tagType={tagType}
+            tags={tags?.[tagType] ?? []}
+          />
+        </Col>
+      ),
     [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
   );
 
@@ -267,46 +272,43 @@ const TagsContainerV2 = ({
 
   const header = useMemo(() => {
     return (
-      showHeader && (
-        <Space>
-          <Typography.Text
-            className={classNames({
-              'text-sm font-medium': newLook,
-              'right-panel-label': !newLook,
-            })}>
-            {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
-          </Typography.Text>
-          {permission && (
-            <>
-              {!isEmpty(tags?.[tagType]) && !isEditTags && (
-                <EditIconButton
-                  data-testid="edit-button"
-                  newLook={newLook}
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity:
-                      tagType === TagSource.Classification
-                        ? t('label.tag-plural')
-                        : t('label.glossary-term'),
-                  })}
-                  onClick={handleAddClick}
-                />
-              )}
-              {showTaskHandler && (
-                <>
-                  {tagType === TagSource.Classification && requestTagElement}
-                  {conversationThreadElement}
-                </>
-              )}
-            </>
-          )}
-        </Space>
-      )
+      <Space>
+        <Typography.Text
+          className={classNames({
+            'text-sm font-medium': newLook,
+            'right-panel-label': !newLook,
+          })}>
+          {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
+        </Typography.Text>
+        {permission && (
+          <>
+            {addTagButton ?? (
+              <EditIconButton
+                data-testid="edit-button"
+                newLook={newLook}
+                size="small"
+                title={t('label.edit-entity', {
+                  entity:
+                    tagType === TagSource.Classification
+                      ? t('label.tag-plural')
+                      : t('label.glossary-term'),
+                })}
+                onClick={handleAddClick}
+              />
+            )}
+            {showTaskHandler && (
+              <>
+                {tagType === TagSource.Classification && requestTagElement}
+                {conversationThreadElement}
+              </>
+            )}
+          </>
+        )}
+      </Space>
     );
   }, [
     tags,
     tagType,
-    showHeader,
     isEditTags,
     permission,
     showTaskHandler,
@@ -372,13 +374,21 @@ const TagsContainerV2 = ({
     } else {
       return isHoriZontalLayout ? (
         horizontalLayout
-      ) : (
+      ) : showInlineEditButton || !isEmpty(renderTags) || !newLook ? (
         <Row data-testid="entity-tags">
-          {addTagButton}
+          {showAddTagButton && (
+            <Col className="m-t-xss" onClick={handleAddClick}>
+              <TagsV1
+                startWith={TAG_START_WITH.PLUS}
+                tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+                tagType={tagType}
+              />
+            </Col>
+          )}
           {renderTags}
-          {showInlineEditButton && <Col>{editTagButton}</Col>}
+          {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
         </Row>
-      );
+      ) : null;
     }
   }, [
     isEditTags,
@@ -429,17 +439,7 @@ const TagsContainerV2 = ({
         }}
         dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
         isExpandDisabled={isEmpty(tags?.[tagType])}>
-        {suggestionDataRender ?? (
-          <>
-            {tagBody}
-            {(children || showBottomEditButton) && (
-              <Space align="baseline" className="m-t-xs w-full" size="middle">
-                {showBottomEditButton && !showInlineEditButton && editTagButton}
-                {children}
-              </Space>
-            )}
-          </>
-        )}
+        {suggestionDataRender ?? tagBody}
       </ExpandableCard>
     );
   }
@@ -448,8 +448,6 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
-      {header}
-
       {suggestionDataRender ?? (
         <>
           {tagBody}

@@ -224,7 +224,7 @@ export class EntityClass {
     await page
       .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
-      .getByTestId('Add')
+      .getByTestId('add-tag')
       .isVisible();
   }
 
@@ -265,7 +265,7 @@ export class EntityClass {
     await page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
-      .getByTestId('Add')
+      .getByTestId('add-tag')
       .isVisible();
   }
 
@@ -281,7 +281,7 @@ export class EntityClass {
     await page
       .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
-      .getByTestId('Add')
+      .getByTestId('add-tag')
       .isVisible();
   }
 
@@ -321,7 +321,7 @@ export class EntityClass {
     await page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
-      .getByTestId('Add')
+      .getByTestId('add-tag')
       .isVisible();
   }
 

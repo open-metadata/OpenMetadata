@@ -26,7 +26,6 @@ export type TagsContainerV2Props = {
   columnData?: {
     fqn: string;
   };
-  showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
   children?: ReactElement;
