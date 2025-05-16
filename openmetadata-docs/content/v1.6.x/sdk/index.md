@@ -28,6 +28,8 @@ Here are the articles in this section:
 
 To access OpenMetadata APIs, one needs a token to authenticate and authorize API calls.
 
+Access the OpenAPI (Swagger) documentation at [OpenMetadata API](https://docs.open-metadata.org/swagger.html).
+
 ## How to get the JWT Token
 
 ### Bot Token
