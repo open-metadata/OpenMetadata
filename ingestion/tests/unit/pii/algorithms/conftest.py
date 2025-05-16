@@ -14,7 +14,10 @@ from typing import Callable
 import pytest
 from faker import Faker
 
-from metadata.pii.presidio_utils import build_analyzer_engine, set_presidio_logger_level
+from metadata.pii.algorithms.presidio_utils import (
+    build_analyzer_engine,
+    set_presidio_logger_level,
+)
 
 
 @pytest.fixture(scope="module")
