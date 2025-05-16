@@ -162,11 +162,10 @@ class DbtSource(DbtServiceSource):
                 ) or self.metadata.get_reference_by_email(email=dbt_owner)
                 if owner_ref:
                     return owner_ref
-                else:
-                    logger.warning(
-                        "Unable to ingest owner from DBT since no user or"
-                        f" team was found with name {dbt_owner}"
-                    )
+                logger.warning(
+                    "Unable to ingest owner from DBT since no user or"
+                    f" team was found with name {dbt_owner}"
+                )
             elif dbt_owner and isinstance(dbt_owner, list):
                 owner_list = EntityReferenceList(root=[])
                 for owner_name in dbt_owner:
