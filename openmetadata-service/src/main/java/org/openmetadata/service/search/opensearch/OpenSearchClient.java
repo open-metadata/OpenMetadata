@@ -2556,8 +2556,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
     try {
-      // OpenSearch uses the low-level REST client for ILM operations
-      Request request = new Request("DELETE", "/_ilm/policy/" + policyName);
+      // Use force=true to delete the policy even if it's in use
+      Request request = new Request("DELETE", "/_ilm/policy/" + policyName + "?force=true");
       os.org.opensearch.client.Response response =
           client.getLowLevelClient().performRequest(request);
       if (response.getStatusLine().getStatusCode() == 200) {
@@ -2575,6 +2575,9 @@ public class OpenSearchClient implements SearchClient {
     } catch (ResponseException e) {
       if (e.getResponse().getStatusLine().getStatusCode() == 404) {
         LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        throw new IOException(
+            "Failed to delete ILM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
       }
     } catch (Exception e) {
       LOG.error("Failed to delete ILM policy {}", policyName, e);
@@ -2604,6 +2607,10 @@ public class OpenSearchClient implements SearchClient {
     } catch (ResponseException e) {
       if (e.getResponse().getStatusLine().getStatusCode() == 404) {
         LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        throw new IOException(
+            "Failed to delete index template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
       }
     } catch (Exception e) {
       LOG.error("Failed to delete index template {}", templateName, e);
@@ -2614,29 +2621,49 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteComponentTemplate(String componentTemplateName) throws IOException {
     try {
-      // OpenSearch uses the low-level REST client for component template operations
       Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
       os.org.opensearch.client.Response response =
           client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.debug("Deleted component template {}", componentTemplateName);
-      } else if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component Template {} does not exist. Skipping deletion.", componentTemplateName);
-      } else {
-        LOG.error(
-            "Failed to delete component template {}. Status: {}",
-            componentTemplateName,
-            response.getStatusLine().getStatusCode());
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+      if (response.getStatusLine().getStatusCode() != 200) {
         throw new IOException(
             "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
       }
+      LOG.info("Successfully deleted component template: {}", componentTemplateName);
     } catch (ResponseException e) {
       if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component Template {} does not exist. Skipping deletion.", componentTemplateName);
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to delete component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
       }
     } catch (Exception e) {
-      LOG.error("Failed to delete component template {}", componentTemplateName, e);
-      throw e;
+      LOG.error("Error deleting component template: {}", componentTemplateName, e);
+      throw new IOException("Failed to delete component template: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    try {
+      // Create a request to remove the ILM policy from matching indexes
+      Request request = new Request("POST", "/" + indexPattern + "/_plugins/_ism/remove");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to detach ILM policy from indexes: "
+                + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully detached ILM policy from indexes matching pattern: {}", indexPattern);
+    } catch (Exception e) {
+      LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
+      throw new IOException("Failed to detach ILM policy from indexes: " + e.getMessage());
     }
   }
 }

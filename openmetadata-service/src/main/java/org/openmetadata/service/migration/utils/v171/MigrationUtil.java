@@ -32,7 +32,7 @@ public class MigrationUtil {
         deleteDataInsightsDataStreams(searchClient);
         deleteIndexTemplate(searchClient);
         deleteComponentTemplate(searchClient);
-        deleteIlmPolicy(searchClient, clusterAlias);
+        deleteIlmPolicy(searchClient, null);
         LOG.info("Successfully completed Data Insights objects cleanup");
       } catch (Exception e) {
         LOG.error("Error deleting Data Insights objects", e);
@@ -64,7 +64,6 @@ public class MigrationUtil {
         try {
           if (!name.startsWith(clusterAlias)) {
             searchClient.deleteDataStream(name);
-            LOG.info("Successfully deleted data stream: {}", name);
           }
         } catch (Exception e) {
           LOG.error(String.format("Error deleting %s Data Stream", name), e);
@@ -79,8 +78,11 @@ public class MigrationUtil {
   @SneakyThrows
   private static void deleteIlmPolicy(SearchClient searchClient, String clusterAlias) {
     try {
+      searchClient.removeILMFromIndexTemplate(
+          getClusteredPrefix(clusterAlias, INDEX_TEMPLATE_NAME));
+      searchClient.dettachIlmPolicyFromIndexes(
+          String.format("*%s-*", getClusteredPrefix(clusterAlias, DATA_INSIGHTS_PREFIX)));
       searchClient.deleteILMPolicy(getClusteredPrefix(clusterAlias, ILM_POLICY_NAME));
-      LOG.info(String.format("Successfully deleted %s Policy", ILM_POLICY_NAME));
     } catch (Exception e) {
       LOG.error("Error deleting ILM policies", e);
       throw e;
@@ -91,7 +93,6 @@ public class MigrationUtil {
   private static void deleteIndexTemplate(SearchClient searchClient) {
     try {
       searchClient.deleteIndexTemplate(INDEX_TEMPLATE_NAME);
-      LOG.info("Successfully deleted template: {}", INDEX_TEMPLATE_NAME);
     } catch (Exception e) {
       LOG.error("Error deleting index template", e);
       throw e;
@@ -103,7 +104,6 @@ public class MigrationUtil {
     for (String componentName : COMPONENT_TEMPLATES_NAMES) {
       try {
         searchClient.deleteComponentTemplate(componentName);
-        LOG.info("Successfully deleted component template: {}", componentName);
       } catch (Exception e) {
         LOG.error("Error deleting component template", e);
         throw e;
