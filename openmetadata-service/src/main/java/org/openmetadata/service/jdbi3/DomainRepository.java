@@ -15,8 +15,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,11 +31,14 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
@@ -111,26 +116,109 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    BulkOperationResult result =
-        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, true);
-    // Add assets to domain
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
-      for (EntityReference ref : listOrEmpty(request.getAssets())) {
-        LineageUtil.addDomainLineage(ref.getId(), ref.getType(), domain.getEntityReference());
-      }
-    }
-    return result;
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
   }
 
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+  }
+
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId,
+      String fromEntity,
+      Relationship relationship,
+      BulkAssets request,
+      boolean isAdd) {
     BulkOperationResult result =
-        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, true);
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
-      for (EntityReference ref : listOrEmpty(request.getAssets())) {
-        LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), domain.getEntityReference());
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+    // Validate Assets
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      // Clear existing domain links, as the entity can belong to only one domain
+      EntityReference oldDomain =
+          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+      deleteTo(ref.getId(), ref.getType(), relationship, fromEntity);
+      LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), oldDomain);
+
+      // Clear existing dataProduct links associated to diff domain
+      List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+
+      if (!dataProducts.isEmpty()) {
+        // Map dataProduct -> domain
+        Map<UUID, UUID> associatedDomains =
+            daoCollection
+                .relationshipDAO()
+                .findFromBatch(
+                    dataProducts.stream()
+                        .map(dp -> dp.getId().toString())
+                        .collect(Collectors.toList()),
+                    relationship.ordinal(),
+                    DOMAIN)
+                .stream()
+                .collect(
+                    Collectors.toMap(
+                        rec -> UUID.fromString(rec.getToId()),
+                        rec -> UUID.fromString(rec.getFromId())));
+        // For isAdd, filter only those data products linked to a different domain.
+        // For isRemove, delete all data products.
+        List<EntityReference> dataProductsToDelete =
+            isAdd
+                ? dataProducts.stream()
+                    .filter(
+                        dataProduct -> {
+                          UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
+                          return associatedDomainId != null && !associatedDomainId.equals(entityId);
+                        })
+                    .collect(Collectors.toList())
+                : dataProducts; // For remove operation, delete all data products
+
+        if (!dataProductsToDelete.isEmpty()) {
+          daoCollection
+              .relationshipDAO()
+              .bulkRemoveFromRelationship(
+                  ref.getId(),
+                  dataProductsToDelete.stream()
+                      .map(EntityReference::getId)
+                      .collect(Collectors.toList()),
+                  DATA_PRODUCT,
+                  ref.getType(),
+                  relationship.ordinal());
+          LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+        }
       }
+
+      if (isAdd) {
+        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+        EntityReference domainRef = getEntityReferenceById(DOMAIN, entityId, ALL);
+        LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
+      }
+
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
     }
+
+    result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of assets
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(
+              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      ChangeEvent changeEvent =
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
     return result;
   }
 
