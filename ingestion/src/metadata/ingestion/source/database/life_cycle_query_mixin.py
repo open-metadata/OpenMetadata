@@ -128,6 +128,15 @@ class LifeCycleQueryMixin:
                 )
             )
 
+    def get_life_cycle_query(self):
+        """
+        Get the life cycle query
+        """
+        return self.life_cycle_query.format(
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+        )
+
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
         Get the life cycle data of the table
