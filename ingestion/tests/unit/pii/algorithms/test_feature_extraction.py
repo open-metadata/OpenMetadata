@@ -8,6 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import Mapping, Optional
+
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
     extract_pii_from_column_names,
@@ -15,82 +17,214 @@ from metadata.pii.algorithms.feature_extraction import (
     split_column_name,
 )
 from metadata.pii.algorithms.presidio_patches import url_patcher
-from metadata.pii.algorithms.presidio_utils import (
-    build_analyzer_engine,
-    set_presidio_logger_level,
-)
 from metadata.pii.algorithms.tags import PIITag
 
 
-def test_presidio_pii_tag_extractor_extracts_global_pii_tags(fake):
-    """
-    Test PresidioPIITagsExtractor with global PII tags and no further context
-    provided to the extractor.
-    """
-    set_presidio_logger_level()
-    analyzer = build_analyzer_engine()
-
-    # MEDICAL_LICENSE and CRYPTO are excluded as they are not implemented in faker
-    # NRP is excluded as it not clear what to use for it
-    entity_attr = {
-        PIITag.CREDIT_CARD: [fake.credit_card_number],
-        PIITag.DATE_TIME: [fake.date, fake.date_time],
-        PIITag.EMAIL_ADDRESS: [fake.email],
-        PIITag.IBAN_CODE: [fake.iban],
-        PIITag.IP_ADDRESS: [fake.ipv4, fake.ipv6],
-        PIITag.PHONE_NUMBER: [fake.phone_number],
-        PIITag.URL: [fake.url],
-        PIITag.LOCATION: [fake.country],
-        PIITag.PERSON: [fake.name],
-    }
-
-    for pii_tag, funcs in entity_attr.items():
-        for func in funcs:
-            samples = [str(func()) for _ in range(10)]
-            extracted_pii_tags = extract_pii_tags(analyzer, samples)
-            winner_pii_tag = max(
-                extracted_pii_tags, key=extracted_pii_tags.get, default=None
-            )
-            assert winner_pii_tag == pii_tag, (pii_tag, samples, extracted_pii_tags)
+def get_top_pii_tag(extracted: Mapping[PIITag, float]) -> Optional[PIITag]:
+    return max(extracted, key=extracted.get, default=None)
 
 
-def test_presidio_pii_tag_extractor_extracts_usa_pii_tags(local_fake_factory):
+# Test cases for non-country specific PII tags
 
-    fake = local_fake_factory("en_US")
-    set_presidio_logger_level()
-    analyzer = build_analyzer_engine()
 
-    entity_attr = {
-        # PIITag.US_BANK_NUMBER: [fake.us_],
-        PIITag.US_DRIVER_LICENSE: [fake.license_plate],
-        PIITag.US_ITIN: [fake.itin],
-        PIITag.US_PASSPORT: [fake.passport_number],
-        PIITag.US_SSN: [fake.ssn],
-    }
+def test_credit_card_extraction(fake, analyzer):
+    samples = [fake.credit_card_number() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.CREDIT_CARD, (
+        PIITag.CREDIT_CARD,
+        samples,
+        extracted,
+    )
 
-    # To recognize any of the following PII tags, we need to provide context,
-    # otherwise they are confused with other tags: SSN, PASSPORT, ITIN are all
-    # 9-digit numbers with
-    entity_context = {
-        PIITag.US_DRIVER_LICENSE: ["license", "document"],
-        PIITag.US_PASSPORT: ["passport", "document"],
-        PIITag.US_SSN: ["ssn"],
-        PIITag.US_ITIN: ["itin"],
-    }
 
-    for pii_tag, funcs in entity_attr.items():
-        context = entity_context.get(pii_tag, [])
-        for func in funcs:
-            samples = [str(func()) for _ in range(10)]
-            extracted_pii_tags = extract_pii_tags(
-                analyzer,
-                samples,
-                context=context,
-            )
-            winner_pii_tag = max(
-                extracted_pii_tags, key=extracted_pii_tags.get, default=None
-            )
-            assert winner_pii_tag == pii_tag, (pii_tag, samples, extracted_pii_tags)
+def test_date_time_extraction_with_date(fake, analyzer):
+    samples = [str(fake.date()) for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.DATE_TIME, (
+        PIITag.DATE_TIME,
+        samples,
+        extracted,
+    )
+
+
+def test_date_time_extraction_with_datetime(fake, analyzer):
+    samples = [str(fake.date_time()) for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.DATE_TIME, (
+        PIITag.DATE_TIME,
+        samples,
+        extracted,
+    )
+
+
+def test_email_address_extraction(fake, analyzer):
+    samples = [fake.email() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.EMAIL_ADDRESS, (
+        PIITag.EMAIL_ADDRESS,
+        samples,
+        extracted,
+    )
+
+
+def test_iban_code_extraction(fake, analyzer):
+    samples = [fake.iban() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.IBAN_CODE, (
+        PIITag.IBAN_CODE,
+        samples,
+        extracted,
+    )
+
+
+def test_ip_address_extraction_with_ipv4(fake, analyzer):
+    samples = [fake.ipv4() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.IP_ADDRESS, (
+        PIITag.IP_ADDRESS,
+        samples,
+        extracted,
+    )
+
+
+def test_ip_address_extraction_with_ipv6(fake, analyzer):
+    samples = [fake.ipv6() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.IP_ADDRESS, (
+        PIITag.IP_ADDRESS,
+        samples,
+        extracted,
+    )
+
+
+def test_phone_number_extraction(fake, analyzer):
+    samples = [fake.phone_number() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.PHONE_NUMBER, (
+        PIITag.PHONE_NUMBER,
+        samples,
+        extracted,
+    )
+
+
+def test_url_extraction(fake, analyzer):
+    samples = [fake.url() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.URL, (PIITag.URL, samples, extracted)
+
+
+def test_location_extraction(fake, analyzer):
+    samples = [fake.country() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.LOCATION, (
+        PIITag.LOCATION,
+        samples,
+        extracted,
+    )
+
+
+def test_person_extraction(fake, analyzer):
+    samples = [fake.name() for _ in range(100)]
+    extracted = extract_pii_tags(analyzer, samples)
+    assert get_top_pii_tag(extracted) == PIITag.PERSON, (
+        PIITag.PERSON,
+        samples,
+        extracted,
+    )
+
+
+# Extraction with patched URL
+def test_email_address_extraction_does_not_extract_url(fake, analyzer):
+    samples = [fake.email() for _ in range(100)]
+    # Patch the URL to avoid false positives
+    extracted = extract_pii_tags(
+        analyzer, samples, recognizer_result_patcher=url_patcher
+    )
+    extracted_tags = set(extracted)
+
+    assert (
+        PIITag.EMAIL_ADDRESS in extracted_tags and PIITag.URL not in extracted_tags
+    ), (
+        PIITag.EMAIL_ADDRESS,
+        samples,
+        extracted,
+    )
+
+
+# USA-specific PII tags
+
+
+def test_us_driver_license_extraction(fake_en_us, analyzer):
+    # We need more samples to remove false positives
+    samples = [fake_en_us.license_plate() for _ in range(100)]
+    context = ["license", "driver"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.US_DRIVER_LICENSE, (
+        PIITag.US_DRIVER_LICENSE,
+        samples,
+        extracted,
+    )
+
+
+def test_us_itin_extraction(fake_en_us, analyzer):
+    samples = [fake_en_us.itin() for _ in range(100)]
+    context = ["itin"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.US_ITIN, (
+        PIITag.US_ITIN,
+        samples,
+        extracted,
+    )
+
+
+def test_us_passport_extraction(fake_en_us, analyzer):
+    samples = [fake_en_us.passport_number() for _ in range(100)]
+    context = ["passport", "document"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.US_PASSPORT, (
+        PIITag.US_PASSPORT,
+        samples,
+        extracted,
+    )
+
+
+def test_us_ssn_extraction(fake_en_us, analyzer):
+    samples = [fake_en_us.ssn() for _ in range(100)]
+    context = ["ssn"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.US_SSN, (
+        PIITag.US_SSN,
+        samples,
+        extracted,
+    )
+
+
+# Indian specific PII tags
+def test_aadhaar_extraction(analyzer):
+    # fake = local_fake_factory("en_IN")  # Use Indian locale
+    # samples = [fake.aadhaar_id() for _ in range(100)]
+    # Unfortunately, the generated aadhaar_id by Faker are not valid
+    samples = [
+        "466299546357",
+        "967638147560",
+        "988307845186",
+        "6622-2350-9284",
+        "2161 6729 3627",
+        "8384-2795-9970",
+        "6213-3631-4249",
+        "1667-9750-5883",
+        "0249-3285-1294",
+    ]
+    context = ["aadhaar", "govt id", "uidai"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.IN_AADHAAR, (
+        PIITag.IN_AADHAAR,
+        samples,
+        extracted,
+    )
+
+
+# TODO: Add more test for local entities
 
 
 def test_extract_pii_from_column_names():
@@ -125,17 +259,6 @@ def test_extract_pii_from_column_names():
         for column_name in column_names:
             extracted_pii_tags = extract_pii_from_column_names(column_name, patterns)
             assert pii_tag in extracted_pii_tags, (pii_tag, column_name)
-
-
-def test_extract_pii_from_email(fake):
-    set_presidio_logger_level()
-    analyzer = build_analyzer_engine()
-
-    emails = [fake.email() for _ in range(10)]
-    extracted_pii_tags = extract_pii_tags(
-        analyzer, emails, recognizer_result_patcher=url_patcher
-    )
-    assert set(extracted_pii_tags.keys()) == {PIITag.EMAIL_ADDRESS}
 
 
 def test_split_column_name():
