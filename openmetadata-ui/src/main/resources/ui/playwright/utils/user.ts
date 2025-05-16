@@ -532,14 +532,14 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
@@ -617,14 +617,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
   ).toBeVisible();
 
