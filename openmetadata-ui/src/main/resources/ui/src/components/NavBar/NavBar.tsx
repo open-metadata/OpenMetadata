@@ -56,7 +56,11 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import {
+  BackgroundJob,
+  EnumCleanupArgs,
+  JobType,
+} from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
@@ -244,6 +248,18 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
+          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          if (!enumCleanupArgs.entityType) {
+            showErrorToast(
+              {
+                isAxiosError: true,
+                message: 'Invalid job arguments: entityType is required',
+              } as AxiosError,
+              t('message.unexpected-error')
+            );
+
+            break;
+          }
           body = t('message.custom-property-update', {
             propertyName: jobArgs.propertyName,
             entityName: jobArgs.entityType,
@@ -252,7 +268,7 @@ const NavBar = () => {
 
           path = getSettingPath(
             GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-            getCustomPropertyEntityPathname(jobArgs.entityType)
+            getCustomPropertyEntityPathname(enumCleanupArgs.entityType)
           );
         }
 

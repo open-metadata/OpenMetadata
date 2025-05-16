@@ -40,6 +40,11 @@ export interface BackgroundJob {
      */
     methodName: string;
     /**
+     * Timestamp when the job was run in Unix epoch time milliseconds (default: as soon as
+     * possible).
+     */
+    runAt?: number;
+    /**
      * Current status of the job.
      */
     status: Status;
@@ -58,15 +63,16 @@ export interface EnumCleanupArgs {
     /**
      * Type of the entity.
      */
-    entityType: string;
+    entityType?: string;
     /**
      * Name of the property.
      */
-    propertyName: string;
+    propertyName?: string;
     /**
      * List of removed enum keys.
      */
-    removedEnumKeys: string[];
+    removedEnumKeys?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -74,6 +80,8 @@ export interface EnumCleanupArgs {
  */
 export enum JobType {
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
+    DeleteEntity = "DELETE_ENTITY",
+    DeleteToken = "DELETE_TOKEN",
 }
 
 /**
