@@ -15,9 +15,10 @@ Validator for column values to be unique test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
 
+from ingestion.src.metadata.profiler.orm.registry import Dialects
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
@@ -57,7 +58,18 @@ class ColumnValuesToBeUniqueValidator(
         )  # type: ignore
 
         try:
-            self.value = dict(self.runner.dispatch_query_select_first(count, unique_count.scalar_subquery().label("uniqueCount")))  # type: ignore
+            if self.runner.dialect == Dialects.Oracle:
+                query_group_by_ = [literal_column("2")]
+            else:
+                query_group_by_ = None
+
+            self.value = dict(
+                self.runner.dispatch_query_select_first(
+                    count,
+                    unique_count.scalar_subquery().label("uniqueCount"),
+                    query_group_by_=query_group_by_,
+                )
+            )  # type: ignore
             res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
