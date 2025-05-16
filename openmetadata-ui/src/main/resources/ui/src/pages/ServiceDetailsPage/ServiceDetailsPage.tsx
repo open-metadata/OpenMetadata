@@ -44,6 +44,7 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
+  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -149,7 +150,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable } = useMemo(
+  const { isAirflowAvailable, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -1453,7 +1454,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    if (platform === AIRFLOW_HYBRID) {
+      serviceUtilClassBase.getExtraInfo();
+    }
   }, []);
 
   if (isLoading) {
