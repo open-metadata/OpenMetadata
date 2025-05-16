@@ -144,13 +144,19 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
+import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
+import os.org.opensearch.client.indices.DataStream;
+import os.org.opensearch.client.indices.DeleteDataStreamRequest;
+import os.org.opensearch.client.indices.GetDataStreamRequest;
+import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
@@ -2518,5 +2524,119 @@ public class OpenSearchClient implements SearchClient {
     os.org.opensearch.action.search.SearchResponse searchResponse =
         client.search(searchRequest, RequestOptions.DEFAULT);
     return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+  }
+
+  @Override
+  public List<String> getDataStreams(String prefix) throws IOException {
+    try {
+      GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
+      GetDataStreamResponse response =
+          client.indices().getDataStream(request, RequestOptions.DEFAULT);
+      return response.getDataStreams().stream()
+          .map(DataStream::getName)
+          .collect(Collectors.toList());
+    } catch (Exception e) {
+      LOG.error("Failed to get data streams with prefix {}", prefix, e);
+      return Collections.emptyList();
+    }
+  }
+
+  @Override
+  public void deleteDataStream(String dataStreamName) throws IOException {
+    try {
+      DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
+      client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted data stream {}", dataStreamName);
+    } catch (Exception e) {
+      LOG.error("Failed to delete data stream {}", dataStreamName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteILMPolicy(String policyName) throws IOException {
+    try {
+      // OpenSearch uses the low-level REST client for ILM operations
+      Request request = new Request("DELETE", "/_ilm/policy/" + policyName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted ILM policy {}", policyName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        LOG.error(
+            "Failed to delete ILM policy {}. Status: {}",
+            policyName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete ILM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete ILM policy {}", policyName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteIndexTemplate(String templateName) throws IOException {
+    try {
+      // OpenSearch uses the low-level REST client for index template operations
+      Request request = new Request("DELETE", "/_index_template/" + templateName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted index template {}", templateName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        LOG.error(
+            "Failed to delete index template {}. Status: {}",
+            templateName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index template {}", templateName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      // OpenSearch uses the low-level REST client for component template operations
+      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted component template {}", componentTemplateName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component Template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        LOG.error(
+            "Failed to delete component template {}. Status: {}",
+            componentTemplateName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component Template {} does not exist. Skipping deletion.", componentTemplateName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete component template {}", componentTemplateName, e);
+      throw e;
+    }
   }
 }

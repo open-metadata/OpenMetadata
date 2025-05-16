@@ -363,4 +363,60 @@ public interface SearchClient {
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
+
+  /**
+   * Get a list of data stream names that match the given prefix.
+   *
+   * @param prefix The prefix to match data stream names against
+   * @return List of data stream names that match the prefix
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default List<String> getDataStreams(String prefix) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete data streams that match the given name or pattern.
+   *
+   * @param dataStreamName The name or pattern of data streams to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteDataStream(String dataStreamName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an Index Lifecycle Management (ILM) policy.
+   *
+   * @param policyName The name of the ILM policy to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteILMPolicy(String policyName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an index template.
+   *
+   * @param templateName The name of the index template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteIndexTemplate(String templateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete a component template.
+   *
+   * @param componentTemplateName The name of the component template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 }
