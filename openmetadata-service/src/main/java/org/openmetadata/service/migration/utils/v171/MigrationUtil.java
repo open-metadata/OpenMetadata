@@ -78,8 +78,9 @@ public class MigrationUtil {
   @SneakyThrows
   private static void deleteIlmPolicy(SearchClient searchClient, String clusterAlias) {
     try {
-      searchClient.removeILMFromIndexTemplate(
-          getClusteredPrefix(clusterAlias, INDEX_TEMPLATE_NAME));
+      searchClient.removeILMFromComponentTemplate(
+          String.format(
+              "%s-%s", getClusteredPrefix(clusterAlias, INDEX_TEMPLATE_NAME), "settings"));
       searchClient.dettachIlmPolicyFromIndexes(
           String.format("*%s-*", getClusteredPrefix(clusterAlias, DATA_INSIGHTS_PREFIX)));
       searchClient.deleteILMPolicy(getClusteredPrefix(clusterAlias, ILM_POLICY_NAME));

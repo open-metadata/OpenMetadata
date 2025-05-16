@@ -432,13 +432,13 @@ public interface SearchClient {
   }
 
   /**
-   * Removes ILM policy from an index template while preserving all other settings.
+   * Removes ILM policy from a component template while preserving all other settings.
    * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
    *
-   * @param templateName The name of the index template to update
+   * @param componentTemplateName The name of the component template to update
    * @throws IOException if there is an error communicating with the search engine
    */
-  default void removeILMFromIndexTemplate(String templateName) throws IOException {
+  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
 }

@@ -2579,52 +2579,56 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void removeILMFromIndexTemplate(String templateName) throws IOException {
+  public void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     try {
-      // 1. Get the existing template
-      Request getRequest = new Request("GET", "/_index_template/" + templateName);
+      // 1. Get the existing component template
+      Request getRequest = new Request("GET", "/_component_template/" + componentTemplateName);
       es.org.elasticsearch.client.Response getResponse =
           client.getLowLevelClient().performRequest(getRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
       com.fasterxml.jackson.databind.JsonNode templateNode =
           org.openmetadata.service.util.JsonUtils.readTree(responseBody);
 
-      if (!templateNode.has("index_templates") || templateNode.get("index_templates").isEmpty()) {
-        LOG.warn("Index template {} does not exist", templateName);
+      if (!templateNode.has("component_templates")
+          || templateNode.get("component_templates").isEmpty()) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
         return;
       }
 
       // 2. Update the template in place
       com.fasterxml.jackson.databind.JsonNode template =
-          templateNode.get("index_templates").get(0).get("index_template");
+          templateNode.get("component_templates").get(0).get("component_template");
       if (template.has("template") && template.get("template").has("settings")) {
         ((com.fasterxml.jackson.databind.node.ObjectNode) template.get("template").get("settings"))
             .put("index.lifecycle.name", (String) null);
       }
 
-      // 3. Update the template
-      Request putRequest = new Request("PUT", "/_index_template/" + templateName);
+      // 3. Update the component template
+      Request putRequest = new Request("PUT", "/_component_template/" + componentTemplateName);
       putRequest.setJsonEntity(template.toString());
       es.org.elasticsearch.client.Response putResponse =
           client.getLowLevelClient().performRequest(putRequest);
 
       if (putResponse.getStatusLine().getStatusCode() == 200) {
-        LOG.info("Successfully removed ILM policy from index template: {}", templateName);
+        LOG.info(
+            "Successfully removed ILM policy from component template: {}", componentTemplateName);
       } else {
         throw new IOException(
-            "Failed to update index template: " + putResponse.getStatusLine().getReasonPhrase());
+            "Failed to update component template: "
+                + putResponse.getStatusLine().getReasonPhrase());
       }
     } catch (ResponseException e) {
       if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
       } else {
         throw new IOException(
-            "Failed to remove ILM from Index Template: "
+            "Failed to remove ILM from component template: "
                 + e.getResponse().getStatusLine().getReasonPhrase());
       }
     } catch (Exception e) {
-      LOG.error("Error removing ILM policy from index template: {}", templateName, e);
-      throw new IOException("Failed to remove ILM policy from index template: " + e.getMessage());
+      LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
+      throw new IOException(
+          "Failed to remove ILM policy from component template: " + e.getMessage());
     }
   }
 }
