@@ -51,7 +51,13 @@ def build_analyzer_engine(
         nlp_engine=nlp_engine, supported_languages=[SUPPORTED_LANG]
     )
     for recognizer in _get_all_pattern_recognizers():
-        # Add the recognizer to the engine
+        # Register the recognizer by setting the appropriate language.
+        # Presidio recognizers are language-dependent: when analyzing text,
+        # Presidio filters recognizers based on the specified language, assuming
+        # language-specific patterns (e.g., for country-specific formats).
+        # However, our use case involves analyzing structured table data rather than free text,
+        # so this language-based approach doesn't always make sense.
+        # To fix this, we manually set the recognizer supported language to the one we want.
         recognizer.supported_language = SUPPORTED_LANG
         analyzer_engine.registry.add_recognizer(recognizer)
 
