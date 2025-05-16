@@ -338,10 +338,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
         query = self._build_query(
             columns,
-            self._build_table(
-                "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
-            ),
+            self._build_table("__TABLES__", self.schema_name),
             where_clause,
         )
         res = self.runner._session.execute(query).first()

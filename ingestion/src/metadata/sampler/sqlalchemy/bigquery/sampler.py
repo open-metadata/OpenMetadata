@@ -17,7 +17,8 @@ from typing import Dict, Optional, Union
 from sqlalchemy import Column
 from sqlalchemy import Table as SqaTable
 from sqlalchemy import text
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
@@ -128,3 +129,15 @@ class BigQuerySampler(SQASampler):
             )
 
         return super().get_sample_query(column=column)
+
+    def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
+        """
+        Either return a sampled CTE of table, or
+        the full table if no sampling is required.
+        """
+        ds = super().get_dataset(column=column, **__)
+        new_schema = f"{self.entity.database.name}.{self.entity.databaseSchema.name}"
+        if ds.__table__.schema != new_schema:
+            ds.__table__.schema = new_schema
+            ds.__table_args__["schema"] = new_schema
+        return ds
