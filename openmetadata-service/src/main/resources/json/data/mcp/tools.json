@@ -2,22 +2,22 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Search for metadata in the OpenMetadata catalog",
+      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'.",
       "parameters": {
         "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Search query string"
+            "description": "Keywords to use for searching."
           },
           "entity_type": {
             "type": "string",
-            "description": "Optional entity type to filter search"
+            "description": "Optional entity type to filter results. The OpenMetadata entities are categorized as follows: Service Entities include databaseService, messagingService, apiService, dashboardService, pipelineService, storageService, mlmodelService, metadataService, and searchService; Data Asset Entities include apiCollection, apiEndpoint, table, storedProcedure, database, databaseSchema, dashboard, dashboardDataModel, pipeline, chart, topic, searchIndex, mlmodel, and container; User Entities include user and team; Domain entities include domain and dataProduct; and Governance entities include metric, glossary, and glossaryTerm."
           },
           "limit": {
             "type": "integer",
-            "description": "Maximum number of results to return"
+            "description": "Maximum number of results to return. Default is 10. Try to keep this number low unless the user asks for more."
           }
         },
         "required": [
