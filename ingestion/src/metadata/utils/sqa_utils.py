@@ -191,6 +191,21 @@ def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     return filter_
 
 
+def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
+    """Get query group by from kwargs. IMPORTANT, this will update the original dictionary
+    passed in the function argument.
+
+    Args:
+        kwargs (Dict): kwargs
+    """
+    if "query_group_by_" in kwargs:
+        group_by_ = kwargs.pop("query_group_by_")
+    else:
+        group_by_ = None
+
+    return group_by_
+
+
 def handle_array(
     query: Query, column: Column, table: Union[DeclarativeMeta, AliasedClass]
 ) -> Query:
