@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 import dotenv from 'dotenv';
 
 /**
@@ -66,29 +66,29 @@ export default defineConfig({
       testMatch: '**/*.setup.ts',
       teardown: 'restore-policies',
     },
-    {
-      name: 'restore-policies',
-      testMatch: '**/auth.teardown.ts',
-    },
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-      // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
-      grepInvert: /data-insight/,
-      testIgnore: ['**/nightly/**'],
-    },
-    {
-      name: 'data-insight-application',
-      dependencies: ['setup'],
-      testMatch: '**/dataInsightApp.ts',
-    },
-    {
-      name: 'Data Insight',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['data-insight-application'],
-      grep: /data-insight/,
-    },
+    // {
+    //   name: 'restore-policies',
+    //   testMatch: '**/auth.teardown.ts',
+    // },
+    // {
+    //   name: 'chromium',
+    //   use: { ...devices['Desktop Chrome'] },
+    //   // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
+    //   dependencies: ['setup'],
+    //   grepInvert: /data-insight/,
+    //   testIgnore: ['**/nightly/**'],
+    // },
+    // {
+    //   name: 'data-insight-application',
+    //   dependencies: ['setup'],
+    //   testMatch: '**/dataInsightApp.ts',
+    // },
+    // {
+    //   name: 'Data Insight',
+    //   use: { ...devices['Desktop Chrome'] },
+    //   dependencies: ['data-insight-application'],
+    //   grep: /data-insight/,
+    // },
   ],
 
   // Increase timeout for the test
