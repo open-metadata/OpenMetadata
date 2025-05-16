@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Base class for the Auto Classification Processor.
+"""
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Sequence, Type, TypeVar, cast, final
@@ -22,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import Processor
@@ -59,13 +63,12 @@ class AutoClassificationProcessor(Processor, ABC):
         )  # Used to satisfy type checked
 
     @abstractmethod
-    def create_tags(
+    def create_column_tag_labels(
         self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[ColumnTag]:
+    ) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
-        pass
 
     @property
     def name(self) -> str:
@@ -96,13 +99,16 @@ class AutoClassificationProcessor(Processor, ABC):
             return Either(right=record, left=None)
 
         column_tags = []
+
         for idx, column in enumerate(record.table.columns):
             try:
-                col_tags = self.create_tags(
+                tags = self.create_column_tag_labels(
                     column=column,
                     sample_data=[row[idx] for row in record.sample_data.data.rows],
                 )
-                column_tags.extend(col_tags)
+                for tag in tags:
+                    column_tag = ColumnTag(column_fqn=column.name.root, tag_label=tag)
+                    column_tags.append(column_tag)
             except Exception as err:
                 # TODO: Shouldn't we return a Left here?
                 self.status.failed(
