@@ -1525,8 +1525,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // 1. soft delete - should not delete the test case resolution status
     // 2. hard delete - should delete the test case resolution status
     deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    queryParams.clear();
+    queryParams.put("include", "all");
     storedTestCaseResolutions =
-        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+        getTestCaseFailureStatus(
+            startTs, endTs, null, TestCaseResolutionStatusTypes.Ack, queryParams);
     assertEquals(2, storedTestCaseResolutions.getData().size());
     assertTrue(
         storedTestCaseResolutions.getData().stream()

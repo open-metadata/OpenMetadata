@@ -168,7 +168,10 @@ public class PIIMasker {
   }
 
   public static ResultList<TestCase> getTestCases(
-      ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
+      ResultList<TestCase> testCases,
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      Include include) {
     Map<String, Table> entityFQNToTable = new HashMap<>();
     List<TestCase> maskedTests =
         testCases.getData().stream()
@@ -185,7 +188,7 @@ public class PIIMasker {
                             Entity.TABLE,
                             testCaseLink.getEntityFQN(),
                             "owners,tags,columns",
-                            Include.NON_DELETED);
+                            include);
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
                   }
 

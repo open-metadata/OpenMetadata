@@ -169,7 +169,7 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("assignee", assignee);
-    filter.addQueryParam("entityFQNHashz", FullyQualifiedName.buildHash(testCaseFQN));
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);

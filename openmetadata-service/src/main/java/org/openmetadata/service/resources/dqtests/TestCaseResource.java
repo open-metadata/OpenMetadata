@@ -244,7 +244,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             after,
             operationContext,
             resourceContext);
-    return PIIMasker.getTestCases(tests, authorizer, securityContext);
+    return PIIMasker.getTestCases(tests, authorizer, securityContext, include);
   }
 
   @GET
@@ -479,7 +479,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             queryString,
             operationContext,
             resourceContextInterface);
-    return PIIMasker.getTestCases(tests, authorizer, securityContext);
+    return PIIMasker.getTestCases(tests, authorizer, securityContext, include);
   }
 
   @GET
