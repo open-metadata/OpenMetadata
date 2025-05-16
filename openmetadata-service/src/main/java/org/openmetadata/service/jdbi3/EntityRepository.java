@@ -2129,29 +2129,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeDomainDataProducts(EntityReference originalDomain, T entity) {
-    if (originalDomain != null) {
-      List<UUID> dataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(
-                  originalDomain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      List<EntityReference> updatedDataProducts = entity.getDataProducts();
-      if (updatedDataProducts != null) {
-        updatedDataProducts.removeIf(
-            dataProduct -> {
-              boolean isDomainDataProduct = dataProductIds.contains(dataProduct.getId());
-              if (isDomainDataProduct) {
-                LOG.info(
-                    "Removing data product {} from entity {}",
-                    dataProduct.getFullyQualifiedName(),
-                    entity.getEntityReference().getType());
-              }
-              return isDomainDataProduct;
-            });
-      }
+  private void removeOtherDomainDataProducts(EntityReference domain, T entity) {
+    if (!supportsDataProducts) {
+      return;
     }
+
+    List<EntityReference> entityDataProducts = entity.getDataProducts();
+    if (entityDataProducts == null) {
+      return;
+    }
+
+    if (domain == null) {
+      entityDataProducts.clear();
+      LOG.info(
+          "Removed all data products from entity {} as no domain is provided",
+          entity.getEntityReference().getType());
+      return;
+    }
+
+    // Fetch domain data products
+    List<UUID> domainDataProductIds =
+        daoCollection
+            .relationshipDAO()
+            .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
+
+    entityDataProducts.removeIf(
+        dataProduct -> {
+          boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
+          if (isNotDomainDataProduct) {
+            LOG.info(
+                "Removing data product {} from entity {}",
+                dataProduct.getFullyQualifiedName(),
+                entity.getEntityReference().getType());
+          }
+          return isNotDomainDataProduct;
+        });
   }
 
   @Transaction
@@ -3478,8 +3490,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           removeDomainLineage(updated.getId(), entityType, origDomain);
           deleteRelationship(
               origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
-          // Clean up data products associated with the old domain on domain update
-          removeDomainDataProducts(original.getDomain(), updated);
         }
         if (updatedDomain != null) {
           validateDomain(updatedDomain);
@@ -3496,6 +3506,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else {
         updated.setDomain(original.getDomain());
       }
+      // Clean up data products associated not associated with the updated domain
+      removeOtherDomainDataProducts(updated.getDomain(), updated);
     }
 
     private void updateDataProducts() {
@@ -3504,15 +3516,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       // Clean up data products associated with the old domain
       if (!nullOrEmpty(original.getDomain()) && !original.getDomain().equals(updated.getDomain())) {
-        removeDomainDataProducts(original.getDomain(), updated);
+        removeOtherDomainDataProducts(original.getDomain(), updated);
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      validateDataProducts(updatedDataProducts);
       if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
       }
-      validateDataProducts(updatedDataProducts);
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
