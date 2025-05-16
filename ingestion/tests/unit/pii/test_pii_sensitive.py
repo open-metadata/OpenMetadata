@@ -10,8 +10,8 @@
 #  limitations under the License.
 
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
+from metadata.pii.algorithms.tags import PIISensitivityTag
 from metadata.pii.processor import PIIProcessor
-from metadata.pii.tags import PIISensitivityTag
 
 
 def test_pii_processor_build_tag_label_for_pii_sensitive():
