@@ -92,6 +92,4 @@ class PIIProcessor(AutoClassificationProcessor):
         # winner is at most 1 tag
         winner = get_top_classes(scores, 1, self.confidence_threshold)
         tag_labels = [self.build_tag_label(tag) for tag in winner]
-        if tag_labels:
-            print(column.name.root, tag_labels)
         return tag_labels
