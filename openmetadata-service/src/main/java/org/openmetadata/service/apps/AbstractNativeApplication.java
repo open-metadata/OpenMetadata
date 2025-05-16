@@ -32,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
@@ -43,12 +44,83 @@ import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
 import org.quartz.UnableToInterruptJobException;
 
+/**
+ * Abstract base class that implements the NativeApplication interface.
+ * Provides core functionality for managing applications in the OpenMetadata system.
+ *
+ * <p>Key Features:
+ * <ul>
+ *   <li>Application Lifecycle Management
+ *     <ul>
+ *       <li>Installation and uninstallation of applications</li>
+ *       <li>On-demand triggering of applications</li>
+ *       <li>Scheduling of internal and external applications</li>
+ *       <li>Cleanup operations</li>
+ *     </ul>
+ *   </li>
+ *   <li>Configuration Management
+ *     <ul>
+ *       <li>Handles application configuration validation</li>
+ *       <li>Manages application runtime settings</li>
+ *       <li>Supports both internal and external application types</li>
+ *     </ul>
+ *   </li>
+ *   <li>Logging System
+ *     <ul>
+ *       <li>Implements a dual logging system with LOG and logger</li>
+ *       <li>Supports application-specific logging through ApplicationLogger</li>
+ *       <li>Provides runtime status updates</li>
+ *     </ul>
+ *   </li>
+ *   <li>Integration with OpenMetadata
+ *     <ul>
+ *       <li>Manages relationships with ingestion pipelines</li>
+ *       <li>Handles application status and run records</li>
+ *       <li>Integrates with the OpenMetadata service</li>
+ *     </ul>
+ *   </li>
+ * </ul>
+ *
+ * <p>The class uses two different logging mechanisms:
+ * <ol>
+ *   <li>LOG (Slf4j Logger)
+ *     <ul>
+ *       <li>Static logger instance created using the @Slf4j Lombok annotation</li>
+ *       <li>Uses the log handler supplied by log4j, primarily for operational use cases</li>
+ *       <li>Logs are written to the standard logging system (configured in logback.xml)</li>
+ *       <li>Intended for server operators and system administrators</li>
+ *     </ul>
+ *   </li>
+ *   <li>logger (ApplicationLogger)
+ *     <ul>
+ *       <li>Instance of ApplicationLogger that provides application-specific logging</li>
+ *       <li>Stores logs in the database to be consumed by end users</li>
+ *       <li>Stores logs with application context (app ID, name, timestamp, etc.)</li>
+ *       <li>Supports different log levels (DEBUG, INFO, WARN, ERROR)</li>
+ *     </ul>
+ *   </li>
+ * </ol>
+ *
+ * <p>Key differences between LOG and logger:
+ * <ul>
+ *   <li>Purpose: LOG is for operational logging (server operators), while logger is for end-user consumption</li>
+ *   <li>Persistence: LOG writes to log files, while logger stores logs in the database</li>
+ *   <li>Context: logger includes application-specific context (app ID, name) with each log entry</li>
+ *   <li>Usage: While LOG usage might exist, it is recommended to use 'logger' unless the information needs to be available for server operators</li>
+ * </ul>
+ */
 @Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+
+  /*
+   * The logger is used to log messages related to the application.
+   * Note that in it needs to be initialized using initAppLogger() method.
+   */
+  protected ApplicationLogger logger;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -268,6 +340,11 @@ public class AbstractNativeApplication implements NativeApplication {
         JsonUtils.getMapFromJson(
             (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
     // Initialise the Application
+    this.logger =
+        new ApplicationLogger(
+            jobApp,
+            new AppRepository(),
+            Long.toString(getJobRecord(jobExecutionContext).getStartTime()));
     this.init(jobApp);
 
     // Trigger

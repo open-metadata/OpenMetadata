@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppLogRecord;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -363,7 +364,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertAppStatusAvailableAfterTrigger(appName);
     assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
-
+    List<AppLogRecord> logs = getLatestAppLogs(appName, ADMIN_AUTH_HEADERS);
+    Assertions.assertFalse(logs.isEmpty());
     postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("batchSize", 1234));
 
     assertEventually(
@@ -669,6 +671,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       throws HttpResponseException {
     WebTarget target = getResource(String.format("apps/name/%s/runs/latest", appName));
     return TestUtils.get(target, AppRunRecord.class, authHeaders);
+  }
+
+  private List<AppLogRecord> getLatestAppLogs(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    AppRunRecord lastRun = getLatestAppRun(appName, authHeaders);
+    WebTarget target =
+        getResource(String.format("apps/name/%s/runs/%s/logs", appName, lastRun.getStartTime()));
+    ResultList<Object> result = TestUtils.get(target, ResultList.class, authHeaders);
+    return JsonUtils.convertObjects(result.getData(), AppLogRecord.class);
   }
 
   private AppExtension listAppExtension(
