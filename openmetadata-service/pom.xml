@@ -607,6 +607,15 @@
       <version>4.0.1</version>
     </dependency>
     <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp-bom</artifactId>
+      <type>pom</type>
+    </dependency>
+    <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.socket</groupId>
       <artifactId>engine.io-server-jetty</artifactId>
       <version>6.2.1</version>

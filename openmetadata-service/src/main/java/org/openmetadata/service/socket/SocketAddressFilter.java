@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.Map;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -48,9 +47,6 @@ public class SocketAddressFilter implements Filter {
   }
 
   @Override
-  public void destroy() {}
-
-  @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException {
     try {
@@ -75,9 +71,6 @@ public class SocketAddressFilter implements Filter {
           .println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
     }
   }
-
-  @Override
-  public void init(FilterConfig filterConfig) {}
 
   public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
