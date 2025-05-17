@@ -64,7 +64,7 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: '**/*.setup.ts',
-      teardown: 'restore-policies',
+      //   teardown: 'restore-policies',
     },
     // {
     //   name: 'restore-policies',
