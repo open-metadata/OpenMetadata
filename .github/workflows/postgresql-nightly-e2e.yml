@@ -168,7 +168,7 @@ jobs:
       - name: Download blob reports from GitHub Actions Artifacts
         uses: actions/download-artifact@v4
         with:
-          path: blob-reports
+          path: openmetadata-ui/src/main/resources/ui/blob-reports
           pattern: blob-report-*
           merge-multiple: true
 
