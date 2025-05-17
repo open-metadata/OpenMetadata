@@ -136,7 +136,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shardIndex }}
-          path: blob-report
           retention-days: 5
 
       - name: Clean Up
