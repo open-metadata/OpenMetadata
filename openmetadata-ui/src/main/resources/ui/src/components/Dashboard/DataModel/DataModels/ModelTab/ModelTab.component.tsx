@@ -173,17 +173,20 @@ const ModelTab = () => {
     }
   };
 
-  const handleEditColumnData = async (data: EntityName, id?: string) => {
+  const handleEditColumnData = async (
+    data: EntityName,
+    fullyQualifiedName?: string
+  ) => {
     const { displayName } = data as EntityNameWithAdditionFields;
 
-    if (!id) {
+    if (!fullyQualifiedName) {
       return; // Early return if id is not provided
     }
 
     const tableCols = cloneDeep(tableColumns);
 
     updateColumnFields({
-      fqn: id,
+      fqn: fullyQualifiedName,
       value: isEmpty(displayName) ? undefined : displayName,
       field: 'displayName',
       columns: tableCols,
