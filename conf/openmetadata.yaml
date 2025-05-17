@@ -203,6 +203,8 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableGroupMapping: ${AUTHENTICATION_GROUP_MAPPING_ENABLED:-false}
+  enableRoleMapping: ${AUTHENTICATION_ROLE_MAPPING_ENABLED:-false}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.

@@ -31,6 +31,14 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable Group Mapping from Azure AD
+     */
+    enableGroupMapping?: boolean;
+    /**
+     * Enable Role Mapping from Azure AD
+     */
+    enableRoleMapping?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
@@ -307,6 +315,10 @@ export interface OidcClientConfig {
      * Preferred Jws Algorithm.
      */
     preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
     /**
      * Auth0 Client Secret Key.
      */
