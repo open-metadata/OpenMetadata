@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
@@ -40,17 +40,15 @@ import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import {
-  prepareConstraintIcon,
-  updateFieldTags,
-} from '../../../../../utils/TableUtils';
+import { updateFieldTags } from '../../../../../utils/TableUtils';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -146,9 +144,6 @@ const ModelTab = () => {
     [editColumnDescription, data]
   );
 
-  const handleEditDisplayNameClick = (record: Column) => {
-    setEditColumnDisplayName(record);
-  };
   const updateColumnFields = ({
     fqn,
     field,
@@ -178,26 +173,23 @@ const ModelTab = () => {
     }
   };
 
-  const handleEditColumnData = async (data: EntityName) => {
+  const handleEditColumnData = async (data: EntityName, id?: string) => {
     const { displayName } = data as EntityNameWithAdditionFields;
-    if (
-      !isUndefined(editColumnDisplayName) &&
-      editColumnDisplayName.fullyQualifiedName
-    ) {
-      const tableCols = cloneDeep(tableColumns);
 
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(displayName) ? undefined : displayName,
-        field: 'displayName',
-        columns: tableCols,
-      });
-
-      await handleColumnUpdate(tableCols);
-      setEditColumnDisplayName(undefined);
-    } else {
-      setEditColumnDisplayName(undefined);
+    if (!id) {
+      return; // Early return if id is not provided
     }
+
+    const tableCols = cloneDeep(tableColumns);
+
+    updateColumnFields({
+      fqn: id,
+      value: isEmpty(displayName) ? undefined : displayName,
+      field: 'displayName',
+      columns: tableCols,
+    });
+
+    await handleColumnUpdate(tableCols);
   };
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
@@ -208,41 +200,25 @@ const ModelTab = () => {
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
-        render: (name: Column['name'], record: Column) => {
+        render: (_, record: Column) => {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
-              <div className="d-inline-flex items-baseline">
-                {prepareConstraintIcon({
-                  columnName: name,
-                  columnConstraint: record.constraint,
-                })}
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
-                  data-testid="column-name">
-                  {name}
-                </Typography.Text>
-              </div>
-              {!isEmpty(displayName) ? (
-                // It will render displayName fallback to name
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
-                  data-testid="column-display-name">
-                  {name}
-                </Typography.Text>
-              ) : null}
-
-              {editDisplayNamePermission && (
-                <Tooltip placement="right" title={t('label.edit')}>
-                  <EditIconButton
-                    className="cursor-pointer hover-cell-icon w-fit-content"
-                    data-testid="edit-displayName-button"
-                    onClick={() => handleEditDisplayNameClick(record)}
-                  />
-                </Tooltip>
-              )}
-            </div>
+            <DisplayName
+              allowRename={editDisplayNamePermission}
+              displayName={displayName}
+              id={record.fullyQualifiedName ?? ''}
+              link={
+                record.fullyQualifiedName
+                  ? getEntityDetailsPath(
+                      EntityType.DASHBOARD_DATA_MODEL,
+                      record.fullyQualifiedName
+                    )
+                  : ''
+              }
+              name={record.name}
+              onEditDisplayName={handleEditColumnData}
+            />
           );
         },
       },
