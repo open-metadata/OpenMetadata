@@ -55,7 +55,6 @@ import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.com
 import { UpdatedColumnFieldData } from '../../../../Database/SchemaTable/SchemaTable.interface';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
-import EntityNameModal from '../../../../Modals/EntityNameModal/EntityNameModal.component';
 import {
   EntityName,
   EntityNameWithAdditionFields,
@@ -65,7 +64,6 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const {
     data: dataModel,
     permissions,
@@ -350,17 +348,6 @@ const ModelTab = () => {
             onSave={handleColumnDescriptionChange}
           />
         </EntityAttachmentProvider>
-      )}
-      {editColumnDisplayName && (
-        <EntityNameModal
-          entity={editColumnDisplayName}
-          title={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${editColumnDisplayName?.name}"`}
-          visible={Boolean(editColumnDisplayName)}
-          onCancel={() => setEditColumnDisplayName(undefined)}
-          onSave={handleEditColumnData}
-        />
       )}
     </>
   );
