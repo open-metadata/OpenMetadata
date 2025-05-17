@@ -188,7 +188,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private ChangeEvent getChangeEvent(
+  protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
