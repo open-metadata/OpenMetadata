@@ -57,6 +57,13 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDestination;
       this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
+
+      // Validate webhook URL to prevent SSRF
+      if (this.webhook != null && this.webhook.getEndpoint() != null) {
+        org.openmetadata.service.util.URLValidator.validateURL(
+            this.webhook.getEndpoint().toString());
+      }
+
       this.client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {

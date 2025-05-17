@@ -290,7 +290,19 @@ public class SubscriptionUtil {
               default -> null;
             };
         if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
-          return Optional.of(webhookConfig.getEndpoint().toString());
+          String endpointStr = webhookConfig.getEndpoint().toString();
+          // Validate URL before returning
+          try {
+            URLValidator.validateURL(endpointStr);
+            return Optional.of(endpointStr);
+          } catch (Exception e) {
+            LOG.warn(
+                "[GetWebhookUrlsFromProfile] Invalid webhook URL for owner with id {} type {}: {}",
+                id,
+                entityType,
+                e.getMessage());
+            return Optional.empty();
+          }
         } else {
           LOG.debug(
               "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is missing for type {}, webhookConfig {} ",
@@ -422,6 +434,9 @@ public class SubscriptionUtil {
   }
 
   public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
+    // Validate the URI to prevent SSRF attacks
+    URLValidator.validateURL(uri);
+
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(uri), authHeaders);
   }

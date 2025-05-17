@@ -40,6 +40,10 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return null;
     }
+
+    // Apply safety validation before parsing expressions
+    ExpressionValidator.validateExpressionSafety(condition);
+
     try {
       return EXPRESSION_PARSER.parseExpression(condition);
     } catch (Exception exception) {
@@ -53,6 +57,8 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return;
     }
+
+    // parseExpression already includes safety validation
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
     SimpleEvaluationContext context =
