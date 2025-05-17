@@ -65,7 +65,7 @@ class PIIProcessor(AutoClassificationProcessor):
         tag_label = TagLabel(
             tagFQN=tag_fqn,
             source=TagSource.Classification,
-            state=State.Suggested,
+            state=State.Generated,
             labelType=LabelType.Automated,
         )
 
