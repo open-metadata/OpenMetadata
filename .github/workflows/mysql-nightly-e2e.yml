@@ -137,6 +137,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         with:
           name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report
           retention-days: 5
 
       - name: Clean Up
