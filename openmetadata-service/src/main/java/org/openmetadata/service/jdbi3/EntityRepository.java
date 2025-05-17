@@ -3503,11 +3503,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
           addDomainLineage(updated.getId(), entityType, updatedDomain);
         }
         updated.setDomain(updatedDomain);
+        // Clean up data products associated not associated with the updated domain
+        removeOtherDomainDataProducts(updated.getDomain(), updated);
       } else {
         updated.setDomain(original.getDomain());
       }
-      // Clean up data products associated not associated with the updated domain
-      removeOtherDomainDataProducts(updated.getDomain(), updated);
     }
 
     private void updateDataProducts() {
@@ -3515,7 +3515,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
       // Clean up data products associated with the old domain
-      if (!nullOrEmpty(original.getDomain()) && !original.getDomain().equals(updated.getDomain())) {
+      if (!nullOrEmpty(updated.getDomain())) {
         removeOtherDomainDataProducts(original.getDomain(), updated);
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
