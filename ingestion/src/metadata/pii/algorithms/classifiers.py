@@ -164,10 +164,17 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
             sample_data, column_name, column_data_type
         )
         results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)
+        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)
 
         for tag, score in pii_tags.items():
             # Convert PIITag to PIISensitivityTag
             pii_sensitivity = tag.sensitivity()
             results[pii_sensitivity] += score
+            counts[pii_sensitivity] += 1
+
+        # Normalize the scores
+        for tag in results:
+            if counts[tag] > 0:
+                results[tag] /= counts[tag]
 
         return results

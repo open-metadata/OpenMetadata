@@ -260,7 +260,7 @@ ignore = [
   "src/metadata/mixins/*",
   "src/metadata/parsers/*",
   "src/metadata/pii/scanners/*",
-  "src/metadata/pii/processor.py",
+  "src/metadata/pii/*processor.py",
   "src/metadata/profiler/*",
   "src/metadata/sampler/*",
   "src/metadata/readers/*",
