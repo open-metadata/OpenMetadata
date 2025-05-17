@@ -57,6 +57,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabled
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceListMatch;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -3516,6 +3517,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      // Clean up data products associated with the old domain
+      if (original.getDomain() != null
+          && Objects.equals(original.getDomain(), updated.getDomain())
+          && recordChange(
+              FIELD_DATA_PRODUCTS,
+              origDataProducts,
+              updatedDataProducts,
+              true,
+              entityReferenceListMatch)) {
+        removeOtherDomainDataProducts(updated.getDomain(), updated);
+      }
       validateDataProducts(updatedDataProducts);
       if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
