@@ -182,10 +182,10 @@ public class DomainRepository extends EntityRepository<Domain> {
           daoCollection
               .relationshipDAO()
               .bulkRemoveFromRelationship(
-                  ref.getId(),
                   dataProductsToDelete.stream()
                       .map(EntityReference::getId)
                       .collect(Collectors.toList()),
+                  ref.getId(),
                   DATA_PRODUCT,
                   ref.getType(),
                   relationship.ordinal());

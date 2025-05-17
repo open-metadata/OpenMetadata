@@ -976,10 +976,10 @@ public interface CollectionDAO {
     }
 
     default void bulkRemoveFromRelationship(
-        UUID toId, List<UUID> fromIds, String fromEntity, String toEntity, int relation) {
+        List<UUID> fromIds, UUID toId, String fromEntity, String toEntity, int relation) {
 
       List<String> fromIdsAsString = fromIds.stream().map(UUID::toString).toList();
-      bulkRemoveFrom(toId, fromIdsAsString, fromEntity, toEntity, relation);
+      bulkRemoveFrom(fromIdsAsString, toId, fromEntity, toEntity, relation);
     }
 
     @ConnectionAwareSqlUpdate(
@@ -1030,13 +1030,15 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlUpdate(
-        value =
-            "DELETE FROM entity_relationship WHERE toId = :toId "
-                + "AND toEntity = :toEntity AND fromId IN (<fromIds>) "
-                + "AND fromEntity = :fromEntity AND relation = :relation")
+        "DELETE FROM entity_relationship "
+            + "WHERE fromEntity = :fromEntity "
+            + "AND fromId IN (<fromIds>) "
+            + "AND toEntity = :toEntity "
+            + "AND relation = :relation "
+            + "AND toId = :toId")
     void bulkRemoveFrom(
-        @BindUUID("toId") UUID toId,
         @BindList("fromIds") List<String> fromIds,
+        @BindUUID("toId") UUID toId,
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
