@@ -14,8 +14,10 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { LOGIN_SLIDE } from '../../constants/Login.constants';
+import loginClassBase from '../../constants/LoginClassBase';
 import LoginCarousel from './LoginCarousel';
+
+const LOGIN_SLIDE = loginClassBase.getLoginCarouselContent();
 
 describe('Test LoginCarousel component', () => {
   it('renders the carousel container', () => {
