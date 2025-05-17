@@ -510,7 +510,7 @@ const IncidentManager = ({
       },
     ],
     [
-      tableDetails,
+      tableDetails?.deleted,
       testCaseListData.data,
       testCasePermissions,
       isPermissionLoading,
