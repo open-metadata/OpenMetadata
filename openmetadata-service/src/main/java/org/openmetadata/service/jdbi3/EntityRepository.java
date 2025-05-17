@@ -3514,10 +3514,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!supportsDataProducts) {
         return;
       }
-      // Clean up data products associated with the old domain
-      if (!nullOrEmpty(updated.getDomain())) {
-        removeOtherDomainDataProducts(original.getDomain(), updated);
-      }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
