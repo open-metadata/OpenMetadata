@@ -170,7 +170,7 @@ jobs:
         uses: actions/download-artifact@v4
         working-directory: openmetadata-ui/src/main/resources/ui/
         with:
-          path: all-blob-reports
+          path: blob-reports
           pattern: blob-report-*
           merge-multiple: true
 
