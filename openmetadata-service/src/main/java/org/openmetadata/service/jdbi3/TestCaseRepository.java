@@ -710,6 +710,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
+      return false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -754,6 +759,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           original.getUseDynamicAssertion(),
           updated.getUseDynamicAssertion());
       recordChange("testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus());
+      recordChange("testCaseStatus", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
 
