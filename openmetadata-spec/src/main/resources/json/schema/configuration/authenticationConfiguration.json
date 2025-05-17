@@ -83,6 +83,16 @@
       "type": "boolean",
       "default": false
     },
+    "enableGroupMapping": {
+      "description": "Enable Group Mapping from Azure AD",
+      "type": "boolean",
+      "default": false
+    },
+    "enableRoleMapping": {
+      "description": "Enable Role Mapping from Azure AD",
+      "type": "boolean",
+      "default": false
+    },
     "ldapConfiguration": {
       "description": "LDAP Configuration in case the Provider is LDAP",
       "$ref": "./ldapConfiguration.json"
