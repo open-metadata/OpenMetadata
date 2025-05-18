@@ -46,7 +46,7 @@ const LoginCarousel = () => {
               loading="lazy"
               src={data.image}
               style={{ display: 'initial' }}
-              width="750px"
+              width={data.width}
             />
           </div>
         ))}

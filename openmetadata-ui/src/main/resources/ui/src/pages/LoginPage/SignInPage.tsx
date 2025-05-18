@@ -33,6 +33,7 @@ import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -45,6 +46,8 @@ const SignInPage = () => {
   const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
@@ -172,13 +175,10 @@ const SignInPage = () => {
             className={classNames('form-item', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <BrandImage height="auto" width={140} />
+            <BrandImage isMonoGram height="auto" width={50} />
             <Typography.Title className="header-text" level={3}>
-              {t('label.welcome')}
+              {t('label.welcome-to')} {brandName}
             </Typography.Title>
-            <Typography.Text className="text-lg text-grey-muted">
-              {t('message.om-description')}{' '}
-            </Typography.Text>
             {alert && (
               <div className="login-alert">
                 <AlertBar

@@ -13,7 +13,7 @@
 import collaborationImg from '../assets/img/login-screen/data-collaboration.png';
 import discoveryImg from '../assets/img/login-screen/data-discovery.png';
 import governanceImg from '../assets/img/login-screen/data-governance.png';
-import dataQualityImg from '../assets/img/login-screen/data-quality.png';
+import dataObservabilityImg from '../assets/img/login-screen/data-observability.png';
 
 class LoginClassBase {
   public getLoginCarouselContent() {
@@ -22,22 +22,26 @@ class LoginClassBase {
         title: 'governance',
         image: governanceImg,
         descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
+        width: '550px',
       },
       {
         title: 'data-collaboration',
         image: collaborationImg,
         descriptionKey: 'deeply-understand-table-relations-message',
+        width: '400px',
       },
       {
         title: 'data-observability',
-        image: dataQualityImg,
+        image: dataObservabilityImg,
         descriptionKey:
           'discover-your-data-and-unlock-the-value-of-data-assets',
+        width: '350px',
       },
       {
         title: 'data-discovery',
         image: discoveryImg,
         descriptionKey: 'enables-end-to-end-metadata-management',
+        width: '500px',
       },
     ];
 
