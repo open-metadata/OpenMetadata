@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -75,11 +75,11 @@ const BasicSignUp = () => {
   return (
     <>
       <DocumentTitle title={t('label.sign-up')} />
-      <Row className="h-full" data-testid="signin-page">
-        <Col className="bg-white" span={10}>
-          <div className="mt-4 text-center flex-center flex-col">
-            <BrandImage height="auto" width={200} />
-            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
+      <Row className="login-form-container" data-testid="signin-page">
+        <Col span={10}>
+          <div className="form-item">
+            <BrandImage height="auto" width={160} />
+            <Typography.Text className="text-lg text-grey-muted m-t-lg">
               {t('message.om-description')}
             </Typography.Text>
 
@@ -109,6 +109,7 @@ const BasicSignUp = () => {
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
                       autoFocus
+                      className="input-field"
                       placeholder={t('label.enter-entity-name', {
                         entity: t('label.first-lowercase'),
                       })}
@@ -121,6 +122,7 @@ const BasicSignUp = () => {
                     name="lastName"
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.last-name-lowercase'),
                       })}
@@ -131,6 +133,7 @@ const BasicSignUp = () => {
                     name="email"
                     rules={[{ type: 'email', required: true }]}>
                     <Input
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.email-lowercase'),
                       })}
@@ -150,6 +153,7 @@ const BasicSignUp = () => {
                     ]}>
                     <Input.Password
                       autoComplete="off"
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.password-lowercase'),
                       })}
@@ -180,21 +184,19 @@ const BasicSignUp = () => {
                     ]}>
                     <Input.Password
                       autoComplete="off"
+                      className="input-field"
                       placeholder={t('label.confirm-password')}
                     />
                   </Form.Item>
 
-                  <Button className="w-full" htmlType="submit" type="primary">
+                  <Button
+                    className="w-full p-y-lg d-flex flex-center"
+                    htmlType="submit"
+                    type="primary">
                     {t('label.create-entity', {
                       entity: t('label.account'),
                     })}
                   </Button>
-
-                  <Divider className="w-min-0  mt-8 mb-12 justify-center">
-                    <Typography.Text type="secondary">
-                      {t('label.or-lowercase')}
-                    </Typography.Text>
-                  </Divider>
 
                   <div className="mt-4 d-flex flex-center">
                     <Typography.Text className="mr-4">
