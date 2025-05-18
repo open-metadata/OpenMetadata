@@ -29,15 +29,15 @@ class LoginClassBase {
         descriptionKey: 'deeply-understand-table-relations-message',
       },
       {
-        title: 'data-discovery',
-        image: discoveryImg,
-        descriptionKey: 'enables-end-to-end-metadata-management',
-      },
-      {
         title: 'data-observability',
         image: dataQualityImg,
         descriptionKey:
           'discover-your-data-and-unlock-the-value-of-data-assets',
+      },
+      {
+        title: 'data-discovery',
+        image: discoveryImg,
+        descriptionKey: 'enables-end-to-end-metadata-management',
       },
     ];
 
