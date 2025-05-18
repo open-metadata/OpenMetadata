@@ -21,7 +21,7 @@ def test_pii_processor_build_tag_label_for_pii_sensitive():
 
     assert tag_label.tagFQN.root == "PII.Sensitive"
     assert tag_label.source == TagSource.Classification
-    assert tag_label.state == State.Suggested
+    assert tag_label.state == State.Generated
     assert tag_label.labelType == LabelType.Automated
 
 
@@ -31,5 +31,5 @@ def test_pii_processor_build_tag_label_for_pii_nonsensitive():
 
     assert tag_label.tagFQN.root == "PII.NonSensitive"
     assert tag_label.source == TagSource.Classification
-    assert tag_label.state == State.Suggested
+    assert tag_label.state == State.Generated
     assert tag_label.labelType == LabelType.Automated
