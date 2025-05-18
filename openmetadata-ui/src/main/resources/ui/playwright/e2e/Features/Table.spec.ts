@@ -140,7 +140,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
     await page.getByTestId('page-size-selection-dropdown').click();
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
 
     await expect(
       page.getByRole('menuitem', { name: '15 / Page' })
@@ -168,6 +172,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
 
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'

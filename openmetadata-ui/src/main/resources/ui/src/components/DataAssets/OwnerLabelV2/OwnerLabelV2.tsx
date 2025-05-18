@@ -14,13 +14,14 @@ import { Typography } from 'antd';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TagButton from '../../common/TagButton/TagButton.component';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
@@ -48,15 +49,22 @@ export const OwnerLabelV2 = <
         <Typography.Text className="text-sm font-medium">
           {t('label.owner-plural')}
         </Typography.Text>
-        {(permissions.EditOwners || permissions.EditAll) &&
-          data.owners &&
-          data.owners.length > 0 && (
-            <UserTeamSelectableList
-              hasPermission={permissions.EditOwners || permissions.EditAll}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={data.owners}
-              onUpdate={handleUpdatedOwner}>
+        {(permissions.EditOwners || permissions.EditAll) && (
+          <UserTeamSelectableList
+            hasPermission={permissions.EditOwners || permissions.EditAll}
+            listHeight={200}
+            multiple={{ user: true, team: false }}
+            owner={data.owners}
+            onUpdate={handleUpdatedOwner}>
+            {isEmpty(data.owners) ? (
+              <PlusIconButton
+                data-testid="add-owner"
+                size="small"
+                title={t('label.add-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            ) : (
               <EditIconButton
                 newLook
                 data-testid="edit-owner"
@@ -65,8 +73,9 @@ export const OwnerLabelV2 = <
                   entity: t('label.owner-plural'),
                 })}
               />
-            </UserTeamSelectableList>
-          )}
+            )}
+          </UserTeamSelectableList>
+        )}
       </div>
     ),
     [data, permissions, handleUpdatedOwner]
@@ -85,24 +94,6 @@ export const OwnerLabelV2 = <
         TabSpecificField.OWNERS,
         permissions.EditOwners || permissions.EditAll
       )}
-
-      {data.owners?.length === 0 &&
-        (permissions.EditOwners || permissions.EditAll) && (
-          <UserTeamSelectableList
-            hasPermission={permissions.EditOwners || permissions.EditAll}
-            listHeight={200}
-            multiple={{ user: true, team: false }}
-            owner={data.owners}
-            onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
-            <TagButton
-              className="text-primary cursor-pointer"
-              dataTestId="add-owner"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserTeamSelectableList>
-        )}
     </ExpandableCard>
   );
 };
