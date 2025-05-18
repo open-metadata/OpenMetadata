@@ -24,6 +24,16 @@ jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getAirflowStatus: jest.fn(),
 }));
 
+jest.mock('../../hooks/useApplicationStore', () => {
+  return {
+    useApplicationStore: jest.fn().mockImplementation(() => ({
+      currentUser: {
+        id: '123',
+      },
+    })),
+  };
+});
+
 // Mock component to test the context
 const TestComponent = () => {
   const {

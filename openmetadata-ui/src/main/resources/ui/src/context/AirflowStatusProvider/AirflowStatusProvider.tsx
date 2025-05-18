@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { PipelineServiceClientResponse } from '../../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAirflowStatus } from '../../rest/ingestionPipelineAPI';
 import { AirflowStatusContextType } from './AirflowStatusProvider.interface';
 
@@ -40,8 +41,12 @@ const AirflowStatusProvider = ({ children }: Props) => {
     useState<PipelineServiceClientResponse['reason']>();
   const [platform, setPlatform] =
     useState<PipelineServiceClientResponse['platform']>('unknown');
+  const { currentUser } = useApplicationStore();
 
   const fetchAirflowStatus = useCallback(async () => {
+    if (!currentUser?.id) {
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await getAirflowStatus();
@@ -54,11 +59,11 @@ const AirflowStatusProvider = ({ children }: Props) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     fetchAirflowStatus();
-  }, []);
+  }, [fetchAirflowStatus]);
 
   const value: AirflowStatusContextType = useMemo(
     () => ({
