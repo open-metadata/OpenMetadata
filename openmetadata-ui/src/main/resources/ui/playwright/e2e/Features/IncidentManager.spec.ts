@@ -254,7 +254,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
 
       const incidentDetailsRes = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/*'
       );
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
       await incidentDetailsRes;
