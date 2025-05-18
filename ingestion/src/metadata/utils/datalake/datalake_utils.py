@@ -254,7 +254,7 @@ class GenericDataFrameColumnParser:
             data_frame (DataFrame)
             column_name (string)
         """
-        data_type = DataType.STRING # default to string
+        data_type = DataType.STRING  # default to string
         try:
             if data_frame[column_name].dtypes.name == "object" and any(
                 data_frame[column_name].dropna().values
