@@ -3517,6 +3517,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      validateDataProducts(updatedDataProducts);
+      if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
+        throw new IllegalArgumentException(
+            "Domain cannot be empty when data products are provided.");
+      }
       // Clean up data products associated with the old domain
       if (original.getDomain() != null
           && Objects.equals(original.getDomain(), updated.getDomain())
@@ -3527,11 +3532,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               true,
               entityReferenceListMatch)) {
         removeOtherDomainDataProducts(updated.getDomain(), updated);
-      }
-      validateDataProducts(updatedDataProducts);
-      if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
-        throw new IllegalArgumentException(
-            "Domain cannot be empty when data products are provided.");
+        updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
