@@ -2130,7 +2130,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeOtherDomainDataProducts(EntityReference domain, T entity) {
+  private void removeCrossDomainDataProducts(EntityReference domain, T entity) {
     if (!supportsDataProducts) {
       return;
     }
@@ -2649,6 +2649,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId,
       String fromEntity,
@@ -3505,7 +3506,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         updated.setDomain(updatedDomain);
         // Clean up data products associated not associated with the updated domain
-        removeOtherDomainDataProducts(updated.getDomain(), updated);
+        removeCrossDomainDataProducts(updated.getDomain(), updated);
       } else {
         updated.setDomain(original.getDomain());
       }
@@ -3531,7 +3532,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeOtherDomainDataProducts(updated.getDomain(), updated);
+        removeCrossDomainDataProducts(updated.getDomain(), updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(

@@ -124,6 +124,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
   }
 
+  @Transaction
+  @Override
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId,
       String fromEntity,
@@ -133,65 +135,14 @@ public class DomainRepository extends EntityRepository<Domain> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
-    // Validate Assets
+
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
-      // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
-      // Clear existing domain links, as the entity can belong to only one domain
-      EntityReference oldDomain =
-          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-      deleteTo(ref.getId(), ref.getType(), relationship, fromEntity);
-      LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), oldDomain);
-
-      // Clear existing dataProduct links associated to diff domain
-      List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
-
-      if (!dataProducts.isEmpty()) {
-        // Map dataProduct -> domain
-        Map<UUID, UUID> associatedDomains =
-            daoCollection
-                .relationshipDAO()
-                .findFromBatch(
-                    dataProducts.stream()
-                        .map(dp -> dp.getId().toString())
-                        .collect(Collectors.toList()),
-                    relationship.ordinal(),
-                    DOMAIN)
-                .stream()
-                .collect(
-                    Collectors.toMap(
-                        rec -> UUID.fromString(rec.getToId()),
-                        rec -> UUID.fromString(rec.getFromId())));
-        // For isAdd, filter only those data products linked to a different domain.
-        // For isRemove, delete all data products.
-        List<EntityReference> dataProductsToDelete =
-            isAdd
-                ? dataProducts.stream()
-                    .filter(
-                        dataProduct -> {
-                          UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
-                          return associatedDomainId != null && !associatedDomainId.equals(entityId);
-                        })
-                    .collect(Collectors.toList())
-                : dataProducts; // For remove operation, delete all data products
-
-        if (!dataProductsToDelete.isEmpty()) {
-          daoCollection
-              .relationshipDAO()
-              .bulkRemoveFromRelationship(
-                  dataProductsToDelete.stream()
-                      .map(EntityReference::getId)
-                      .collect(Collectors.toList()),
-                  ref.getId(),
-                  DATA_PRODUCT,
-                  ref.getType(),
-                  relationship.ordinal());
-          LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
-        }
-      }
+      cleanupOldDomain(ref, fromEntity, relationship);
+      cleanupDataProducts(entityId, ref, relationship, isAdd);
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
@@ -202,7 +153,6 @@ public class DomainRepository extends EntityRepository<Domain> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
       searchRepository.updateEntity(ref);
     }
 
@@ -220,6 +170,60 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     return result;
+  }
+
+  private void cleanupOldDomain(EntityReference ref, String fromEntity, Relationship relationship) {
+    EntityReference oldDomain =
+        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+    deleteTo(ref.getId(), ref.getType(), relationship, fromEntity);
+    LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), oldDomain);
+  }
+
+  private void cleanupDataProducts(
+      UUID entityId, EntityReference ref, Relationship relationship, boolean isAdd) {
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+    if (dataProducts.isEmpty()) return;
+
+    // Map dataProduct -> domain
+    Map<UUID, UUID> associatedDomains =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
+                relationship.ordinal(),
+                DOMAIN)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    rec -> UUID.fromString(rec.getToId()),
+                    rec -> UUID.fromString(rec.getFromId())));
+
+    // For isAdd, filter only those data products linked to a different domain.
+    // For isRemove, delete all data products.
+    List<EntityReference> dataProductsToDelete =
+        isAdd
+            ? dataProducts.stream()
+                .filter(
+                    dp -> {
+                      UUID domainId = associatedDomains.get(dp.getId());
+                      return domainId != null && !domainId.equals(entityId);
+                    })
+                .collect(Collectors.toList())
+            : dataProducts;
+
+    if (!dataProductsToDelete.isEmpty()) {
+      daoCollection
+          .relationshipDAO()
+          .bulkRemoveFromRelationship(
+              dataProductsToDelete.stream()
+                  .map(EntityReference::getId)
+                  .collect(Collectors.toList()),
+              ref.getId(),
+              DATA_PRODUCT,
+              ref.getType(),
+              relationship.ordinal());
+      LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+    }
   }
 
   @Override

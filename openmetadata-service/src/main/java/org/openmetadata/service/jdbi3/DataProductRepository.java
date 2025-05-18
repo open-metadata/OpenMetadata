@@ -153,6 +153,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
+  @Transaction
   @Override
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId,
@@ -163,59 +164,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
-    // Validate Assets
+
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
-      // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
-      // Clear existing dataProduct links associated to diff domain
-      EntityReference domain =
-          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-      List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
-
-      if (!dataProducts.isEmpty() && domain != null) {
-        // Map dataProduct -> domain
-        Map<UUID, UUID> associatedDomains =
-            daoCollection
-                .relationshipDAO()
-                .findFromBatch(
-                    dataProducts.stream()
-                        .map(dp -> dp.getId().toString())
-                        .collect(Collectors.toList()),
-                    relationship.ordinal(),
-                    DOMAIN)
-                .stream()
-                .collect(
-                    Collectors.toMap(
-                        rec -> UUID.fromString(rec.getToId()),
-                        rec -> UUID.fromString(rec.getFromId())));
-
-        List<EntityReference> dataProductsToDelete =
-            dataProducts.stream()
-                .filter(
-                    dataProduct -> {
-                      UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
-                      return associatedDomainId != null
-                          && !associatedDomainId.equals(domain.getId());
-                    })
-                .collect(Collectors.toList());
-
-        if (!dataProductsToDelete.isEmpty()) {
-          daoCollection
-              .relationshipDAO()
-              .bulkRemoveFromRelationship(
-                  dataProductsToDelete.stream()
-                      .map(EntityReference::getId)
-                      .collect(Collectors.toList()),
-                  ref.getId(),
-                  DATA_PRODUCT,
-                  ref.getType(),
-                  relationship.ordinal());
-          LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
-        }
-      }
+      removeCrossDomainDataProducts(ref, relationship);
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
@@ -226,7 +181,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
       searchRepository.updateEntity(ref);
     }
 
@@ -244,6 +198,53 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return result;
+  }
+
+  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
+    EntityReference domain =
+        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+
+    if (!dataProducts.isEmpty() && domain != null) {
+      // Map dataProduct -> domain
+      Map<UUID, UUID> associatedDomains =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  dataProducts.stream()
+                      .map(dp -> dp.getId().toString())
+                      .collect(Collectors.toList()),
+                  relationship.ordinal(),
+                  DOMAIN)
+              .stream()
+              .collect(
+                  Collectors.toMap(
+                      rec -> UUID.fromString(rec.getToId()),
+                      rec -> UUID.fromString(rec.getFromId())));
+
+      List<EntityReference> dataProductsToDelete =
+          dataProducts.stream()
+              .filter(
+                  dataProduct -> {
+                    UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
+                    return associatedDomainId != null && !associatedDomainId.equals(domain.getId());
+                  })
+              .collect(Collectors.toList());
+
+      if (!dataProductsToDelete.isEmpty()) {
+        daoCollection
+            .relationshipDAO()
+            .bulkRemoveFromRelationship(
+                dataProductsToDelete.stream()
+                    .map(EntityReference::getId)
+                    .collect(Collectors.toList()),
+                ref.getId(),
+                DATA_PRODUCT,
+                ref.getType(),
+                relationship.ordinal());
+        LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+      }
+    }
   }
 
   @Override
