@@ -35,6 +35,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCaseResolutionStatus';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -154,6 +155,7 @@ const IncidentManager = ({
         const { data, paging } = await getListTestCaseIncidentStatus({
           limit: pageSize,
           latest: true,
+          include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           ...params,
         });
@@ -463,7 +465,7 @@ const IncidentManager = ({
           return (
             <TestCaseIncidentManagerStatus
               data={record}
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               onSubmit={handleStatusSubmit}
             />
           );
@@ -487,7 +489,7 @@ const IncidentManager = ({
 
           return (
             <Severity
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
@@ -507,7 +509,12 @@ const IncidentManager = ({
         ),
       },
     ],
-    [testCaseListData.data, testCasePermissions, isPermissionLoading]
+    [
+      tableDetails?.deleted,
+      testCaseListData.data,
+      testCasePermissions,
+      isPermissionLoading,
+    ]
   );
 
   if (

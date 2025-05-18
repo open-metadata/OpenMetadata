@@ -254,7 +254,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
 
       const incidentDetailsRes = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
       );
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
       await incidentDetailsRes;
@@ -456,7 +456,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
     );
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
@@ -485,7 +485,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeVisible();
 
     const nonAssigneeFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
     );
     await page
       .getByTestId('select-assignee')
@@ -508,7 +508,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeVisible();
 
     const nonStatusFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
     );
     await page.getByTestId('status-select').getByLabel('close-circle').click();
     await nonStatusFilterRes;
@@ -534,7 +534,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).toBeVisible();
 
     const nonTestCaseFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
     );
     await page
       .getByTestId('test-case-select')
@@ -544,7 +544,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="date-picker-menu"]');
     const timeSeriesFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
     );
     await page.getByRole('menuitem', { name: 'Yesterday' }).click();
     await timeSeriesFilterRes;

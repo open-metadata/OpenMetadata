@@ -35,6 +35,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -222,6 +223,7 @@ export const TableProfilerProvider = ({
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,
+        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
       });
 
       setAllTestCases(data);
