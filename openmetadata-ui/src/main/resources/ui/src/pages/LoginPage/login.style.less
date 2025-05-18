@@ -17,6 +17,28 @@
   background-color: @grey-100;
   padding: @size-lg;
   padding-left: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  @media screen and (max-width: 1024px) {
+    padding: @size-md;
+    justify-content: center;
+  }
+
+  .form-carousel-container {
+    position: fixed;
+    right: @size-md;
+    top: @size-md;
+    width: calc(58.33% - @size-md * 2);
+    height: calc(100vh - @size-md * 2);
+    overflow: hidden;
+
+    @media screen and (max-width: 1024px) {
+      display: none;
+    }
+  }
 
   .form-item {
     background-color: @white;
@@ -29,6 +51,23 @@
     margin: @size-2xl;
     padding: @size-xl @size-2xl;
     text-align: center;
+    height: auto;
+    max-width: 500px;
+    margin-left: @size-2xl;
+
+    @media screen and (max-width: 1200px) {
+      margin: @size-md;
+      padding: @size-lg;
+      width: 100%;
+    }
+
+    @media screen and (max-width: 1024px) {
+      margin: 0 auto;
+    }
+
+    @media screen and (max-width: 768px) {
+      min-width: 320px;
+    }
 
     .header-text {
       font-size: 28px;
@@ -36,6 +75,11 @@
       color: @grey-800;
       margin-top: @size-xl;
       margin-bottom: 0px;
+
+      @media screen and (max-width: 768px) {
+        font-size: 24px;
+        margin-top: @size-lg;
+      }
     }
 
     label {
@@ -65,6 +109,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+
+      @media screen and (max-width: 768px) {
+        width: 100%;
+      }
+    }
+
+    @media screen and (min-width: 1600px) {
+      margin: auto;
     }
   }
 
@@ -91,6 +143,13 @@
 .login-form {
   margin-top: 3rem;
   width: 380px;
+
+  @media screen and (max-width: 1024px) {
+    width: 100%;
+    max-width: 380px;
+    margin: 2rem auto 0;
+  }
+
   .error-alert {
     border-color: #fbb4ae;
   }

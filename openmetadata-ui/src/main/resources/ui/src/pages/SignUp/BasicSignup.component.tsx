@@ -76,7 +76,7 @@ const BasicSignUp = () => {
     <>
       <DocumentTitle title={t('label.sign-up')} />
       <Row className="login-form-container" data-testid="signin-page">
-        <Col span={10}>
+        <Col lg={10} sm={24}>
           <div className="form-item">
             <BrandImage height="auto" width={160} />
             <Typography.Text className="text-lg text-grey-muted m-t-lg">
@@ -216,7 +216,7 @@ const BasicSignUp = () => {
           </div>
         </Col>
 
-        <Col className="relative" span={14}>
+        <Col className="form-carousel-container" lg={14} sm={0}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"

@@ -277,7 +277,7 @@ const SignInPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={14}>
+        <Col className="form-carousel-container" span={14}>
           <div className="absolute inset-0">
             <img
               alt="Login Background"
