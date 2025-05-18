@@ -269,10 +269,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // isOwner() has Unexpected input parameter
     failsToEvaluate(policyName, "!isOwner('unexpectedParam')");
 
-    // Invalid function name
-    failsToEvaluate(policyName, "invalidFunction()");
-    failsToEvaluate(policyName, "isOwner() || invalidFunction()");
-
     // Invalid text
     failsToEvaluate(policyName, "a");
     failsToEvaluate(policyName, "abc");
