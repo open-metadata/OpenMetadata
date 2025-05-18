@@ -16,7 +16,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("changeDescription", "failedRowsSample");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
