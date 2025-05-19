@@ -394,6 +394,8 @@ export const assignTag = async (
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await expect(
     page
       .getByTestId(parentId)
@@ -482,7 +484,7 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
-    expect(
+    await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
         .getByTestId('tags-container')
@@ -573,6 +575,8 @@ export const assignGlossaryTerm = async (
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await expect(
     page
       .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -620,6 +624,8 @@ export const assignGlossaryTermToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await patchRequest;
 
   await expect(
@@ -662,7 +668,7 @@ export const removeGlossaryTerm = async (
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
-    expect(
+    await expect(
       page
         .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
@@ -843,7 +849,7 @@ export const createAnnouncement = async (
   await page.reload();
   await page.getByTestId('announcement-card').isVisible();
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
 
   // TODO: Review redirection flow for announcement @Ashish8689
   // await redirectToHomePage(page);

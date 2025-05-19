@@ -54,7 +54,7 @@ def mysql_container(tmp_path_factory):
         engine.dispose()
         assert_dangling_connections(container, 1)
         yield container
-        # TODO: We are still leaving some connections open. Should be fixed in the future.
+        # Needs to be handled for Test Cases https://github.com/open-metadata/OpenMetadata/issues/21187
         assert_dangling_connections(container, 9)
 
 

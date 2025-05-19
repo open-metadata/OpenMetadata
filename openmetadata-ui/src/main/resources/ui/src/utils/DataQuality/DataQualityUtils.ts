@@ -325,6 +325,13 @@ export const buildDataQualityDashboardFilters = (data: {
     }
   }
 
+  // Add the deleted filter to the mustFilter array
+  mustFilter.push({
+    term: {
+      deleted: false,
+    },
+  });
+
   return mustFilter;
 };
 

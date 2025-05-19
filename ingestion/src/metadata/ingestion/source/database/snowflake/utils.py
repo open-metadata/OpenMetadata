@@ -188,7 +188,11 @@ def _get_query_map(
 
 
 def _get_query_parameters(
-    self, connection, schema: str, incremental: Optional[IncrementalConfig]
+    self,
+    connection,
+    schema: str,
+    incremental: Optional[IncrementalConfig],
+    account_usage: Optional[str] = None,
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {"schema": fqn.unquote_name(schema)}
@@ -199,6 +203,7 @@ def _get_query_parameters(
             **parameters,
             "date": incremental.start_timestamp,
             "database": database,
+            "account_usage": account_usage or "SNOWFLAKE.ACCOUNT_USAGE",
         }
 
     return parameters
@@ -207,9 +212,12 @@ def _get_query_parameters(
 def get_table_names(self, connection, schema: str, **kw):
     """Return the Table names to process based on the incremental setup."""
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     query = queries["default"]
 
@@ -234,9 +242,12 @@ def get_table_names(self, connection, schema: str, **kw):
 
 def get_view_names(self, connection, schema, **kw):
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]

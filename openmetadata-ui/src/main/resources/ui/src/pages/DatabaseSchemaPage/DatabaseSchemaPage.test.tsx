@@ -198,6 +198,7 @@ const API_FIELDS = [
   'domain',
   'votes',
   'extension',
+  'followers',
   'dataProducts',
 ];
 
