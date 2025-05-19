@@ -18,7 +18,12 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
-import { descriptionBox, descriptionBoxReadOnly, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -212,6 +217,8 @@ const editGlossaryCustomProperty = async (
     await page
       .locator(descriptionBox)
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+
+    await clickOutside(page);
 
     await page.getByTestId('markdown-editor').getByTestId('save').click();
 
