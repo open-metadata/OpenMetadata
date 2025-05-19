@@ -308,6 +308,10 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
+    /**
      * Auth0 Client Secret Key.
      */
     responseType?: string;

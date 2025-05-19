@@ -104,7 +104,7 @@ class PIIProcessor(Processor):
             tagFQN=tag_fqn,
             source=TagSource.Classification,
             state=State.Suggested,
-            labelType=LabelType.Automated,
+            labelType=LabelType.Generated,
         )
 
         return ColumnTag(column_fqn=column_fqn, tag_label=tag_label)

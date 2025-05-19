@@ -223,6 +223,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -784,10 +785,6 @@ export enum FileFormat {
     Gz = "gz",
     JSON = "json",
     Parquet = "parquet",
-    ParquetPq = "pq",
-    ParquetPqt = "pqt",
-    ParquetParq = "parq",
-    ParquetSnappy = "parquet.snappy",
     Tsv = "tsv",
     Zip = "zip",
     Zstd = "zstd",
