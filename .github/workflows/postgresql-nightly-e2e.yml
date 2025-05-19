@@ -179,9 +179,5 @@ jobs:
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
-          echo "List Current Directory"
-          ls -lahtr
-          echo "Checking blob-reports directory contents:"
-          ls -lahtr ./blob-reports/
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
           npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
