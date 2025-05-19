@@ -39,6 +39,11 @@ class PowerBIUser(BaseModel):
 
     displayName: Optional[str] = None
     email: Optional[str] = Field(alias="emailAddress", default=None)
+    userType: Optional[str] = None
+    reportUserAccessRight: Optional[str] = None
+    datasetUserAccessRight: Optional[str] = None
+    dataflowUserAccessRight: Optional[str] = None
+    dashboardUserAccessRight: Optional[str] = None
 
 
 class PowerBIDashboard(BaseModel):
@@ -65,6 +70,7 @@ class PowerBIReport(BaseModel):
     name: str
     datasetId: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
+    modifiedBy: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):
@@ -163,6 +169,11 @@ class TablesResponse(BaseModel):
     value: List[PowerBiTable]
 
 
+class DatasetExpression(BaseModel):
+    name: str
+    expression: str
+
+
 class Dataset(BaseModel):
     """
     PowerBI Dataset Model
@@ -174,6 +185,8 @@ class Dataset(BaseModel):
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
+    expressions: Optional[List[DatasetExpression]] = []
+    configuredBy: Optional[str] = None
 
 
 class DatasetResponse(BaseModel):
@@ -190,6 +203,8 @@ class Dataflow(BaseModel):
     id: str = Field(alias="objectId")
     name: str
     description: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
+    modifiedBy: Optional[str] = None
 
 
 class Group(BaseModel):
