@@ -134,7 +134,7 @@ curl -X PATCH http://localhost:8585/api/v1/tables/208598fc-bd5f-458c-bf98-59224e
 ]'
 ```
 
-When finished your new customer property should be present and updated for the `raw_product_catalog` table
+When finished your new custom property should be present and updated for the `raw_product_catalog` table
 
 {% image src="/images/v1.6/developers/custom-properties.png" alt="Custom property added to table" caption=" " /%}
 
