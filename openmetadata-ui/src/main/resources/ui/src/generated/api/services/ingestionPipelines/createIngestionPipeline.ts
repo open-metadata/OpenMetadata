@@ -2035,6 +2035,8 @@ export interface ServiceConnection {
  *
  * Wherescape Metadata Database Connection Config
  *
+ * SSIS Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -3318,6 +3320,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Storage Connection having package files
+     */
+    storageConnection?: S3Connection;
     /**
      * Fivetran API Secret.
      */
@@ -5143,6 +5149,39 @@ export interface SSLCertificates {
 }
 
 /**
+ * Storage Connection having package files
+ *
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
+}
+
+/**
  * Client SSL/TLS settings.
  */
 export enum SSLTLSSettings {
@@ -5330,6 +5369,7 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",

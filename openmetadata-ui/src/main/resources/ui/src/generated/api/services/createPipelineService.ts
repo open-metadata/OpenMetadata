@@ -70,6 +70,8 @@ export interface PipelineConnection {
  *
  * Wherescape Metadata Database Connection Config
  *
+ * SSIS Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -147,7 +149,11 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
-    awsConfig?:          AWSCredentials;
+    /**
+     * Storage Connection having package files
+     */
+    storageConnection?: S3Connection;
+    awsConfig?:         AWSCredentials;
     /**
      * Airbyte API version.
      */
@@ -568,6 +574,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -884,6 +892,39 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
+ * Storage Connection having package files
+ *
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
+}
+
+/**
  * Service Type
  *
  * Service type.
@@ -910,6 +951,7 @@ export enum PipelineServiceType {
     OpenLineage = "OpenLineage",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Wherescape = "Wherescape",
 }
