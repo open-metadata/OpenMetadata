@@ -699,7 +699,7 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if not match:
                 return None
-            if match.group(1):
+            elif match.group(1):
                 return match.group(1)
             elif match.group(2):
                 dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
