@@ -12,9 +12,6 @@
 Workflow definition for the profiler
 """
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
@@ -39,9 +36,6 @@ class ProfilerWorkflow(IngestionWorkflow):
     We check the source connection test when initializing
     this workflow. No need to do anything here if this does not pass
     """
-
-    def __init__(self, config: OpenMetadataWorkflowConfig):
-        super().__init__(config)
 
     def _get_source_class(self):
         if self.config.source.serviceName:
