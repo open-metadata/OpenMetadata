@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +33,7 @@ import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -45,6 +46,8 @@ const SignInPage = () => {
   const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
@@ -166,16 +169,16 @@ const SignInPage = () => {
   return (
     <>
       <DocumentTitle title={t('label.sign-in')} />
-      <Row className="h-full" data-testid="signin-page">
-        <Col className="bg-white" span={8}>
+      <Row className="login-form-container" data-testid="signin-page">
+        <Col span={10}>
           <div
-            className={classNames('mt-24 text-center flex-center flex-col', {
+            className={classNames('form-item', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <BrandImage height="auto" width={200} />
-            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-              {t('message.om-description')}{' '}
-            </Typography.Text>
+            <BrandImage isMonoGram height="auto" width={50} />
+            <Typography.Title className="header-text" level={3}>
+              {t('label.welcome-to')} {brandName}
+            </Typography.Title>
             {alert && (
               <div className="login-alert">
                 <AlertBar
@@ -209,22 +212,38 @@ const SignInPage = () => {
                         }),
                       },
                     ]}>
-                    <Input autoFocus placeholder={t('label.email')} />
+                    <Input
+                      autoFocus
+                      className="input-field"
+                      placeholder={t('label.email')}
+                    />
                   </Form.Item>
                   <Form.Item
                     data-testid="password"
-                    label={t('label.password')}
+                    label={
+                      <div className="label-flex">
+                        <Typography.Text className="mr-1">
+                          {t('label.password')}
+                        </Typography.Text>
+                        <Typography.Link
+                          data-testid="forgot-password"
+                          onClick={onClickForgotPassword}>
+                          {t('label.forgot-password')}
+                        </Typography.Link>
+                      </div>
+                    }
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
                     <Input.Password
                       autoComplete="off"
+                      className="input-field"
                       placeholder={t('label.password')}
                     />
                   </Form.Item>
 
                   <Button
-                    className="w-full"
+                    className="w-full p-y-lg d-flex flex-center"
                     data-testid="login"
                     disabled={loading}
                     htmlType="submit"
@@ -235,33 +254,20 @@ const SignInPage = () => {
                 </Form>
                 {!isAuthProviderLDAP && (
                   <>
-                    <div className="mt-8" onClick={onClickForgotPassword}>
-                      <Typography.Link underline data-testid="forgot-password">
-                        {t('label.forgot-password')}
-                      </Typography.Link>
-                    </div>
                     {authConfig?.enableSelfSignup && (
-                      <>
-                        <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                          <Typography.Text className="text-sm" type="secondary">
-                            {t('label.or-lowercase')}
-                          </Typography.Text>
-                        </Divider>
-
-                        <div className="mt-4 d-flex flex-center">
-                          <Typography.Text className="mr-4">
-                            {t('message.new-to-the-platform')}
-                          </Typography.Text>
-                          <Button
-                            data-testid="signup"
-                            type="link"
-                            onClick={onClickSignUp}>
-                            {t('label.create-entity', {
-                              entity: t('label.account'),
-                            })}
-                          </Button>
-                        </div>
-                      </>
+                      <div className="mt-4 d-flex flex-center">
+                        <Typography.Text className="mr-1">
+                          {t('message.new-to-the-platform')}
+                        </Typography.Text>
+                        <Button
+                          data-testid="signup"
+                          type="link"
+                          onClick={onClickSignUp}>
+                          {t('label.create-entity', {
+                            entity: t('label.account'),
+                          })}
+                        </Button>
+                      </div>
                     )}
                   </>
                 )}
@@ -271,11 +277,11 @@ const SignInPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={16}>
+        <Col className="form-carousel-container" span={14}>
           <div className="absolute inset-0">
             <img
               alt="Login Background"
-              className="w-full h-full"
+              className="w-full h-max-full"
               data-testid="bg-image"
               src={loginBG}
             />
