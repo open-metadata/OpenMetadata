@@ -113,3 +113,8 @@ def _(*_, **__):
     We need to cast it to integer to perform the modulo
     """
     return "(RANDOM() * 100)::INTEGER"
+
+@compiles(RandomNumFn, Dialects.Teradata)
+def _(*_, **__):
+    """Teradata random function"""
+    return "RANDOM(0,100)"
