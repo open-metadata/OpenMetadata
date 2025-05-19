@@ -166,6 +166,37 @@
   font-size: @size-md;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .carousal-container {
   position: relative;
   width: auto;
@@ -173,4 +204,177 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+
+  .image-container {
+    position: relative;
+    z-index: 8;
+    top: 10px;
+
+    .governance-top-left {
+      position: absolute;
+      top: -12px;
+      left: 16%;
+      animation: slideInFromLeft 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        left: 22%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        left: 10%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        left: 5%;
+      }
+    }
+
+    .governance-middle-right {
+      position: absolute;
+      top: 50%;
+      right: 16%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 22%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        right: 10%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        right: 5%;
+      }
+    }
+
+    .governance-bottom-right {
+      position: absolute;
+      bottom: -4%;
+      right: 16%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 22%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        right: 10%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        right: 5%;
+      }
+    }
+
+    .collab-top-left {
+      position: absolute;
+      top: -20px;
+      left: 23%;
+      animation: slideInFromLeft 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        left: 30%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        left: 20%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        left: 16%;
+      }
+    }
+
+    .collab-middle-right {
+      position: absolute;
+      top: 44%;
+      right: 20%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 30%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        right: 16%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        right: 12%;
+      }
+    }
+
+    .observability-top-right {
+      position: absolute;
+      top: -28px;
+      right: 22%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 30%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        right: 18%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        right: 16%;
+      }
+    }
+
+    .observability-bottom-left {
+      position: absolute;
+      bottom: -2px;
+      left: 22%;
+      animation: slideInFromLeft 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        left: 28%;
+      }
+
+      @media screen and (max-width: 1400px) {
+        left: 20%;
+      }
+
+      @media screen and (max-width: 1200px) {
+        left: 17%;
+      }
+    }
+
+    .discovery-top-right {
+      position: absolute;
+      top: -16px;
+      right: 16%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 22%;
+      }
+
+      @media screen and (max-width: 1300px) {
+        right: 10%;
+      }
+    }
+
+    .discovery-middle-right {
+      position: absolute;
+      top: 40%;
+      right: 16%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 22%;
+      }
+
+      @media screen and (max-width: 1300px) {
+        right: 10%;
+      }
+    }
+
+    img {
+      animation: fadeIn 1s ease-in-out;
+    }
+  }
 }
