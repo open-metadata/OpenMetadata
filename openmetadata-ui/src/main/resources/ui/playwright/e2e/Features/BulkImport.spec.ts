@@ -861,7 +861,7 @@ test.describe('Bulk Import Export', () => {
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.click('[type="button"] >> text="Next"', { force: true });
+        await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
           passed: '9',
