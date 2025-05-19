@@ -43,3 +43,12 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.config')
 AND NOT JSON_CONTAINS_PATH(json, 'one', '$.config.storeStageStatus');
+
+-- Add runtime: enabled for AutoPilot
+UPDATE apps_marketplace
+SET json = JSON_SET(
+    json,
+    '$.runtime.enabled',
+    true
+)
+WHERE name = 'AutoPilotApplication';
