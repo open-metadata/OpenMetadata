@@ -19,6 +19,9 @@ from functools import singledispatch
 from types import DynamicClassAttribute
 from typing import Dict, Optional, Union
 
+from sqlalchemy.orm import Query
+from sqlalchemy.sql import Select
+
 from metadata.data_quality.api.models import (
     TableAndTests,
     TestCaseResultResponse,
@@ -126,6 +129,18 @@ def test_suite_logger():
     """
 
     return logging.getLogger(Loggers.TEST_SUITE.value)
+
+
+def log_query(query) -> str:
+    """
+    Method to log the query
+    """
+    if isinstance(query, Query):
+        return query.statement.compile(compile_kwargs={"literal_binds": True})
+    if isinstance(query, Select):
+        return query.compile(compile_kwargs={"literal_binds": True})
+
+    return str(query)
 
 
 def profiler_interface_registry_logger():

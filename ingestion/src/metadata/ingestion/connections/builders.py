@@ -22,6 +22,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
+from ingestion.src.metadata.ingestion.connections.query_logger import (
+    attach_query_tracker,
+)
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -75,6 +78,8 @@ def create_generic_db_connection(
         echo=False,
         max_overflow=-1,
     )
+
+    attach_query_tracker(engine)
 
     if hasattr(connection, "supportsQueryComment"):
         listen(
