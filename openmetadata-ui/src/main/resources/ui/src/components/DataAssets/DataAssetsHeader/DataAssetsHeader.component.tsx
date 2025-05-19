@@ -310,8 +310,11 @@ export const DataAssetsHeader = ({
   );
 
   const showCompressedExtraInfoItems = useMemo(
-    () => getEntityExtraInfoLength(extraInfo) <= 1,
-    [extraInfo]
+    () =>
+      entityType === EntityType.METRIC
+        ? false
+        : getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo, entityType]
   );
 
   const handleOpenTaskClick = () => {
