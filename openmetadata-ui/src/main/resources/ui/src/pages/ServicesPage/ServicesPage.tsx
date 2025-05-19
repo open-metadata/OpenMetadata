@@ -135,7 +135,10 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none h-min-80"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </Col>
     </Row>
   );
