@@ -845,7 +845,7 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate });
-
+  await page.reload();
   await page.waitForLoadState('networkidle');
   await page.waitForResponse(
     '/api/v1/feed?type=Announcement&activeAnnouncement=true&entityLink=*'
