@@ -1,8 +1,11 @@
 package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.Entity;
@@ -10,6 +13,30 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchUtil {
+
+  private static final List<String> IGNORE_SEARCH_KEYS =
+      List.of(
+          "id",
+          "version",
+          "updatedAt",
+          "updatedBy",
+          "usageSummary",
+          "followers",
+          "deleted",
+          "votes",
+          "lifeCycle",
+          "sourceHash",
+          "processedLineage",
+          "totalVotes",
+          "fqnParts",
+          "service_suggest",
+          "column_suggest",
+          "schema_suggest",
+          "database_suggest",
+          "upstreamLineage",
+          "entityRelationship",
+          "changeSummary",
+          "fqnHash");
 
   /**
    * Check if the index is a data asset index
@@ -116,7 +143,7 @@ public class SearchUtil {
     };
   }
 
-  public static Map<String, Object> searchMetadata(Map<String, Object> params) {
+  public static List<Object> searchMetadata(Map<String, Object> params) {
     try {
       LOG.info("Executing searchMetadata with params: {}", params);
       String query = params.containsKey("query") ? (String) params.get("query") : "*";
@@ -165,19 +192,52 @@ public class SearchUtil {
 
       javax.ws.rs.core.Response response = Entity.getSearchRepository().search(searchRequest, null);
 
+      Map<String, Object> searchResponse;
       if (response.getEntity() instanceof String responseStr) {
         LOG.info("Search returned string response");
         JsonNode jsonNode = JsonUtils.readTree(responseStr);
-        return JsonUtils.convertValue(jsonNode, Map.class);
+        searchResponse = JsonUtils.convertValue(jsonNode, Map.class);
       } else {
         LOG.info("Search returned object response: {}", response.getEntity().getClass().getName());
-        return JsonUtils.convertValue(response.getEntity(), Map.class);
+        searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
       }
+      return cleanSearchResponse(searchResponse);
     } catch (Exception e) {
       LOG.error("Error in searchMetadata", e);
-      Map<String, Object> error = new HashMap<>();
-      error.put("error", e.getMessage());
-      return error;
+      return Collections.emptyList();
     }
+  }
+
+  public static List<Object> cleanSearchResponse(Map<String, Object> searchResponse) {
+    if (searchResponse == null) return Collections.emptyList();
+
+    Map<String, Object> topHits = safeGetMap(searchResponse.get("hits"));
+    if (topHits == null) return Collections.emptyList();
+
+    List<Object> hits = safeGetList(topHits.get("hits"));
+    if (hits == null) return Collections.emptyList();
+
+    return hits.stream()
+        .map(SearchUtil::safeGetMap)
+        .filter(Objects::nonNull)
+        .map(
+            hit -> {
+              Map<String, Object> source = safeGetMap(hit.get("_source"));
+              if (source == null) return null;
+              IGNORE_SEARCH_KEYS.forEach(source::remove);
+              return source;
+            })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> safeGetMap(Object obj) {
+    return (obj instanceof Map) ? (Map<String, Object>) obj : null;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<Object> safeGetList(Object obj) {
+    return (obj instanceof List) ? (List<Object>) obj : null;
   }
 }
