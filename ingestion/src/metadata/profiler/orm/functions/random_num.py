@@ -114,6 +114,7 @@ def _(*_, **__):
     """
     return "(RANDOM() * 100)::INTEGER"
 
+
 @compiles(RandomNumFn, Dialects.Teradata)
 def _(*_, **__):
     """Teradata random function"""

@@ -41,8 +41,11 @@ def _(element, compiler, **kw):
 def _(element, compiler, **kw):
     return f"TO_HEX(MD5(CAST({compiler.process(element.clauses, **kw)} AS STRING)))"
 
+
 @compiles(MD5, PythonDialects.Teradata.value)
 def _(element, compiler, **kw):
     # There is no MD5 in Teradata or any other hashes
     # But we can use UDF function hash_md5 published by Teradata Community
-    return f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
+    return (
+        f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
+    )
