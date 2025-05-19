@@ -57,7 +57,7 @@ alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
 /%}
 
-To delete a Custom Property for a particular asset, such as tables, naviagate to **Settings >> Custom Properties >> Tables** and click on **Delete Property** 
+To delete a Custom Property for a particular asset, such as tables, navigate to **Settings >> Custom Properties >> Tables** and click on **Delete Property** 
 
 {% image
 src="/images/v1.6/how-to-guides/discovery/custom4.png"

@@ -7,7 +7,7 @@ slug: /developers/how-to-add-custom-property-to-an-entity
 
 This tutorial will create a custom property for a `table` entity.
 
-A custom property can store a value for each entity, such as the a table's size for each `table` entity. 
+A custom property can store a value for each entity, such as a table's size for each `table` entity. 
 
 ### Step 1: Get the table entity type.
 
@@ -27,7 +27,7 @@ After the API call, you will get a response like this.
 }
 ```
 
-Take note of the `id` that corresponds to `"name: "table"` from the above response... `7f0b032f-cdc8-4573-abb0-22165dcd8e07`.
+Take note of the `id` that corresponds to `"name": "table"` from the above response... `7f0b032f-cdc8-4573-abb0-22165dcd8e07`.
 
 ### Step 2: Get the field types with `category=field`
 
@@ -104,7 +104,7 @@ Let’s assume you have `raw_product_catalog` table, find it's id with the API c
 curl -X GET http://localhost:8585/api/v1/tables?limit=1000
 ```
 
-If the table's id was `208598fc-bd5f-458c-bf98-59224e1620c7` and we are adding a value to the customer property for the first time, our PATCH API request will be like this.
+If the table's id was `208598fc-bd5f-458c-bf98-59224e1620c7` and we are adding a value to the custom property for the first time, our PATCH API request will be like this.
 
 ```commandline
 curl -X PATCH http://localhost:8585/api/v1/tables/208598fc-bd5f-458c-bf98-59224e1620c7 \
