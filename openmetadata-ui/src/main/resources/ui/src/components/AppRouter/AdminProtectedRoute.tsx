@@ -29,7 +29,12 @@ const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
   } else if (!hasPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }
