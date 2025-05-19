@@ -5,8 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -66,16 +68,17 @@ public class MigrationUtil {
 
   public static void updateWorkflowDefinitions() {
     workflowDefinitionRepository = new WorkflowDefinitionRepository();
-    List<WorkflowDefinition> workflowDefinitions = workflowDefinitionRepository.listAll(null);
-    
+    List<WorkflowDefinition> workflowDefinitions =
+        workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+
     for (WorkflowDefinition workflow : workflowDefinitions) {
       try {
         if (workflow.getConfig() == null) {
-          workflow.setConfig(new WorkflowDefinition.WorkflowConfig().withStoreStageStatus(false));
+          workflow.setConfig(new WorkflowConfiguration().withStoreStageStatus(false));
         } else if (workflow.getConfig().getStoreStageStatus() == null) {
           workflow.getConfig().setStoreStageStatus(false);
         }
-        
+
         workflowDefinitionRepository.prepareInternal(workflow, false);
         workflowDefinitionRepository.getDao().update(workflow);
       } catch (Exception ex) {
