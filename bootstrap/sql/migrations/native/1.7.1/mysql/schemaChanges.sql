@@ -24,3 +24,22 @@ SET json = JSON_REMOVE(
     '$.connection.config.env'
 )
 WHERE serviceType = 'Tableau';
+
+-- Update workflow definitions to add storeStageStatus field in config if config doesn't exist
+UPDATE workflow_definition_entity 
+SET json = JSON_SET(
+    json,
+    '$.config',
+    JSON_OBJECT('storeStageStatus', false)
+)
+WHERE NOT JSON_CONTAINS_PATH(json, 'one', '$.config');
+
+-- Update workflow definitions to add storeStageStatus field in config if config exists but field doesn't
+UPDATE workflow_definition_entity 
+SET json = JSON_SET(
+    json,
+    '$.config.storeStageStatus',
+    false
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.config')
+AND NOT JSON_CONTAINS_PATH(json, 'one', '$.config.storeStageStatus');
