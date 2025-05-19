@@ -409,10 +409,14 @@ public class SearchResource {
       @Parameter(description = "Search Index name, defaults to table_search_index")
           @DefaultValue("table_search_index")
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index);
+    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
   }
 
   @GET
