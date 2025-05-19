@@ -169,6 +169,8 @@ class SnowflakeSource(
     Database metadata from Snowflake Source
     """
 
+    service_connection: SnowflakeConnection
+
     def __init__(
         self,
         config,
@@ -492,6 +494,7 @@ class SnowflakeSource(
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             **table_type_to_params_map[table_type],
         )
 
@@ -640,6 +643,7 @@ class SnowflakeSource(
         snowflake_views = self.inspector.get_view_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             materialized_views=materialized_views,
         )
 
@@ -894,3 +898,13 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
 
         return None
+
+    def get_life_cycle_query(self):
+        """
+        Get the life cycle query
+        """
+        return self.life_cycle_query.format(
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            account_usage=self.service_connection.accountUsageSchema,
+        )
