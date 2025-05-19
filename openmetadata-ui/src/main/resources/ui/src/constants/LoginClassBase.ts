@@ -20,9 +20,8 @@ import governanceItems from '../assets/img/login-screen/governance/governance-it
 import governanceList from '../assets/img/login-screen/governance/governance-list.png';
 import governanceImg from '../assets/img/login-screen/governance/governance-main.png';
 import governanceReviewer from '../assets/img/login-screen/governance/governance-reviewer.png';
-import observabilityAccuracy from '../assets/img/login-screen/observability/observability-accuracy.png';
 import dataObservabilityImg from '../assets/img/login-screen/observability/observability-main.png';
-import observabilityStats from '../assets/img/login-screen/observability/observability-stats.png';
+import observabilityTestcase from '../assets/img/login-screen/observability/observability-testcase.png';
 
 class LoginClassBase {
   public getLoginCarouselContent() {
@@ -69,16 +68,11 @@ class LoginClassBase {
         image: dataObservabilityImg,
         descriptionKey:
           'discover-your-data-and-unlock-the-value-of-data-assets',
-        width: '380px',
+        width: '370px',
         image1: {
-          image: observabilityStats,
-          width: '150px',
-          position: 'observability-bottom-left',
-        },
-        image2: {
-          image: observabilityAccuracy,
-          width: '200px',
-          position: 'observability-top-right',
+          image: observabilityTestcase,
+          width: '250px',
+          position: 'observability-bottom-right',
         },
       },
       {
