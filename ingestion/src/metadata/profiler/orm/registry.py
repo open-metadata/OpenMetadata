@@ -86,7 +86,7 @@ class PythonDialects(Enum):
     SingleStore = "singlestore"
     SQLite = "sqlite"
     Snowflake = "snowflake"
-    Teradata = "teradata"
+    Teradata = "teradatasql"
     Trino = "trino"
     Vertica = "vertica"
 
