@@ -38,7 +38,10 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.mysql.queries import MYSQL_TEST_GET_QUERIES
+from metadata.ingestion.source.database.mysql.queries import (
+    MYSQL_TEST_GET_QUERIES,
+    MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+)
 from metadata.utils.constants import THREE_MIN
 
 
@@ -50,7 +53,10 @@ def get_connection(connection: MysqlConnection) -> Engine:
         azure_client = AzureClient(connection.authType.azureConfig).create_client()
         if not connection.authType.azureConfig.scopes:
             raise ValueError(
-                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/"
+                "en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-micr"
+                "osoft-entra-access-token and fetch the resource associated with it,"
+                " for e.g. https://ossrdbms-aad.database.windows.net/.default"
             )
         access_token_obj = azure_client.get_token(
             *connection.authType.azureConfig.scopes.split(",")
@@ -75,7 +81,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetQueries": MYSQL_TEST_GET_QUERIES,
+        "GetQueries": MYSQL_TEST_GET_QUERIES
+        if not service_connection.useSlowLogs
+        else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
     }
     return test_connection_db_schema_sources(
         metadata=metadata,
