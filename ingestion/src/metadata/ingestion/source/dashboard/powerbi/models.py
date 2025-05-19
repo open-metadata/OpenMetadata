@@ -163,6 +163,11 @@ class TablesResponse(BaseModel):
     value: List[PowerBiTable]
 
 
+class DatasetExpression(BaseModel):
+    name: str
+    expression: str
+
+
 class Dataset(BaseModel):
     """
     PowerBI Dataset Model
@@ -174,6 +179,7 @@ class Dataset(BaseModel):
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
+    expressions: Optional[List[DatasetExpression]] = []
 
 
 class DatasetResponse(BaseModel):
