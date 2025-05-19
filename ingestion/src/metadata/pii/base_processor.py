@@ -107,7 +107,9 @@ class AutoClassificationProcessor(Processor, ABC):
                     sample_data=[row[idx] for row in record.sample_data.data.rows],
                 )
                 for tag in tags:
-                    column_tag = ColumnTag(column_fqn=column.name.root, tag_label=tag)
+                    column_tag = ColumnTag(
+                        column_fqn=column.fullyQualifiedName.root, tag_label=tag
+                    )
                     column_tags.append(column_tag)
             except Exception as err:
                 # TODO: Shouldn't we return a Left here?
