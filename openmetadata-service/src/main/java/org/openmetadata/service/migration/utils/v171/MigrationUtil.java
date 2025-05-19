@@ -4,13 +4,13 @@ import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -123,7 +123,7 @@ public class MigrationUtil {
 
   public static void updateChart(String chartName, Object chartDetails) {
     DataInsightCustomChart chart =
-            dataInsightSystemChartRepository.getByName(null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
+        dataInsightSystemChartRepository.getByName(null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
     chart.setChartDetails(chartDetails);
     dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
@@ -137,33 +137,33 @@ public class MigrationUtil {
   public static void updateServiceCharts() {
     dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
     updateChart(
-            "tag_source_breakdown",
-            new LineChart()
-                    .withMetrics(
-                            List.of(
-                                    new LineChartMetric()
-                                            .withFormula(
-                                                    "sum(k='tagSources.Ingested')+"
-                                                            + "sum(k='tagSources.Manual')+"
-                                                            + "sum(k='tagSources.Propagated')")
-                                            .withName("manual"),
-                                    new LineChartMetric()
-                                            .withFormula("sum(k='tagSources.Generated')")
-                                            .withName("ai"))));
+        "tag_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tagSources.Ingested')+"
+                                + "sum(k='tagSources.Manual')+"
+                                + "sum(k='tagSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tagSources.Generated')")
+                        .withName("ai"))));
 
     updateChart(
-            "tier_source_breakdown",
-            new LineChart()
-                    .withMetrics(
-                            List.of(
-                                    new LineChartMetric()
-                                            .withFormula(
-                                                    "sum(k='tierSources.Ingested')+"
-                                                            + "sum(k='tierSources.Manual')+"
-                                                            + "sum(k='tierSources.Propagated')")
-                                            .withName("manual"),
-                                    new LineChartMetric()
-                                            .withFormula("sum(k='tierSources.Generated')")
-                                            .withName("ai"))));
+        "tier_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tierSources.Ingested')+"
+                                + "sum(k='tierSources.Manual')+"
+                                + "sum(k='tierSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tierSources.Generated')")
+                        .withName("ai"))));
   }
 }
