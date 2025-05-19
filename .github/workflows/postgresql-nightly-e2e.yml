@@ -131,11 +131,12 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          name: blob-report-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/blob-report
           retention-days: 5
 
       - name: Clean Up
@@ -143,3 +144,40 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  merge-reports:
+    needs: pw-ci-postgresql-branch
+    runs-on: ubuntu-latest
+    if: ${{ !failure() || !cancelled() }}
+    env:
+      # Recommended: pass the GitHub token lets this action correctly
+      # determine the unique run id necessary to re-run the checks
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.19.0
+
+      - name: Download blob reports from GitHub Actions Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: openmetadata-ui/src/main/resources/ui/blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge Reports and Generate Slack Notification
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        env:
+          RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+        run: |
+          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
+          npx playwright-slack-report -c playwright/salck-cli.config.json -j merged_tests_results.json > slack_report.json
