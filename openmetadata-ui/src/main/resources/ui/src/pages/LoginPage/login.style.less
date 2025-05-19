@@ -373,6 +373,36 @@
       }
     }
 
+    .ai-top-right {
+      position: absolute;
+      top: 12px;
+      right: 20%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 28%;
+      }
+
+      @media screen and (max-width: 1300px) {
+        right: 14%;
+      }
+    }
+
+    .ai-bottom-right {
+      position: absolute;
+      bottom: -28px;
+      right: 16%;
+      animation: slideInFromRight 1.5s ease-in-out;
+
+      @media screen and (min-width: 1700px) {
+        right: 22%;
+      }
+
+      @media screen and (max-width: 1300px) {
+        right: 12%;
+      }
+    }
+
     img {
       animation: fadeIn 1s ease-in-out;
     }
