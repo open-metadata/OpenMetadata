@@ -82,7 +82,7 @@ const RolesCard = ({
   if (isAdminUser) {
     return (
       <Card
-        className="new-header-border-card"
+        className="bot-page-roles-card-header"
         extra={
           !isRolesEdit && (
             <EditIconButton
