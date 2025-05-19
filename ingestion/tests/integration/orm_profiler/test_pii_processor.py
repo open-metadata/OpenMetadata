@@ -307,7 +307,6 @@ class PiiProcessorTest(TestCase):
         )
 
         updated_record: ProfilerResponse = self.pii_processor.run(record)
-
         for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):
             self.assertEqual(expected.column_fqn, updated.column_fqn)
             self.assertEqual(expected.tag_label.tagFQN, updated.tag_label.tagFQN)
