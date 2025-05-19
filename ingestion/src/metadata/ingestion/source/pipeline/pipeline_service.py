@@ -319,8 +319,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
+        :param table_details: TableDetails object containing table name, schema, database information
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
@@ -330,7 +329,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Table,
                 service_name=db_service,
-                database_name=None,
+                database_name=table_details.database,
                 schema_name=table_details.schema,
                 table_name=table_details.name,
             )

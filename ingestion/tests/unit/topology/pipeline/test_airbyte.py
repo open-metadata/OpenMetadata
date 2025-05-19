@@ -18,6 +18,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -25,6 +26,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -34,6 +36,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.airbyte.metadata import (
@@ -70,7 +74,7 @@ mock_airbyte_config = {
 }
 
 
-EXPECTED_ARIBYTE_DETAILS = AirbytePipelineDetails(
+EXPECTED_AIRBYTE_DETAILS = AirbytePipelineDetails(
     workspace=mock_data["workspace"][0], connection=mock_data["connection"][0]
 )
 
@@ -156,8 +160,79 @@ MOCK_PIPELINE = Pipeline(
     ),
 )
 
+# Mock data for lineage testing
+MOCK_POSTGRES_SOURCE_TABLE = Table(
+    id="69fc8906-4a4a-45ab-9a54-9cc2d399e10e",
+    name="mock_table_name",
+    fullyQualifiedName="mock_source_service.mock_source_db.mock_source_schema.mock_table_name",
+    columns=[{"name": "id", "dataType": "INT"}, {"name": "name", "dataType": "STRING"}],
+)
+
+MOCK_POSTGRES_DESTINATION_TABLE = Table(
+    id="59fc8906-4a4a-45ab-9a54-9cc2d399e10e",
+    name="mock_table_name",
+    fullyQualifiedName=(
+        "mock_destination_service.mock_destination_db"
+        ".mock_destination_schema.mock_table_name"
+    ),
+    columns=[{"name": "id", "dataType": "INT"}, {"name": "name", "dataType": "STRING"}],
+)
+
+EXPECTED_LINEAGE = AddLineageRequest(
+    edge=EntitiesEdge(
+        fromEntity=EntityReference(
+            id="69fc8906-4a4a-45ab-9a54-9cc2d399e10e", type="table"
+        ),
+        toEntity=EntityReference(
+            id="59fc8906-4a4a-45ab-9a54-9cc2d399e10e", type="table"
+        ),
+        lineageDetails=LineageDetails(
+            pipeline=EntityReference(
+                id="2aaa012e-099a-11ed-861d-0242ac120002", type="pipeline"
+            ),
+            source=LineageSource.PipelineLineage,
+        ),
+    )
+)
+
+MOCK_SOURCE_TABLE_FQN = (
+    "mock_source_service.mock_source_db.mock_source_schema.mock_table_name"
+)
+MOCK_DESTINATION_TABLE_FQN = "mock_destination_service.mock_destination_db.mock_destination_schema.mock_table_name"
+
+
+# Configure mock for _get_table_fqn to return FQNs for source and destination tables
+def mock_get_table_fqn(self, table_details):  # pylint: disable=unused-argument
+    if table_details.name != "mock_table_name":
+        return None
+
+    if table_details.schema == "mock_source_schema":
+        return MOCK_SOURCE_TABLE_FQN
+    if table_details.schema == "mock_destination_schema":
+        return MOCK_DESTINATION_TABLE_FQN
+    if table_details.schema == "mock_source_db":
+        return MOCK_SOURCE_TABLE_FQN
+    if table_details.schema == "mock_destination_db":
+        return MOCK_DESTINATION_TABLE_FQN
+
+    return None
+
+
+# Configure the mock to return our test tables and pipeline
+def mock_get_by_name(entity, fqn):
+    if entity == Table:
+        if fqn == MOCK_SOURCE_TABLE_FQN:
+            return MOCK_POSTGRES_SOURCE_TABLE
+        if fqn == MOCK_DESTINATION_TABLE_FQN:
+            return MOCK_POSTGRES_DESTINATION_TABLE
+    if entity == Pipeline:
+        return MOCK_PIPELINE
+    return None
+
 
 class AirbyteUnitTest(TestCase):
+    """Test class for Airbyte source module."""
+
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
@@ -180,20 +255,86 @@ class AirbyteUnitTest(TestCase):
         self.client.list_connections.return_value = mock_data.get("connection")
 
     def test_pipeline_list(self):
-        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_ARIBYTE_DETAILS
+        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS
 
     def test_pipeline_name(self):
         assert self.airbyte.get_pipeline_name(
-            EXPECTED_ARIBYTE_DETAILS
-        ) == mock_data.get("connection")[0].get("connectionId")
+            EXPECTED_AIRBYTE_DETAILS
+        ) == mock_data.get("connection")[0].get("name")
 
     def test_pipelines(self):
-        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0].right
-        assert pipline == EXPECTED_CREATED_PIPELINES
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_AIRBYTE_DETAILS))[0].right
+        assert pipeline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
         status = [
             either.right
-            for either in self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS)
+            for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)
         ]
         assert status == EXPECTED_PIPELINE_STATUS
+
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    def test_yield_pipeline_lineage_details(self):
+        """Test the Airbyte lineage generation functionality."""
+        # Mock the client methods needed for lineage with supported source and destination types
+        self.client.get_source.return_value = {
+            "sourceName": "Postgres",
+            "connectionConfiguration": {
+                "database": "mock_source_db",
+                "schema": "mock_source_schema",
+            },
+        }
+
+        self.client.get_destination.return_value = {
+            "destinationName": "Postgres",
+            "connectionConfiguration": {
+                "database": "mock_destination_db",
+                "schema": "mock_destination_schema",
+            },
+        }
+
+        # Mock connection with stream data for lineage test
+        test_connection = {
+            "connectionId": "test-connection-id",
+            "sourceId": "test-source-id",
+            "destinationId": "test-destination-id",
+            "name": "Test Connection",
+            "syncCatalog": {
+                "streams": [
+                    {
+                        "stream": {
+                            "name": "mock_table_name",
+                            "namespace": "mock_source_schema",
+                            "jsonSchema": {},
+                        }
+                    }
+                ]
+            },
+        }
+
+        test_workspace = {"workspaceId": "test-workspace-id"}
+        test_pipeline_details = AirbytePipelineDetails(
+            workspace=test_workspace, connection=test_connection
+        )
+
+        # Mock the metadata object directly in the Airbyte source
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+
+            # Test yield_pipeline_lineage_details
+            lineage_results = list(
+                self.airbyte.yield_pipeline_lineage_details(test_pipeline_details)
+            )
+
+            # Check that we get at least one lineage result
+            assert len(lineage_results) > 0
+
+            # Extract the lineage details
+            lineage = lineage_results[0].right
+
+            # Verify the lineage structure
+            assert lineage.edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+            assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
+            # Compare just the UUID string value from both sides
+            assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
+            assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
