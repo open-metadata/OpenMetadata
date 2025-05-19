@@ -41,6 +41,9 @@ def convert_to_str(value: Any) -> Optional[str]:
     if value is None:
         # We want to skip None values, not convert them to "None"
         return None
+    if hasattr(value, "__str__"):
+        # If the value has a __str__ method, use it
+        return str(value)
     return None
 
 
