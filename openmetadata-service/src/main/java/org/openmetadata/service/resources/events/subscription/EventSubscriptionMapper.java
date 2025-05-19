@@ -42,8 +42,9 @@ public class EventSubscriptionMapper
 
   private String validateConsumerClass(String className) {
     // Validate that the class belongs to our application package
-    if (!className.startsWith("org.openmetadata.")) {
-      throw new BadRequestException("Only classes from org.openmetadata package are allowed");
+    if (!className.startsWith("org.openmetadata.") && !className.contains("io.collate.")) {
+      throw new BadRequestException(
+          "Only classes from org.openmetadata or io.collate packages are allowed: " + className);
     }
 
     try {
