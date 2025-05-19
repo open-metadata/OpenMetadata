@@ -150,29 +150,37 @@ class DbtSource(DbtServiceSource):
         Returns dbt owner
         """
         try:
-            owner = None
+            owner_ref = None
             dbt_owner = None
             if catalog_node:
                 dbt_owner = catalog_node.metadata.owner
             if manifest_node:
                 dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
-            if dbt_owner:
-                owner = self.metadata.get_reference_by_name(
+            if dbt_owner and isinstance(dbt_owner, str):
+                owner_ref = self.metadata.get_reference_by_name(
                     name=dbt_owner, is_owner=True
+                ) or self.metadata.get_reference_by_email(email=dbt_owner)
+                if owner_ref:
+                    return owner_ref
+                logger.warning(
+                    "Unable to ingest owner from DBT since no user or"
+                    f" team was found with name {dbt_owner}"
                 )
-
-                if owner:
-                    return owner
-
-                # If owner is not found, try to find the owner in OMD using email
-                owner = self.metadata.get_reference_by_email(email=dbt_owner)
-
-                if not owner:
-                    logger.warning(
-                        "Unable to ingest owner from DBT since no user or"
-                        f" team was found with name {dbt_owner}"
-                    )
-            return owner
+            elif dbt_owner and isinstance(dbt_owner, list):
+                owner_list = EntityReferenceList(root=[])
+                for owner_name in dbt_owner:
+                    owner_ref = self.metadata.get_reference_by_name(
+                        name=owner_name, is_owner=True
+                    ) or self.metadata.get_reference_by_email(email=owner_name)
+                    if owner_ref:
+                        owner_list.root.extend(owner_ref.root)
+                    else:
+                        logger.warning(
+                            "Unable to ingest owner from DBT since no user or"
+                            f" team was found with name {owner_name}"
+                        )
+                if owner_list.root:
+                    return owner_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
