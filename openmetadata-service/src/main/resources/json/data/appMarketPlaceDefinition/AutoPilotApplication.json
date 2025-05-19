@@ -16,5 +16,8 @@
     "type": "AutoPilotApplication",
     "active": true,
     "entityLink": null
+  },
+  "runtime": {
+    "enabled": "true"
   }
 }
