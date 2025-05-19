@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils.v171;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -71,19 +73,19 @@ public class MigrationUtil {
     List<WorkflowDefinition> workflowDefinitions =
         workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
-    for (WorkflowDefinition workflow : workflowDefinitions) {
+    for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
       try {
-        if (workflow.getConfig() == null) {
-          workflow.setConfig(new WorkflowConfiguration().withStoreStageStatus(false));
-        } else if (workflow.getConfig().getStoreStageStatus() == null) {
-          workflow.getConfig().setStoreStageStatus(false);
+        if (workflowDefinition.getConfig() == null) {
+          workflowDefinition.setConfig(new WorkflowConfiguration().withStoreStageStatus(false));
+        } else if (workflowDefinition.getConfig().getStoreStageStatus() == null) {
+          workflowDefinition.getConfig().setStoreStageStatus(false);
         }
 
-        workflowDefinitionRepository.prepareInternal(workflow, false);
-        workflowDefinitionRepository.getDao().update(workflow);
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       } catch (Exception ex) {
         LOG.warn(ex.toString());
-        LOG.warn(String.format("Error updating workflow definition %s", workflow.getName()));
+        LOG.warn(
+            String.format("Error updating workflow definition %s", workflowDefinition.getName()));
       }
     }
   }
