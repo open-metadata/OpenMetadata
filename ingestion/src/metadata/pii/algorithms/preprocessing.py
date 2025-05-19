@@ -11,6 +11,7 @@
 """
 Preprocessing functions for the classification tasks.
 """
+import datetime
 import json
 from typing import Any, List, Mapping, Optional, Sequence
 
@@ -27,7 +28,8 @@ def convert_to_str(value: Any) -> Optional[str]:
     """
     if isinstance(value, str):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, datetime.datetime, datetime.date)):
+        # Values we want to convert to string out of the box
         return str(value)
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="ignore")
@@ -41,9 +43,6 @@ def convert_to_str(value: Any) -> Optional[str]:
     if value is None:
         # We want to skip None values, not convert them to "None"
         return None
-    if hasattr(value, "__str__"):
-        # If the value has a __str__ method, use it
-        return str(value)
     return None
 
 
