@@ -48,8 +48,8 @@ import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
-import { getBasePath } from './HistoryUtils';
 import { getPartialNameFromFQN } from './CommonUtils';
+import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
