@@ -109,8 +109,18 @@ MOCK_DASHBOARD_WITH_OWNERS = {
     "embedUrl": "https://test.com/embed",
     "tiles": [],
     "users": [
-        {"displayName": "John Doe", "emailAddress": "john.doe@example.com"},
-        {"displayName": "Jane Smith", "emailAddress": "jane.smith@example.com"},
+        {
+            "displayName": "John Doe",
+            "emailAddress": "john.doe@example.com",
+            "dashboardUserAccessRight": "Owner",
+            "userType": "Member",
+        },
+        {
+            "displayName": "Jane Smith",
+            "emailAddress": "jane.smith@example.com",
+            "dashboardUserAccessRight": "Owner",
+            "userType": "Member",
+        },
     ],
 }
 
@@ -119,7 +129,14 @@ MOCK_DATASET_WITH_OWNERS = {
     "name": "Test Dataset",
     "tables": [],
     "description": "Test dataset description",
-    "users": [{"displayName": "John Doe", "emailAddress": "john.doe@example.com"}],
+    "users": [
+        {
+            "displayName": "John Doe",
+            "emailAddress": "john.doe@example.com",
+            "datasetUserAccessRight": "Owner",
+            "userType": "Member",
+        }
+    ],
 }
 
 MOCK_USER_1_ENITYTY_REF_LIST = EntityReferenceList(

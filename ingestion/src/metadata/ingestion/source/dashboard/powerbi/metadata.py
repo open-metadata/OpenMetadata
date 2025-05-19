@@ -998,27 +998,68 @@ class PowerbiSource(DashboardServiceSource):
         try:
             owner_ref_list = []  # to assign multiple owners to entity if they exist
             for owner in dashboard_details.users or []:
+                owner_ref = None
+                # put filtering conditions
+                if isinstance(dashboard_details, Dataset):
+                    access_right = owner.datasetUserAccessRight
+                elif isinstance(dashboard_details, Dataflow):
+                    access_right = owner.dataflowUserAccessRight
+                elif isinstance(dashboard_details, PowerBIReport):
+                    access_right = owner.reportUserAccessRight
+                elif isinstance(dashboard_details, PowerBIDashboard):
+                    access_right = owner.dashboardUserAccessRight
+
+                if owner.userType != "Member" or (
+                    isinstance(
+                        dashboard_details, (Dataflow, PowerBIReport, PowerBIDashboard)
+                    )
+                    and access_right != "Owner"
+                ):
+                    logger.warning(
+                        f"User is not a member and has no access to the {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                    )
+                    continue
                 if owner.email:
-                    owner_ref = None
                     try:
                         owner_email = EmailStr._validate(owner.email)
-                        owner_ref = self.metadata.get_reference_by_email(
-                            owner_email.lower()
-                        )
                     except PydanticCustomError:
-                        logger.warning(
-                            f"Could not fetch owner data for email: {owner.email}"
-                        )
-                        if owner.displayName:
-                            owner_ref = self.metadata.get_reference_by_name(
-                                name=owner.displayName
+                        logger.warning(f"Invalid email for owner: {owner.email}")
+                        owner_email = None
+                    if owner_email:
+                        try:
+                            owner_ref = self.metadata.get_reference_by_email(
+                                owner_email.lower()
                             )
+                        except Exception as err:
+                            logger.warning(
+                                f"Could not fetch owner data with email {owner.email} in {dashboard_details.id}: {err}"
+                            )
+                elif owner.displayName:
+                    try:
+                        owner_ref = self.metadata.get_reference_by_name(
+                            name=owner.displayName
+                        )
                     except Exception as err:
                         logger.warning(
-                            f"Error processing current owner data in {dashboard_details.id}: {err}"
+                            f"Could not process owner data with name {owner.displayName} in {dashboard_details.id}: {err}"
                         )
-                    if owner_ref:
+                if owner_ref:
+                    owner_ref_list.append(owner_ref.root[0])
+            # check for last modified, configuredBy user
+            current_active_user = None
+            if isinstance(dashboard_details, Dataset):
+                current_active_user = dashboard_details.configuredBy
+            elif isinstance(dashboard_details, (Dataflow, PowerBIReport)):
+                current_active_user = dashboard_details.modifiedBy
+            if current_active_user:
+                try:
+                    owner_ref = self.metadata.get_reference_by_email(
+                        current_active_user.lower()
+                    )
+                    if owner_ref and owner_ref.root[0] not in owner_ref_list:
                         owner_ref_list.append(owner_ref.root[0])
+                except Exception as err:
+                    logger.warning(f"Could not fetch owner data due to {err}")
             if len(owner_ref_list) > 0:
                 logger.debug(
                     f"Successfully fetched owners data for {dashboard_details.id}"
