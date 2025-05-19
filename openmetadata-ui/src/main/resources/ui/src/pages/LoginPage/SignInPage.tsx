@@ -256,10 +256,11 @@ const SignInPage = () => {
                   <>
                     {authConfig?.enableSelfSignup && (
                       <div className="mt-4 d-flex flex-center">
-                        <Typography.Text className="mr-1">
+                        <Typography.Text>
                           {t('message.new-to-the-platform')}
                         </Typography.Text>
                         <Button
+                          className="link-btn"
                           data-testid="signup"
                           type="link"
                           onClick={onClickSignUp}>
