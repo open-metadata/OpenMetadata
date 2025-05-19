@@ -41,6 +41,10 @@ import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const getAlerts = page.waitForResponse(
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
