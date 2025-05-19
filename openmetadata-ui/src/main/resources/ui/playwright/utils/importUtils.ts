@@ -39,13 +39,13 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.locator('.ant-layout-content').getByRole('textbox').fill(text);
-  await page
+  const textboxLocator = page
     .locator('.ant-layout-content')
-    .getByRole('textbox')
-    .press('Enter', { delay: 100 });
+    .getByRole('textbox');
+  await textboxLocator.fill(text);
+  await textboxLocator.press('Enter', { delay: 100 });
 };
 
 export const fillDescriptionDetails = async (
