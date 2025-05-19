@@ -103,7 +103,24 @@ public final class EntityUtil {
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
-
+  public static final BiPredicate<List<EntityReference>, List<EntityReference>>
+      entityReferenceListMatch =
+          (list1, list2) -> {
+            if (list1 == null || list2 == null) {
+              return list1 == list2;
+            }
+            if (list1.size() != list2.size()) {
+              return false;
+            }
+            for (int i = 0; i < list1.size(); i++) {
+              EntityReference ref1 = list1.get(i);
+              EntityReference ref2 = list2.get(i);
+              if (ref1 == null || ref2 == null || !entityReferenceMatch.test(ref1, ref2)) {
+                return false;
+              }
+            }
+            return true;
+          };
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) ->
           tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
