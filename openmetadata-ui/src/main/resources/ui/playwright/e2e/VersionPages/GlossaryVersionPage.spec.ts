@@ -225,12 +225,14 @@ test('GlossaryTerm', async ({ page }) => {
     await page.waitForLoadState('networkidle');
 
     await page
-      .locator('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
+      .locator(
+        '[data-testid="glossary-reviewer"] [data-testid="glossary-reviewer-name"]'
+      )
       .scrollIntoViewIfNeeded();
 
     await expect(
       page.locator(
-        '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
+        '[data-testid="glossary-reviewer"] [data-testid="glossary-reviewer-name"]'
       )
     ).toBeVisible();
   });
