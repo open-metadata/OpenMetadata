@@ -80,7 +80,6 @@ export enum TagSource {
  */
 export enum State {
     Confirmed = "Confirmed",
-    Generated = "Generated",
     Suggested = "Suggested",
 }
 
