@@ -212,7 +212,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm);
+        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 
