@@ -91,6 +91,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.McpServer;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -136,7 +137,7 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
-  private Authorizer authorizer;
+  protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   private Limits limits;
 
@@ -264,11 +265,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
+    // Register MCP
+    registerMCPServer(catalogConfig, environment);
+
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  protected void registerMCPServer(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getMcpConfiguration() != null
+        && catalogConfig.getMcpConfiguration().isEnabled()) {
+      McpServer mcpServer = new McpServer();
+      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
+    }
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {

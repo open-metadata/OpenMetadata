@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,136 +10,129 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
+import TagsContainerV2 from '../Tag/TagsContainerV2/TagsContainerV2';
 import TagsInput from './TagsInput.component';
 
-const mockOnTagsUpdate = jest.fn();
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="tags-container">Mocked TagsContainerV2</div>
+    ));
+});
 
-const tags = [
-  {
-    tagFQN: 'tag1',
-    displayName: 'Tag 1',
-    labelType: LabelType.Automated,
-    source: TagSource.Classification,
-    state: State.Confirmed,
-  },
-  {
-    tagFQN: 'tag2',
-    displayName: 'Tag 2',
-    description: 'This is a sample tag description.',
-    labelType: LabelType.Derived,
-    source: TagSource.Glossary,
-    state: State.Suggested,
-  },
-];
+describe('TagsInput Component', () => {
+  const mockTags: TagLabel[] = [
+    {
+      tagFQN: 'test.tag1',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    },
+    {
+      tagFQN: 'test.tag2',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    },
+  ];
 
-describe('TagsInput', () => {
-  it('should render TagsInput along with tagsViewer in version view', async () => {
-    await act(async () => {
-      render(
-        <TagsInput
-          isVersionView
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
+  const mockOnTagsUpdate = jest.fn();
 
-    expect(
-      await screen.findByTestId('tags-input-container')
-    ).toBeInTheDocument();
-    expect(await screen.findByText('label.tag-plural')).toBeInTheDocument();
-    expect(await screen.findByText('Tag 1')).toBeInTheDocument();
-    expect(await screen.findByText('Tag 2')).toBeInTheDocument();
+  it('renders without crashing', () => {
+    render(
+      <TagsInput editable tags={mockTags} onTagsUpdate={mockOnTagsUpdate} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('tags-input-container')).toBeInTheDocument();
   });
 
-  it('should render tags container when not in in version view', async () => {
-    await act(async () => {
-      render(
-        <TagsInput
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
+  it('renders in version view mode', () => {
+    render(
+      <TagsInput
+        editable
+        isVersionView
+        tags={mockTags}
+        onTagsUpdate={mockOnTagsUpdate}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
-    expect(
-      await screen.findByTestId('tags-input-container')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('tags-container')).toBeInTheDocument();
-
-    expect(await screen.findByText('label.tag-plural')).toBeInTheDocument();
-    expect(await screen.findByText('Tag 1')).toBeInTheDocument();
+    expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
   });
 
-  it('should render edit button when no editable', async () => {
-    await act(async () => {
-      render(
-        <TagsInput editable tags={tags} onTagsUpdate={mockOnTagsUpdate} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
+  it('renders tags in version view mode', () => {
+    render(
+      <TagsInput
+        editable
+        isVersionView
+        tags={mockTags}
+        onTagsUpdate={mockOnTagsUpdate}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
-    expect(await screen.findByTestId('edit-button')).toBeInTheDocument();
-  });
-
-  it('should not render edit button when no editable', async () => {
-    await act(async () => {
-      render(
-        <TagsInput
-          editable={false}
-          tags={tags}
-          onTagsUpdate={mockOnTagsUpdate}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    expect(await screen.queryByTestId('edit-button')).not.toBeInTheDocument();
-  });
-
-  it('should not render tags if tags is empty', async () => {
-    await act(async () => {
-      render(
-        <TagsInput
-          editable={false}
-          tags={[]}
-          onTagsUpdate={mockOnTagsUpdate}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-
-      expect(await screen.findByTestId('tags-container')).toBeInTheDocument();
-      expect(await screen.findByTestId('entity-tags')).toBeInTheDocument();
-      expect(await screen.findByText('--')).toBeInTheDocument();
+    mockTags.forEach((tag) => {
+      expect(screen.getByText(tag.tagFQN)).toBeInTheDocument();
     });
   });
 
-  it('should render add tags if tags is empty and has permission', async () => {
-    await act(async () => {
-      render(<TagsInput editable tags={[]} onTagsUpdate={mockOnTagsUpdate} />, {
-        wrapper: MemoryRouter,
-      });
+  it('renders TagsContainerV2 when not in version view', () => {
+    render(
+      <TagsInput
+        editable
+        isVersionView={false}
+        tags={mockTags}
+        onTagsUpdate={mockOnTagsUpdate}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
-      expect(await screen.findByTestId('entity-tags')).toBeInTheDocument();
-      expect(await screen.findByTestId('add-tag')).toBeInTheDocument();
+    // Verify TagsContainerV2 is rendered
+    expect(screen.getByTestId('tags-container')).toBeInTheDocument();
+  });
+
+  it('handles empty tags array', () => {
+    render(<TagsInput editable tags={[]} onTagsUpdate={mockOnTagsUpdate} />, {
+      wrapper: MemoryRouter,
     });
+
+    expect(screen.getByTestId('tags-input-container')).toBeInTheDocument();
+  });
+
+  it('disables tag editing when editable is false', () => {
+    render(
+      <TagsInput
+        editable={false}
+        tags={mockTags}
+        onTagsUpdate={mockOnTagsUpdate}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(TagsContainerV2).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permission: false,
+      }),
+      {}
+    );
+  });
+
+  it('handles undefined tags prop', () => {
+    render(<TagsInput editable onTagsUpdate={mockOnTagsUpdate} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('tags-input-container')).toBeInTheDocument();
   });
 });

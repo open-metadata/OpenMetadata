@@ -26,11 +26,15 @@ site_menu:
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
     url: /deployment/bare-metal/security
+  - category: Deployment / Bare Metal Deployment / Enable Subpath
+    url: /deployment/bare-metal/subpath
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
+  - category: Deployment / Docker Deployment / Enable Subpath
+    url: /deployment/docker/subpath
 
   - category: Deployment / Kubernetes Deployment
     url: /deployment/kubernetes
@@ -46,6 +50,8 @@ site_menu:
     url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
+  - category: Deployment / Kubernetes Deployment / Enable Subpath
+    url: /deployment/kubernetes/subpath
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
 
@@ -212,14 +218,6 @@ site_menu:
     url: /deployment/upgrade/docker
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
     url: /deployment/upgrade/kubernetes
-  - category: Deployment / Upgrade OpenMetadata / Version Changes
-    url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
-    url: /deployment/upgrade/versions/100-to-110
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.1.x to 1.2.x
-    url: /deployment/upgrade/versions/110-to-120
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
-    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
