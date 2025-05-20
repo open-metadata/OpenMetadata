@@ -100,7 +100,8 @@ const ExpandCollapseHandles = memo(
     isDownstreamNode,
     isUpstreamNode,
     isRootNode,
-    expandPerformed,
+    upstreamExpandPerformed,
+    downstreamExpandPerformed,
     upstreamLineageLength,
     onCollapse,
     onExpand,
@@ -114,18 +115,21 @@ const ExpandCollapseHandles = memo(
         {hasOutgoers &&
           (isDownstreamNode || isRootNode) &&
           getCollapseHandle(LineageDirection.Downstream, onCollapse)}
+
         {!hasOutgoers &&
-          !expandPerformed &&
+          !downstreamExpandPerformed &&
           getExpandHandle(LineageDirection.Downstream, () =>
             onExpand(LineageDirection.Downstream)
           )}
+
         {hasIncomers &&
           (isUpstreamNode || isRootNode) &&
           getCollapseHandle(LineageDirection.Upstream, () =>
             onCollapse(LineageDirection.Upstream)
           )}
+
         {!hasIncomers &&
-          !expandPerformed &&
+          !upstreamExpandPerformed &&
           upstreamLineageLength > 0 &&
           getExpandHandle(LineageDirection.Upstream, () =>
             onExpand(LineageDirection.Upstream)
@@ -166,17 +170,17 @@ const CustomNodeV1 = (props: NodeProps) => {
     id,
     fullyQualifiedName,
     upstreamLineage = [],
-    expandPerformed = false,
+    upstreamExpandPerformed = false,
+    downstreamExpandPerformed = false,
   } = node;
-  const [isTraced, setIsTraced] = useState<boolean>(false);
+  const [isTraced, setIsTraced] = useState(false);
 
-  const showDqTracing = useMemo(() => {
-    return (
-      (activeLayer.includes(LineageLayer.DataObservability) &&
-        dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id)) ??
-      false
-    );
-  }, [activeLayer, dataQualityLineage, id]);
+  const showDqTracing = useMemo(
+    () =>
+      activeLayer.includes(LineageLayer.DataObservability) &&
+      dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id),
+    [activeLayer, dataQualityLineage, id]
+  );
 
   const onExpand = useCallback(
     (direction: LineageDirection) => {
@@ -197,33 +201,33 @@ const CustomNodeV1 = (props: NodeProps) => {
       return label;
     }
 
-    const renderRemoveBtn =
-      isSelected && isEditMode && !isRootNode ? (
-        <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
-      ) : null;
-
     return (
       <>
         <LineageNodeLabelV1 node={node} />
-        {renderRemoveBtn}
+        {isSelected && isEditMode && !isRootNode && (
+          <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
+        )}
       </>
     );
   }, [node.id, isNewNode, label, isSelected, isEditMode, isRootNode]);
 
-  const containerClass = useMemo(() => {
-    return classNames(
-      'lineage-node p-0',
-      isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
-      {
-        'data-quality-failed-custom-node-header': showDqTracing,
-        'custom-node-header-tracing': isTraced,
-      }
-    );
-  }, [isSelected, showDqTracing, isTraced]);
+  const containerClass = useMemo(
+    () =>
+      classNames(
+        'lineage-node p-0',
+        isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+        {
+          'data-quality-failed-custom-node-header': showDqTracing,
+          'custom-node-header-tracing': isTraced,
+        }
+      ),
+    [isSelected, showDqTracing, isTraced]
+  );
 
-  const expandCollapseProps = useMemo(
+  const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
-      expandPerformed,
+      upstreamExpandPerformed,
+      downstreamExpandPerformed,
       hasIncomers,
       hasOutgoers,
       isDownstreamNode,
@@ -235,7 +239,8 @@ const CustomNodeV1 = (props: NodeProps) => {
       onExpand,
     }),
     [
-      expandPerformed,
+      upstreamExpandPerformed,
+      downstreamExpandPerformed,
       hasIncomers,
       hasOutgoers,
       isDownstreamNode,
@@ -248,6 +253,11 @@ const CustomNodeV1 = (props: NodeProps) => {
     ]
   );
 
+  const handlesElement = useMemo(
+    () => <ExpandCollapseHandles {...expandCollapseProps} />,
+    [expandCollapseProps]
+  );
+
   useEffect(() => {
     setIsTraced(tracedNodes.includes(id));
   }, [tracedNodes, id]);
@@ -257,9 +267,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
       <NodeHandles
-        expandCollapseHandles={
-          <ExpandCollapseHandles {...expandCollapseProps} />
-        }
+        expandCollapseHandles={handlesElement}
         id={id}
         isConnectable={isConnectable}
         nodeType={nodeType}

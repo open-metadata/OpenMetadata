@@ -1406,9 +1406,16 @@ const processNodeArray = (
     .map((node: NodeData) => ({
       ...node.entity,
       paging: node.paging,
-      expandPerformed:
-        (node.entity as LineageEntityReference).expandPerformed ||
-        node.entity.fullyQualifiedName === entityFqn,
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1509,7 +1516,8 @@ const processPagination = (
 
 export const parseLineageData = (
   data: LineageData,
-  entityFqn: string
+  entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
+  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1518,7 +1526,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, entityFqn);
+  const nodesArray = processNodeArray(nodes, rootFqn);
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges

@@ -365,7 +365,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, '');
+        const { nodes, edges, entity } = parseLineageData(res, '', decodedFqn);
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -409,7 +409,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, fqn);
+        const { nodes, edges, entity } = parseLineageData(res, fqn, decodedFqn);
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -527,19 +527,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         const { nodes: newNodes, edges: newEdges } = parseLineageData(
           concatenatedLineageData,
-          node.fullyQualifiedName ?? ''
+          node.fullyQualifiedName ?? '',
+          decodedFqn
         );
+
+        const uniqueNodes = [...(entityLineage.nodes ?? [])];
+        for (const nNode of newNodes ?? []) {
+          if (
+            !uniqueNodes.some(
+              (n) => n.fullyQualifiedName === nNode.fullyQualifiedName
+            )
+          ) {
+            uniqueNodes.push(nNode);
+          }
+        }
+
         const updatedEntityLineage = {
           entity: entityLineage.entity,
-          nodes: uniqWith(
-            [...(entityLineage.nodes ?? []), ...newNodes],
-            isEqual
-          ),
+          nodes: uniqueNodes,
           edges: uniqWith(
             [...(entityLineage.edges ?? []), ...newEdges],
             isEqual
           ),
         };
+
+        const currentNode = updatedEntityLineage.nodes.find(
+          (n) => n.fullyQualifiedName === node.fullyQualifiedName
+        );
+
+        if (currentNode) {
+          if (direction === LineageDirection.Upstream) {
+            (currentNode as LineageEntityReference).upstreamExpandPerformed =
+              true;
+          } else {
+            (currentNode as LineageEntityReference).downstreamExpandPerformed =
+              true;
+          }
+        }
 
         updateLineageData(updatedEntityLineage, {
           shouldRedraw: true,
@@ -887,7 +911,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       const { nodes: newNodes, edges: newEdges } = parseLineageData(
         concatenatedLineageData,
-        parentNode.data.node.fullyQualifiedName
+        parentNode.data.node.fullyQualifiedName,
+        decodedFqn
       );
 
       updateLineageData(
@@ -1327,6 +1352,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           (connectedEdge) => connectedEdge.data.edge === val
         );
       });
+
+      // Find the node in updatedNodes by ID and set expandPerformed: false
+      const currentNodeId = (node as Node).id;
+      const nodeToUpdate = updatedNodes.find((n) => n.id === currentNodeId);
+      if (nodeToUpdate) {
+        if (direction === LineageDirection.Upstream) {
+          (nodeToUpdate as LineageEntityReference).upstreamExpandPerformed =
+            false;
+        } else {
+          (nodeToUpdate as LineageEntityReference).downstreamExpandPerformed =
+            false;
+        }
+      }
 
       updateLineageData(
         {
