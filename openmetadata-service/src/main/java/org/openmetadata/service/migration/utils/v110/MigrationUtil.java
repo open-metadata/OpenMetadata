@@ -529,26 +529,27 @@ public class MigrationUtil {
                     "nameHash",
                     newExecutableTestSuite,
                     newExecutableTestSuite.getFullyQualifiedName());
+
+            // add relationship between executable TestSuite with Table
+            testSuiteRepository.addRelationship(
+                    newExecutableTestSuite.getExecutableEntityReference().getId(),
+                    newExecutableTestSuite.getId(),
+                    Entity.TABLE,
+                    TEST_SUITE,
+                    Relationship.CONTAINS);
+
+            // add relationship between all the testCases that are created against a table with native
+            // test suite.
+            for (TestCase testCase : testCases) {
+              testSuiteRepository.addRelationship(
+                      newExecutableTestSuite.getId(),
+                      testCase.getId(),
+                      TEST_SUITE,
+                      TEST_CASE,
+                      Relationship.CONTAINS);
+            }
           } catch (Exception ex) {
             LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
-          }
-          // add relationship between executable TestSuite with Table
-          testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getExecutableEntityReference().getId(),
-              newExecutableTestSuite.getId(),
-              Entity.TABLE,
-              TEST_SUITE,
-              Relationship.CONTAINS);
-
-          // add relationship between all the testCases that are created against a table with native
-          // test suite.
-          for (TestCase testCase : testCases) {
-            testSuiteRepository.addRelationship(
-                newExecutableTestSuite.getId(),
-                testCase.getId(),
-                TEST_SUITE,
-                TEST_CASE,
-                Relationship.CONTAINS);
           }
         }
       }
