@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
@@ -334,8 +335,9 @@ public class TestCaseResolutionStatusRepository
 
   private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
     Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-    updatedTask.setTask(
-        updatedTask.getTask().withAssignees(Collections.singletonList(newAssignee)));
+    List<EntityReference> updatedAssignees =
+        nullOrEmpty(newAssignee) ? new ArrayList<>() : Collections.singletonList(newAssignee);
+    updatedTask.setTask(updatedTask.getTask().withAssignees(updatedAssignees));
 
     JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
 
