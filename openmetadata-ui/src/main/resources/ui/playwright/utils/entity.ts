@@ -845,8 +845,8 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate });
-
   await page.reload();
+  await page.waitForLoadState('networkidle');
   await page.getByTestId('announcement-card').isVisible();
 
   await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
