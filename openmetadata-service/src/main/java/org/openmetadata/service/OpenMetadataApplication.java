@@ -137,7 +137,7 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
-  private Authorizer authorizer;
+  protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   private Limits limits;
 
