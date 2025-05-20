@@ -151,30 +151,60 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Handle the left side panel expand collapse
   useEffect(() => {
+    if (!leftPanelWidget) {
+      return;
+    }
+
     setLayout((prev) => {
-      if (!prev || !leftPanelWidget) {
+      // If layout is empty, return as is
+      if (!prev?.length) {
+        return prev;
+      }
+
+      // Check if we need to update the layout
+      const currentLeftPanel = prev.find((widget) =>
+        widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+      );
+
+      const targetWidth = isTabExpanded ? 8 : 6;
+
+      // If the width is already what we want, don't update
+      if (currentLeftPanel?.w === targetWidth) {
         return prev;
       }
 
       if (isTabExpanded) {
-        const widget = leftPanelWidget;
-        widget.w = 8;
+        // Store the current layout before modifying
+        expandedLayout.current = [...prev];
 
-        // Store the expanded layout
-        expandedLayout.current = prev;
+        // Create new layout with modified left panel width
+        return prev.map((widget) => {
+          if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+            return { ...widget, w: targetWidth };
+          }
 
-        return [widget];
+          return widget;
+        });
       } else {
-        const leftPanelWidget = expandedLayout.current.find((widget) =>
-          widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-        );
+        // If we have stored layout, use it with updated left panel width
+        if (!isEmpty(expandedLayout.current)) {
+          return expandedLayout.current.map((widget) => {
+            if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+              return { ...widget, w: targetWidth };
+            }
 
-        if (leftPanelWidget) {
-          leftPanelWidget.w = 6;
+            return widget;
+          });
         }
 
-        // Restore the collapsed layout
-        return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
+        // Fallback to current layout if no stored layout
+        return prev.map((widget) => {
+          if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+            return { ...widget, w: targetWidth };
+          }
+
+          return widget;
+        });
       }
     });
   }, [isTabExpanded, leftPanelWidget]);
