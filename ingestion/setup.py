@@ -66,7 +66,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
-    "presidio-analyzer": "presidio-analyzer==2.2.355",
+    "presidio-analyzer": "presidio-analyzer==2.2.358",
 }
 
 COMMONS = {
