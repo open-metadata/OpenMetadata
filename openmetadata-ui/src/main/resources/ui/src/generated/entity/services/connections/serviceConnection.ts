@@ -1482,6 +1482,10 @@ export interface ConfigClass {
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
+     * Path leading to your projects
+     */
+    localProjectsPath?: any;
+    /**
      * Storage Connection having package files
      */
     storageConnection?: S3Connection;

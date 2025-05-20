@@ -30,6 +30,10 @@
         "description": "Storage Connection having package files",
         "$ref": "../storage/s3Connection.json"
       },
+      "localProjectsPath": {
+        "title": "Local Projects Path",
+        "description": "Path leading to your projects"
+      },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
