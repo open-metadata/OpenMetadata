@@ -912,7 +912,7 @@ const TeamDetailsV1 = ({
 
   const editDescriptionPermission = useMemo(
     () =>
-      (entityPermissions.EditDescription || entityPermissions.EditAll) &&
+      (entityPermissions.EditAll || entityPermissions.EditDescription) &&
       !isTeamDeleted,
     [entityPermissions, isTeamDeleted]
   );
