@@ -240,6 +240,12 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
+const TestCaseVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/TestCaseVersionPage/TestCaseVersionPage')
+  )
+);
+
 const ObservabilityAlertsPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
@@ -461,10 +467,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           ResourceEntity.TEST_CASE,
           permissions
         )}
-        path={[
-          ROUTES.INCIDENT_MANAGER_DETAILS,
-          ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB,
-        ]}
+        path={[ROUTES.TEST_CASE_DETAILS, ROUTES.TEST_CASE_DETAILS_WITH_TAB]}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TestCaseVersionPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.TEST_CASE_VERSION}
       />
 
       <AdminProtectedRoute

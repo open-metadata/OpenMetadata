@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -40,9 +43,12 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
+import {
+  getTestCaseDetailPagePath,
+  getTestCaseVersionPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
@@ -53,7 +59,7 @@ const IncidentManagerDetailPage = () => {
   const location =
     useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
-  const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
+  const { tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS } =
     useParams<{ tab: EntityTabs }>();
 
   const { fqn: testCaseFQN } = useFqn();
@@ -155,10 +161,7 @@ const IncidentManagerDetailPage = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getIncidentManagerDetailPagePath(
-          testCaseFQN,
-          activeKey as IncidentManagerTabs
-        )
+        getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs)
       );
     }
   };
@@ -209,6 +212,12 @@ const IncidentManagerDetailPage = () => {
   const getEntityFeedCount = useCallback(() => {
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
+
+  const onVersionClick = () => {
+    history.push(
+      getTestCaseVersionPath(testCaseFQN, toString(testCase?.version) ?? '')
+    );
+  };
 
   useEffect(() => {
     if (testCaseFQN) {
@@ -265,20 +274,37 @@ const IncidentManagerDetailPage = () => {
                 serviceName="testCase"
               />
             </Col>
+
             <Col className="d-flex justify-end" span={1}>
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={() => history.push(ROUTES.INCIDENT_MANAGER)}
-                allowSoftDelete={false}
-                canDelete={hasDeletePermission}
-                displayName={testCase.displayName}
-                editDisplayNamePermission={editDisplayNamePermission}
-                entityFQN={testCase.fullyQualifiedName}
-                entityId={testCase.id}
-                entityName={testCase.name}
-                entityType={EntityType.TEST_CASE}
-                onEditDisplayName={handleDisplayNameChange}
-              />
+              <ButtonGroup
+                className="data-asset-button-group spaced"
+                data-testid="asset-header-btn-group"
+                size="small">
+                <Tooltip title={t('label.version-plural-history')}>
+                  <Button
+                    className="version-button"
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={onVersionClick}>
+                    <Typography.Text>{testCase?.version}</Typography.Text>
+                  </Button>
+                </Tooltip>
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={() =>
+                    history.push(ROUTES.INCIDENT_MANAGER)
+                  }
+                  allowSoftDelete={false}
+                  canDelete={hasDeletePermission}
+                  displayName={testCase.displayName}
+                  editDisplayNamePermission={editDisplayNamePermission}
+                  entityFQN={testCase.fullyQualifiedName}
+                  entityId={testCase.id}
+                  entityName={testCase.name}
+                  entityType={EntityType.TEST_CASE}
+                  onEditDisplayName={handleDisplayNameChange}
+                />
+              </ButtonGroup>
             </Col>
           </Row>
         </Col>

@@ -50,7 +50,7 @@ import {
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
   getEntityDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getTestCaseDetailPagePath,
 } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -152,7 +152,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
           const urlData = {
-            pathname: getIncidentManagerDetailPagePath(
+            pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
             ),
             state: { breadcrumbData },
