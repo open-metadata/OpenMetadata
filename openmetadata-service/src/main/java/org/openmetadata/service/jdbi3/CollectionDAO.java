@@ -2057,6 +2057,14 @@ public interface CollectionDAO {
           glossaryTermLink.getFullyQualifiedFieldType());
     }
 
+    default List<String> listThreadsByTaskAssignee(String taskAssigneesId) {
+      String condition = String.format(" WHERE taskAssigneesIds LIKE '%%%s%%'", taskAssigneesId);
+      return listThreadsByTaskAssigneesId(condition);
+    }
+
+    @SqlQuery("SELECT json FROM thread_entity <cond>")
+    List<String> listThreadsByTaskAssigneesId(@Define("cond") String cond);
+
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count "
             + "FROM ( "
