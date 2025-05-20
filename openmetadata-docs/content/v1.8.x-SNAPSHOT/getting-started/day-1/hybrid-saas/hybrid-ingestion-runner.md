@@ -1,6 +1,6 @@
 ---
 title: Hybrid Ingestion Runner
-slug: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner.md
+slug: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner
 collate: true
 ---
 
