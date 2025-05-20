@@ -159,12 +159,14 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.SEARCH_INDEX}
                     key={tagType}
                     permission={false}

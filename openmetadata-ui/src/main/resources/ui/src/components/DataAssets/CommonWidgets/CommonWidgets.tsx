@@ -266,6 +266,7 @@ export const CommonWidgets = ({
   const dataProductsWidget = useMemo(() => {
     return (
       <DataProductsContainer
+        newLook
         activeDomain={domain as EntityReference}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}

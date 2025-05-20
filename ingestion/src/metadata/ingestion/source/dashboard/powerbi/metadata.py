@@ -59,6 +59,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -296,7 +297,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}"
+            f"{workspace_id}/reports/{dashboard_id}/ReportSection?experience=power-bi"
         )
 
     def _get_chart_url(
@@ -506,11 +507,14 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Dataset]:
+    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
         """
         Get All the Powerbi Datasets
         """
-        return self.context.get().workspace.datasets
+        return (
+            self.context.get().workspace.datasets
+            + self.context.get().workspace.dataflows
+        )
 
     def yield_datamodel(
         self, dashboard_details: Group
@@ -526,6 +530,17 @@ class PowerbiSource(DashboardServiceSource):
                     ):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue
+                    if isinstance(dataset, Dataset):
+                        data_model_type = DataModelType.PowerBIDataModel.value
+                        datamodel_columns = self._get_column_info(dataset)
+                    elif isinstance(dataset, Dataflow):
+                        data_model_type = DataModelType.PowerBIDataFlow.value
+                        datamodel_columns = []
+                    else:
+                        logger.warning(
+                            f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
+                        )
+                        continue
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(dataset.id),
                         displayName=dataset.name,
@@ -535,9 +550,9 @@ class PowerbiSource(DashboardServiceSource):
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
-                        dataModelType=DataModelType.PowerBIDataModel.value,
+                        dataModelType=data_model_type,
                         serviceType=DashboardServiceType.PowerBI.value,
-                        columns=self._get_column_info(dataset),
+                        columns=datamodel_columns,
                         project=self.get_project_name(dashboard_details=dataset),
                         owners=self.get_owner_ref(dashboard_details=dataset),
                     )
@@ -677,6 +692,30 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
 
+    def _parse_snowflake_regex_exp(
+        self, match: re.Match, datamodel_entity: DashboardDataModel
+    ) -> Optional[str]:
+        """parse snowflake regex expression"""
+        try:
+            if not match:
+                return None
+            elif match.group(1):
+                return match.group(1)
+            elif match.group(2):
+                dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+                if dataset and dataset.expressions:
+                    # find keyword from dataset expressions
+                    for dexpression in dataset.expressions:
+                        if dexpression.name == match.group(2):
+                            pattern = r'DefaultValue="([^"]+)"'
+                            kw_match = re.search(pattern, dexpression.expression)
+                            if kw_match:
+                                return kw_match.group(1)
+        except Exception as exc:
+            logger.debug(f"Error to parse snowflake regex expression: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_redshift_source(self, source_expression: str) -> Optional[dict]:
         try:
             db_match = re.search(
@@ -693,9 +732,7 @@ class PowerbiSource(DashboardServiceSource):
                 schema = schema_table_match[0] if len(schema_table_match) > 0 else None
                 table = schema_table_match[1] if len(schema_table_match) > 1 else None
 
-            if (
-                schema and table
-            ):  # atlease 2 entities schema and table should be fetched
+            if table:  # atlease table should be fetched
                 return {"database": database, "schema": schema, "table": table}
             return None
         except Exception as exc:
@@ -703,30 +740,32 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_source(self, source_expression: str) -> Optional[dict]:
+    def _parse_snowflake_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[dict]:
         try:
             if "Snowflake.Databases" not in source_expression:
                 # Not a snowflake valid expression
                 return None
             db_match = re.search(
-                r'\[Name="([^"]+)",Kind="Database"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
             )
             schema_match = re.search(
-                r'\[Name="([^"]+)",Kind="Schema"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
             )
-            view_match = re.search(r'\[Name="([^"]+)",Kind="View"\]', source_expression)
             table_match = re.search(
-                r'\[Name="([^"]+)",Kind="Table"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+            )
+            view_match = re.search(
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
             )
 
-            database = db_match.group(1) if db_match else None
-            schema = schema_match.group(1) if schema_match else None
-            view = view_match.group(1) if view_match else None
-            table = table_match.group(1) if table_match else None
+            database = self._parse_snowflake_regex_exp(db_match, datamodel_entity)
+            schema = self._parse_snowflake_regex_exp(schema_match, datamodel_entity)
+            table = self._parse_snowflake_regex_exp(table_match, datamodel_entity)
+            view = self._parse_snowflake_regex_exp(view_match, datamodel_entity)
 
-            if schema and (
-                table or view
-            ):  # atlease 2 entities schema and table should be fetched
+            if table or view:  # atlease table or view should be fetched
                 return {
                     "database": database,
                     "schema": schema,
@@ -738,14 +777,18 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_table_info_from_source_exp(self, table: PowerBiTable) -> dict:
+    def _parse_table_info_from_source_exp(
+        self, table: PowerBiTable, datamodel_entity: DashboardDataModel
+    ) -> dict:
         try:
             if not isinstance(table.source, list):
                 return {}
             source_expression = table.source[0].expression
 
             # parse snowflake source
-            table_info = self._parse_snowflake_source(source_expression)
+            table_info = self._parse_snowflake_source(
+                source_expression, datamodel_entity
+            )
             if isinstance(table_info, dict):
                 return table_info
             # parse redshift source
@@ -768,12 +811,12 @@ class PowerbiSource(DashboardServiceSource):
         Method to create lineage between table and datamodels
         """
         try:
-            table_info = self._parse_table_info_from_source_exp(table)
+            table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
             fqn_search_string = build_es_fqn_search_string(
-                database_name=table_info.get("database"),
-                schema_name=table_info.get("schema"),
                 service_name=db_service_name or "*",
                 table_name=table_info.get("table") or table.name,
+                schema_name=table_info.get("schema") or "*",
+                database_name=table_info.get("database") or "*",
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -955,27 +998,68 @@ class PowerbiSource(DashboardServiceSource):
         try:
             owner_ref_list = []  # to assign multiple owners to entity if they exist
             for owner in dashboard_details.users or []:
+                owner_ref = None
+                # put filtering conditions
+                if isinstance(dashboard_details, Dataset):
+                    access_right = owner.datasetUserAccessRight
+                elif isinstance(dashboard_details, Dataflow):
+                    access_right = owner.dataflowUserAccessRight
+                elif isinstance(dashboard_details, PowerBIReport):
+                    access_right = owner.reportUserAccessRight
+                elif isinstance(dashboard_details, PowerBIDashboard):
+                    access_right = owner.dashboardUserAccessRight
+
+                if owner.userType != "Member" or (
+                    isinstance(
+                        dashboard_details, (Dataflow, PowerBIReport, PowerBIDashboard)
+                    )
+                    and access_right != "Owner"
+                ):
+                    logger.warning(
+                        f"User is not a member and has no access to the {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                    )
+                    continue
                 if owner.email:
-                    owner_ref = None
                     try:
                         owner_email = EmailStr._validate(owner.email)
-                        owner_ref = self.metadata.get_reference_by_email(
-                            owner_email.lower()
-                        )
                     except PydanticCustomError:
-                        logger.warning(
-                            f"Could not fetch owner data for email: {owner.email}"
-                        )
-                        if owner.displayName:
-                            owner_ref = self.metadata.get_reference_by_name(
-                                name=owner.displayName
+                        logger.warning(f"Invalid email for owner: {owner.email}")
+                        owner_email = None
+                    if owner_email:
+                        try:
+                            owner_ref = self.metadata.get_reference_by_email(
+                                owner_email.lower()
                             )
+                        except Exception as err:
+                            logger.warning(
+                                f"Could not fetch owner data with email {owner.email} in {dashboard_details.id}: {err}"
+                            )
+                elif owner.displayName:
+                    try:
+                        owner_ref = self.metadata.get_reference_by_name(
+                            name=owner.displayName
+                        )
                     except Exception as err:
                         logger.warning(
-                            f"Error processing current owner data in {dashboard_details.id}: {err}"
+                            f"Could not process owner data with name {owner.displayName} in {dashboard_details.id}: {err}"
                         )
-                    if owner_ref:
+                if owner_ref:
+                    owner_ref_list.append(owner_ref.root[0])
+            # check for last modified, configuredBy user
+            current_active_user = None
+            if isinstance(dashboard_details, Dataset):
+                current_active_user = dashboard_details.configuredBy
+            elif isinstance(dashboard_details, (Dataflow, PowerBIReport)):
+                current_active_user = dashboard_details.modifiedBy
+            if current_active_user:
+                try:
+                    owner_ref = self.metadata.get_reference_by_email(
+                        current_active_user.lower()
+                    )
+                    if owner_ref and owner_ref.root[0] not in owner_ref_list:
                         owner_ref_list.append(owner_ref.root[0])
+                except Exception as err:
+                    logger.warning(f"Could not fetch owner data due to {err}")
             if len(owner_ref_list) > 0:
                 logger.debug(
                     f"Successfully fetched owners data for {dashboard_details.id}"
