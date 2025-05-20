@@ -24,6 +24,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -159,7 +160,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
               }
 
               McpSchema.JSONRPCMessage message =
-                  McpSchema.deserializeJsonRpcMessage(this.objectMapper, body.toString());
+                  getJsonRpcMessageWithAuthorizationParam(request, body.toString());
               session.handle(message).block();
               response.setStatus(200);
             } catch (Exception var11) {
@@ -184,6 +185,20 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
         }
       }
     }
+  }
+
+  private McpSchema.JSONRPCMessage getJsonRpcMessageWithAuthorizationParam(
+      HttpServletRequest request, String body) throws IOException {
+    Map<String, Object> requestMessage = JsonUtils.getMap(JsonUtils.readTree(body));
+    Map<String, Object> params = (Map<String, Object>) requestMessage.get("params");
+    if (params != null) {
+      Map<String, Object> arguments = (Map<String, Object>) params.get("arguments");
+      if (arguments != null) {
+        arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
+      }
+    }
+    return McpSchema.deserializeJsonRpcMessage(
+        this.objectMapper, JsonUtils.pojoToJson(requestMessage));
   }
 
   public Mono<Void> closeGracefully() {
