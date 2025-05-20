@@ -7,7 +7,7 @@ repos:
       - id: check-json
         exclude: vscode
   - repo: https://github.com/hadialqattan/pycln
-    rev: v2.4.0
+    rev: v2.5.0
     hooks:
       - id: pycln
         files: ^(ingestion|openmetadata-airflow-apis)/
