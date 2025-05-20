@@ -18,7 +18,6 @@ from typing import Optional
 from sqlalchemy import Column, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
 
-from ingestion.src.metadata.profiler.orm.registry import Dialects
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
@@ -26,6 +25,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import Dialects
 
 
 class ColumnValuesToBeUniqueValidator(
