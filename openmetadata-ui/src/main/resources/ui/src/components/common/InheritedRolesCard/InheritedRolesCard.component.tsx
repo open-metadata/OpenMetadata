@@ -25,7 +25,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
 
   return (
     <Card
-      className="new-header-border-card"
+      className="bot-page-roles-card-header"
       key="inherited-roles-card-component"
       title={t('label.inherited-role-plural')}>
       <Fragment>
