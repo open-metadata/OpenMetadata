@@ -136,6 +136,7 @@ const StoredProcedureVersion = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.STORED_PROCEDURE}
                     key={tagType}
                     permission={false}

@@ -223,6 +223,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.PIPELINE}
                     key={tagType}
                     permission={false}

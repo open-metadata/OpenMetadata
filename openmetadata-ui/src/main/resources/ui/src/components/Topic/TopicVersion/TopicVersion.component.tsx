@@ -158,6 +158,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.TOPIC}
                     key={tagType}
                     permission={false}
