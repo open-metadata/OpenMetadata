@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.apps;
 
+import java.util.Objects;
+import javax.validation.ConstraintViolationException;
 import javax.ws.rs.BadRequestException;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
@@ -48,16 +50,21 @@ public class AppMarketPlaceMapper
   }
 
   private void validateApplication(AppMarketPlaceDefinition app) {
-    // Check if the className Exists in classPath
-    if (app.getAppType().equals(AppType.Internal)) {
-      // Check class name exists
-      try {
-        Class.forName(app.getClassName());
-      } catch (ClassNotFoundException e) {
-        throw new BadRequestException(
-            "Application Cannot be registered, because the classname cannot be found on the Classpath.");
-      }
-    } else {
+    try {
+      JsonUtils.validateJsonSchema(app, AppMarketPlaceDefinition.class);
+      Class.forName(
+          Objects.requireNonNull(
+              app.getClassName(), "AppMarketPlaceDefinition.className cannot be null"));
+    } catch (ClassNotFoundException e) {
+      throw new BadRequestException(
+          "Application Cannot be registered, because the Class cannot be found on the Classpath: "
+              + app.getEventSubscriptions());
+    } catch (ConstraintViolationException | NullPointerException e) {
+      throw new BadRequestException(
+          "Application Cannot be registered, because the AppMarketPlaceDefinition is not valid: "
+              + e.getMessage());
+    }
+    if (app.getAppType().equals(AppType.External)) {
       PipelineServiceClientResponse response = pipelineServiceClient.validateAppRegistration(app);
       if (response.getCode() != 200) {
         throw new BadRequestException(

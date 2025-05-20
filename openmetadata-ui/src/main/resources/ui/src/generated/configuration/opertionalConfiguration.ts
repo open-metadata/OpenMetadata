@@ -37,15 +37,15 @@ export interface SMTPSettings {
     /**
      * Mail of the sender
      */
-    senderMail: string;
+    senderMail?: string;
     /**
      * Smtp Server Endpoint
      */
-    serverEndpoint: string;
+    serverEndpoint?: string;
     /**
      * Smtp Server Port
      */
-    serverPort: number;
+    serverPort?: number;
     /**
      * Support Url
      */

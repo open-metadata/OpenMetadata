@@ -369,9 +369,16 @@ def build_dag(
     ingestion_pipeline: IngestionPipeline,
     workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
     workflow_fn: Callable,
+    params: Optional[dict] = None,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
+    :param task_name: Name of the task
+    :param ingestion_pipeline: Pipeline configs
+    :param workflow_config: Workflow configurations
+    :param workflow_fn: Function to be executed
+    :param params: Optional parameters to pass to the operator
+    :return: DAG
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
@@ -393,6 +400,7 @@ def build_dag(
             owner=ingestion_pipeline.owners.root[0].name
             if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
             else "openmetadata",
+            params=params,
         )
 
         return dag
