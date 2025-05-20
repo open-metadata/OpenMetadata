@@ -45,6 +45,10 @@ assets:
 - `resourcePath`: Path to static resources.
 - `uriPath`: URI path prefix for assets.
 
+{% image
+  src="/images/v1.7/deployment/subpath/subpath.gif"
+/%}
+
 ## Example Configuration
 
 Here's how the relevant section of your `openmetadata.yaml` might look:
