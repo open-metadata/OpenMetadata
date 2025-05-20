@@ -21,17 +21,18 @@ import React, {
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
   children: ReactNode;
-  onLogoutSuccess: () => void;
 }
 
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLogoutSuccess }: Props, ref) => {
+  ({ children }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
     const { setIsAuthenticated } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
 
     const login = async () => {
       oktaAuth.signInWithRedirect();
@@ -39,8 +40,11 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       setIsAuthenticated(false);
-      oktaAuth.tokenManager.clear();
-      onLogoutSuccess();
+      try {
+        oktaAuth.tokenManager.clear();
+      } finally {
+        handleSuccessfulLogout();
+      }
     };
 
     const renewToken = async () => {

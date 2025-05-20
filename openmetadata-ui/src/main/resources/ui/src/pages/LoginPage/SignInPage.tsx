@@ -23,6 +23,7 @@ import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
@@ -42,7 +43,8 @@ const SignInPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
+  const { authConfig, isAuthenticated } = useApplicationStore();
+  const { onLoginHandler } = useAuthProvider();
   const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
