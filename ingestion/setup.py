@@ -66,6 +66,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "presidio-analyzer": "presidio-analyzer==2.2.355",
 }
 
 COMMONS = {
@@ -335,6 +336,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
@@ -350,8 +352,9 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.355",
+        VERSIONS["presidio-analyzer"],
     },
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
 }
 
 dev = {
@@ -457,6 +460,7 @@ playwright_dependencies = {
     *plugins["airflow"],
     *plugins["datalake-s3"],
     *plugins["dbt"],
+    *plugins["presidio-analyzer"],
     *e2e_test
     # Add other plugins as needed for Playwright tests
 }
