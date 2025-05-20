@@ -74,6 +74,12 @@ class BigQuerySampler(SQASampler):
             **kwargs,
         )
         self.raw_dataset_type: Optional[TableType] = entity.tableType
+        self._table.__table__.schema = (
+            f"{self.entity.database.name}.{self._table.__table__.schema}"
+        )
+        self._table.__table_args__[
+            "schema"
+        ] = f"{self.entity.database.name}.{self._table.__table_args__['schema']}"
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
@@ -136,8 +142,12 @@ class BigQuerySampler(SQASampler):
         the full table if no sampling is required.
         """
         ds = super().get_dataset(column=column, **__)
-        new_schema = f"{self.entity.database.name}.{self.entity.databaseSchema.name}"
-        if ds.__table__.schema != new_schema:
-            ds.__table__.schema = new_schema
-            ds.__table_args__["schema"] = new_schema
+        # new_schema = f"{self.entity.database.name}.{self.entity.databaseSchema.name}"
+        # try:
+        #     if ds.__table__.schema != new_schema:
+        #         ds.__table__.schema = new_schema
+        #         ds.__table_args__["schema"] = new_schema
+        # except Exception as error:
+        #     logger.debug(f"Error setting schema for dataset: {error}")
+
         return ds

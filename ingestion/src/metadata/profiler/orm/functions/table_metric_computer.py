@@ -336,9 +336,16 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
+        schema = (
+            self.schema_name.startswith(
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}."
+            )
+            and self.schema_name
+            or f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}"
+        )
         query = self._build_query(
             columns,
-            self._build_table("__TABLES__", self.schema_name),
+            self._build_table("__TABLES__", schema),
             where_clause,
         )
         res = self.runner._session.execute(query).first()

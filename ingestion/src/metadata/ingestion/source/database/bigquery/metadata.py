@@ -106,10 +106,7 @@ from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import (
-    clean_up_starting_ending_double_quotes_in_string,
-    retry_with_docker_host,
-)
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -358,69 +355,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:
         database_name = self.context.get().database
-        pk_constraints = inspector.get_pk_constraint(
-            table_name=table_name, schema=schema_name, database=database_name
-        )
-        try:
-            unique_constraints = inspector.get_unique_constraints(
-                table_name, schema_name
-            )
-        except NotImplementedError:
-            logger.debug(
-                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
-            )
-            unique_constraints = []
-        try:
-            foreign_constraints = inspector.get_foreign_keys(
-                table_name=table_name, schema=schema_name, database=database_name
-            )
-        except NotImplementedError:
-            logger.debug(
-                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
-            )
-            foreign_constraints = []
-
-        pk_columns = (
-            pk_constraints.get("constrained_columns")
-            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
-            else {}
-        )
-
-        foreign_columns = []
-        for foreign_constraint in foreign_constraints:
-            if len(foreign_constraint) > 0 and foreign_constraint.get(
-                "constrained_columns"
-            ):
-                foreign_constraint.update(
-                    {
-                        "constrained_columns": [
-                            clean_up_starting_ending_double_quotes_in_string(column)
-                            for column in foreign_constraint.get("constrained_columns")
-                        ],
-                        "referred_columns": [
-                            clean_up_starting_ending_double_quotes_in_string(column)
-                            for column in foreign_constraint.get("referred_columns")
-                        ],
-                    }
-                )
-                foreign_columns.append(foreign_constraint)
-
-        unique_columns = []
-        for constraint in unique_constraints:
-            if constraint.get("column_names"):
-                unique_columns.append(
-                    [
-                        clean_up_starting_ending_double_quotes_in_string(column)
-                        for column in constraint.get("column_names")
-                    ]
-                )
-
-        pk_columns = [
-            clean_up_starting_ending_double_quotes_in_string(pk_column)
-            for pk_column in pk_columns
-        ]
-
-        return pk_columns, unique_columns, foreign_columns
+        schema_name = f"{database_name}.{schema_name}"
+        return super()._get_columns_with_constraints(schema_name, table_name, inspector)
 
     def _get_columns_internal(
         self,

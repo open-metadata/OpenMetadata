@@ -82,13 +82,13 @@ def get_inspector_details(
 
 
 def get_pk_constraint(
-    self, connection, table_name, schema=None, database=None, **kw
+    self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
     """
     This function overrides to get primary key constraint
     """
     try:
-        project = database or connection.engine.url.host
+        project, schema = schema.split(".")
         constraints = PK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
@@ -112,13 +112,13 @@ def get_pk_constraint(
 
 
 def get_foreign_keys(
-    self, connection, table_name, schema=None, database=None, **kw
+    self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
     """
     This function overrides to get foreign key constraint
     """
     try:
-        project = database or connection.engine.url.host
+        project, schema = schema.split(".")
         constraints = FK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
