@@ -224,7 +224,17 @@ def test_aadhaar_extraction(analyzer):
     )
 
 
-# TODO: Add more test for local entities
+def test_indian_passport_extraction(analyzer):
+    samples = [
+        "A1234567",
+    ]
+    context = ["passport", "document"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.IN_PASSPORT, (
+        PIITag.IN_PASSPORT,
+        samples,
+        extracted,
+    )
 
 
 def test_extract_pii_from_column_names():
