@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, once } from 'lodash';
+import { once } from 'lodash';
 import React, {
   useCallback,
   useContext,
@@ -172,36 +172,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       if (isTabExpanded) {
         // Store the current layout before modifying
         expandedLayout.current = [...prev];
-
-        // Create new layout with modified left panel width
-        return prev.map((widget) => {
-          if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-            return { ...widget, w: targetWidth };
-          }
-
-          return widget;
-        });
-      } else {
-        // If we have stored layout, use it with updated left panel width
-        if (!isEmpty(expandedLayout.current)) {
-          return expandedLayout.current.map((widget) => {
-            if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-              return { ...widget, w: targetWidth };
-            }
-
-            return widget;
-          });
-        }
-
-        // Fallback to current layout if no stored layout
-        return prev.map((widget) => {
-          if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-            return { ...widget, w: targetWidth };
-          }
-
-          return widget;
-        });
       }
+
+      // Get the source layout to modify
+      const sourceLayout = isTabExpanded
+        ? prev
+        : expandedLayout.current || prev;
+
+      // Update the layout with new width
+      return sourceLayout.map((widget) => ({
+        ...widget,
+        w: widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+          ? targetWidth
+          : widget.w,
+      }));
     });
   }, [isTabExpanded, leftPanelWidget]);
 
