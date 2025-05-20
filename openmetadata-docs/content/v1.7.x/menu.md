@@ -26,11 +26,15 @@ site_menu:
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
     url: /deployment/bare-metal/security
+  - category: Deployment / Bare Metal Deployment / Enable Subpath
+    url: /deployment/bare-metal/subpath
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
+  - category: Deployment / Docker Deployment / Enable Subpath
+    url: /deployment/docker/subpath
 
   - category: Deployment / Kubernetes Deployment
     url: /deployment/kubernetes
@@ -46,6 +50,8 @@ site_menu:
     url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
+  - category: Deployment / Kubernetes Deployment / Enable Subpath
+    url: /deployment/kubernetes/subpath
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
 
