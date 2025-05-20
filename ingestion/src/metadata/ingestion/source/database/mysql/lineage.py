@@ -20,9 +20,9 @@ class MysqlLineageSource(MysqlQueryParserSource, LineageSource):
     sql_stmt = MYSQL_SQL_STATEMENT
     filters = """
         AND (
-            lower(argument) LIKE '%%create%%table%%select%%'
-            OR lower(argument) LIKE '%%insert%%into%%select%%'
-            OR lower(argument) LIKE '%%update%%'
-            OR lower(argument) LIKE '%%merge%%'
+            lower({sql_column}) LIKE '%%create%%table%%select%%'
+            OR lower({sql_column}) LIKE '%%insert%%into%%select%%'
+            OR lower({sql_column}) LIKE '%%update%%'
+            OR lower({sql_column}) LIKE '%%merge%%'
         )
     """

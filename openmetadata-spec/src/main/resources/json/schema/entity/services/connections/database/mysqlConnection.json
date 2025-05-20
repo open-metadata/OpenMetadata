@@ -132,6 +132,12 @@
     },
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "useSlowLogs": {
+      "title": "Use Slow Logs for Lineage",
+      "description": "Use slow logs to extract lineage.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,
