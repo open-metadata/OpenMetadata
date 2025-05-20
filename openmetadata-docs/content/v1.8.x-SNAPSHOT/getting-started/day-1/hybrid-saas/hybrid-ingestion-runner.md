@@ -76,3 +76,10 @@ Finally, in the service connection form in Collate, reference the secret using t
 password: secret:/my/database/password
 ```
 
+{% note %}
+
+Note that this approach to handling secrets only works for values that are considered secrets in the connection form.
+
+You can identify these values since they mask the typing and have an icon on the right that toggles showing or hiding the input values.
+
+{% /note %}
