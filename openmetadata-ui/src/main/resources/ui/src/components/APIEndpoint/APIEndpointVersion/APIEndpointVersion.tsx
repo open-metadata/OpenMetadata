@@ -140,6 +140,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.API_ENDPOINT}
                     key={tagType}
                     permission={false}

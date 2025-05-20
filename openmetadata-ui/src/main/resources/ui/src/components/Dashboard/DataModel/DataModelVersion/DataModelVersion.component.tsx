@@ -171,6 +171,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     key={tagType}
                     permission={false}
