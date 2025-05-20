@@ -55,6 +55,7 @@ import {
   EntityLineageResponse,
   LineageData,
   LineageEntityReference,
+  NodeData,
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -116,6 +117,7 @@ import {
   onLoad,
   parseLineageData,
   positionNodesUsingElk,
+  removeEdgesFromLineageData,
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
@@ -550,6 +552,56 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             isEqual
           ),
         };
+
+        // remove the nodes and edges from the lineageData
+        const visibleNodes: Record<string, NodeData> = {};
+        uniqueNodes.forEach((node: EntityReference) => {
+          visibleNodes[node.fullyQualifiedName ?? ''] = {
+            entity: node,
+            paging: (node as LineageEntityReference).paging ?? {
+              entityDownstreamCount: 0,
+              entityUpstreamCount: 0,
+            },
+          };
+        });
+
+        // Get connected edges for the current node
+        const { edges: connectedEdges } = getConnectedNodesEdges(
+          {
+            id: node.id,
+            position: { x: 0, y: 0 },
+            data: { node },
+            type: 'default',
+          } as Node,
+          nodes,
+          edges,
+          direction
+        );
+
+        // Update lineageData by removing the connected edges
+        const updatedLineageData = removeEdgesFromLineageData(
+          lineageData,
+          connectedEdges
+        );
+
+        setLineageData((pre) => {
+          if (!pre) {
+            return;
+          }
+
+          return {
+            ...pre,
+            nodes: visibleNodes,
+            downstreamEdges: updatedLineageData?.downstreamEdges as Record<
+              string,
+              EdgeDetails
+            >,
+            upstreamEdges: updatedLineageData?.upstreamEdges as Record<
+              string,
+              EdgeDetails
+            >,
+          };
+        });
 
         const currentNode = updatedEntityLineage.nodes.find(
           (n) => n.fullyQualifiedName === node.fullyQualifiedName
@@ -1365,6 +1417,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             false;
         }
       }
+
+      // remove the nodes and edges from the lineageData
+      const visibleNodes: Record<string, NodeData> = {};
+      updatedNodes.forEach((node) => {
+        visibleNodes[node.fullyQualifiedName ?? ''] = {
+          entity: node,
+          paging: (node as LineageEntityReference).paging ?? {
+            entityDownstreamCount: 0,
+            entityUpstreamCount: 0,
+          },
+        };
+      });
+
+      // Update lineageData by removing the connected edges
+      const updatedLineageData = removeEdgesFromLineageData(
+        lineageData,
+        connectedEdges
+      );
+
+      setLineageData((pre) => {
+        if (!pre) {
+          return;
+        }
+
+        return {
+          ...pre,
+          nodes: visibleNodes,
+          downstreamEdges: updatedLineageData?.downstreamEdges as Record<
+            string,
+            EdgeDetails
+          >,
+          upstreamEdges: updatedLineageData?.upstreamEdges as Record<
+            string,
+            EdgeDetails
+          >,
+        };
+      });
 
       updateLineageData(
         {
