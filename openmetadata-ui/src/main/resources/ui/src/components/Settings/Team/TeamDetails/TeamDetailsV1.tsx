@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
   Col,
-  Collapse,
   Modal,
   Row,
   Space,
@@ -911,9 +910,15 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  const editDescriptionPermission = useMemo(
+    () =>
+      (entityPermissions.EditDescription || entityPermissions.EditAll) &&
+      !isTeamDeleted,
+    [entityPermissions, isTeamDeleted]
+  );
   const teamsCollapseHeader = useMemo(
     () => (
-      <>
+      <div className="p-md">
         <Space wrap className="w-full justify-between">
           <Space
             align="start"
@@ -983,7 +988,18 @@ const TeamDetailsV1 = ({
             updateTeamHandler={updateTeamHandler}
           />
         </div>
-      </>
+        <div className="m-t-md">
+          <DescriptionV1
+            wrapInCard
+            description={currentTeam.description ?? ''}
+            entityName={getEntityName(currentTeam)}
+            entityType={EntityType.TEAM}
+            hasEditAccess={editDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </div>
+      </div>
     ),
     [
       isTeamDeleted,
@@ -999,6 +1015,8 @@ const TeamDetailsV1 = ({
       updateTeamHandler,
       afterDeleteAction,
       getDeleteMessagePostFix,
+      editDescriptionPermission,
+      onDescriptionUpdate,
     ]
   );
 
@@ -1077,13 +1095,6 @@ const TeamDetailsV1 = ({
     ]
   );
 
-  const editDescriptionPermission = useMemo(
-    () =>
-      (entityPermissions.EditDescription || entityPermissions.EditAll) &&
-      !isTeamDeleted,
-    [entityPermissions, isTeamDeleted]
-  );
-
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1110,37 +1121,7 @@ const TeamDetailsV1 = ({
           className="teams-profile-container"
           data-testid="team-detail-header"
           span={24}>
-          <Collapse
-            accordion
-            bordered={false}
-            className="header-collapse-custom-collapse"
-            expandIcon={({ isActive }) => (
-              <span
-                className={classNames('ant-collapse-arrow', {
-                  'arrow-icon-non-organization': !isOrganization,
-                })}>
-                {isActive ? <DownOutlined /> : <RightOutlined />}
-              </span>
-            )}
-            expandIconPosition="end">
-            <Collapse.Panel
-              className={classNames('collapse-panel-container', {
-                'm-t-sm': !isOrganization,
-              })}
-              data-testid="team-details-collapse"
-              header={teamsCollapseHeader}
-              key="1">
-              <DescriptionV1
-                wrapInCard
-                description={currentTeam.description ?? ''}
-                entityName={getEntityName(currentTeam)}
-                entityType={EntityType.TEAM}
-                hasEditAccess={editDescriptionPermission}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Collapse.Panel>
-          </Collapse>
+          {teamsCollapseHeader}
         </Col>
 
         <Col className="m-t-sm" span={24}>
