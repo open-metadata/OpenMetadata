@@ -918,7 +918,7 @@ const TeamDetailsV1 = ({
   );
   const teamsCollapseHeader = useMemo(
     () => (
-      <div className="p-md">
+      <>
         <Space wrap className="w-full justify-between">
           <Space
             align="start"
@@ -999,7 +999,7 @@ const TeamDetailsV1 = ({
             onDescriptionUpdate={onDescriptionUpdate}
           />
         </div>
-      </div>
+      </>
     ),
     [
       isTeamDeleted,
