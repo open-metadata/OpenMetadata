@@ -357,6 +357,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         VERSIONS["presidio-analyzer"],
     },
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
 }
 
 dev = {
@@ -465,6 +466,7 @@ playwright_dependencies = {
     *plugins["airflow"],
     *plugins["datalake-s3"],
     *plugins["dbt"],
+    *plugins["presidio-analyzer"],
     *e2e_test
     # Add other plugins as needed for Playwright tests
 }
