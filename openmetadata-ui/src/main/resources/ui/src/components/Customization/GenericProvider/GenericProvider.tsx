@@ -151,13 +151,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Handle the left side panel expand collapse
   useEffect(() => {
-    if (!leftPanelWidget) {
-      return;
-    }
-
     setLayout((prev) => {
-      // If layout is empty, return as is
-      if (!prev?.length) {
+      // If layout is empty or no left panel widget, return as is
+      if (!prev?.length || !leftPanelWidget) {
         return prev;
       }
 
