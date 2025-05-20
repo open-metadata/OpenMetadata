@@ -280,7 +280,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getMcpConfiguration() != null
         && catalogConfig.getMcpConfiguration().isEnabled()) {
       McpServer mcpServer = new McpServer();
-      mcpServer.initializeMcpServer(environment, catalogConfig);
+      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
     }
   }
 
