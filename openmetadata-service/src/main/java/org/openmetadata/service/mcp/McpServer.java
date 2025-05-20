@@ -18,17 +18,26 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.mcp.tools.CreateGlossaryTerm;
-import org.openmetadata.service.mcp.tools.PatchEntity;
+import org.openmetadata.service.mcp.tools.GlossaryTermTool;
+import org.openmetadata.service.mcp.tools.PatchEntityTool;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class McpServer {
+  private JwtFilter jwtFilter;
+  private Authorizer authorizer;
+
   public McpServer() {}
 
-  public void initializeMcpServer(Environment environment, OpenMetadataApplicationConfig config) {
+  public void initializeMcpServer(
+      Environment environment, Authorizer authorizer, OpenMetadataApplicationConfig config) {
+    this.jwtFilter =
+        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+    this.authorizer = authorizer;
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -144,6 +153,12 @@ public class McpServer {
   }
 
   protected Object runMethod(String toolName, Map<String, Object> params) {
+    CatalogSecurityContext securityContext =
+        jwtFilter.getCatalogSecurityContext((String) params.get("Authorization"));
+    LOG.info(
+        "Catalog Principal: {} is trying to call the tool: {}",
+        securityContext.getUserPrincipal().getName(),
+        toolName);
     Object result;
     switch (toolName) {
       case "search_metadata":
@@ -153,10 +168,10 @@ public class McpServer {
         result = EntityUtil.getEntityDetails(params);
         break;
       case "create_glossary_term":
-        result = CreateGlossaryTerm.execute(params);
+        result = new GlossaryTermTool().execute(authorizer, securityContext, params);
         break;
       case "patch_entity":
-        result = PatchEntity.execute(params);
+        result = new PatchEntityTool().execute(authorizer, securityContext, params);
         break;
       default:
         result = Map.of("error", "Unknown function: " + toolName);
