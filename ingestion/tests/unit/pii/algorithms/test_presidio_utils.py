@@ -25,4 +25,7 @@ def test_analyzer_supports_all_expected_pii_entities():
 
     entities = set(PIITag.values())
     supported_entities = set(analyzer.get_supported_entities(SUPPORTED_LANG))
-    assert entities <= supported_entities
+    assert entities <= supported_entities, (
+        f"Analyzer does not support all expected PII entities. "
+        f"{entities - supported_entities}"
+    )
