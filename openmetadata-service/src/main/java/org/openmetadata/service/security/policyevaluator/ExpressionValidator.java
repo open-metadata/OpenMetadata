@@ -54,7 +54,8 @@ public class ExpressionValidator {
       List<Class<?>> evaluatorClasses =
           Arrays.asList(
               RuleEvaluator.class,
-              Class.forName("org.openmetadata.service.events.subscription.AlertsRuleEvaluator"));
+              Class.forName("org.openmetadata.service.events.subscription.AlertsRuleEvaluator"),
+              Class.forName("io.collate.service.apps.bundles.onboarding.CompletionEvaluator"));
 
       for (Class<?> evaluatorClass : evaluatorClasses) {
         scanClassForFunctions(evaluatorClass, allowedFunctions);
