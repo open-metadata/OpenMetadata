@@ -142,6 +142,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.METRIC}
                     key={tagType}
                     permission={false}

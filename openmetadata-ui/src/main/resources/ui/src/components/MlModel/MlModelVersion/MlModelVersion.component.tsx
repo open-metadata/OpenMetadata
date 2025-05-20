@@ -294,6 +294,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.MLMODEL}
                     key={tagType}
                     permission={false}
