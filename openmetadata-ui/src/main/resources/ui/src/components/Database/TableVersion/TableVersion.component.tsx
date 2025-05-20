@@ -187,6 +187,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.TABLE}
                     key={tagType}
                     permission={false}

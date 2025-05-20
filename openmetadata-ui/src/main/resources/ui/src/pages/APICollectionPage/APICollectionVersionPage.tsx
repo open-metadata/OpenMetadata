@@ -304,6 +304,7 @@ const APICollectionVersionPage = () => {
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     displayType={DisplayType.READ_MORE}
                     entityType={EntityType.API_COLLECTION}
                     key={tagType}

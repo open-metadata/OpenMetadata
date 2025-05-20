@@ -165,6 +165,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.SEARCH_INDEX}
                     key={tagType}
                     permission={false}

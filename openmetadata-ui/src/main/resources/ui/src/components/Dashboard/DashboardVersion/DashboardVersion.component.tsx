@@ -213,6 +213,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
                     permission={false}

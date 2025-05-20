@@ -108,6 +108,7 @@ function ServiceVersionMainTabContent({
         <Space className="w-full" direction="vertical" size="large">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2
+              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={serviceFQN}
               entityType={entityType}
