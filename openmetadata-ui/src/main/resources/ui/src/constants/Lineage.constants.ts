@@ -128,3 +128,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'glossaryTerms', title: 'Glossary Terms' },
   { field: 'depth', title: 'Level' },
 ];
+
+export const INITIAL_NODE_ITEMS_LENGTH = 50;
+export const NODE_ITEMS_PAGE_SIZE = 50;
+export const DEBOUNCE_TIMEOUT = 300;
