@@ -41,6 +41,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_GET_VIEW_DDL,
     SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
@@ -286,13 +287,29 @@ def get_stream_names(self, connection, schema, **kw):
 def get_view_definition(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
+    view_definition = get_view_definition_wrapper(
         self,
         connection,
         table_name=table_name,
         schema=schema,
         query=SNOWFLAKE_GET_VIEW_DEFINITION,
     )
+    if view_definition:
+        return view_definition
+
+    # If the view definition is not found via optimized query,
+    # we need to get the view definition from the view ddl
+
+    schema = schema or self.default_schema_name
+    view_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
 
 
 @reflection.cache
