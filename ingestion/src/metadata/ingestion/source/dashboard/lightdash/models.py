@@ -31,11 +31,21 @@ class LightdashDashboard(BaseModel):
     projectUuid: str
     updatedAt: str
     spaceUuid: str
+    spaceName: Optional[str] = None
     views: float
     firstViewedAt: str
     pinnedListUuid: Optional[str] = None
     pinnedListOrder: Optional[float] = None
     charts: Optional[List[LightdashChart]] = None
+
+
+class LightdashSpace(BaseModel):
+    organizationUuid: str
+    projectUuid: str
+    uuid: str
+    name: str
+    isPrivate: bool
+    parentSpaceUuid: Optional[str] = None
 
 
 class LightdashChartList(BaseModel):
