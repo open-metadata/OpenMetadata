@@ -765,6 +765,10 @@ export const unFollowEntity = async (
   const unFollowResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers/*`
   );
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.getByTestId('entity-follow-button').click();
   await unFollowResponse;
 
@@ -779,7 +783,10 @@ export const validateFollowedEntityToWidget = async (
   isFollowing: boolean
 ) => {
   await redirectToHomePage(page);
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   if (isFollowing) {
     await page.getByTestId('following-widget').isVisible();
 
