@@ -18,44 +18,26 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateGlossaryTerm {
+public class GlossaryTermTool implements McpTool {
   private static GlossaryTermMapper glossaryTermMapper = new GlossaryTermMapper();
 
-  public static Map<String, Object> execute(Map<String, Object> params) {
+  @Override
+  public Map<String, Object> execute(
+      Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
+    // TODO:Use the securityContext to validate permissions
     org.openmetadata.schema.api.data.CreateGlossaryTerm createGlossaryTerm =
         new org.openmetadata.schema.api.data.CreateGlossaryTerm();
     createGlossaryTerm.setGlossary((String) params.get("glossary"));
     createGlossaryTerm.setName((String) params.get("name"));
     createGlossaryTerm.setDescription((String) params.get("description"));
-    //        GlossaryTerm glossaryTerm = new GlossaryTerm();
-    //        glossaryTerm.setName((String) params.get("name"));
-    //        glossaryTerm.setDescription((String) params.get("description"));
-    //
-    //        String glossaryName = (String) params.get("glossary");
-    //
-    //        // Find Glossary
-    //        GlossaryRepository glossaryRepository = (GlossaryRepository)
-    // Entity.getEntityRepository(Entity.GLOSSARY);
-    //        try {
-    //            Optional.ofNullable(glossaryRepository.getByName(null, glossaryName,
-    // EntityUtil.Fields.EMPTY_FIELDS)).ifPresent(glossary ->
-    // glossaryTerm.setGlossary(glossary.getEntityReference()));
-    //        } catch (EntityNotFoundException e) {
-    //            LOG.error(String.format("Glossary '%s' not found", glossaryName));
-    //            Map<String, Object> error = new HashMap<>();
-    //            error.put("error", e.getMessage());
-    //            return error;
-    //        }
-    //
-    // Find Owners
     UserRepository userRepository = Entity.getUserRepository();
-
     List<EntityReference> owners = new java.util.ArrayList<>();
-
     // TODO: Deal with Teams vs Users
     if (params.containsKey("owners")) {
       for (String owner : JsonUtils.readOrConvertValues(params.get("owners"), String.class)) {
