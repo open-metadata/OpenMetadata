@@ -165,6 +165,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}

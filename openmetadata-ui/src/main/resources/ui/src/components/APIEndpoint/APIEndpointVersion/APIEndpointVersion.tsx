@@ -134,6 +134,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
