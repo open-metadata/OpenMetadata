@@ -16,7 +16,15 @@ import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { t } from 'i18next';
-import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import {
+  get,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -1133,7 +1141,7 @@ export const getConnectedNodesEdges = (
 
   return {
     nodes: outgoers,
-    edges: connectedEdges,
+    edges: uniqWith(connectedEdges, isEqual),
     nodeFqn: childNodeFqn,
   };
 };
@@ -1406,9 +1414,16 @@ const processNodeArray = (
     .map((node: NodeData) => ({
       ...node.entity,
       paging: node.paging,
-      expandPerformed:
-        (node.entity as LineageEntityReference).expandPerformed ||
-        node.entity.fullyQualifiedName === entityFqn,
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1509,7 +1524,8 @@ const processPagination = (
 
 export const parseLineageData = (
   data: LineageData,
-  entityFqn: string
+  entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
+  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1518,7 +1534,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, entityFqn);
+  const nodesArray = processNodeArray(nodes, rootFqn);
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges
@@ -1827,4 +1843,46 @@ export const getAllDownstreamEdges = (
 
   // Combine direct and nested downstream edges
   return [...directDownstreamEdges, ...nestedDownstreamEdges];
+};
+
+/**
+ * Removes edges from lineageData that match the connectedEdges based on docId
+ * @param lineageData The lineage data containing downstream and upstream edges
+ * @param connectedEdges The edges to be removed from lineageData
+ * @returns Updated lineageData with matching edges removed
+ */
+export const removeEdgesFromLineageData = (
+  lineageData: LineageData | undefined,
+  connectedEdges: Edge[]
+): LineageData | undefined => {
+  if (!lineageData) {
+    return lineageData;
+  }
+
+  const downstreamEdgeKeys = Object.keys(lineageData.downstreamEdges ?? {});
+  const upstreamEdgeKeys = Object.keys(lineageData.upstreamEdges ?? {});
+
+  // Remove matching edges from downstreamEdges
+  Object.values(lineageData.downstreamEdges ?? {}).forEach((edge, index) => {
+    if (
+      connectedEdges.some(
+        (connectedEdge) => connectedEdge.data.edge.docId === edge.docId
+      )
+    ) {
+      delete lineageData.downstreamEdges?.[downstreamEdgeKeys[index]];
+    }
+  });
+
+  // Remove matching edges from upstreamEdges
+  Object.values(lineageData.upstreamEdges ?? {}).forEach((edge, index) => {
+    if (
+      connectedEdges.some(
+        (connectedEdge) => connectedEdge.data.edge.docId === edge.docId
+      )
+    ) {
+      delete lineageData.upstreamEdges?.[upstreamEdgeKeys[index]];
+    }
+  });
+
+  return lineageData;
 };
