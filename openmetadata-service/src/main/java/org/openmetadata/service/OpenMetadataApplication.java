@@ -137,7 +137,7 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
-  private Authorizer authorizer;
+  protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   private Limits limits;
 
@@ -280,7 +280,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getMcpConfiguration() != null
         && catalogConfig.getMcpConfiguration().isEnabled()) {
       McpServer mcpServer = new McpServer();
-      mcpServer.initializeMcpServer(environment, catalogConfig);
+      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
     }
   }
 
