@@ -312,4 +312,18 @@ public class JwtFilter implements ContainerRequestFilter {
       }
     }
   }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    Map<String, Claim> claims = validateJwtAndGetClaims(token);
+    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    // TODO: check if we need to set the scheme and auth type
+    return new CatalogSecurityContext(
+        catalogPrincipal,
+        "https",
+        SecurityContext.DIGEST_AUTH,
+        getUserRolesFromClaims(claims, isBot(claims)));
+  }
 }

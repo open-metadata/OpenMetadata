@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -143,18 +144,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
         App app = getAppForInit(createApp.getName());
         if (app == null) {
           app = mapper.createToEntity(createApp, ADMIN_USER_NAME);
+          scheduleAppIfNeeded(app);
           repository.initializeEntity(app);
+        } else {
+          scheduleAppIfNeeded(app);
         }
-
-        // Schedule
-        if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-          ApplicationHandler.getInstance()
-              .installApplication(
-                  app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
-        }
+      } catch (AppException ex) {
+        LOG.warn(
+            "We could not install the application {}. Error: {}",
+            createApp.getName(),
+            ex.getMessage());
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
+    }
+  }
+
+  private void scheduleAppIfNeeded(App app) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
     }
   }
 
