@@ -249,7 +249,9 @@ plugins: Dict[str, Set[str]] = {
         "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
-    "exasol": {"sqlalchemy_exasol>=5,<6"},
+    "exasol": {"sqlalchemy_exasol>=5,<6",
+               "exasol-integration-test-docker-environment>=3.1.0,<4",
+    },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
@@ -437,6 +439,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
+    *plugins["exasol"],
 }
 
 if sys.version_info >= (3, 9):
