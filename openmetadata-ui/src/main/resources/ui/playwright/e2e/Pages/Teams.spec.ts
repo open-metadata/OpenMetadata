@@ -283,8 +283,6 @@ test.describe('Teams Page', () => {
         teamDetails.updatedName
       );
 
-      await page.locator('[role="tablist"] [data-icon="right"]').click();
-
       // Click on edit description button
       await page.locator('[data-testid="edit-description"]').click();
       await page.waitForLoadState('domcontentloaded');
