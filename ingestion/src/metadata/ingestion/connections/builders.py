@@ -22,9 +22,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
-from ingestion.src.metadata.ingestion.connections.query_logger import (
-    attach_query_tracker,
-)
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -34,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
     IamAuthConfigurationSource,
 )
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
+from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 from metadata.utils.logger import cli_logger
