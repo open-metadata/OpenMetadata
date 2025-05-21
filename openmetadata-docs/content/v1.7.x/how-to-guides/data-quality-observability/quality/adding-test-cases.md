@@ -8,7 +8,7 @@ Tests cases are actual test that will be ran and executed against your entity. T
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ## Step 1: Creating a Test Case
-Navigate to the entity you want to add a test to (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
+Navigate to the entity you want to add a test to (we currently support quality test only for database entity). Go to `Data Observability` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
 
 {% image
   src="/images/v1.7/features/ingestion/workflows/data-quality/add-test-case.png"

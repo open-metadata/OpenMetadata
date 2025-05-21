@@ -356,10 +356,12 @@ public abstract class SecretsManager {
       }
       return toEncryptObject;
     } catch (Exception e) {
-      throw new SecretsManagerException(
+      String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage()));
+              secretId, e.getMessage());
+      LOG.error(msg);
+      throw new SecretsManagerException(msg);
     }
   }
 
@@ -390,6 +392,7 @@ public abstract class SecretsManager {
               });
       return toDecryptObject;
     } catch (Exception e) {
+      LOG.error("Error trying to decrypt object due to [{}]", e.getMessage());
       throw new SecretsManagerException(
           String.format(
               "Error trying to decrypt object [%s] due to [%s]",
