@@ -1,7 +1,7 @@
 ALTER TABLE background_jobs
 ADD COLUMN runAt BIGINT;
 
-ALTER TABLE background_jobs ADD INDEX background_jobs_run_at_index (runAt);
+CREATE INDEX background_jobs_run_at_index ON background_jobs(runAt);
 
 -- Add runtime: enabled for AutoPilot
 UPDATE apps_marketplace
