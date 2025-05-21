@@ -63,6 +63,7 @@ mock_bq_config = {
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
+                "billingProjectId": "my-gcp-billing-project",
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",
@@ -582,18 +583,18 @@ class BigqueryUnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.bq_source.context.get_current_thread_id()
         self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema: []
-        self.bq_source._inspector_map[
-            self.thread_id
-        ].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema: []
+        )
+        self.bq_source._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.bq_source._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema: []
+        )
+        self.bq_source._inspector_map[self.thread_id].get_columns = (
+            lambda table_name, schema, db_name: []
+        )
         self.bq_source.client = Mock()
 
     def test_source_url(self):
