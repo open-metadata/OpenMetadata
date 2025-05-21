@@ -20,7 +20,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import {
   TestDataType,
@@ -47,8 +47,8 @@ import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
 
@@ -214,6 +214,24 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: testCase?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
+    }),
+    [testCase?.description]
+  );
+
   useEffect(() => {
     if (testCase) {
       fetchTestDefinitionById();
@@ -246,97 +264,89 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       width={720}
       onCancel={onCancel}
       onOk={() => form.submit()}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form
-          data-testid="edit-test-form"
-          form={form}
-          layout="vertical"
-          name="tableTestForm"
-          onFinish={handleFormSubmit}>
-          {!showOnlyParameter && (
-            <>
-              <Form.Item required label={t('label.table')} name="table">
-                <Input disabled />
-              </Form.Item>
-              {isColumn && (
-                <Form.Item required label={t('label.column')} name="column">
+      <EntityAttachmentProvider
+        entityFqn={testCase?.fullyQualifiedName}
+        entityType={EntityType.TEST_CASE}>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <Form
+            data-testid="edit-test-form"
+            form={form}
+            layout="vertical"
+            name="tableTestForm"
+            onFinish={handleFormSubmit}>
+            {!showOnlyParameter && (
+              <>
+                <Form.Item required label={t('label.table')} name="table">
                   <Input disabled />
                 </Form.Item>
-              )}
-              <Form.Item
-                required
-                label={t('label.name')}
-                name="name"
-                rules={[
-                  {
-                    pattern: ENTITY_NAME_REGEX,
-                    message: t('message.entity-name-validation'),
-                  },
-                ]}>
-                <Input
-                  disabled
-                  placeholder={t('message.enter-test-case-name')}
-                />
-              </Form.Item>
-              <Form.Item label={t('label.display-name')} name="displayName">
-                <Input placeholder={t('message.enter-test-case-name')} />
-              </Form.Item>
-              <Form.Item
-                required
-                label={t('label.test-entity', {
-                  entity: t('label.type'),
-                })}
-                name="testDefinition">
-                <Input
-                  disabled
-                  placeholder={t('message.enter-test-case-name')}
-                />
-              </Form.Item>
-            </>
-          )}
+                {isColumn && (
+                  <Form.Item required label={t('label.column')} name="column">
+                    <Input disabled />
+                  </Form.Item>
+                )}
+                <Form.Item
+                  required
+                  label={t('label.name')}
+                  name="name"
+                  rules={[
+                    {
+                      pattern: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                  ]}>
+                  <Input
+                    disabled
+                    placeholder={t('message.enter-test-case-name')}
+                  />
+                </Form.Item>
+                <Form.Item label={t('label.display-name')} name="displayName">
+                  <Input placeholder={t('message.enter-test-case-name')} />
+                </Form.Item>
+                <Form.Item
+                  required
+                  label={t('label.test-entity', {
+                    entity: t('label.type'),
+                  })}
+                  name="testDefinition">
+                  <Input
+                    disabled
+                    placeholder={t('message.enter-test-case-name')}
+                  />
+                </Form.Item>
+              </>
+            )}
 
-          {generateFormFields(
-            testCaseClassBase.createFormAdditionalFields(
-              selectedDefinition?.supportsDynamicAssertion ?? false
-            )
-          )}
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => {
-              return !isEqual(
-                prevValues['useDynamicAssertion'],
-                currentValues['useDynamicAssertion']
-              );
-            }}>
-            {({ getFieldValue }) =>
-              getFieldValue('useDynamicAssertion') ? null : paramsField
-            }
-          </Form.Item>
+            {generateFormFields(
+              testCaseClassBase.createFormAdditionalFields(
+                selectedDefinition?.supportsDynamicAssertion ?? false
+              )
+            )}
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) => {
+                return !isEqual(
+                  prevValues['useDynamicAssertion'],
+                  currentValues['useDynamicAssertion']
+                );
+              }}>
+              {({ getFieldValue }) =>
+                getFieldValue('useDynamicAssertion') ? null : paramsField
+              }
+            </Form.Item>
 
-          {!showOnlyParameter && (
-            <>
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  initialValue={testCase?.description ?? ''}
-                  style={{
-                    margin: 0,
-                  }}
-                />
-              </Form.Item>
-              {isComputeRowCountFieldVisible
-                ? generateFormFields(formFields)
-                : null}
-            </>
-          )}
-        </Form>
-      )}
+            {!showOnlyParameter && (
+              <>
+                {generateFormFields([descriptionField])}
+                {isComputeRowCountFieldVisible
+                  ? generateFormFields(formFields)
+                  : null}
+              </>
+            )}
+          </Form>
+        )}
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

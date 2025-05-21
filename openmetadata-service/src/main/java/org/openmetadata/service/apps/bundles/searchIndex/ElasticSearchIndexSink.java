@@ -86,7 +86,10 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
       } catch (Exception e) {
         entityErrorList.add(
             new EntityError()
-                .withMessage("Failed to convert entity to request: " + e.getMessage())
+                .withMessage(
+                    String.format(
+                        "Failed to convert entity to request: %s , Stack : %s",
+                        e.getMessage(), ExceptionUtils.exceptionStackTraceAsString(e)))
                 .withEntity(entity.toString()));
         LOG.error("Error converting entity to request", e);
       }
@@ -173,6 +176,14 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
                       handleNonRetriableException(requests.size(), e);
                     }
                   } catch (Exception ex) {
+                    entityErrorList.add(
+                        new EntityError()
+                            .withMessage(
+                                String.format(
+                                    "Bulk request failed: %s, StackTrace: %s",
+                                    ex.getMessage(),
+                                    ExceptionUtils.exceptionStackTraceAsString(ex)))
+                            .withEntity(requests.toString()));
                     LOG.error("Bulk request retry attempt {}/{} failed", 1, maxRetries, ex);
                   } finally {
                     semaphore.release();

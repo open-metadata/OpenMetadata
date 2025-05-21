@@ -18,14 +18,10 @@ import { IngestionPipeline } from '../../../generated/entity/services/ingestionP
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddDataQualityTestProps {
   table: Table;
-}
-
-export interface SelectTestSuiteProps {
-  initialValue?: SelectTestSuiteType;
-  onSubmit: (data: SelectTestSuiteType) => void;
 }
 
 export interface TestCaseFormProps {
@@ -48,28 +44,17 @@ export type TestSuiteIngestionDataType = {
   testCases?: string[];
   name?: string;
   selectAllTestCases?: boolean;
+  raiseOnError?: boolean;
 };
-
-export interface TestSuiteSchedulerProps {
-  initialData?: Partial<TestSuiteIngestionDataType>;
-  allowEnableDebugLog?: boolean;
-  isLoading: boolean;
-  onSubmit: (data: TestSuiteIngestionDataType) => void;
-  onCancel: () => void;
-  buttonProps?: {
-    okText: string;
-    cancelText: string;
-  };
-  includePeriodOptions?: string[];
-}
 
 export interface AddTestSuitePipelineProps {
   initialData?: Partial<TestSuiteIngestionDataType>;
   isLoading: boolean;
-  testSuiteFQN?: string;
+  testSuite?: TestSuite;
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;
+  testCaseParams?: ListTestCaseParamsBySearch;
 }
 
 export interface RightPanelProps {

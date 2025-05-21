@@ -12,76 +12,60 @@
 # limitations under the License.
 #
 
-schema_directory='openmetadata-spec/src/main/resources/json/schema/'
+#!/bin/bash
+
+schema_directory='openmetadata-spec/src/main/resources/json/schema'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated'
-tmp_dir=$(mktemp -d)
 
-addLicensing(){
-    dir=$1
-    txt=`cat openmetadata-ui/src/main/resources/ui/types-licensing.txt; cat "$dir"`
-    echo "$txt" > "$dir"
-}
 
-generateTmpSchemaFile() {
-    schema_file=$1
-    tmp_schema_file=$2
-    jq '(."$id" |= sub("https://open-metadata.org/schema";"";"i"))' $schema_file > $tmp_schema_file
-}
-
-generateType(){
+generateType() {
     tmp_schema_file=$1
     output_file=$2
-    #generate ts
-    echo "Generating ${output_file} from specification at ${tmp_schema_file}"
-    ./node_modules/.bin/quicktype -s schema $tmp_schema_file  -o $output_file --just-types > /dev/null 2>&1
-
-    if [ -s $output_file ]
-    then
-        addLicensing "$output_file"
-    else
-        rm -f "$output_file"
-    fi
+    echo "Generating $output_file from specification at $tmp_schema_file"
+    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
 }
 
-getTypes(){
-    if [ -d "$om_ui_directory" ]
-    then
-        rm -r $om_ui_directory
-    fi
-    
-    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/openmetadata-spec\/src\/main\/resources\/json\/schema\///g')
-    do
-    	local_tmp_dir="$tmp_dir/$(dirname $file_with_dir)"
-	mkdir -p $local_tmp_dir
-    	tmp_schema_file="${local_tmp_dir}/$(basename -- $file_with_dir)"
-    	#args schema file, tmp schema file, output ts file
-        generateTmpSchemaFile $PWD"/"$schema_directory$file_with_dir $tmp_schema_file
-    done
+processFile() {
+    schema_file=$1
+    relative_path=${schema_file#"$schema_directory/"} # Extract relative path
+    output_dir="$om_ui_directory/$(dirname "$relative_path")"
 
-    escaped_tmp_dir=$(echo $tmp_dir | sed -e 's/[]\/$*.^[]/\\&/g')
-    for file_with_dir in $(find $tmp_dir  -name "*.json" | sed -e "s/${escaped_tmp_dir}//g")
-    do
-        joblist=$(jobs | wc -l)
-        while [ ${joblist} -ge 30 ]
-            do
-                sleep 1
-                joblist=$(jobs | wc -l)
-        done
-	mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
-        fileTS=$(echo $file_with_dir | sed "s/.json/.ts/g")
-	outputTS=$PWD"/"$om_ui_directory$fileTS
-	tmp_schema_file=$tmp_dir$file_with_dir
-	#args schema file, tmp schema file, output ts file
-        generateType $tmp_schema_file $outputTS &
-    done
-    
+    # Debugging output
+    echo "Processing schema: $schema_file"
+    echo "Relative path: $relative_path"
+    echo "Output directory: $output_dir"
+
+    mkdir -p "$output_dir" # Ensure output directory exists
+
+    tmp_schema_file="$tmp_dir/$(basename "$schema_file")"
+    output_file="$output_dir/$(basename "$schema_file" .json).ts"
+
+    # Generate temporary schema and TypeScript file
+    generateType "$schema_file" "$output_file"
 }
 
-# Checkout root directory to generate typescript from schema
-cd ../../../../..
+getTypes() {
+    total_files=$#
+    current_file=1
+
+    for schema_file in "$@"; do
+        echo "Processing file $current_file of $total_files: $schema_file"
+        processFile "$schema_file"
+        current_file=$((current_file + 1))
+    done
+}
+
+# Move to project root directory
+cd "$(dirname "$0")/../../../../.." || exit
+
 echo "Generating TypeScript from OpenMetadata specifications"
-getTypes
-wait $(jobs -p)
-rm -rf $tmp_dir
 
+if [ "$#" -eq 0 ]; then
+    echo "No schema files specified. Please provide schema file paths."
+    exit 1
+fi
 
+# Process the schema files passed as arguments
+getTypes "$@"
+
+echo "TypeScript generation completed."

@@ -993,6 +993,7 @@
 .editor-container {
   border-radius: 6px;
   background: white;
+  width: 100%;
 }
 .is_edit_post.editor-container {
   margin: 6px;
@@ -1001,11 +1002,17 @@
   border-color: rgb(221, 227, 234);
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
+  display: flex;
+  padding: 16px 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 .ql-container.ql-snow {
   border-color: rgb(221, 227, 234);
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
+  width: 100%;
 }
 .editor-container .ql-editor {
   min-height: 100px;
@@ -1109,5 +1116,26 @@ button.ql-emoji {
 #om-quill-editor[data-dir='rtl'] {
   .ql-editor.ql-blank::before {
     text-align: right;
+  }
+}
+
+#om-quill-editor {
+  #tab-panel {
+    padding-top: 8px;
+    gap: 6px;
+  }
+  .emoji-tab.filter-flags {
+    display: none;
+  }
+  #tab-toolbar ul {
+    display: flex;
+    gap: 4px;
+  }
+}
+
+.ql-toolbar {
+  .ql-formats {
+    display: flex;
+    margin-right: 0 !important;
   }
 }

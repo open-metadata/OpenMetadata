@@ -52,6 +52,8 @@ public interface PipelineServiceClientInterface {
           "ingestion_task",
           PipelineType.PROFILER.toString(),
           "profiler_task",
+          PipelineType.AUTO_CLASSIFICATION.toString(),
+          "auto_classification_task",
           PipelineType.LINEAGE.toString(),
           "lineage_task",
           PipelineType.DBT.toString(),
@@ -102,6 +104,16 @@ public interface PipelineServiceClientInterface {
   /* Deploy run the pipeline at the pipeline service */
   PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+
+  /* Deploy run the pipeline at the pipeline service with ad-hoc custom configuration.
+   * This might not be supported by some pipeline service clients.*/
+  default PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> config) {
+    throw new UnsupportedOperationException(
+        "This operation is not supported by this pipeline service");
+  }
 
   /* Stop and delete a pipeline at the pipeline service */
   PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);

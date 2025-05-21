@@ -21,19 +21,22 @@ import React, {
 } from 'react';
 import {
   Config,
+  Field,
   FieldGroup,
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
   ValueField,
+  ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
+import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
+  getEmptyJsonTree,
   getTierOptions,
   getTreeConfig,
 } from '../../../utils/AdvancedSearchUtils';
@@ -111,7 +114,7 @@ export const AdvanceSearchProvider = ({
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
-    () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+    () => QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config),
     []
   );
 
@@ -194,7 +197,9 @@ export const AdvanceSearchProvider = ({
   };
 
   const handleReset = useCallback(() => {
-    setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
+    setTreeInternal(
+      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+    );
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);
@@ -214,18 +219,20 @@ export const AdvanceSearchProvider = ({
   }, [history, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
-    const subfields: Record<string, ValueField> = {};
+    const subfields: Record<string, Field> = {};
 
     try {
       const res = await getAllCustomProperties();
 
       Object.entries(res).forEach(([_, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field: { name: string; type: string }) => {
+          fields.forEach((field) => {
             if (field.name && field.type) {
-              subfields[field.name] = {
-                type: 'text',
-                valueSources: ['value'],
+              const { subfieldsKey, dataObject } =
+                advancedSearchClassBase.getCustomPropertiesSubFields(field);
+              subfields[subfieldsKey] = {
+                ...dataObject,
+                valueSources: dataObject.valueSources as ValueSource[],
               };
             }
           });

@@ -131,7 +131,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => {
     return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
   }
@@ -292,7 +292,7 @@ describe('Test DatabaseDetails page', () => {
     );
 
     expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
-      fields: 'owners,tags,domain,votes,extension,dataProducts',
+      fields: 'owners,tags,domain,votes,extension,dataProducts,followers',
       include: 'all',
     });
     expect(entityHeader).toBeInTheDocument();

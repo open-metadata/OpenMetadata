@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -158,7 +158,7 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [cls.df1, cls.df2]
+                DatalakeSampler, "raw_dataset", new_callable=lambda: [cls.df1, cls.df2]
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -166,7 +166,7 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=cls.table_entity,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
             cls.datalake_profiler_interface = PandasProfilerInterface(
                 service_connection_config=DatalakeConnection(configSource={}),
@@ -188,7 +188,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -196,9 +198,9 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
-            random_sample = sampler.random_sample()
+            random_sample = sampler.get_dataset()
             res = sum(len(r) for r in random_sample)
             assert res < 5
 
@@ -220,7 +222,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -228,7 +232,7 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
             datalake_profiler_interface = PandasProfilerInterface(
                 service_connection_config=DatalakeConnection(configSource={}),
@@ -239,7 +243,7 @@ class DatalakeSampleTest(TestCase):
                 thread_count=None,
             )
 
-            random_sample = datalake_profiler_interface.sampler.random_sample()
+            random_sample = datalake_profiler_interface.sampler.get_dataset()
             res = sum(len(r) for r in random_sample)
             assert res < 5
 
@@ -255,7 +259,7 @@ class DatalakeSampleTest(TestCase):
         )
         res = profiler.compute_metrics()._table_results
         # We expect the full count of the table
-        assert res.get(Metrics.ROW_COUNT.name) == 4
+        assert res.get(Metrics.ROW_COUNT.name) == 2
 
     @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
@@ -295,7 +299,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -303,7 +309,7 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
             sample_data = sampler.fetch_sample_data()
 
@@ -321,7 +327,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -329,7 +337,7 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                default_sample_config=SampleConfig(profile_sample=50.0),
+                default_sample_config=SampleConfig(profileSample=50.0),
                 sample_query="`age` > 30",
             )
             sample_data = sampler.fetch_sample_data()

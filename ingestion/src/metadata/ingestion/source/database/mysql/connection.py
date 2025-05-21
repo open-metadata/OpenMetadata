@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,6 +38,10 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.mysql.queries import (
+    MYSQL_TEST_GET_QUERIES,
+    MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+)
 from metadata.utils.constants import THREE_MIN
 
 
@@ -49,7 +53,10 @@ def get_connection(connection: MysqlConnection) -> Engine:
         azure_client = AzureClient(connection.authType.azureConfig).create_client()
         if not connection.authType.azureConfig.scopes:
             raise ValueError(
-                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/"
+                "en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-micr"
+                "osoft-entra-access-token and fetch the resource associated with it,"
+                " for e.g. https://ossrdbms-aad.database.windows.net/.default"
             )
         access_token_obj = azure_client.get_token(
             *connection.authType.azureConfig.scopes.split(",")
@@ -73,10 +80,16 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    queries = {
+        "GetQueries": MYSQL_TEST_GET_QUERIES
+        if not service_connection.useSlowLogs
+        else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+    }
     return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
+        queries=queries,
     )

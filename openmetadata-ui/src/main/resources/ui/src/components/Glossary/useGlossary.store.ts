@@ -12,10 +12,19 @@
  */
 import { create } from 'zustand';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
+import { findAndUpdateNested } from '../../utils/GlossaryUtils';
 
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
+  childrenCount?: number;
+};
+
+export type GlossaryFunctionRef = {
+  onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  refreshGlossaryTerms: () => void;
 };
 
 export const useGlossaryStore = create<{
@@ -27,10 +36,18 @@ export const useGlossaryStore = create<{
   updateGlossary: (glossary: Glossary) => void;
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
+  insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => void;
+  termsLoading: boolean;
+  setTermsLoading: (termsLoading: boolean) => void;
+  onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  refreshGlossaryTerms: () => void;
+  setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
+  termsLoading: false,
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -67,7 +84,49 @@ export const useGlossaryStore = create<{
       glossaries[index] = updatedGlossary;
     }
   },
+  insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
+    const { glossaryChildTerms, activeGlossary } = get();
+
+    const glossaryTerm = 'glossary' in activeGlossary;
+
+    // If activeGlossary is Glossary term & User is adding term to the activeGlossary term
+    // we don't need to find in hierarchy
+    if (
+      glossaryTerm &&
+      activeGlossary.fullyQualifiedName === glossary.parent?.fullyQualifiedName
+    ) {
+      set({
+        glossaryChildTerms: [
+          ...glossaryChildTerms,
+          glossary,
+        ] as ModifiedGlossary[],
+      });
+    } else {
+      // Typically used to updated the glossary term list in the glossary page
+      set({
+        glossaryChildTerms: findAndUpdateNested(glossaryChildTerms, glossary),
+      });
+    }
+  },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
     set({ glossaryChildTerms });
+  },
+  setTermsLoading: (termsLoading: boolean) => {
+    set({ termsLoading });
+  },
+  setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
+    set({ ...glossaryFunctionRef });
+  },
+
+  onAddGlossaryTerm: (_glossaryTerm?: GlossaryTerm) => {
+    // This is a placeholder function that will be replaced by the actual function
+  },
+
+  onEditGlossaryTerm: (_glossaryTerm?: GlossaryTerm) => {
+    // This is a placeholder function that will be replaced by the actual function
+  },
+
+  refreshGlossaryTerms: () => {
+    // This is a placeholder function that will be replaced by the actual function
   },
 }));

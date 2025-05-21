@@ -21,7 +21,6 @@ import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import process from 'process';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -34,15 +33,16 @@ import {
   ClientType,
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import { isDev } from './EnvironmentUtils';
+import { getBasePath } from './HistoryUtils';
+import { setOidcToken } from './LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+const subPath = getBasePath();
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -293,7 +293,7 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email };
+  return { name: userName, email: email, picture: user.picture };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -311,6 +311,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
       ROUTES.NOT_FOUND,
+      ROUTES.LOGOUT,
     ].indexOf(pathname) === -1
   );
 };
@@ -363,7 +364,6 @@ export const extractDetailsFromToken = (token: string) => {
   return {
     exp: 0,
     isExpired: true,
-
     timeoutExpiry: 0,
   };
 };
@@ -423,7 +423,6 @@ export const prepareUserProfileFromClaims = ({
 export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
   // Call your API with the access token and return the data you need to save in state
   const { idToken, scopes, account } = response;
-  const { setOidcToken } = useApplicationStore.getState();
 
   const user = {
     id_token: idToken,

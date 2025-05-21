@@ -14,6 +14,7 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
@@ -148,6 +149,9 @@ public class MigrationUtil {
       appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application not found.");
+    } catch (UnableToExecuteStatementException ex) {
+      // Note: Due to a change in the code this delete fails on a postDelete step that is not
+      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
     }
 
     // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
@@ -158,6 +162,9 @@ public class MigrationUtil {
       marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application Marketplace Definition not found.");
+    } catch (UnableToExecuteStatementException ex) {
+      // Note: Due to a change in the code this delete fails on a postDelete step that is not
+      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
     }
   }
 

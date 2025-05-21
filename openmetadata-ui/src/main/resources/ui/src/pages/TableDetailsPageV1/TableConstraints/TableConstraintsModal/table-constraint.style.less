@@ -37,3 +37,26 @@
     margin-bottom: 0;
   }
 }
+
+.constraint-breadcrumb {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+
+  .constraint-breadcrumb-item {
+    font-size: 12px;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: @text-grey-muted;
+    font-weight: 500;
+  }
+
+  .constraint-column-name {
+    max-width: 100%;
+    font-size: 14px;
+    font-weight: 600;
+  }
+}

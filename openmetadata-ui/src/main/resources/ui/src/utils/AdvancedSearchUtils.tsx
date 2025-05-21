@@ -14,12 +14,14 @@
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
-import { isArray, isEmpty } from 'lodash';
+import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
 import {
   AsyncFetchListValues,
+  JsonTree,
   ListValues,
   RenderSettings,
+  Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -33,7 +35,7 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -72,38 +74,6 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
       return [...COMMON_DROPDOWN_ITEMS];
   }
   // TODO: Add more quick filters
-};
-
-export const getAdvancedField = (field: string) => {
-  switch (field) {
-    case 'columns.name':
-    case 'dataModel.columns.name':
-      return AdvancedFields.COLUMN;
-
-    case 'databaseSchema.name':
-      return AdvancedFields.SCHEMA;
-
-    case 'database.name':
-      return AdvancedFields.DATABASE;
-
-    case 'charts.displayName.keyword':
-      return AdvancedFields.CHART;
-
-    case 'dataModels.displayName.keyword':
-      return AdvancedFields.DATA_MODEL;
-
-    case 'tasks.displayName.keyword':
-      return AdvancedFields.TASK;
-
-    case 'messageSchema.schemaFields.name':
-      return AdvancedFields.FIELD;
-
-    case 'service.name':
-      return AdvancedFields.SERVICE;
-
-    default:
-      return;
-  }
 };
 
 export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
@@ -369,37 +339,6 @@ export const getServiceOptions = (
     : option.text;
 };
 
-// Function to get the display name to show in the options for search Dropdowns
-export const getOptionTextFromKey = (
-  index: SearchIndex,
-  option: SuggestOption<SearchIndex, ExploreSearchSource>,
-  key: string
-) => {
-  switch (key) {
-    case 'charts.displayName.keyword': {
-      return getChartsOptions(option);
-    }
-    case 'dataModels.displayName.keyword': {
-      return getDataModelOptions(option);
-    }
-    case 'tasks.displayName.keyword': {
-      return getTasksOptions(option);
-    }
-    case 'columns.name': {
-      return getColumnsOptions(option, index);
-    }
-    case 'service.name': {
-      return getServiceOptions(option);
-    }
-    case 'messageSchema.schemaFields.name': {
-      return getSchemaFieldOptions(option);
-    }
-    default: {
-      return option.text;
-    }
-  }
-};
-
 export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
   if (!buckets) {
     return [];
@@ -451,4 +390,59 @@ export const getTreeConfig = ({
   return searchOutputType === SearchOutputType.ElasticSearch
     ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
     : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+};
+
+export const formatQueryValueBasedOnType = (
+  value: string[],
+  field: string,
+  type: string
+) => {
+  if (field.includes('extension') && type === 'text') {
+    return value.map((item) => toLower(item));
+  }
+
+  return value;
+};
+
+export const getCustomPropertyAdvanceSearchEnumOptions = (
+  enumValues: string[]
+) => {
+  return enumValues.reduce((acc: Record<string, string>, value) => {
+    acc[value] = value;
+
+    return acc;
+  }, {});
+};
+
+export const getEmptyJsonTree = (
+  defaultField: string = EntityFields.OWNERS
+): JsonTree => {
+  return {
+    id: QbUtils.uuid(),
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [QbUtils.uuid()]: {
+        type: 'group',
+        properties: {
+          conjunction: 'AND',
+          not: false,
+        },
+        children1: {
+          [QbUtils.uuid()]: {
+            type: 'rule',
+            properties: {
+              field: defaultField,
+              operator: null,
+              value: [],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
 };

@@ -124,6 +124,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       testCases,
       name: ingestionPipeline?.displayName,
       selectAllTestCases: !isEmpty(ingestionPipeline) && isUndefined(testCases),
+      raiseOnError: ingestionPipeline?.raiseOnError ?? true,
     };
   }, [ingestionPipeline]);
 
@@ -157,7 +158,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const createIngestionPipeline = async (data: TestSuiteIngestionDataType) => {
     const tableName = replaceAllSpacialCharWith_(
       getNameFromFQN(
-        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+        (testSuite.basic
+          ? testSuite.basicEntityReference?.fullyQualifiedName
+          : testSuite.fullyQualifiedName) ?? ''
       )
     );
     const updatedName =
@@ -171,6 +174,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: generateUUID(),
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       pipelineType: PipelineType.TestSuite,
+      raiseOnError: data.raiseOnError ?? true,
       service: {
         id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
@@ -179,16 +183,19 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         config: {
           type: ConfigType.TestSuite,
           entityFullyQualifiedName:
-            testSuite.executableEntityReference?.fullyQualifiedName,
+            testSuite.basicEntityReference?.fullyQualifiedName,
           testCases: data?.testCases,
         },
       },
     };
+    try {
+      const ingestion = await addIngestionPipeline(ingestionPayload);
 
-    const ingestion = await addIngestionPipeline(ingestionPayload);
-
-    setIngestionData(ingestion);
-    handleIngestionDeploy(ingestion.id);
+      setIngestionData(ingestion);
+      handleIngestionDeploy(ingestion.id);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onUpdateIngestionPipeline = async (
@@ -205,6 +212,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         ...ingestionPipeline?.airflowConfig,
         scheduleInterval: data.cron,
       },
+      raiseOnError: data.raiseOnError ?? true,
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {
         ...ingestionPipeline?.sourceConfig,
@@ -290,7 +298,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
-            testSuiteFQN={testSuite?.fullyQualifiedName}
+            testSuite={testSuite}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

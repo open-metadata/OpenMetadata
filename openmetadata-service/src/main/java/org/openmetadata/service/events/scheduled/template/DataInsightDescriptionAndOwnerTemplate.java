@@ -117,10 +117,9 @@ public class DataInsightDescriptionAndOwnerTemplate {
     if (percent > 0) {
       symbol = "+";
       color = "#008611";
-    } else if (percent < 0) {
-      symbol = "-";
     }
 
+    // No need for "-" since String.format handles negatives
     return String.format(
         "<span style=\"color:%s ; font-weight: 600\">%s%.2f%%</span>", color, symbol, percent);
   }

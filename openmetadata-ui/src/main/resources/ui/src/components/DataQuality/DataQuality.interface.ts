@@ -46,6 +46,11 @@ export type TestCaseSearchParams = {
   dataQualityDimension?: string;
 };
 
+export type DataQualityPageParams = TestCaseSearchParams & {
+  owner?: string;
+  tags?: string[];
+};
+
 export interface IncidentTypeAreaChartWidgetProps {
   title: string;
   incidentStatusType: TestCaseResolutionStatusTypes;
@@ -73,6 +78,7 @@ export interface TestCaseStatusAreaChartWidgetProps {
 }
 
 export interface PieChartWidgetCommonProps {
+  className?: string;
   chartFilter?: DataQualityDashboardChartFilters;
 }
 

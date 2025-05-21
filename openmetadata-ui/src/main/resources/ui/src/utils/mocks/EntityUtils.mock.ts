@@ -136,3 +136,58 @@ export const mockHighlights = {
 export const highlightedEntityDescription = `This dimension table contains the billing and shipping <span class="text-highlighter">addresses</span> of customers.`;
 
 export const highlightedEntityDisplayName = `dim_<span class="text-highlighter">address</span>`;
+
+export const mockText =
+  'This is a test description to verify highlightText method.';
+
+export const mockSearchText = 'test';
+
+export const mockHighlightedResult =
+  'This is a <span data-highlight="true" class="text-highlighter">test</span> description to verify highlightText method.';
+
+export const mockEntityForDatabase = {
+  id: '127463-8374',
+  name: 'default',
+  fullyQualifiedName: 'mysql_sample.default',
+  service: {
+    deleted: false,
+    displayName: 'mysql_sample',
+    fullyQualifiedName: 'mysql_sample',
+    id: '48a1a33a-71f9-4eca-9257-4fe3f919d20b',
+    name: 'mysql_sample',
+    type: 'databaseService',
+  },
+  serviceType: 'Mysql',
+  entityType: 'database',
+};
+
+export const mockEntityForDatabaseSchema = {
+  id: '996c254d-1646-4d50-8457-10ec10de6bd8',
+  name: 'shopify',
+  fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+  service: {
+    deleted: false,
+    displayName: 'sample_data',
+    fullyQualifiedName: 'sample_data',
+    id: '166e3e84-dc2e-4c4e-bc4b-fe94d1a29bc7',
+    name: 'sample_data',
+    type: 'databaseService',
+  },
+  serviceType: 'BigQuery',
+  database: {
+    deleted: false,
+    description:
+      'This mock database contains schemas related to shopify sales and orders with related dimension tables.',
+    displayName: 'ecommerce_db',
+    fullyQualifiedName: 'sample_data.ecommerce_db',
+    id: 'ba923994-a1e3-429b-a7ff-ffae33101255',
+    name: 'ecommerce_db',
+    type: 'database',
+  },
+  entityType: 'databaseSchema',
+};
+
+export const mockUrl = '/services/mockDatabase';
+export const mockSettingUrl = '/settings/services/database-services';
+export const mockServiceUrl = '/services/mockService';
+export const mockDatabaseUrl = '/entity/MockDatabase';

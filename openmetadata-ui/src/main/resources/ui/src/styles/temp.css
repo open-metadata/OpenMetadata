@@ -15,101 +15,17 @@
 @import '/node_modules/react-resizable/css/styles.css';
 
 .react-grid-item {
-  transition: all 500ms ease;
+  transition: none;
   transition-property: left, top, width, height;
 }
 .react-grid-layout {
   position: relative;
   transition: height 500ms ease;
-}
-
-.main-container {
-  display: flex;
-  height: 100vh;
-}
-
-.teams-dropdown {
-  height: 36px;
-  background-color: transparent !important;
-  border: none;
-  border-radius: 0;
-  color: #5e5c58 !important;
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: none !important;
-}
-
-.teams-dropdown:hover,
-.teams-dropdown:focus,
-.teams-dropdown:active {
-  text-decoration: underline;
-}
-
-.show > .btn-primary.dropdown-toggle.teams-dropdown,
-.show > .btn-primary.dropdown-toggle.teams-dropdown:focus {
-  text-decoration: underline;
-}
-
-.teams-dropdown + .dropdown-menu {
-  font-size: 13px;
-  padding: 0;
-}
-
-.teams-dropdown + .dropdown-menu .dropdown-divider {
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
+  min-height: 100%;
 }
 
 .svg-icon:not(.hidden) {
   display: inline-block;
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  padding: 0.8rem 1rem;
-}
-
-.sidebar-item .label {
-  margin-left: 10px;
-}
-
-.collapsed-sidebar .sidebar-item {
-  justify-content: center;
-}
-
-.timebar {
-  height: 30px;
-  position: relative;
-  margin: 10px 0;
-  width: 100%;
-  text-align: center;
-  flex: 0 0 100%;
-}
-
-.timebar::before {
-  position: absolute;
-  left: 0;
-  content: ' ';
-  width: 100%;
-  top: 15px;
-  height: 1px;
-  background-color: #d1cfc7;
-  display: inline-block;
-  z-index: -1;
-}
-
-.timebar .label {
-  display: inline-block;
-  width: 120px;
-  height: 30px;
-  border: 1px solid #d1cfc7;
-  border-radius: 20px;
-  line-height: 30px;
-  background: white;
 }
 
 .media,
@@ -813,9 +729,9 @@ body .list-option.rdw-option-active {
 }
 
 :root {
-  --ant-navbar-height: 64px;
+  --ant-navbar-height: 80px;
 }
 
 :root .extra-banner {
-  --ant-navbar-height: 128px;
+  --ant-navbar-height: 144px;
 }

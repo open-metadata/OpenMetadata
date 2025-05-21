@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -81,8 +81,13 @@ def test_connection_workflow(metadata, mysql_container):
     )
 
     assert final_workflow.status == WorkflowStatus.Successful
-    assert len(final_workflow.response.steps) == 4
-    assert final_workflow.response.status.value == StatusType.Successful.value
+    assert len(final_workflow.response.steps) == 5
+    # Get queries is not passing since we're not enabling the logs in the container
+    assert final_workflow.response.status.value == StatusType.Failed.value
+    steps = [
+        step for step in final_workflow.response.steps if step.name != "GetQueries"
+    ]
+    assert all(step.passed for step in steps)
 
     metadata.delete(
         entity=Workflow,

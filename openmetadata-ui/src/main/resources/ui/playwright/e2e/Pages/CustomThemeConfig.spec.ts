@@ -68,7 +68,7 @@ test.describe('Custom Theme Config Page', () => {
     for (const colorType of Object.keys(themeConfig)) {
       await page
         .locator(`[data-testid="${colorType}-color-input"]`)
-        .fill(themeConfig[colorType]);
+        .fill(themeConfig[colorType as keyof typeof themeConfig]);
     }
 
     const updatedConfigResponsePromise = page.waitForResponse(
@@ -86,7 +86,7 @@ test.describe('Custom Theme Config Page', () => {
     // Verify the updated theme color
     await expect(page.getByTestId('save-btn')).toHaveCSS(
       'background-color',
-      'rgb(136, 46, 232)'
+      'rgb(21, 112, 239)'
     );
 
     const defaultConfigResponsePromise = page.waitForResponse(
@@ -104,7 +104,7 @@ test.describe('Custom Theme Config Page', () => {
     // Verify the default theme color
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
-      'rgb(46, 135, 230)'
+      'rgb(21, 112, 239)'
     );
   });
 });

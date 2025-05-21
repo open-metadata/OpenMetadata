@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThreadEntity;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
@@ -33,6 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
@@ -48,8 +50,11 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FeedUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface MessageDecorator<T> {
+  Logger LOG = LoggerFactory.getLogger(MessageDecorator.class);
   String CONNECTION_TEST_DESCRIPTION =
       "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts.";
 
@@ -85,34 +90,40 @@ public interface MessageDecorator<T> {
 
   T buildTestMessage();
 
+  @SneakyThrows
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
-
+    String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase testCase) {
-          return getEntityUrl(
-              "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
+          entityUrl =
+              getEntityUrl(
+                  "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
         }
         break;
 
       case Entity.GLOSSARY_TERM:
-        return getEntityUrl(Entity.GLOSSARY, fqn, "");
+        entityUrl = getEntityUrl(Entity.GLOSSARY, fqn, "");
+        break;
 
       case Entity.TAG:
-        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+        entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
+        break;
 
       case Entity.INGESTION_PIPELINE:
-        return getIngestionPipelineUrl(this, entityType, entityInterface);
+        entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
+        break;
 
       default:
-        return getEntityUrl(entityType, fqn, "");
+        entityUrl = getEntityUrl(entityType, fqn, "");
     }
 
-    // Fallback in case of no match
-    return getEntityUrl(entityType, fqn, "");
+    LOG.debug("buildEntityUrl for Alert: {}", entityUrl);
+    return entityUrl;
   }
 
+  @SneakyThrows
   default String buildThreadUrl(
       ThreadType threadType, String entityType, EntityInterface entityInterface) {
 
@@ -120,30 +131,34 @@ public interface MessageDecorator<T> {
         threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
 
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
-
+    String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase) {
           TestCase testCase = (TestCase) entityInterface;
-          return getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
+          entityUrl = getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
         }
         break;
 
       case Entity.GLOSSARY_TERM:
-        return getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+        entityUrl = getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+        break;
 
       case Entity.TAG:
-        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+        entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
+        break;
 
       case Entity.INGESTION_PIPELINE:
-        return getIngestionPipelineUrl(this, entityType, entityInterface);
+        entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
+        break;
 
       default:
-        return getEntityUrl(entityType, fqn, activeTab);
+        entityUrl = getEntityUrl(entityType, fqn, activeTab);
     }
 
     // Fallback in case of no match
-    return getEntityUrl(entityType, fqn, activeTab);
+    LOG.debug("buildThreadUrl for Alert: {}", entityUrl);
+    return entityUrl;
   }
 
   // Helper function to resolve FQN if null or empty
@@ -162,17 +177,15 @@ public interface MessageDecorator<T> {
         .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
         .orElseGet(
             () -> {
-              EntityInterface entityInterface = getEntity(event);
-              String fqn = entityInterface.getFullyQualifiedName();
-
-              if (CommonUtil.nullOrEmpty(fqn)) {
-                EntityInterface result =
-                    Entity.getEntity(
-                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
-                fqn = result.getFullyQualifiedName();
+              if (event.getEntityType().equals(Entity.THREAD)) {
+                Thread thread = getThreadEntity(event);
+                return nullOrEmpty(thread.getEntityRef())
+                    ? thread.getId().toString()
+                    : thread.getEntityRef().getFullyQualifiedName();
+              } else {
+                EntityInterface entityInterface = getEntity(event);
+                return entityInterface.getFullyQualifiedName();
               }
-
-              return fqn;
             });
   }
 

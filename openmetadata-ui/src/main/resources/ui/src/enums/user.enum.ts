@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-export enum UserType {
-  USERS = 'users',
-  ADMINS = 'admins',
-  BOTS = 'bots',
-}
-
 export enum OwnerType {
   USER = 'user',
   TEAM = 'team',
@@ -25,11 +19,4 @@ export enum OwnerType {
 export enum CreatePasswordGenerator {
   AutomaticGenerate = 'AUTOMATIC_GENERATE',
   CreatePassword = 'CREATE_PASSWORD',
-}
-export enum UserProfileTab {
-  ACTIVITY = 'activity',
-  TASKS = 'tasks',
-  MY_DATA = 'mydata',
-  FOLLOWING = 'following',
-  CONVERSATION = 'conversation',
 }

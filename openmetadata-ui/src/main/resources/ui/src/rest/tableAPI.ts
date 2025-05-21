@@ -232,3 +232,36 @@ export const updateTablesVotes = async (id: string, data: QueryVote) => {
 
   return response.data;
 };
+
+export const exportTableDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `tables/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
+};
+
+export const importTableInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/tables/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};

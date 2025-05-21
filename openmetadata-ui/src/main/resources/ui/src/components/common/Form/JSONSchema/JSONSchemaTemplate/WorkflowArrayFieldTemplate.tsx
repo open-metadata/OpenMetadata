@@ -10,36 +10,71 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import { t } from 'i18next';
-import { startCase } from 'lodash';
+import { isArray, isObject, startCase } from 'lodash';
 import React from 'react';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
+  const isFilterPatternField = (id: string) => {
+    return /FilterPattern/.test(id);
+  };
+
   const handleFocus = () => {
     let id = props.idSchema.$id;
 
-    if (/FilterPattern/.test(id)) {
+    if (isFilterPatternField(id)) {
       id = id.split('/').slice(0, 2).join('/');
     }
     props.formContext?.handleFocus?.(id);
   };
 
+  const generateOptions = () => {
+    if (
+      isObject(props.schema.items) &&
+      !isArray(props.schema.items) &&
+      props.schema.items.type === 'string' &&
+      isArray(props.schema.items.enum)
+    ) {
+      return (props.schema.items.enum as string[]).map((option) => ({
+        label: option,
+        value: option,
+      }));
+    }
+
+    return undefined;
+  };
+
+  const id = props.idSchema.$id;
+  const value = props.formData ?? [];
+  const placeholder = isFilterPatternField(id)
+    ? t('message.filter-pattern-placeholder')
+    : '';
+  const options = generateOptions();
+
   return (
     <Row>
       <Col span={24}>
-        <Typography>{startCase(props.name)}</Typography>
+        {/* Display field title only if uniqueItems is not true to remove duplicate title set
+         automatically due to an unknown behavior */}
+        {props.schema.uniqueItems !== true && (
+          <Typography>{startCase(props.name)}</Typography>
+        )}
       </Col>
       <Col span={24}>
         <Select
           className="m-t-xss w-full"
+          data-testid="workflow-array-field-template"
           disabled={props.disabled}
-          id={props.idSchema.$id}
-          mode="tags"
-          open={false}
-          placeholder={t('message.filter-pattern-placeholder')}
-          value={props.formData ?? []}
+          id={id}
+          mode={options ? 'multiple' : 'tags'}
+          open={options ? undefined : false}
+          options={options}
+          placeholder={placeholder}
+          value={value}
+          onBlur={() => props.onBlur(id, value)}
           onChange={(value) => props.onChange(value)}
           onFocus={handleFocus}
         />

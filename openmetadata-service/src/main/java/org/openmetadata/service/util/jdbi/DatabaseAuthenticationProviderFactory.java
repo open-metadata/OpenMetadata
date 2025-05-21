@@ -1,5 +1,7 @@
 package org.openmetadata.service.util.jdbi;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.net.URI;
 import java.net.URLDecoder;
 import java.util.LinkedHashMap;
@@ -35,7 +37,7 @@ public class DatabaseAuthenticationProviderFactory {
       URI uri = new URI(jdbcURL.substring(jdbcURL.indexOf(":") + 1));
       Map<String, String> queryPairs = new LinkedHashMap<>();
       String query = uri.getQuery();
-      if (query != null) {
+      if (!nullOrEmpty(query)) {
         String[] pairs = query.split("&");
         for (String pair : pairs) {
           int idx = pair.indexOf("=");

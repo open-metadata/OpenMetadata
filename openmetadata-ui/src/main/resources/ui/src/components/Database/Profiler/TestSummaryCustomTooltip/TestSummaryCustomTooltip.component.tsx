@@ -20,10 +20,11 @@ import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import {
   convertMillisecondsToHumanReadableFormat,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './test-summary-custom-tooltip.less';
 
 const TestSummaryCustomTooltip = (
   props: TooltipProps<string | number, string>
@@ -95,10 +96,12 @@ const TestSummaryCustomTooltip = (
     <Card
       title={
         <Typography.Title level={5}>
-          {formatDateTime(payload[0].payload.name)}
+          {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
-      <ul data-testid="test-summary-tooltip-container">
+      <ul
+        className="test-summary-tooltip-container"
+        data-testid="test-summary-tooltip-container">
         {data.map(tooltipRender)}
       </ul>
     </Card>

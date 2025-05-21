@@ -32,7 +32,8 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
-import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
+import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -196,7 +197,7 @@ export const buildMustEsFilterForTags = (
       path: isTestCaseResult ? 'testCase.tags' : 'tags',
       query: {
         bool: {
-          must: tags.map((tag) => ({
+          should: tags.map((tag) => ({
             match: {
               [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
             },
@@ -216,6 +217,122 @@ export const buildMustEsFilterForOwner = (
       [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
     },
   };
+};
+
+export const buildDataQualityDashboardFilters = (data: {
+  filters?: DataQualityDashboardChartFilters;
+  unhealthy?: boolean;
+  isTableApi?: boolean;
+}) => {
+  const { filters, unhealthy = false, isTableApi = false } = data;
+  const mustFilter = [];
+
+  if (unhealthy) {
+    mustFilter.push({
+      terms: {
+        'testCaseStatus.keyword': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.tags && isTableApi) {
+    mustFilter.push({
+      bool: {
+        should: filters.tags.map((tag) => ({
+          term: {
+            'tags.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tier && isTableApi) {
+    mustFilter.push({
+      bool: {
+        should: filters.tier.map((tag) => ({
+          term: {
+            'tier.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
+  if ((filters?.tags || filters?.tier) && !isTableApi) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        [isTableApi ? 'fullyQualifiedName.keyword' : 'entityFQN']:
+          filters.entityFQN,
+      },
+    });
+  }
+
+  if (filters?.serviceName) {
+    mustFilter.push({
+      term: {
+        'service.name.keyword': filters.serviceName,
+      },
+    });
+  }
+
+  if (filters?.testPlatforms) {
+    mustFilter.push({
+      terms: {
+        testPlatforms: filters.testPlatforms,
+      },
+    });
+  }
+
+  if (filters?.dataQualityDimension) {
+    mustFilter.push({
+      term: {
+        dataQualityDimension: filters.dataQualityDimension,
+      },
+    });
+  }
+
+  if (filters?.testCaseStatus) {
+    mustFilter.push({
+      term: {
+        'testCaseResult.testCaseStatus': filters.testCaseStatus,
+      },
+    });
+  }
+
+  if (filters?.testCaseType) {
+    if (filters.testCaseType === TestCaseType.table) {
+      mustFilter.push({
+        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
+      });
+    }
+
+    if (filters.testCaseType === TestCaseType.column) {
+      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
+    }
+  }
+
+  // Add the deleted filter to the mustFilter array
+  mustFilter.push({
+    term: {
+      deleted: false,
+    },
+  });
+
+  return mustFilter;
 };
 
 export const getDimensionIcon = (dimension: DataQualityDimensions) => {

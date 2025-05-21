@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -128,8 +129,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public SearchIndexUpdater getUpdater(
-      SearchIndex original, SearchIndex updated, Operation operation) {
+  public EntityRepository<SearchIndex>.EntityUpdater getUpdater(
+      SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
     return new SearchIndexUpdater(original, updated, operation);
   }
 
@@ -376,7 +377,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       if (updated.getFields() != null) {
         updateSearchIndexFields(
             "fields",

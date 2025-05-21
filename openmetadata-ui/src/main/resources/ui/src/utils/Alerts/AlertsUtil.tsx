@@ -63,8 +63,8 @@ import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
+  DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
@@ -80,6 +80,7 @@ import { PipelineState } from '../../generated/entity/services/ingestionPipeline
 import { User } from '../../generated/entity/teams/user';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
+import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   ChangeEvent,
   Status,
@@ -103,11 +104,12 @@ import {
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
+import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { showSuccessToast } from '../ToastUtils';
+import { showErrorToast, showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -211,7 +213,6 @@ export const getDisplayNameForEntities = (entity: string) => {
 };
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
-export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
 
 export const searchEntity = async ({
   searchText,
@@ -264,6 +265,13 @@ export const searchEntity = async ({
       'label'
     );
   } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.search'),
+      })
+    );
+
     return [];
   }
 };
@@ -351,20 +359,41 @@ export const getSupportedFilterOptions = (
   }));
 
 export const getConnectionTimeoutField = () => (
+  <Row align="middle">
+    <Col span={7}>{`${t('label.connection-timeout')} (${t(
+      'label.second-plural'
+    )})`}</Col>
+    <Col span={1}>:</Col>
+    <Col data-testid="connection-timeout" span={16}>
+      <Form.Item name="timeout">
+        <Input
+          data-testid="connection-timeout-input"
+          defaultValue={10}
+          placeholder={`${t('label.connection-timeout')} (${t(
+            'label.second-plural'
+          )})`}
+          type="number"
+        />
+      </Form.Item>
+    </Col>
+  </Row>
+);
+
+export const getReadTimeoutField = () => (
   <>
-    <Row align="middle">
-      <Col span={7}>{`${t('label.connection-timeout')} (${t(
-        'label.second-plural'
-      )})`}</Col>
+    <Row align="middle" className="mt-4">
+      <Col span={7}>{`${t('label.read-type', {
+        type: t('label.timeout'),
+      })} (${t('label.second-plural')})`}</Col>
       <Col span={1}>:</Col>
-      <Col data-testid="connection-timeout" span={16}>
-        <Form.Item name="timeout">
+      <Col data-testid="read-timeout" span={16}>
+        <Form.Item name="readTimeout">
           <Input
-            data-testid="connection-timeout-input"
-            defaultValue={10}
-            placeholder={`${t('label.connection-timeout')} (${t(
-              'label.second-plural'
-            )})`}
+            data-testid="read-timeout-input"
+            defaultValue={DEFAULT_READ_TIMEOUT}
+            placeholder={`${t('label.read-type', {
+              type: t('label.timeout'),
+            })} (${t('label.second-plural')})`}
             type="number"
           />
         </Form.Item>
@@ -1076,6 +1105,7 @@ export const handleAlertSave = async ({
         },
         category: d.category,
         timeout: data.timeout,
+        readTimeout: data.readTimeout,
       };
     });
     let alertDetails;
@@ -1107,7 +1137,7 @@ export const handleAlertSave = async ({
       alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
     } else {
       // Remove timeout from alert object since it's only for UI
-      const { timeout, ...finalData } = data;
+      const { timeout, readTimeout, ...finalData } = data;
 
       alertDetails = await createAlertAPI({
         ...finalData,
@@ -1340,6 +1370,7 @@ export const getAlertExtraInfo = (
   return (
     <>
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="total-events-count"
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
@@ -1347,6 +1378,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="pending-events-count"
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
@@ -1354,6 +1386,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="failed-events-count"
         label={t('label.failed-entity', {
           entity: t('label.event-plural'),
@@ -1396,6 +1429,7 @@ export const getModifiedAlertDataForForm = (
   return {
     ...alertData,
     timeout: alertData.destinations[0].timeout ?? 10,
+    readTimeout: alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
     destinations: alertData.destinations.map((destination) => {
       const isExternalDestination =
         destination.category === SubscriptionCategory.External;
@@ -1413,3 +1447,38 @@ export const getModifiedAlertDataForForm = (
     }),
   };
 };
+
+export const getDiagnosticItems = (
+  diagnosticData: EventSubscriptionDiagnosticInfo | undefined
+) => [
+  {
+    key: t('label.latest-offset'),
+    value: diagnosticData?.latestOffset,
+    description: t('message.latest-offset-description'),
+  },
+  {
+    key: t('label.current-offset'),
+    value: diagnosticData?.currentOffset,
+    description: t('message.current-offset-description'),
+  },
+  {
+    key: t('label.starting-offset'),
+    value: diagnosticData?.startingOffset,
+    description: t('message.starting-offset-description'),
+  },
+  {
+    key: t('label.successful-event-plural'),
+    value: diagnosticData?.successfulEventsCount,
+    description: t('message.successful-events-description'),
+  },
+  {
+    key: t('label.failed-event-plural'),
+    value: diagnosticData?.failedEventsCount,
+    description: t('message.failed-events-description'),
+  },
+  {
+    key: t('label.processed-all-event-plural'),
+    value: diagnosticData?.hasProcessedAllEvents,
+    description: t('message.processed-all-events-description'),
+  },
+];

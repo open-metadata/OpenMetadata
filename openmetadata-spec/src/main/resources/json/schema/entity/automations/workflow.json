@@ -5,21 +5,29 @@
   "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.automations.Workflow",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "workflowType": {
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowType",
       "description": "This enum defines the type for which this workflow applies to.",
       "type": "string",
       "enum": [
-        "TEST_CONNECTION"
+        "TEST_CONNECTION",
+        "REVERSE_INGESTION"
       ]
     },
     "workflowStatus": {
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowStatus",
       "description": "Enum defining possible Workflow status",
       "type": "string",
-      "enum": ["Pending", "Successful", "Failed", "Running"]
+      "enum": [
+        "Pending",
+        "Successful",
+        "Failed",
+        "Running"
+      ]
     }
   },
   "properties": {
@@ -57,6 +65,9 @@
       "oneOf": [
         {
           "$ref": "testServiceConnection.json"
+        },
+        {
+          "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
         }
       ]
     },
@@ -65,6 +76,9 @@
       "oneOf": [
         {
           "$ref": "../services/connections/testConnectionResult.json"
+        },
+        {
+          "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
         }
       ]
     },
@@ -96,20 +110,29 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "workflowType", "request"]
+  "required": [
+    "id",
+    "name",
+    "workflowType",
+    "request"
+  ]
 }

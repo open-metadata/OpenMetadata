@@ -25,17 +25,18 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -45,11 +46,13 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -64,7 +67,7 @@ const AddIngestionPage = () => {
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [isLoading, setIsloading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
@@ -86,32 +89,32 @@ const AddIngestionPage = () => {
     [ingestionType]
   );
 
-  const fetchServiceDetails = () => {
-    getServiceByFQN(serviceCategory, serviceFQN)
-      .then((resService) => {
-        if (resService) {
-          setServiceData(resService as DataObj);
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .finally(() => setIsloading(false));
+  const fetchServiceDetails = async () => {
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN);
+      if (response) {
+        setServiceData(response as DataObj);
+      } else {
+        showErrorToast(
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onIngestionDeploy = (id?: string) => {
@@ -203,7 +206,12 @@ const AddIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 
@@ -231,7 +239,7 @@ const AddIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -296,8 +304,12 @@ const AddIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -308,4 +320,8 @@ const AddIngestionPage = () => {
   );
 };
 
-export default AddIngestionPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(AddIngestionPage);

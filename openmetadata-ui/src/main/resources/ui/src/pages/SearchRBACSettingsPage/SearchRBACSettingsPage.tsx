@@ -95,8 +95,8 @@ const SearchRBACSettingsPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.login')}>
-      <Row className="page-container" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.search-rbac')}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -122,7 +122,7 @@ const SearchRBACSettingsPage = () => {
             </Tooltip>
           </Typography.Text>
           <Switch
-            checked={searchConfig?.enableAccessControl}
+            checked={searchConfig?.globalSettings?.enableAccessControl}
             className="m-l-xlg"
             disabled={isUpdating}
             onChange={handleUpdateClick}

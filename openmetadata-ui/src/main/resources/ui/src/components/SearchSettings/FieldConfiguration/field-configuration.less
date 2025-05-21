@@ -1,0 +1,76 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.field-container-header {
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.field-weightage {
+  background-color: @team-avatar-bg;
+  border-radius: 6px;
+  color: @blue-3;
+  gap: 6px;
+}
+
+.field-weightage-text {
+  color: @blue-3;
+}
+
+.add-boost-btn {
+  background-color: @blue-14;
+  border: 1px solid @blue-14;
+  border-radius: 8px;
+  padding: 18px 16px;
+  color: @primary-heading-color;
+  &:hover {
+    background-color: @blue-14;
+    border: 1px solid @grey-15;
+  }
+}
+
+.custom-panel .ant-collapse-header {
+  padding: 0 !important;
+}
+
+.custom-panel .ant-collapse-content-box {
+  padding: 0 12px !important;
+}
+
+.ant-collapse-borderless {
+  > .ant-collapse-item:last-child {
+    border: 1px solid @border-color-5;
+    border-radius: 10px;
+  }
+}
+
+.boost-option-btn:hover {
+  background-color: transparent;
+}
+
+.delete-search-field {
+  color: @red-12;
+  border: none;
+  background-color: transparent;
+  border-radius: 8px;
+  &:hover {
+    color: @red-12;
+    border: none;
+    background-color: @red-9;
+  }
+  .ant-btn-icon-only {
+    width: 16px;
+    height: 16px;
+  }
+}

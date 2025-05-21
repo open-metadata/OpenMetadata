@@ -16,7 +16,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("changeDescription", "failedRowsSample");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
@@ -69,8 +70,10 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
       return;
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
-    EntityReference entityReference = testSuite.getExecutableEntityReference();
-    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    if (entityReference != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

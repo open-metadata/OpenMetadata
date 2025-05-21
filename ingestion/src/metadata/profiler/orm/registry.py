@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,7 @@ from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
+from metadata.profiler.orm.types.custom_time import CustomTime
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 from metadata.profiler.orm.types.undetermined_type import UndeterminedType
 from metadata.profiler.orm.types.uuid import UUIDString
@@ -44,6 +45,7 @@ class CustomTypes(TypeRegistry):
     IP = CustomIP
     SQADATETIMERANGE = CustomDateTimeRange
     UNDETERMINED = UndeterminedType
+    TIME = CustomTime
 
 
 class PythonDialects(Enum):
@@ -61,6 +63,7 @@ class PythonDialects(Enum):
     AzureSQL = "azuresql"
     BigQuery = "bigquery"
     ClickHouse = "clickhouse"
+    Cockroach = "cockroachdb"
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"
@@ -76,12 +79,14 @@ class PythonDialects(Enum):
     MSSQL = "mssql"
     MySQL = "mysql"
     Oracle = "oracle"
+    PinotDB = "pinotdb"
     Postgres = "postgresql"
     Presto = "presto"
     Redshift = "redshift"
     SingleStore = "singlestore"
     SQLite = "sqlite"
     Snowflake = "snowflake"
+    Teradata = "teradatasql"
     Trino = "trino"
     Vertica = "vertica"
 

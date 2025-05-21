@@ -12,13 +12,11 @@
  */
 import { upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import {
-  EntityStats,
-  EntityStatsData,
-  EntityTypeSearchIndex,
-} from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { Status } from '../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+  Status,
+  StepStats,
+} from '../generated/entity/applications/appRunRecord';
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -26,53 +24,60 @@ export const getStatusTypeForApplication = (status: Status) => {
       return StatusType.Failure;
 
     case Status.Success:
+    case Status.Active:
     case Status.Completed:
       return StatusType.Success;
 
-    case Status.Active:
     case Status.Running:
-      return StatusType.Warning;
+      return StatusType.Running;
 
     case Status.Started:
       return StatusType.Started;
+
+    case Status.Pending:
+      return StatusType.Pending;
+
+    case Status.ActiveError:
+      return StatusType.ActiveError;
 
     default:
       return StatusType.Stopped;
   }
 };
-
-export const getStatusFromPipelineState = (status: PipelineState) => {
-  if (status === PipelineState.Failed) {
-    return Status.Failed;
-  } else if (status === PipelineState.Success) {
-    return Status.Success;
-  } else if (
-    status === PipelineState.Running ||
-    status === PipelineState.PartialSuccess ||
-    status === PipelineState.Queued
-  ) {
-    return Status.Running;
-  }
-
-  return Status.Failed;
-};
-
-export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
+export const getEntityStatsData = (data: {
+  [key: string]: StepStats;
+}): EntityStatsData[] => {
   const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
 
-  const result = Object.keys(data).reduce((acc, key) => {
-    if (filteredRow.includes(key)) {
-      return acc;
-    }
+  const result = Object.entries(data).reduce<EntityStatsData[]>(
+    (acc, [key, stats]) => {
+      if (filteredRow.includes(key)) {
+        return acc;
+      }
 
-    return [
-      ...acc,
-      {
-        name: upperFirst(key),
-        ...data[key as EntityTypeSearchIndex],
-      },
-    ];
-  }, [] as EntityStatsData[]);
+      if (
+        !stats ||
+        typeof stats.totalRecords !== 'number' ||
+        typeof stats.successRecords !== 'number' ||
+        typeof stats.failedRecords !== 'number'
+      ) {
+        return acc;
+      }
 
-  return result.sort((a, b) => a.name.localeCompare(b.name));
+      return [
+        ...acc,
+        {
+          name: upperFirst(key),
+          totalRecords: stats.totalRecords,
+          successRecords: stats.successRecords,
+          failedRecords: stats.failedRecords,
+        },
+      ];
+    },
+    []
+  );
+
+  return result.sort((a: EntityStatsData, b: EntityStatsData) =>
+    a.name.localeCompare(b.name)
+  );
 };

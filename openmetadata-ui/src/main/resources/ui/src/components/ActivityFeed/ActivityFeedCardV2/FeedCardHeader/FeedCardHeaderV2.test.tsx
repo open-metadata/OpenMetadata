@@ -46,7 +46,7 @@ jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../../constants/constants', () => ({
+jest.mock('../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn(),
 }));
 

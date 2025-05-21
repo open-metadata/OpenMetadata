@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  DATA_CONSUMER_RULES,
+  ORGANIZATION_POLICY_RULES,
+} from '../constant/permission';
 
 export const checkNoPermissionPlaceholder = async (
   page: Page,
@@ -116,4 +120,46 @@ export const validateViewPermissions = async (
   await page.click('[data-testid="custom_properties"]');
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(page, /Custom Properties/);
+};
+
+export const updateDefaultDataConsumerPolicy = async (
+  apiContext: APIRequestContext
+) => {
+  const dataConsumerRoleResponse = await apiContext
+    .get('/api/v1/policies/name/DataConsumerPolicy')
+    .then((response) => response.json());
+
+  await apiContext.patch(`/api/v1/policies/${dataConsumerRoleResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/rules',
+        value: DATA_CONSUMER_RULES,
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};
+
+export const updateDefaultOrganizationPolicy = async (
+  apiContext: APIRequestContext
+) => {
+  const orgPolicyResponse = await apiContext
+    .get('/api/v1/policies/name/OrganizationPolicy')
+    .then((response) => response.json());
+
+  await apiContext.patch(`/api/v1/policies/${orgPolicyResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/rules',
+        value: ORGANIZATION_POLICY_RULES,
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
 };

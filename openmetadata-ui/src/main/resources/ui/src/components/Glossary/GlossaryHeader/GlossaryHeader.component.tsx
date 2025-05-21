@@ -38,9 +38,10 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -57,19 +58,21 @@ import {
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import {
+  getEntityImportPath,
+  getEntityVoteStatus,
+} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
-  getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
@@ -210,12 +213,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(
-      getGlossaryPathWithAction(
-        selectedData.fullyQualifiedName ?? '',
-        EntityAction.IMPORT
-      )
-    );
+    history.push(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -311,6 +309,7 @@ const GlossaryHeader = ({
       showModal({
         name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [selectedData]);
@@ -471,7 +470,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs"
+          className="m-l-xs h-10"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -482,7 +481,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
             <Dropdown
-              className="m-l-xs"
+              className="m-l-xs h-10"
               menu={{
                 items: addButtonContent,
               }}
@@ -568,10 +567,10 @@ const GlossaryHeader = ({
           />
         </Col>
         <Col flex="360px">
-          <div className="d-flex gap-2 justify-end">
+          <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -580,7 +579,7 @@ const GlossaryHeader = ({
                 />
               )}
 
-              {selectedData && selectedData.version && (
+              {selectedData?.version && (
                 <Tooltip
                   title={t(
                     `label.${
@@ -627,10 +626,14 @@ const GlossaryHeader = ({
                         : t('label.glossary-term'),
                     })}>
                     <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      className="glossary-manage-dropdown-button"
                       data-testid="manage-button"
                       icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                        <IconDropdown
+                          className="vertical-align-inherit manage-dropdown-icon"
+                          height={16}
+                          width={16}
+                        />
                       }
                       onClick={() => setShowActions(true)}
                     />

@@ -20,15 +20,12 @@ export interface ClassificationDetailsProps {
   isVersionView?: boolean;
   currentClassification?: Classification;
   deleteTags?: DeleteTagsType;
-  isEditClassification?: boolean;
   isAddingTag?: boolean;
   disableEditButton?: boolean;
   handleAfterDeleteAction?: () => void;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
   handleAddNewTagClick?: () => void;
-  handleEditDescriptionClick?: () => void;
-  handleCancelEditDescription?: () => void;
   handleUpdateClassification?: (
     updatedClassification: Classification
   ) => Promise<void>;

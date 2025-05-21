@@ -111,6 +111,9 @@ export const selectOption = async (
   optionTitle: string,
   isScrollNeeded: boolean
 ) => {
+  // moving out side left menu bar to avoid random failure due to left menu bar
+  await page.mouse.move(1280, 0);
+
   await dropdownLocator.click();
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',

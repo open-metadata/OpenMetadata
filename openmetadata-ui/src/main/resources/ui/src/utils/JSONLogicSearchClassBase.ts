@@ -20,6 +20,7 @@ import {
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   EntityFields,
@@ -28,7 +29,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -199,7 +200,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE,
+          entityField: EntityFields.DATABASE_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -213,7 +215,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          entityField: EntityFields.DATABASE_SCHEMA_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -239,6 +242,20 @@ class JSONLogicSearchClassBase {
     tierOptions?: Promise<AsyncFetchListValues>;
   }) => {
     return {
+      [EntityReferenceFields.SERVICE]: {
+        label: t('label.service'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.ALL,
+            entityField: EntityFields.SERVICE_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.OWNERS]: {
         label: t('label.owner-plural'),
         type: 'select',
@@ -287,16 +304,7 @@ class JSONLogicSearchClassBase {
         label: t('label.description'),
         type: 'text',
         mainWidgetProps: this.mainWidgetProps,
-        operators: [
-          'equal',
-          'not_equal',
-          'like',
-          'not_like',
-          'starts_with',
-          'ends_with',
-          'is_null',
-          'is_not_null',
-        ],
+        operators: TEXT_FIELD_OPERATORS,
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
@@ -313,11 +321,12 @@ class JSONLogicSearchClassBase {
         },
       },
 
-      extension: {
+      [EntityReferenceFields.EXTENSION]: {
         label: t('label.custom-property-plural'),
-        type: '!group',
+        type: '!struct',
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
+        operators: TEXT_FIELD_OPERATORS,
       },
     };
   };
@@ -377,7 +386,11 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderQueryBuilderFilterButtons,
+        renderButton: renderJSONLogicQueryBuilderButtons,
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          popupClassName: 'json-logic-field-select',
+        },
       },
     };
 

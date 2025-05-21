@@ -10,15 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
+import { Operation } from 'fast-json-patch';
 import { t } from 'i18next';
-import { EntityDetailUnion } from 'Models';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { Table } from '../../generated/entity/data/table';
-import { Domain } from '../../generated/entity/domains/domain';
 import { ListParams } from '../../interface/API.interface';
 import {
   getApiCollectionByFQN,
@@ -42,6 +38,7 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,
@@ -73,7 +70,6 @@ import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
-import { showErrorToast } from '../ToastUtils';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
@@ -120,6 +116,8 @@ export const getAPIfromSource = (
       return patchApiEndPoint;
     case EntityType.METRIC:
       return patchMetric;
+    case EntityType.DOMAIN:
+      return patchDomains;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -181,6 +179,8 @@ export const getEntityAPIfromSource = (
       return getApiEndPointByFQN;
     case EntityType.METRIC:
       return getMetricByFqn;
+    case EntityType.DOMAIN:
+      return getDomainByName;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -207,29 +207,6 @@ export const getAssetsFields = (source: AssetsOfEntity) => {
   }
 };
 
-const getJsonPatchObject = (entity: Table, activeEntity: Domain) => {
-  let patchObj;
-  if (activeEntity) {
-    const { id, description, fullyQualifiedName, name, displayName } =
-      activeEntity;
-    patchObj = {
-      id,
-      description,
-      fullyQualifiedName,
-      name,
-      displayName,
-      type: 'domain',
-    };
-  }
-
-  const jsonPatch = compare(entity, {
-    ...entity,
-    domain: patchObj,
-  });
-
-  return jsonPatch;
-};
-
 export function getEntityTypeString(type: string) {
   switch (type) {
     case AssetsOfEntity.GLOSSARY:
@@ -242,89 +219,3 @@ export function getEntityTypeString(type: string) {
       return t('label.data-product-lowercase');
   }
 }
-
-export const updateDomainAssets = async (
-  activeEntity: EntityDetailUnion | undefined,
-  type: AssetsOfEntity,
-  selectedItems: Map<string, EntityDetailUnion>
-) => {
-  try {
-    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
-        fields: getAssetsFields(type),
-      })
-    );
-    const entityDetailsResponse = await Promise.allSettled(entityDetails);
-    const map = new Map();
-
-    entityDetailsResponse.forEach((response) => {
-      if (response.status === 'fulfilled') {
-        const entity = response.value;
-        entity && map.set(entity.fullyQualifiedName, entity);
-      }
-    });
-    const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-      .map((item) => {
-        if (map.has(item.fullyQualifiedName)) {
-          const entity = map.get(item.fullyQualifiedName);
-          const jsonPatch = getJsonPatchObject(entity, activeEntity as Domain);
-          const api = getAPIfromSource(item.entityType);
-
-          return api(item.id, jsonPatch);
-        }
-
-        return;
-      })
-      .filter(Boolean);
-
-    await Promise.all(patchAPIPromises);
-  } catch (err) {
-    showErrorToast(err as AxiosError);
-  }
-};
-
-export const removeGlossaryTermAssets = async (
-  entityFqn: string,
-  type: AssetsOfEntity,
-  selectedItems: Map<string, EntityDetailUnion>
-) => {
-  const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-    getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
-      fields: getAssetsFields(type),
-    })
-  );
-
-  try {
-    const entityDetailsResponse = await Promise.allSettled(entityDetails);
-    const map = new Map();
-    entityDetailsResponse.forEach((response) => {
-      if (response.status === 'fulfilled') {
-        const entity = response.value;
-        entity && map.set(entity.fullyQualifiedName, (entity as Table).tags);
-      }
-    });
-    const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-      .map((item) => {
-        if (map.has(item.fullyQualifiedName)) {
-          const jsonPatch = compare(
-            { tags: map.get(item.fullyQualifiedName) },
-            {
-              tags: (item.tags ?? []).filter(
-                (tag: EntityDetailUnion) => tag.tagFQN !== entityFqn
-              ),
-            }
-          );
-          const api = getAPIfromSource(item.entityType);
-
-          return api(item.id, jsonPatch);
-        }
-
-        return;
-      })
-      .filter(Boolean);
-
-    await Promise.all(patchAPIPromises);
-  } catch (err) {
-    showErrorToast(err as AxiosError);
-  }
-};

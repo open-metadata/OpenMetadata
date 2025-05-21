@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Metric } from '../../../generated/entity/data/metric';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
@@ -19,10 +18,9 @@ import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 export interface MetricDetailsProps {
   metricDetails: Metric;
   metricPermissions: OperationPermission;
-  onCreateThread: (data: CreateThread) => Promise<void>;
   fetchMetricDetails: () => void;
   onFollowMetric: () => Promise<void>;
-  onMetricUpdate: (updatedData: Metric, key: keyof Metric) => Promise<void>;
+  onMetricUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   onToggleDelete: (version?: number) => void;
   onUnFollowMetric: () => Promise<void>;
   onUpdateMetricDetails: (data: DataAssetWithDomains) => void;

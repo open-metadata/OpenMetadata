@@ -88,11 +88,10 @@
       "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
       "title": "Sampling Method Type"
     },
-    "sampleDataCount": {
-      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
-      "type": "integer",
-      "default": 50,
-      "title": "Sample Data Rows Count"
+    "randomizedSample": {
+      "description": "Whether to randomize the sample data or not.",
+      "type": "boolean",
+      "default": true
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",

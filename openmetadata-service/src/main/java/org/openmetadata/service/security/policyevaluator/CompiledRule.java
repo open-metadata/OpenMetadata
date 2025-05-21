@@ -40,6 +40,10 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return null;
     }
+
+    // Apply safety validation before parsing expressions
+    ExpressionValidator.validateExpressionSafety(condition);
+
     try {
       return EXPRESSION_PARSER.parseExpression(condition);
     } catch (Exception exception) {
@@ -53,6 +57,8 @@ public class CompiledRule extends Rule {
     if (condition == null) {
       return;
     }
+
+    // parseExpression already includes safety validation
     Expression expression = parseExpression(condition);
     RuleEvaluator ruleEvaluator = new RuleEvaluator();
     SimpleEvaluationContext context =
@@ -197,16 +203,17 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchOperation(MetadataOperation operation) {
-    if (getOperations().contains(MetadataOperation.ALL)) {
+    List<MetadataOperation> operations = getOperations();
+    if (operations.contains(MetadataOperation.ALL)) {
       LOG.debug("matched all operations");
       return true; // Match all operations
     }
-    if (getOperations().contains(MetadataOperation.EDIT_ALL)
+    if (operations.contains(MetadataOperation.EDIT_ALL)
         && OperationContext.isEditOperation(operation)) {
       LOG.debug("matched editAll operations");
       return true;
     }
-    if (getOperations().contains(MetadataOperation.VIEW_ALL)
+    if (operations.contains(MetadataOperation.VIEW_ALL)
         && OperationContext.isViewOperation(operation)) {
       LOG.debug("matched viewAll operations");
       return true;

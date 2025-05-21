@@ -6,6 +6,17 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowInstance",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "workflowStatus": {
+      "type": "string",
+      "enum": [
+        "RUNNING",
+        "FINISHED",
+        "FAILURE",
+        "EXCEPTION"
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this workflow instance state.",
@@ -30,6 +41,12 @@
     "timestamp": {
       "description": "Timestamp on which the workflow instance state was created.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "$ref": "#/definitions/workflowStatus"
+    },
+    "exception": {
+      "type": "string"
     }
   },
   "required": [],

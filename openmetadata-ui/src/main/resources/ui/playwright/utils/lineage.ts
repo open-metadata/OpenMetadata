@@ -12,10 +12,10 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
-import { parseCSV } from '../../src/utils/EntityImport/EntityImportUtils';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -28,6 +28,7 @@ import {
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
+import { parseCSV } from './entityImport';
 
 type LineageCSVRecord = {
   fromEntityFQN: string;
@@ -61,6 +62,21 @@ export const LINEAGE_CSV_HEADERS = [
   'pipelineServiceType',
 ];
 
+export type LineageEdge = {
+  fromEntity: {
+    id: string;
+    type: string;
+  };
+  toEntity: {
+    id: string;
+    type: string;
+  };
+  columns: {
+    fromColumns: string[];
+    toColumn: string;
+  }[];
+};
+
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page.waitForSelector(
@@ -83,7 +99,7 @@ export const editLineage = async (page: Page) => {
 };
 
 export const performZoomOut = async (page: Page) => {
-  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
     for (const _ of Array.from({ length: 8 })) {
@@ -132,8 +148,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await destinationElement.hover();
+  const x = box.x + 250;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
 
@@ -156,6 +173,10 @@ export const dragConnection = async (
     .dispatchEvent('click');
 
   await lineageRes;
+};
+
+export const rearrangeNodes = async (page: Page) => {
+  await page.getByTestId('rearrange').click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -212,8 +233,6 @@ export const performExpand = async (
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
-  } else {
-    await expect(expandBtn).toBeVisible();
   }
 };
 
@@ -275,7 +294,7 @@ export const editPipelineEdgeDescription = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
-  pipelineData,
+  pipelineData: ResponseDataType,
   description: string
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
@@ -348,7 +367,8 @@ export const applyPipelineFromModal = async (
 
   await page
     .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .dispatchEvent('click');
+    .click({ force: true });
+
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
@@ -366,6 +386,10 @@ export const applyPipelineFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
   await saveRes;
+
+  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+    state: 'detached',
+  });
 };
 
 export const deleteNode = async (page: Page, node: EntityClass) => {
@@ -451,7 +475,7 @@ export const addPipelineBetweenNodes = async (
   bVerifyPipeline = false
 ) => {
   await sourceEntity.visitEntityPage(page);
-  await page.click('[data-testid="lineage"]');
+  await visitLineageTab(page);
   await editLineage(page);
 
   await performZoomOut(page);
@@ -479,6 +503,7 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
@@ -507,20 +532,33 @@ export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };
 
-export const verifyCSVHeaders = async (page: Page, headers: string[]) => {
+export const verifyCSVHeaders = async (headers: string[]) => {
   LINEAGE_CSV_HEADERS.forEach((expectedHeader) => {
     expect(headers).toContain(expectedHeader);
   });
 };
 
 export const getLineageCSVData = async (page: Page) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
   await page.getByTestId('lineage-export').click();
 
-  await expect(page.getByRole('dialog', { name: 'Export' })).toBeVisible();
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button#submit-button'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
   ]);
 
   const filePath = await download.path();
@@ -539,7 +577,7 @@ export const getLineageCSVData = async (page: Page) => {
     .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
 
   const headers = csvRows[0];
-  await verifyCSVHeaders(page, headers);
+  await verifyCSVHeaders(headers);
 
   return parseCSV(csvRows);
 };
@@ -595,6 +633,46 @@ export const verifyExportLineageCSV = async (
 
     expect(matchingRow).toBeDefined(); // Ensure a matching row exists
   });
+};
+
+export const verifyExportLineagePNG = async (
+  page: Page,
+  isPNGSelected?: boolean
+) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  if (!isPNGSelected) {
+    await page.getByTestId('export-type-select').click();
+    await page.locator('.ant-select-item[title="PNG"]').click();
+  }
+
+  await expect(
+    page.getByTestId('export-type-select').getByText('PNGBeta')
+  ).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
 };
 
 export const verifyColumnLineageInCSV = async (

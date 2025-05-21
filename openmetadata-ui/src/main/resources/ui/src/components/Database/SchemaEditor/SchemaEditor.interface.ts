@@ -13,7 +13,7 @@
 
 import { CSMode } from '../../../enums/codemirror.enum';
 
-type Mode = {
+export type Mode = {
   name: CSMode;
   json?: boolean;
 };
@@ -29,4 +29,5 @@ export interface SchemaEditorProps {
   editorClass?: string;
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
 }

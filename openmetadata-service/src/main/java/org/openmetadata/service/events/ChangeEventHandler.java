@@ -55,7 +55,9 @@ public class ChangeEventHandler implements EventHandler {
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
       if (optionalChangeEvent.isPresent()) {
         ChangeEvent changeEvent = optionalChangeEvent.get();
-        if (changeEvent.getEntityType().equals(Entity.QUERY)) {
+        // Test Connection workflows shouldn't produce changeEvents (Entity.WORKFLOW)
+        if (changeEvent.getEntityType().equals(Entity.QUERY)
+            || changeEvent.getEntityType().equals(Entity.WORKFLOW)) {
           return null;
         }
         // Always set the Change Event Username as context Principal, the one creating the CE
@@ -86,7 +88,7 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
+  public static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
     return new ChangeEvent()
         .withId(changeEvent.getId())
         .withEventType(changeEvent.getEventType())

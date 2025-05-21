@@ -49,6 +49,7 @@ import {
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
+  cronValidator,
   getCron,
   getDefaultScheduleValue,
   getHourMinuteSelect,
@@ -79,6 +80,7 @@ const ScheduleInterval = <T,>({
   defaultSchedule,
   topChildren,
   showActionButtons = true,
+  schedularOptions = SCHEDULAR_OPTIONS,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
@@ -224,7 +226,7 @@ const ScheduleInterval = <T,>({
             className="schedular-card-container"
             data-testid="schedular-card-container"
             value={selectedSchedular}>
-            {SCHEDULAR_OPTIONS.map(({ description, title, value }) => (
+            {schedularOptions.map(({ description, title, value }) => (
               <Card
                 className={classNames('schedular-card', {
                   active: value === selectedSchedular,
@@ -359,22 +361,7 @@ const ScheduleInterval = <T,>({
                       }),
                     },
                     {
-                      validator: async (_, value) => {
-                        // Check if cron is valid and get the description
-                        const description = cronstrue.toString(value);
-
-                        // Check if cron has a frequency of less than an hour
-                        const isFrequencyInMinutes = /Every \d* *minute/.test(
-                          description
-                        );
-                        if (isFrequencyInMinutes) {
-                          return Promise.reject(
-                            t('message.cron-less-than-hour-message')
-                          );
-                        }
-
-                        return Promise.resolve();
-                      },
+                      validator: cronValidator,
                     },
                   ]}>
                   <Input />
@@ -407,7 +394,7 @@ const ScheduleInterval = <T,>({
           <Col span={24}>{generateFormFields(formFields)}</Col>
         )}
 
-        {children && <Col span={24}>{children}</Col>}
+        {children}
 
         {showActionButtons && (
           <Col className="d-flex justify-end" span={24}>

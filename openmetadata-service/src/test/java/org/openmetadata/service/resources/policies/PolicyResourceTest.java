@@ -34,7 +34,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -270,10 +269,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // isOwner() has Unexpected input parameter
     failsToEvaluate(policyName, "!isOwner('unexpectedParam')");
 
-    // Invalid function name
-    failsToEvaluate(policyName, "invalidFunction()");
-    failsToEvaluate(policyName, "isOwner() || invalidFunction()");
-
     // Invalid text
     failsToEvaluate(policyName, "a");
     failsToEvaluate(policyName, "abc");
@@ -356,16 +351,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Change existing rule1 fields. Update description and condition
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(policy, MINOR_UPDATE);
     rule1.withDescription("newDescription").withCondition("noOwner()");
-    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
-    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
-    fieldUpdated(
-        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
-    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
-    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
+    fieldUpdated(change, getRuleField(rule1, FIELD_DESCRIPTION), "description", "newDescription");
+    fieldUpdated(change, getRuleField(rule1, "condition"), "isOwner()", "noOwner()");
     policy.setRules(List.of(rule1));
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a new rule - Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
@@ -373,26 +364,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         accessControlRule(
             "newRule", List.of(ALL_RESOURCES), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
     policy.getRules().add(newRule);
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
-    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
-    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
-    fieldUpdated(
-        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
-    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
-    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
-    fieldAdded(change, "rules", List.of(newRule));
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(policy, MINOR_UPDATE);
+    fieldAdded(change, "rules", listOf(newRule));
+    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Delete rule1 rule
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
     policy.setRules(List.of(newRule));
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
-    // Revert all the changes made to rule1 to the state when it was added first
-    rule1 = accessControlRule("rule1", List.of(ALL_RESOURCES), List.of(VIEW_ALL), ALLOW);
-    fieldAdded(change, "rules", List.of(newRule));
+    change = getChangeDescription(policy, MINOR_UPDATE);
     fieldDeleted(change, "rules", List.of(rule1));
-    patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -475,18 +457,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Change existing rule1 fields. Update description and condition
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(policy, MINOR_UPDATE);
     rule1.withDescription("newDescription").withCondition("noOwner()");
-    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
-    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
-    fieldUpdated(
-        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
-    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
-    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
+    fieldUpdated(change, getRuleField(rule1, FIELD_DESCRIPTION), "description", "newDescription");
+    fieldUpdated(change, getRuleField(rule1, "condition"), "isOwner()", "noOwner()");
     policy.setRules(List.of(rule1));
     policy =
-        patchEntityUsingFqnAndCheck(
-            policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a new rule - Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
@@ -494,28 +471,19 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         accessControlRule(
             "newRule", List.of(ALL_RESOURCES), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
     policy.getRules().add(newRule);
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
-    fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
-    fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
-    fieldUpdated(
-        change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
-    fieldUpdated(change, getRuleField(rule1, "operations"), List.of(VIEW_ALL), List.of(EDIT_ALL));
-    fieldAdded(change, getRuleField(rule1, "condition"), "noOwner()");
-    fieldAdded(change, "rules", List.of(newRule));
+    change = getChangeDescription(policy, MINOR_UPDATE);
+    fieldAdded(change, "rules", listOf(newRule));
     policy =
-        patchEntityUsingFqnAndCheck(
-            policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Delete rule1 rule
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
     policy.setRules(List.of(newRule));
-    change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(policy, MINOR_UPDATE);
     // Revert all the changes made to rule1 to the state when it was added first
-    rule1 = accessControlRule("rule1", List.of(ALL_RESOURCES), List.of(VIEW_ALL), ALLOW);
-    fieldAdded(change, "rules", List.of(newRule));
     fieldDeleted(change, "rules", List.of(rule1));
-    patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

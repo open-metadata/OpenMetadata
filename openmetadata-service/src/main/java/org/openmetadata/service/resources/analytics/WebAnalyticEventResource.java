@@ -70,6 +70,7 @@ public class WebAnalyticEventResource
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owners";
   private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
+  private final WebAnalyticEventMapper mapper = new WebAnalyticEventMapper();
 
   public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {
     super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
@@ -169,7 +170,7 @@ public class WebAnalyticEventResource
       @Context SecurityContext securityContext,
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
-        getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, webAnalyticEvent);
   }
 
@@ -192,7 +193,7 @@ public class WebAnalyticEventResource
       @Context SecurityContext securityContext,
       @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent =
-        getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
   }
 
@@ -315,6 +316,31 @@ public class WebAnalyticEventResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteWebAnalyticEventTypeByIdAsync",
+      summary = "Asynchronously delete a web analytic event type by Id",
+      description = "Asynchronously delete a web analytic event type by Id.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Web Analytic event for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -552,15 +578,6 @@ public class WebAnalyticEventResource
           @QueryParam("endTs")
           Long endTs) {
     return repository.getWebAnalyticEventData(eventType, startTs, endTs);
-  }
-
-  private WebAnalyticEvent getWebAnalyticEvent(CreateWebAnalyticEvent create, String user) {
-    return repository
-        .copy(new WebAnalyticEvent(), create, user)
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
-        .withEventType(create.getEventType());
   }
 
   public static WebAnalyticEventData sanitizeWebAnalyticEventData(

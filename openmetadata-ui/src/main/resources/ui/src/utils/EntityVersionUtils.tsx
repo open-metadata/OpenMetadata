@@ -137,6 +137,7 @@ export const getAddedDiffElement = (text: string) => {
   return (
     <span
       className="diff-added text-underline"
+      data-diff="true"
       data-testid="diff-added"
       key={uniqueId()}>
       {text}
@@ -148,6 +149,7 @@ export const getRemovedDiffElement = (text: string) => {
   return (
     <span
       className="text-grey-muted text-line-through"
+      data-diff="true"
       data-testid="diff-removed"
       key={uniqueId()}>
       {text}
@@ -157,7 +159,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <span data-testid="diff-normal" key={uniqueId()}>
+    <span data-diff="true" data-testid="diff-normal" key={uniqueId()}>
       {text}
     </span>
   );
@@ -332,6 +334,8 @@ const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
       status:
         statusFieldDiff.newValue === 'Approved'
           ? t('label.approved')
+          : statusFieldDiff.newValue === 'In Review'
+          ? t('label.in-review')
           : t('label.rejected'),
     });
   }

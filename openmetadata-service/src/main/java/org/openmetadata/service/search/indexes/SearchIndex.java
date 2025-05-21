@@ -1,13 +1,16 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.jdbi3.LineageRepository.buildRelationshipDetailsMap;
+import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -23,6 +26,7 @@ import java.util.Set;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -41,12 +45,25 @@ import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
-      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
+      Set.of(
+          "changeDescription",
+          "incrementalChangeDescription",
+          "upstreamLineage.pipeline.changeDescription",
+          "upstreamLineage.pipeline.incrementalChangeDescription",
+          "connection");
+
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   default Map<String, Object> buildSearchIndexDoc() {
     // Build Index Doc
     Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
+
+    // Add FqnHash
+    if (esDoc.containsKey(Entity.FIELD_FULLY_QUALIFIED_NAME)
+        && !nullOrEmpty((String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME))) {
+      String fqn = (String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME);
+      esDoc.put("fqnHash", FullyQualifiedName.buildHash(fqn));
+    }
 
     // Non Indexable Fields
     removeNonIndexableFields(esDoc);
@@ -76,7 +93,6 @@ public interface SearchIndex {
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
-    List<SearchSuggest> suggest = getSuggest();
     map.put(
         "displayName",
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
@@ -90,12 +106,7 @@ public interface SearchIndex {
             ? 0
             : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
     map.put("descriptionStatus", getDescriptionStatus(entity));
-    map.put("suggest", suggest);
-    map.put(
-        "fqnParts",
-        getFQNParts(
-            entity.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+    map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
 
     Optional.ofNullable(entity.getCertification())
@@ -103,6 +114,20 @@ public interface SearchIndex {
     return map;
   }
 
+  default Set<String> getFQNParts(String fqn) {
+    Set<String> fqnParts = new HashSet<>();
+    fqnParts.add(fqn);
+    String parent = FullyQualifiedName.getParentFQN(fqn);
+    while (parent != null) {
+      fqnParts.add(parent);
+      parent = FullyQualifiedName.getParentFQN(parent);
+    }
+    return fqnParts;
+  }
+
+  // Add suggest inputs to fqnParts to support partial/wildcard search on names.
+  // In some case of basic Test suite name is not part of the fullyQualifiedName, so it must be
+  // added separately.
   default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
     Set<String> fqnParts = new HashSet<>();
     fqnParts.add(fqn);
@@ -148,31 +173,25 @@ public interface SearchIndex {
     return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
-  static List<Map<String, Object>> getLineageData(EntityReference entity) {
-    List<Map<String, Object>> data = new ArrayList<>();
-    CollectionDAO dao = Entity.getCollectionDAO();
-    List<CollectionDAO.EntityRelationshipRecord> toRelationshipsRecords =
-        dao.relationshipDAO()
-            .findTo(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : toRelationshipsRecords) {
+  static List<EsLineageData> getLineageData(EntityReference entity) {
+    return new ArrayList<>(
+        getLineageDataFromRefs(
+            entity,
+            Entity.getCollectionDAO()
+                .relationshipDAO()
+                .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal())));
+  }
+
+  static List<EsLineageData> getLineageDataFromRefs(
+      EntityReference entity, List<CollectionDAO.EntityRelationshipRecord> records) {
+    List<EsLineageData> data = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : records) {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails =
           JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      data.add(buildRelationshipDetailsMap(entity, ref, lineageDetails));
-    }
-    List<CollectionDAO.EntityRelationshipRecord> fromRelationshipsRecords =
-        dao.relationshipDAO()
-            .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord :
-        fromRelationshipsRecords) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(
-              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      data.add(buildRelationshipDetailsMap(ref, entity, lineageDetails));
+      data.add(buildEntityLineageData(ref, entity, lineageDetails));
     }
     return data;
   }
@@ -182,59 +201,57 @@ public interface SearchIndex {
       Table relatedEntity,
       List<Map<String, Object>> constraints,
       Boolean updateForeignTableIndex) {
-    if (!nullOrEmpty(entity.getTableConstraints())) {
-      for (TableConstraint tableConstraint : entity.getTableConstraints()) {
-        if (!tableConstraint
-            .getConstraintType()
-            .value()
-            .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
-          continue;
-        }
-        int columnIndex = 0;
-        for (String referredColumn : tableConstraint.getReferredColumns()) {
-          String relatedEntityFQN = getParentFQN(referredColumn);
-          String destinationIndexName = null;
-          try {
-            if (updateForeignTableIndex) {
-              relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
-              IndexMapping destinationIndexMapping =
-                  Entity.getSearchRepository()
-                      .getIndexMapping(relatedEntity.getEntityReference().getType());
-              destinationIndexName =
-                  destinationIndexMapping.getIndexName(
-                      Entity.getSearchRepository().getClusterAlias());
-            }
-            Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
-            int relatedEntityIndex =
-                checkRelatedEntity(
-                    entity.getFullyQualifiedName(),
-                    relatedEntity.getFullyQualifiedName(),
-                    constraints);
-            if (relatedEntityIndex >= 0) {
-              updateExistingConstraint(
-                  entity,
-                  tableConstraint,
-                  constraints.get(relatedEntityIndex),
-                  destinationIndexName,
-                  relatedEntity,
-                  referredColumn,
-                  columnIndex,
-                  updateForeignTableIndex);
-            } else {
-              addNewConstraint(
-                  entity,
-                  tableConstraint,
-                  constraints,
-                  relationshipsMap,
-                  destinationIndexName,
-                  relatedEntity,
-                  referredColumn,
-                  columnIndex,
-                  updateForeignTableIndex);
-            }
-            columnIndex++;
-          } catch (EntityNotFoundException ex) {
+    for (TableConstraint tableConstraint : listOrEmpty(entity.getTableConstraints())) {
+      if (!tableConstraint
+          .getConstraintType()
+          .value()
+          .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
+        continue;
+      }
+      int columnIndex = 0;
+      for (String referredColumn : listOrEmpty(tableConstraint.getReferredColumns())) {
+        String relatedEntityFQN = getParentFQN(referredColumn);
+        String destinationIndexName = null;
+        try {
+          if (updateForeignTableIndex) {
+            relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
+            IndexMapping destinationIndexMapping =
+                Entity.getSearchRepository()
+                    .getIndexMapping(relatedEntity.getEntityReference().getType());
+            destinationIndexName =
+                destinationIndexMapping.getIndexName(
+                    Entity.getSearchRepository().getClusterAlias());
           }
+          Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
+          int relatedEntityIndex =
+              checkRelatedEntity(
+                  entity.getFullyQualifiedName(),
+                  relatedEntity.getFullyQualifiedName(),
+                  constraints);
+          if (relatedEntityIndex >= 0) {
+            updateExistingConstraint(
+                entity,
+                tableConstraint,
+                constraints.get(relatedEntityIndex),
+                destinationIndexName,
+                relatedEntity,
+                referredColumn,
+                columnIndex,
+                updateForeignTableIndex);
+          } else {
+            addNewConstraint(
+                entity,
+                tableConstraint,
+                constraints,
+                relationshipsMap,
+                destinationIndexName,
+                relatedEntity,
+                referredColumn,
+                columnIndex,
+                updateForeignTableIndex);
+          }
+          columnIndex++;
+        } catch (EntityNotFoundException ex) {
         }
       }
     }
@@ -247,12 +264,14 @@ public interface SearchIndex {
     // We need to query the table_entity table to find the references this current table
     // has with other tables. We pick this info from the ES however in case of re-indexing this info
     // needs to be picked from the db
-    CollectionDAO dao = Entity.getCollectionDAO();
-    List<String> json_array =
-        dao.tableDAO().findRelatedTables(entity.getFullyQualifiedName() + "%");
-    for (String json : json_array) {
-      Table foreign_table = JsonUtils.readValue(json, Table.class);
-      processConstraints(foreign_table, entity, constraints, false);
+    List<CollectionDAO.EntityRelationshipRecord> relatedTables =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFrom(entity.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
+
+    for (CollectionDAO.EntityRelationshipRecord table : relatedTables) {
+      Table foreignTable = Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", ALL);
+      processConstraints(foreignTable, entity, constraints, false);
     }
     return constraints;
   }
@@ -279,7 +298,7 @@ public interface SearchIndex {
     relationshipsMap.put("entity", buildEntityRefMap(entity.getEntityReference()));
     relationshipsMap.put("relatedEntity", buildEntityRefMap(relatedEntity.getEntityReference()));
     relationshipsMap.put(
-        "doc_id", entity.getId().toString() + "-" + relatedEntity.getId().toString());
+        "docId", entity.getId().toString() + "-" + relatedEntity.getId().toString());
     return relationshipsMap;
   }
 
@@ -354,8 +373,10 @@ public interface SearchIndex {
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
     fields.put(DISPLAY_NAME_KEYWORD, 10.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
+    fields.put(FIELD_NAME, 10.0f);
+    fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(FIELD_DISPLAY_NAME, 10.0f);
+    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_DESCRIPTION, 2.0f);
     fields.put(FULLY_QUALIFIED_NAME, 5.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);

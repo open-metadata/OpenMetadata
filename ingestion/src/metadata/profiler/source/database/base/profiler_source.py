@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,9 +15,6 @@ its interface
 """
 from copy import deepcopy
 from typing import Optional, cast
-
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -40,7 +37,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
@@ -51,7 +47,6 @@ from metadata.sampler.config import (
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
@@ -98,12 +93,6 @@ class ProfilerSource(ProfilerSourceInterface):
     def interface(self, interface):
         """Set the interface"""
         self._interface = interface
-
-    def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
-        """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if self.service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
-            return ometa_to_sqa_orm(entity, self.ometa_client, MetaData())
-        return None
 
     def _copy_service_config(
         self, config: OpenMetadataWorkflowConfig, database: Database
@@ -153,7 +142,6 @@ class ProfilerSource(ProfilerSourceInterface):
             ServiceType.Database, source_type=self._interface_type
         )
         # This is shared between the sampler and profiler interfaces
-        _orm = self._build_table_orm(entity)
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
@@ -162,20 +150,19 @@ class ProfilerSource(ProfilerSourceInterface):
             database_entity=database_entity,
             table_config=config,
             default_sample_config=SampleConfig(
-                profile_sample=self.source_config.profileSample,
-                profile_sample_type=self.source_config.profileSampleType,
-                sampling_method_type=self.source_config.samplingMethodType,
+                profileSample=self.source_config.profileSample,
+                profileSampleType=self.source_config.profileSampleType,
+                samplingMethodType=self.source_config.samplingMethodType,
+                randomizedSample=self.source_config.randomizedSample,
             ),
-            default_sample_data_count=self.source_config.sampleDataCount,
-            orm_table=_orm,
         )
+
         profiler_interface: ProfilerInterface = profiler_class.create(
             entity=entity,
             source_config=self.source_config,
             service_connection_config=self.service_conn_config,
             sampler=sampler_interface,
             ometa_client=self.ometa_client,
-            orm_table=_orm,
         )  # type: ignore
 
         self.interface = profiler_interface

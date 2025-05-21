@@ -64,7 +64,19 @@
       "description": "Data assets collection that is part of this data product.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "tags": {
+      "description": "Tags associated with the Data Product.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },

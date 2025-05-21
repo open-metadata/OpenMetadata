@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,8 +14,8 @@ Query masking utilities
 
 import traceback
 
-import sqlparse
-from sqlfluff.core import Linter
+from cachetools import LRUCache
+from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
 from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
@@ -23,7 +23,10 @@ from metadata.ingestion.lineage.models import Dialect
 
 MASK_TOKEN = "?"
 
+# Cache size is 128 to avoid memory issues
+masked_query_cache = LRUCache(maxsize=128)
 
+# pylint: disable=protected-access
 def get_logger():
     # pylint: disable=import-outside-toplevel
     from metadata.utils.logger import utils_logger
@@ -31,18 +34,14 @@ def get_logger():
     return utils_logger()
 
 
-def mask_literals_with_sqlparse(query: str):
+def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
     """
     Mask literals in a query using sqlparse.
     """
     logger = get_logger()
 
     try:
-        parsed = sqlparse.parse(query)  # Parse the query
-
-        if not parsed:
-            return query
-        parsed = parsed[0]
+        parsed = parser._parsed_result
 
         def mask_token(token):
             # Mask all literals: strings, numbers, or other literal values
@@ -79,17 +78,16 @@ def mask_literals_with_sqlparse(query: str):
     return query
 
 
-def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -> str:
+def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     """
     Mask literals in a query using SQLFluff.
     """
     logger = get_logger()
     try:
-        # Initialize SQLFluff linter
-        linter = Linter(dialect=dialect)
+        if not parser._evaluated:
+            parser._eval()
 
-        # Parse the query
-        parsed = linter.parse_string(query)
+        parsed = parser._parsed_result
 
         def replace_literals(segment):
             """Recursively replace literals with placeholders."""
@@ -114,18 +112,30 @@ def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -
     return query
 
 
-def mask_query(query: str, dialect: str = Dialect.ANSI.value) -> str:
+def mask_query(
+    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
+) -> str:
+    """
+    Mask a query using sqlparse or sqlfluff.
+    """
     logger = get_logger()
     try:
-        sqlfluff_masked_query = mask_literals_with_sqlfluff(query, dialect)
-        sqlparse_masked_query = mask_literals_with_sqlparse(query)
-        # compare both masked queries and return the one with more masked tokens
-        if sqlfluff_masked_query.count(MASK_TOKEN) >= sqlparse_masked_query.count(
-            MASK_TOKEN
-        ):
-            return sqlfluff_masked_query
-        return sqlparse_masked_query
+        if masked_query_cache.get((query, dialect)):
+            return masked_query_cache.get((query, dialect))
+        if not parser:
+            try:
+                parser = LineageRunner(query, dialect=dialect)
+                len(parser.source_tables)
+            except Exception:
+                parser = LineageRunner(query)
+                len(parser.source_tables)
+        if parser._dialect == SQLPARSE_DIALECT:
+            masked_query = mask_literals_with_sqlparse(query, parser)
+        else:
+            masked_query = mask_literals_with_sqlfluff(query, parser)
+        masked_query_cache[(query, dialect)] = masked_query
+        return masked_query
     except Exception as exc:
         logger.debug(f"Failed to mask query with sqlfluff: {exc}")
         logger.debug(traceback.format_exc())
-    return query
+    return None

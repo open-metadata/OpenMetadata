@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -36,6 +37,7 @@ jest.mock('../../rest/tableAPI', () => ({
     Promise.resolve({
       name: 'test',
       id: '123',
+      columns: [],
     })
   ),
   addFollower: jest.fn(),
@@ -113,10 +115,6 @@ jest.mock(
     return jest.fn().mockImplementation(() => <p>testSampleDataTable</p>);
   }
 );
-
-jest.mock('../../components/Database/SchemaTab/SchemaTab.component', () => {
-  return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
-});
 
 jest.mock(
   '../../components/Database/Profiler/TableProfiler/TableProfiler',
@@ -207,6 +205,14 @@ jest.mock('../../hoc/LimitWrapper', () => {
     .fn()
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
+
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
+}));
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
@@ -300,6 +306,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { sql: 'somequery' },
+        columns: [],
       })
     );
 
@@ -324,6 +331,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { sql: '', rawSql: 'rawSql' },
+        columns: [],
       })
     );
 
@@ -348,6 +356,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { rawSql: 'rawSql' },
+        columns: [],
       })
     );
 
@@ -371,6 +380,7 @@ describe('TestDetailsPageV1 component', () => {
         name: 'test',
         id: '123',
         schemaDefinition: 'schemaDefinition query',
+        columns: [],
       })
     );
 
@@ -395,6 +405,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         schemaDefinition: 'viewDefinition query',
         tableType: TableType.View,
+        columns: [],
       })
     );
 
@@ -420,6 +431,7 @@ describe('TestDetailsPageV1 component', () => {
       fields: COMMON_API_FIELDS,
     });
 
-    expect(await screen.findByText('testSchemaTab')).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+    expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
   });
 });

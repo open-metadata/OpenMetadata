@@ -39,7 +39,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
 
   private void setParentRelationships(Map<String, Object> doc, TestSuite testSuite) {
     // denormalize the parent relationships for search
-    EntityReference entityReference = testSuite.getExecutableEntityReference();
+    EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference == null) return;
     addTestSuiteParentEntityRelations(entityReference, doc);
   }

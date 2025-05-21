@@ -52,6 +52,7 @@ jest.mock('./DataQualityClassBase', () => {
       },
     ]),
     getDefaultActiveTab: jest.fn().mockReturnValue('tables'),
+    getManageExtraOptions: jest.fn().mockReturnValue([]),
   };
 });
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
@@ -62,6 +63,19 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
     </div>
   ));
 });
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 
 jest.mock('react-router-dom', () => {
   return {

@@ -34,7 +34,8 @@
         "DBTCloud",
         "Matillion",
         "Stitch",
-        "DataFactory"
+        "DataFactory",
+        "Wherescape"
       ],
       "javaEnums": [
         {
@@ -90,6 +91,9 @@
         },
         {
           "name": "Stitch"
+        },
+        {
+          "name": "Wherescape"
         }
       ]
     },
@@ -106,6 +110,9 @@
           "oneOf": [
             {
               "$ref": "./connections/pipeline/airflowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/wherescapeConnection.json"
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
@@ -232,6 +239,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -241,8 +252,16 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

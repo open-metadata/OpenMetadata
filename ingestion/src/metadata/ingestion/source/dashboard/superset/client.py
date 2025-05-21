@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDashboardCount,
     SupersetDatasource,
 )
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
@@ -41,7 +42,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
         self.service_connection = self.config
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
@@ -90,7 +91,7 @@ class SupersetAPIClient:
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",

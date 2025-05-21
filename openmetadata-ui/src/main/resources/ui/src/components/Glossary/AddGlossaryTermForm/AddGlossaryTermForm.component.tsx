@@ -201,7 +201,7 @@ const AddGlossaryTermForm = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: glossaryTerm?.description,
         height: 'auto',
       },
       rules: [
@@ -248,7 +248,7 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.ASYNC_SELECT_LIST,
+      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
       props: {
         className: 'glossary-select',
         'data-testid': 'related-terms',
@@ -256,6 +256,8 @@ const AddGlossaryTermForm = ({
         placeholder: t('label.add-entity', {
           entity: t('label.related-term-plural'),
         }),
+        open: false,
+        hasNoActionButtons: true,
         fetchOptions: fetchGlossaryList,
         initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
           label: data.fullyQualifiedName,
@@ -317,6 +319,7 @@ const AddGlossaryTermForm = ({
     label: t('label.owner-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: ownersList,
       hasPermission: true,
       children: (
         <Button
@@ -342,6 +345,7 @@ const AddGlossaryTermForm = ({
     label: t('label.reviewer-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: reviewersList,
       hasPermission: true,
       filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },

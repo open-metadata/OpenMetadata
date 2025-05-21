@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { Change, diffWordsWithSpace } from 'diff';
+import { Change, diffLines } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
-import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
+import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
+import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
+import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -94,7 +91,13 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { getIncidentManagerDetailPagePath } from './RouterUtils';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+  getIncidentManagerDetailPagePath,
+  getServiceDetailsPath,
+  getUserPath,
+} from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -217,7 +220,7 @@ export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
 ): Change[] => {
-  return diffWordsWithSpace(oldValue, newValue);
+  return diffLines(oldValue, newValue);
 };
 
 export const fetchOptions = ({
@@ -348,6 +351,7 @@ export const TASK_ENTITIES = [
   EntityType.PIPELINE,
   EntityType.MLMODEL,
   EntityType.CONTAINER,
+  EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,
@@ -695,26 +699,30 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.edit-amp-accept-suggestion'),
+    label: i18Next.t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditColored,
+    icon: EditSuggestionIcon,
   },
-  ...TASK_ACTION_COMMON_ITEM,
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CloseIcon,
+  },
 ];
 
 export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.approve'),
     key: TaskActionMode.RESOLVE,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
     label: i18Next.t('label.reject'),
     key: TaskActionMode.CLOSE,
-    icon: CancelColored,
+    icon: CloseIcon,
   },
 ];
 
@@ -722,10 +730,12 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
+    icon: EditSuggestionIcon,
   },
   {
     label: i18Next.t('label.resolve'),
     key: TaskActionMode.RESOLVE,
+    icon: CloseIcon,
   },
 ];
 

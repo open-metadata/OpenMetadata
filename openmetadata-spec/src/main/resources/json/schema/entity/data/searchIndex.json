@@ -35,6 +35,12 @@
       },
       "additionalProperties": false
     },
+    "indexType": {
+      "description": "Whether the entity is index or index template.",
+      "type": "string",
+      "enum": ["Index", "IndexTemplate"],
+      "default": "Index"
+    },
     "dataType": {
       "javaType": "org.openmetadata.schema.type.SearchIndexDataType",
       "description": "This enum defines the type of data stored in a searchIndex.",
@@ -200,11 +206,17 @@
       "description": "Contains key/value pair of searchIndex settings.",
       "$ref": "#/definitions/searchIndexSettings"
     },
+    "indexType": {
+      "description": "Whether the entity is index or index template.",
+      "$ref": "#/definitions/indexType",
+      "default": "Index"
+    },
     "sampleData": {
       "description": "Sample data for a searchIndex.",
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
+
     "owners": {
       "description": "Owners of this searchIndex.",
       "$ref": "../../type/entityReferenceList.json"
@@ -226,6 +238,10 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -262,13 +278,6 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
-    },
-    "indexType": {
-      "description": "Whether the entity is index or index template.",
-      "type": "string",
-      "javaType": "org.openmetadata.schema.entity.type.SearchIndexType",
-      "enum": ["Index", "IndexTemplate"],
-      "default": "Index"
     }
   },
   "required": [

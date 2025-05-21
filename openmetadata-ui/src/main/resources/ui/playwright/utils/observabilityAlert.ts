@@ -41,6 +41,10 @@ import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const getAlerts = page.waitForResponse(
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
@@ -321,7 +325,18 @@ export const getObservabilityCreationDetails = ({
           exclude: false,
         },
       ],
-      actions: [],
+      actions: [
+        {
+          name: 'Get Test Suite Status Updates',
+          inputs: [
+            {
+              inputSelector: 'test-result-select',
+              inputValue: 'Failed',
+            },
+          ],
+          exclude: false,
+        },
+      ],
       destinations: [
         {
           mode: 'external',

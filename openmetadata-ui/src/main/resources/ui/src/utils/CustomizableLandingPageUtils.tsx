@@ -34,7 +34,7 @@ import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
-const getNewWidgetPlacement = (
+export const getNewWidgetPlacement = (
   currentLayout: WidgetConfig[],
   widgetWidth: number
 ) => {
@@ -293,7 +293,7 @@ export const getLayoutWithEmptyWidgetPlaceholder = (
     i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
     w: emptyWidgetWidth,
     x: 0,
-    y: 10,
+    y: 1000,
     isDraggable: false,
   },
 ];

@@ -12,7 +12,7 @@
  */
 import React, { FC, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 
 interface BrandImageProps {
   dataTestId?: string;
@@ -35,12 +35,11 @@ const BrandImage: FC<BrandImageProps> = ({
 }) => {
   const { MonoGram, Logo } = useMemo(
     () => ({
-      MonoGram: brandImageClassBase.getMonogram().src,
-      Logo: brandImageClassBase.getLogo().src,
+      MonoGram: brandClassBase.getMonogram().src,
+      Logo: brandClassBase.getLogo().src,
     }),
     []
   );
-
   const { applicationConfig } = useApplicationStore();
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
     applicationConfig?.customLogoConfig ?? {};

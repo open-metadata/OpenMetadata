@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../constant/settings';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
+import { UserClass } from '../support/user/UserClass';
 import { descriptionBox, toastNotification, uuid } from './common';
 import { addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
@@ -39,12 +42,8 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
     await page.getByTestId('isJoinable-switch-button').click();
   }
 
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .isVisible();
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .fill(teamData.description);
+  await page.locator(descriptionBox).isVisible();
+  await page.locator(descriptionBox).fill(teamData.description);
 
   const createTeamResponse = page.waitForResponse('/api/v1/teams');
 
@@ -225,7 +224,7 @@ export const addTeamHierarchy = async (
     await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
   }
 
-  await page.fill(descriptionBox, teamDetails.description);
+  await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
   const saveTeamResponse = page.waitForResponse('/api/v1/teams');
@@ -267,7 +266,7 @@ export const searchTeam = async (
   if (searchWillBeEmpty) {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   } else {
-    await expect(page.locator('table')).toContainText(teamName);
+    await expect(page.getByRole('cell', { name: teamName })).toBeVisible();
   }
 };
 
@@ -304,7 +303,7 @@ export const verifyAssetsInTeamsPage = async (
     .locator(`a:has-text("${team.data.displayName}")`)
     .click();
 
-  const res = page.waitForResponse('/api/v1/search/query?*size=15');
+  const res = page.waitForResponse('/api/v1/search/query?*size=15*');
   await page.getByTestId('assets').click();
   await res;
 
@@ -315,4 +314,57 @@ export const verifyAssetsInTeamsPage = async (
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
   ).toContainText(assetCount.toString());
+};
+
+export const addUserInTeam = async (page: Page, user: UserClass) => {
+  const userName = user.data.email.split('@')[0];
+  const fetchUsersResponse = page.waitForResponse(
+    '/api/v1/users?limit=25&isBot=false'
+  );
+  await page.locator('[data-testid="add-new-user"]').click();
+  await fetchUsersResponse;
+
+  // Search and select the user
+  await page
+    .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
+    .fill(user.getUserName());
+
+  await page
+    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .click();
+
+  await expect(
+    page.locator(
+      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+    )
+  ).toHaveClass(/active/);
+
+  const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+
+  // Update the team with the new user
+  await page.locator('[data-testid="selectable-list-update-btn"]').click();
+  await updateTeamResponse;
+
+  // Verify the user is added to the team
+
+  await expect(
+    page.locator(`[data-testid="${userName.toLowerCase()}"]`)
+  ).toBeVisible();
+};
+
+export const checkTeamTabCount = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+  );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+
+  const response = await fetchResponse;
+  const jsonRes = await response.json();
+
+  await expect(
+    page.locator(
+      '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
+    )
+  ).toContainText(jsonRes.childrenCount.toString());
 };

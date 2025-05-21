@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,7 +51,10 @@ logger = sampler_logger()
 
 
 class SamplerInterface(ABC):
-    """Sampler interface"""
+    """Sampler interface
+    This should be the entrypoint for computing any metrics that are required downstream for
+    data quality, profiling, etc.
+    """
 
     # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
@@ -73,9 +76,6 @@ class SamplerInterface(ABC):
         self._columns: Optional[List[SQALikeColumn]] = None
         self.sample_config = sample_config
 
-        if not self.sample_config.profile_sample:
-            self.sample_config.profile_sample = 100
-
         self.entity = entity
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
@@ -86,7 +86,6 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
-        self.client = self.get_client()
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
@@ -180,7 +179,7 @@ class SamplerInterface(ABC):
 
     @property
     @abstractmethod
-    def table(self):
+    def raw_dataset(self):
         """Table object to run the sampling"""
         raise NotImplementedError
 
@@ -200,7 +199,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def random_sample(self, **kwargs):
+    def get_dataset(self, **kwargs):
         """Get random sample"""
         raise NotImplementedError
 
@@ -246,3 +245,6 @@ class SamplerInterface(ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
             raise err
+
+    def close(self):
+        """Default noop"""

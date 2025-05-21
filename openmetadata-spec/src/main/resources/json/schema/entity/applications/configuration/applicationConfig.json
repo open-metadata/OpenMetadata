@@ -14,6 +14,9 @@
           "$ref": "external/automatorAppConfig.json"
         },
         {
+          "$ref": "external/slackAppTokenConfiguration.json"
+        },
+        {
           "$ref": "internal/dataInsightsAppConfig.json"
         },
         {
@@ -23,7 +26,17 @@
           "$ref": "internal/searchIndexingAppConfig.json"
         },
         {
-          "$ref": "external/slackAppTokenConfiguration.json"
+          "$ref": "internal/collateAIQualityAgentAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataRetentionConfiguration.json"
+        },
+        {
+          "$ref": "internal/autoPilotAppConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     },
@@ -31,6 +44,10 @@
       "oneOf": [
         {
           "$ref": "private/external/collateAIAppPrivateConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     }

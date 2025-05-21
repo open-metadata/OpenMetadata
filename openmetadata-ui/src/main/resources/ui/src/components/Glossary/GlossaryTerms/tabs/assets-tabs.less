@@ -29,13 +29,16 @@
   .ant-menu-submenu-open {
     background: @user-profile-background;
   }
+
   .ant-menu-inline {
     .asset-sub-menu-title {
       width: 150px;
     }
+
     .asset-sub-menu-checkbox {
       padding-right: 2px;
     }
+
     .ant-menu-item::after {
       border: none;
     }
@@ -45,6 +48,7 @@
     .ant-menu-submenu-title {
       padding-left: 14px !important;
     }
+
     .ant-menu-sub {
       background: @user-profile-background;
 
@@ -73,15 +77,13 @@
 }
 
 .assets-tab-container {
-  .explore-search-card {
-    .service-icon {
-      height: 16px;
-    }
-  }
+  overflow-y: scroll;
+  background-color: @white;
 }
 
 .asset-tab-delete-notification {
-  position: sticky;
+  position: absolute;
+
   &.visible {
     opacity: 1;
     pointer-events: all;

@@ -1,0 +1,11 @@
+{
+  "name": "DataRetentionApplication",
+  "displayName": "Data Retention",
+  "appConfiguration": {
+    "changeEventRetentionPeriod": 7
+  },
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * 0"
+  }
+}

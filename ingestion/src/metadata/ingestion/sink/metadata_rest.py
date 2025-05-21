@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,7 +34,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.pipeline import PipelineStatus
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
@@ -79,10 +79,11 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -117,6 +118,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.metadata = metadata
         self.role_entities = {}
         self.team_entities = {}
+        self.limit_reached = set()
 
     @classmethod
     def create(
@@ -165,16 +167,30 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
         """
-        created = self.metadata.create_or_update(entity_request)
-        if created:
-            return Either(right=created)
+        if type(entity_request).__name__ in self.limit_reached:
+            # If the limit has been reached, we don't need to try to ingest the entity
+            # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
+            return None
+        try:
+            created = self.metadata.create_or_update(entity_request)
+            if created:
+                return Either(right=created)
 
-        error = f"Failed to ingest {type(entity_request).__name__}"
-        return Either(
-            left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stackTrace=None
+            error = f"Failed to ingest {type(entity_request).__name__}"
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__, error=error, stackTrace=None
+                )
             )
-        )
+        except LimitsException as _:
+            self.limit_reached.add(type(entity_request).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__,
+                    error=f"Limit reached for {type(entity_request).__name__}",
+                    stackTrace=None,
+                )
+            )
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -250,6 +266,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
+        if created_lineage.get("error"):
+            return Either(
+                left=StackTraceError(
+                    name="AddLineageRequestError", error=created_lineage["error"]
+                )
+            )
+
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
@@ -288,7 +311,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
                     source=add_lineage.lineage_request.edge.lineageDetails.source.value,
                 )
-        return self._run_dispatch(add_lineage.lineage_request)
+        lineage_response = self._run_dispatch(add_lineage.lineage_request)
+        if (
+            lineage_response
+            and lineage_response.right is not None
+            and add_lineage.entity_fqn
+            and add_lineage.entity
+        ):
+            self.metadata.patch_lineage_processed_flag(
+                entity=add_lineage.entity, fqn=add_lineage.entity_fqn
+            )
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         """
@@ -312,12 +344,26 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.root] = str(team.id.root)
             return team
+        except LimitsException as _:
+            if type(create_team).__name__ in self.limit_reached:
+                # Note: We do not have a way to patch the team,
+                # so we try to put and handle exception
+                return None
+            self.limit_reached.add(type(create_team).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(create_team).__name__,
+                    error=f"Limit reached for {type(create_team).__name__}",
+                    stackTrace=None,
+                )
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error creating team [{create_team}]: {exc}")
 
         return None
 
+    # pylint: disable=too-many-branches
     @_run_dispatch.register
     def write_users(self, record: OMetaUserProfile) -> Either[User]:
         """
@@ -371,8 +417,22 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         metadata_user = CreateUserRequest(**user_profile)
 
         # Create user
-        user = self.metadata.create_or_update(metadata_user)
-        return Either(right=user)
+        try:
+            user = self.metadata.create_or_update(metadata_user)
+            return Either(right=user)
+        except LimitsException as _:
+            if type(metadata_user).__name__ in self.limit_reached:
+                # Note: We do not have a way to patch the user,
+                # so we try to put and handle exception
+                return None
+            self.limit_reached.add(type(metadata_user).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(metadata_user).__name__,
+                    error=f"Limit reached for {type(metadata_user).__name__}",
+                    stackTrace=None,
+                )
+            )
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
@@ -624,6 +684,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.status.scanned(result)
 
         return Either(right=record)
+
+    @_run_dispatch.register
+    def write_pipeline_usage(self, pipeline_usage: PipelineUsage) -> Either[Pipeline]:
+        """
+        Send a UsageRequest update to a pipeline entity
+        :param pipeline_usage: pipeline entity and usage request
+        """
+        self.metadata.publish_pipeline_usage(
+            pipeline=pipeline_usage.pipeline,
+            pipeline_usage_request=pipeline_usage.usage,
+        )
+        return Either(right=pipeline_usage.pipeline)
 
     def close(self):
         """

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -72,9 +72,9 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     ForeignConstrains,
     Type,
 )
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -89,13 +89,13 @@ class UnitycatalogSource(
     the unity catalog source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.root.config
@@ -343,19 +343,6 @@ class UnitycatalogSource(
                 owners=self.get_owner_ref(table_name),
             )
             yield Either(right=table_request)
-
-            if table_type == TableType.View or table.view_definition:
-                self.context.get_global().table_views.append(
-                    TableView(
-                        table_name=table_name,
-                        schema_name=schema_name,
-                        db_name=db_name,
-                        view_definition=(
-                            f'CREATE VIEW "{db_name}"."{schema_name}"'
-                            f'."{table_name}" AS {table.view_definition}'
-                        ),
-                    )
-                )
 
             self.register_record(table_request=table_request)
         except Exception as exc:

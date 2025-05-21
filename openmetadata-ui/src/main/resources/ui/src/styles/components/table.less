@@ -11,24 +11,32 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../variables.less');
+
 .ant-table-wrapper {
   .ant-table-thead {
     tr > th {
       font-weight: 500;
-      color: @grey-4;
-      text-transform: uppercase;
+      color: @grey-600;
       border-right: none;
+      border-color: @border-color-1;
     }
     tr > td {
       color: @text-color;
     }
     background: @grey-1;
   }
+  .ant-table-body {
+    tr > td {
+      border-color: @border-color-1;
+    }
+  }
   .ant-table-cell {
     vertical-align: top;
   }
   .ant-table-bordered {
     table {
+      border-color: @border-color-1;
       tbody {
         tr {
           td {
@@ -55,8 +63,7 @@
       }
     }
     .ant-table-container {
-      border: 1px solid @border-color;
-      border-radius: 6px;
+      border: none;
       overflow: hidden;
 
       .ant-table-content {
@@ -76,7 +83,7 @@
             border-bottom: none;
 
             td {
-              border-bottom: 1px solid @border-color;
+              border-bottom: 1px solid @border-color-1;
             }
           }
         }
@@ -135,4 +142,65 @@
     flex-direction: row-reverse;
     gap: 8px;
   }
+}
+
+// Setting the background color of the resizable column to  where dragger is located
+.ant-table.ant-table-bordered {
+  > .ant-table-container {
+    > .ant-table-content,
+    > .ant-table-header,
+    > .ant-table-body,
+    > .ant-table-summary {
+      > table {
+        > thead {
+          > tr {
+            > .resizable-container::before {
+              background-color: @border-color !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Hide the border of the columns except the resizable columns
+.ant-table-thead > tr {
+  // Regular header cells
+  > th:not(:last-child):not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell):not([colspan])::before {
+    width: 0px;
+  }
+  // Resizable header cells
+  > .resizable-container:not(:last-child):not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell):not([colspan])::before {
+    width: 1px;
+  }
+}
+
+// Table icons
+
+.table-action-icon {
+  width: 14px;
+  height: 14px;
+  color: @grey-600;
+  cursor: pointer;
+}
+
+.table-expand-icon {
+  margin-right: 8px;
+  color: @text-color;
+  font-size: 12px;
+}
+
+.filter-icon {
+  color: @grey-600;
+}
+
+.filter-icon-active {
+  color: @primary-color;
+}
+
+.drag-icon {
+  width: 6px;
+  margin-right: 8px;
+  color: @grey-4;
 }

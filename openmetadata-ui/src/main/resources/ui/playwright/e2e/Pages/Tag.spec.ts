@@ -11,28 +11,39 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { DATA_STEWARD_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { Domain } from '../../support/domain/Domain';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToTag,
-  checkAssetsCount,
   editTagPageDescription,
+  fillTagForm,
+  LIMITED_USER_RULES,
+  NEW_TAG,
   removeAssetsFromTag,
   setupAssetsForTag,
+  submitForm,
+  validateForm,
+  verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
 
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
-const policy = new PolicyClass();
-const role = new RolesClass();
+const limitedAccessUser = new UserClass();
+
 const classification = new ClassificationClass({
   provider: 'system',
   mutuallyExclusive: true,
@@ -45,6 +56,7 @@ const test = base.extend<{
   adminPage: Page;
   dataConsumerPage: Page;
   dataStewardPage: Page;
+  limitedAccessPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -64,6 +76,12 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  limitedAccessPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await limitedAccessUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -73,8 +91,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataConsumerUser.create(apiContext);
   await dataStewardUser.create(apiContext);
   await dataStewardUser.setDataStewardRole(apiContext);
-  await policy.create(apiContext, DATA_STEWARD_RULES);
-  await role.create(apiContext, [policy.responseData.name]);
+  await limitedAccessUser.create(apiContext);
   await classification.create(apiContext);
   await tag.create(apiContext);
   await afterAction();
@@ -85,8 +102,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
   await dataStewardUser.delete(apiContext);
-  await policy.delete(apiContext);
-  await role.delete(apiContext);
+  await limitedAccessUser.delete(apiContext);
   await classification.delete(apiContext);
   await tag.delete(apiContext);
   await afterAction();
@@ -95,8 +111,28 @@ base.afterAll('Cleanup', async ({ browser }) => {
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 
+  let domain: Domain;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    domain = new Domain();
+    await domain.create(apiContext);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.delete?.(apiContext);
+    await afterAction();
+  });
+
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
+  });
+
+  test('Certification Page should not have Asset button', async ({
+    adminPage,
+  }) => {
+    await verifyCertificationTagPageUI(adminPage);
   });
 
   test('Rename Tag name', async ({ adminPage }) => {
@@ -160,9 +196,9 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.locator('.toastui-editor-pseudo-clipboard').clear();
+    await adminPage.locator(descriptionBox).clear();
     await adminPage
-      .locator('.toastui-editor-pseudo-clipboard')
+      .locator(descriptionBox)
       .fill(`This is updated test description for tag ${tag.data.name}.`);
 
     const editDescription = adminPage.waitForResponse(`/api/v1/tags/*`);
@@ -202,23 +238,51 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Add and Remove Assets', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { assets } = await setupAssetsForTag(adminPage);
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
-    await test.step('Add Asset', async () => {
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await addAssetsToTag(adminPage, assets);
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(adminPage, assets, tag);
     });
 
     await test.step('Delete Asset', async () => {
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-
-      await removeAssetsFromTag(adminPage, assets);
-      await checkAssetsCount(adminPage, 0);
+      await removeAssetsFromTag(adminPage, assets, tag);
+      await assetCleanup();
     });
+  });
+
+  test('Create tag with domain', async ({ adminPage }) => {
+    await classification.visitPage(adminPage);
+
+    await adminPage.reload();
+    await adminPage.click(`text=${classification.data.displayName}`);
+
+    await expect(adminPage.locator('.activeCategory')).toContainText(
+      classification.data.displayName
+    );
+
+    await adminPage.click('[data-testid="add-new-tag-button"]');
+
+    await adminPage.waitForSelector('.ant-modal-content', {
+      state: 'visible',
+    });
+
+    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+
+    await validateForm(adminPage);
+
+    await fillTagForm(adminPage, domain);
+
+    const createTagResponse = adminPage.waitForResponse('api/v1/tags');
+
+    await submitForm(adminPage);
+
+    await createTagResponse;
+
+    await adminPage.click(`[data-testid=${NEW_TAG.name}]`);
+
+    await expect(adminPage.getByTestId('domain-link')).toContainText(
+      domain.data.displayName
+    );
   });
 });
 
@@ -234,10 +298,33 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     );
   });
 
-  test('Edit Tag Description or Data Consumer', async ({
+  test('Certification Page should not have Asset button for Data Consumer', async ({
+    dataConsumerPage,
+  }) => {
+    await verifyCertificationTagPageUI(dataConsumerPage);
+  });
+
+  test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
     await editTagPageDescription(dataConsumerPage, tag);
+  });
+
+  test('Add and Remove Assets for Data Consumer', async ({
+    adminPage,
+    dataConsumerPage,
+  }) => {
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
+    await redirectToHomePage(dataConsumerPage);
+
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(dataConsumerPage, assets, tag);
+    });
+
+    await test.step('Delete Asset', async () => {
+      await removeAssetsFromTag(dataConsumerPage, assets, tag);
+      await assetCleanup();
+    });
   });
 });
 
@@ -248,7 +335,82 @@ test.describe('Tag Page with Data Steward Roles', () => {
     await verifyTagPageUI(dataStewardPage, classification.data.name, tag, true);
   });
 
+  test('Certification Page should not have Asset button for Data Steward', async ({
+    dataStewardPage,
+  }) => {
+    await verifyCertificationTagPageUI(dataStewardPage);
+  });
+
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
     await editTagPageDescription(dataStewardPage, tag);
+  });
+
+  test('Add and Remove Assets for Data Steward', async ({
+    adminPage,
+    dataStewardPage,
+  }) => {
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
+    await redirectToHomePage(dataStewardPage);
+
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(dataStewardPage, assets, tag);
+    });
+
+    await test.step('Delete Asset', async () => {
+      await removeAssetsFromTag(dataStewardPage, assets, tag);
+      await assetCleanup();
+    });
+  });
+});
+
+test.describe('Tag Page with Limited EditTag Permission', () => {
+  test.slow(true);
+
+  test('Add and Remove Assets and Check Restricted Entity', async ({
+    adminPage,
+    limitedAccessPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
+      adminPage
+    );
+    const id = uuid();
+    const policy = new PolicyClass();
+    const role = new RolesClass();
+    let limitedAccessTeam: TeamClass | null = null;
+
+    try {
+      await policy.create(apiContext, LIMITED_USER_RULES);
+      await role.create(apiContext, [policy.responseData.name]);
+
+      limitedAccessTeam = new TeamClass({
+        name: `PW%limited_user_access_team-${id}`,
+        displayName: `PW Limited User Access Team ${id}`,
+        description: 'playwright data steward team description',
+        teamType: 'Group',
+        users: [limitedAccessUser.responseData.id],
+        defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      });
+      await limitedAccessTeam.create(apiContext);
+
+      await redirectToHomePage(limitedAccessPage);
+
+      await test.step('Add Asset ', async () => {
+        await addAssetsToTag(limitedAccessPage, assets, tag, otherAsset);
+      });
+
+      await test.step('Delete Asset', async () => {
+        await removeAssetsFromTag(limitedAccessPage, assets, tag);
+      });
+    } finally {
+      await tag.delete(apiContext);
+      await policy.delete(apiContext);
+      await role.delete(apiContext);
+      if (limitedAccessTeam) {
+        await limitedAccessTeam.delete(apiContext);
+      }
+      await assetCleanup();
+      await afterAction();
+    }
   });
 });

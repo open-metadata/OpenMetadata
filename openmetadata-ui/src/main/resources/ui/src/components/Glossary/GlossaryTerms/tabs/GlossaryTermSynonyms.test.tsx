@@ -27,8 +27,12 @@ const mockContext = {
   permissions: MOCK_PERMISSIONS,
 };
 
-jest.mock('../../../GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
+}));
+
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
 }));
 
 describe('GlossaryTermSynonyms', () => {

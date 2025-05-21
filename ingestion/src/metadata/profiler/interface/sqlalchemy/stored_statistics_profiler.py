@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -79,8 +79,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.__table_args__["schema"]
-            table_name = runner.table.__tablename__
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug(
                 "Getting statistics for column: %s.%s.%s",
                 schema,
@@ -118,8 +118,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.__table_args__["schema"]
-            table_name = runner.table.__tablename__
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug("Geting statistics for table: %s.%s", schema, table_name)
             result.update(
                 super().get_table_statistics(stat_metrics, schema, table_name)
@@ -135,12 +135,10 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
             result.update(super_table_metrics)
         return result
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metric, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: Dict):
         # this metrics might have been computed in a previous step
         return column_results.get(metric.name()) or super().get_hybrid_metrics(
-            column, metric, column_results, **kwargs
+            column, metric, column_results
         )
 
     def is_statistic_metric(self, metric: Metric) -> bool:

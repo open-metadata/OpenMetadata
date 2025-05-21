@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE } from '../../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -35,6 +35,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -71,7 +72,7 @@ export const TableProfilerProvider = ({
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
-  const testCasePaging = usePaging(PAGE_SIZE);
+  const testCasePaging = usePaging(PAGE_SIZE_BASE);
   const location = useCustomLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
@@ -222,6 +223,7 @@ export const TableProfilerProvider = ({
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,
+        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
       });
 
       setAllTestCases(data);
@@ -308,8 +310,8 @@ export const TableProfilerProvider = ({
       {children}
       {settingModalVisible && (
         <ProfilerSettingsModal
-          columns={tableProfiler?.columns ?? []}
-          tableId={tableProfiler?.id ?? ''}
+          columns={table?.columns ?? []}
+          tableId={table?.id ?? ''}
           visible={settingModalVisible}
           onVisibilityChange={handleSettingModal}
         />

@@ -18,6 +18,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -45,11 +46,11 @@ class RedshiftSystemMetricsSource(
         return get_metric_result(queries, table)
 
     def get_kwargs(self, **kwargs):
-        table = kwargs.get("table")
+        runner: QueryRunner = kwargs.get("runner")
         return {
-            "table": table.__table__.name,
-            "database": self.get_session().get_bind().url.database,
-            "schema": table.__table__.schema,
+            "table": runner.table_name,
+            "database": runner.session.get_bind().url.database,
+            "schema": runner.schema_name,
         }
 
     def get_deletes(self, **kwargs) -> List[SystemProfile]:

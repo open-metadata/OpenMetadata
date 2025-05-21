@@ -12,42 +12,92 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
+import {
+  cloneDeep,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  set,
+  uniqBy,
+} from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
+import {
+  Column,
+  DashboardDataModel,
+} from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
 import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
+import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../../../common/Table/Table';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
+import { UpdatedColumnFieldData } from '../../../../Database/SchemaTable/SchemaTable.interface';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ModelTabProps } from './ModelTab.interface';
 
-const ModelTab = ({
-  data,
-  isReadOnly,
-  hasEditDescriptionPermission,
-  hasEditTagsPermission,
-  hasEditGlossaryTermPermission,
-  onUpdate,
-  entityFqn,
-  onThreadLinkSelect,
-}: ModelTabProps) => {
+const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const {
+    data: dataModel,
+    permissions,
+    onUpdate,
+  } = useGenericContext<DashboardDataModel>();
+  const {
+    columns: data,
+    fullyQualifiedName: entityFqn,
+    deleted: isReadOnly,
+  } = dataModel;
+
+  const { tableColumns, deleted } = useMemo(
+    () => ({
+      tableColumns: dataModel?.columns ?? [],
+      deleted: dataModel?.deleted,
+    }),
+    [dataModel]
+  );
+  const {
+    hasEditDescriptionPermission,
+    hasEditTagsPermission,
+    hasEditGlossaryTermPermission,
+    editDisplayNamePermission,
+  } = useMemo(() => {
+    return {
+      hasEditDescriptionPermission:
+        permissions.EditAll || permissions.EditDescription,
+      hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
+      hasEditGlossaryTermPermission:
+        permissions.EditAll || permissions.EditGlossaryTerms,
+      editDisplayNamePermission:
+        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+    };
+  }, [permissions]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);
@@ -68,7 +118,7 @@ const ModelTab = ({
         dataModelData
       );
 
-      await onUpdate(dataModelData);
+      await onUpdate({ ...dataModel, columns: dataModelData });
     },
     [data, updateFieldTags]
   );
@@ -82,30 +132,101 @@ const ModelTab = ({
           editColumnDescription?.fullyQualifiedName ?? '',
           updatedDescription
         );
-        await onUpdate(dataModelColumns);
+        await onUpdate({
+          ...dataModel,
+          columns: dataModelColumns,
+        });
       }
       setEditColumnDescription(undefined);
     },
     [editColumnDescription, data]
   );
 
+  const updateColumnFields = ({
+    fqn,
+    field,
+    value,
+    columns,
+  }: UpdatedColumnFieldData) => {
+    columns?.forEach((col) => {
+      if (col.fullyQualifiedName === fqn) {
+        set(col, field, value);
+      } else {
+        updateColumnFields({
+          fqn,
+          field,
+          value,
+          columns: col.children as Column[],
+        });
+      }
+    });
+  };
+  const handleColumnUpdate = async (updatedColumns: Column[]) => {
+    if (dataModel && !isEqual(tableColumns, updatedColumns)) {
+      const updatedTableDetails = {
+        ...dataModel,
+        columns: updatedColumns,
+      };
+      await onUpdate(updatedTableDetails);
+    }
+  };
+
+  const handleEditColumnData = async (
+    data: EntityName,
+    fullyQualifiedName?: string
+  ) => {
+    const { displayName } = data as EntityNameWithAdditionFields;
+
+    if (!fullyQualifiedName) {
+      return; // Early return if id is not provided
+    }
+
+    const tableCols = cloneDeep(tableColumns);
+
+    updateColumnFields({
+      fqn: fullyQualifiedName,
+      value: isEmpty(displayName) ? undefined : displayName,
+      field: 'displayName',
+      columns: tableCols,
+    });
+
+    await handleColumnUpdate(tableCols);
+  };
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
-        render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
-        ),
+        render: (_, record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <DisplayName
+              allowRename={editDisplayNamePermission}
+              displayName={displayName}
+              id={record.fullyQualifiedName ?? ''}
+              link={
+                record.fullyQualifiedName
+                  ? getEntityDetailsPath(
+                      EntityType.DASHBOARD_DATA_MODEL,
+                      record.fullyQualifiedName
+                    )
+                  : ''
+              }
+              name={record.name}
+              onEditDisplayName={handleEditColumnData}
+            />
+          );
+        },
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataType',
-        key: 'dataType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
           <Typography.Text>
@@ -115,9 +236,9 @@ const ModelTab = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -125,28 +246,28 @@ const ModelTab = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditPermission={hasEditDescriptionPermission}
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
+        filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
@@ -155,22 +276,22 @@ const ModelTab = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditGlossaryTermPermission}
@@ -179,7 +300,6 @@ const ModelTab = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -192,7 +312,6 @@ const ModelTab = ({
       hasEditGlossaryTermPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );
@@ -200,30 +319,35 @@ const ModelTab = ({
   return (
     <>
       <Table
-        bordered
         className="p-t-xs align-table-filter-left"
         columns={tableColumn}
         data-testid="data-model-column-table"
         dataSource={data}
+        defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}
         size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
 
       {editColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editColumnDescription.description || ''}
-          visible={Boolean(editColumnDescription)}
-          onCancel={() => setEditColumnDescription(undefined)}
-          onSave={handleColumnDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editColumnDescription.fullyQualifiedName}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editColumnDescription.description || ''}
+            visible={Boolean(editColumnDescription)}
+            onCancel={() => setEditColumnDescription(undefined)}
+            onSave={handleColumnDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

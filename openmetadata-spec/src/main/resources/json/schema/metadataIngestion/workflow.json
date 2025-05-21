@@ -62,6 +62,9 @@
             },
             {
               "$ref": "apiServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "reverseIngestionPipeline.json"
             }
           ]
         }
@@ -165,6 +168,11 @@
         "loggerLevel": {
           "$ref": "#/definitions/logLevels",
           "default": "INFO"
+        },
+        "raiseOnError": {
+          "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+          "type": "boolean",
+          "default": true
         },
         "successThreshold": {
           "title": "Success Threshold",

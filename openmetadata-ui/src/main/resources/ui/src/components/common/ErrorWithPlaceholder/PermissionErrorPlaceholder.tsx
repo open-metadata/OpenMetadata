@@ -14,7 +14,7 @@ import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
+import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
 import { PermissionPlaceholderProps } from './placeholder.interface';
 
@@ -25,7 +25,11 @@ const PermissionErrorPlaceholder = ({
   const { t } = useTranslation();
 
   return (
-    <div className={classNames('h-full flex-center', className)}>
+    <div
+      className={classNames(
+        'h-full flex-center border-default border-radius-sm',
+        className
+      )}>
       <Space
         align="center"
         data-testid="permission-error-placeholder"
@@ -37,7 +41,7 @@ const PermissionErrorPlaceholder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
+          <Typography.Paragraph className="w-68" style={{ marginBottom: '0' }}>
             {t('message.no-access-placeholder')}
           </Typography.Paragraph>
         </div>

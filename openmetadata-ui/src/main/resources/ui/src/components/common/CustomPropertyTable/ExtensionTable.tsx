@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isObject, isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
@@ -56,7 +56,7 @@ export const ExtensionTable = ({
           const isStringValue = isString(value);
 
           if (isStringValue) {
-            return <RichTextEditorPreviewer markdown={value || ''} />;
+            return <RichTextEditorPreviewerV1 markdown={value || ''} />;
           }
 
           return (
@@ -71,7 +71,6 @@ export const ExtensionTable = ({
 
   return (
     <Table
-      bordered
       className={classNames('m-md', tableClassName)}
       columns={tableColumn}
       data-testid="custom-properties-table"

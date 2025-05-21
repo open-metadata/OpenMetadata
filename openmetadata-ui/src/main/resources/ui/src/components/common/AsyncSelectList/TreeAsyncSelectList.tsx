@@ -25,7 +25,14 @@ import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  ReactElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
@@ -43,7 +50,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import {
   convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
-  findGlossaryTermByFqn,
+  findItemByFqn,
 } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
@@ -67,6 +74,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   isSubmitLoading,
   filterOptions = [],
   onCancel,
+  open: openProp = true,
+  hasNoActionButtons,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -76,8 +85,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const expandableKeys = useRef<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
+  const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
 
   const form = Form.useFormInstance();
+
+  const handleDropdownVisibleChange = (visible: boolean) => {
+    setOpen(visible);
+  };
 
   const fetchGlossaryListInternal = async () => {
     setIsLoading(true);
@@ -173,6 +187,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
     return (
       <TagsV1
+        isEditTags
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -199,7 +214,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       if (lastSelectedMap.has(value)) {
         return lastSelectedMap.get(value) as SelectOption;
       }
-      const initialData = findGlossaryTermByFqn(
+      const initialData = findItemByFqn(
         [
           ...glossaries,
           ...(isNull(searchOptions) ? [] : searchOptions),
@@ -285,14 +300,15 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   return (
     <TreeSelect
-      autoFocus
-      open
       showSearch
       treeCheckStrictly
       treeCheckable
+      autoFocus={open}
       className="async-select-list"
       data-testid="tag-selector"
-      dropdownRender={dropdownRender}
+      dropdownRender={
+        hasNoActionButtons ? (menu: ReactElement) => menu : dropdownRender
+      }
       dropdownStyle={{ width: 300 }}
       filterTreeNode={false}
       loadData={({ id, name }) => {
@@ -314,6 +330,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
           />
         )
       }
+      open={open}
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
       switcherIcon={
@@ -327,6 +344,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
+      onDropdownVisibleChange={handleDropdownVisibleChange}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}

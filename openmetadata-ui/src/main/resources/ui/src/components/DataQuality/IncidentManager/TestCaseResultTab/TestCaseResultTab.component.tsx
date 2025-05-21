@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -23,17 +23,13 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../constants/constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -49,19 +45,19 @@ const TestCaseResultTab = () => {
     testCase: testCaseData,
     setTestCase,
     showAILearningBanner,
+    testCasePermission,
   } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
-  const { permissions } = usePermissionProvider();
-  const hasEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
+
+  const { hasEditPermission, hasEditDescriptionPermission } = useMemo(() => {
+    return {
+      hasEditPermission: testCasePermission?.EditAll,
+      hasEditDescriptionPermission:
+        testCasePermission?.EditAll || testCasePermission?.EditDescription,
+    };
+  }, [testCasePermission]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -106,8 +102,6 @@ const TestCaseResultTab = () => {
             );
           } catch (error) {
             showErrorToast(error as AxiosError);
-          } finally {
-            setIsDescriptionEdit(false);
           }
         }
       }
@@ -136,7 +130,10 @@ const TestCaseResultTab = () => {
       );
     } else if (!isEmpty(withoutSqlParams)) {
       return (
-        <Space className="parameter-value-container parameter-value" size={6}>
+        <Space
+          wrap
+          className="parameter-value-container parameter-value"
+          size={6}>
           {withoutSqlParams.map((param, index) => (
             <Space key={param.name} size={4}>
               <Typography.Text className="text-grey-muted">
@@ -168,18 +165,15 @@ const TestCaseResultTab = () => {
         <DescriptionV1
           description={testCaseData?.description}
           entityType={EntityType.TEST_CASE}
-          hasEditAccess={hasEditPermission}
-          isEdit={isDescriptionEdit}
+          hasEditAccess={hasEditDescriptionPermission}
           showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
           onDescriptionUpdate={handleDescriptionChange}
         />
       </Col>
 
       <Col data-testid="parameter-container" span={24}>
         <Space direction="vertical" size="small">
-          <Space align="center" size="middle">
+          <Space align="center" size={8}>
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
@@ -214,17 +208,33 @@ const TestCaseResultTab = () => {
               gutter={[8, 8]}
               key={param.name}>
               <Col span={24}>
-                <Typography.Text className="text-grey-muted">
-                  {`${param.name}:`}
-                </Typography.Text>
+                <Space align="center" size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {startCase(param.name)}
+                  </Typography.Text>
+                  {hasEditPermission && (
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.parameter'),
+                      })}>
+                      <Icon
+                        component={EditIcon}
+                        data-testid="edit-sql-param-icon"
+                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                        onClick={() => setIsParameterEdit(true)}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
               </Col>
               <Col span={24}>
                 <SchemaEditor
-                  className="query-editor-min-h-60"
+                  className="custom-code-mirror-theme query-editor-min-h-60"
                   editorClass="table-query-editor"
                   mode={{ name: CSMode.SQL }}
                   options={{
                     styleActiveLine: false,
+                    readOnly: true,
                   }}
                   value={param.value ?? ''}
                 />

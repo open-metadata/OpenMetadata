@@ -32,11 +32,8 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import {
-  DE_ACTIVE_COLOR,
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -49,8 +46,6 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -59,11 +54,12 @@ import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+  getDomainPath,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -73,6 +69,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
@@ -101,7 +98,7 @@ const DataProductsDetailsPage = ({
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
@@ -157,7 +154,7 @@ const DataProductsDetailsPage = ({
   const {
     editDisplayNamePermission,
     editAllPermission,
-    deleteDataProductPermision,
+    deleteDataProductPermission,
   } = useMemo(() => {
     if (isVersionsView) {
       return {
@@ -167,44 +164,17 @@ const DataProductsDetailsPage = ({
       };
     }
 
-    const editDescription = checkPermission(
-      Operation.EditDescription,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editOwner = checkPermission(
-      Operation.EditOwners,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editAll = checkPermission(
-      Operation.EditAll,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editDisplayName = checkPermission(
-      Operation.EditDisplayName,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const deleteDataProduct = checkPermission(
-      Operation.Delete,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
     return {
-      editDescriptionPermission: editDescription || editAll,
-      editOwnerPermission: editOwner || editAll,
-      editAllPermission: editAll,
-      editDisplayNamePermission: editDisplayName || editAll,
-      deleteDataProductPermision: deleteDataProduct,
+      editDescriptionPermission:
+        dataProductPermission.EditDescription || dataProductPermission.EditAll,
+      editOwnerPermission:
+        dataProductPermission.EditOwners || dataProductPermission.EditAll,
+      editAllPermission: dataProductPermission.EditAll,
+      editDisplayNamePermission:
+        dataProductPermission.EditDisplayName || dataProductPermission.EditAll,
+      deleteDataProductPermission: dataProductPermission.Delete,
     };
-  }, [permissions, isVersionsView]);
+  }, [dataProductPermission, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
@@ -286,7 +256,7 @@ const DataProductsDetailsPage = ({
           },
         ] as ItemType[])
       : []),
-    ...(deleteDataProductPermision
+    ...(deleteDataProductPermission
       ? ([
           {
             label: (
@@ -367,7 +337,7 @@ const DataProductsDetailsPage = ({
             activeKey
           );
 
-      history.push(path);
+      history.replace(path);
     }
   };
 
@@ -390,7 +360,7 @@ const DataProductsDetailsPage = ({
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {
       await onUpdate({
-        ...(dataProduct as DataProduct),
+        ...dataProduct,
         extension: updatedDataProduct.extension,
       });
     },
@@ -409,19 +379,8 @@ const DataProductsDetailsPage = ({
         key: DataProductTabs.DOCUMENTATION,
         children: (
           <DocumentationTab
-            domain={dataProduct}
-            editCustomAttributePermission={
-              (dataProductPermission.EditAll ||
-                dataProductPermission.EditCustomFields) &&
-              !isVersionsView
-            }
             isVersionsView={isVersionsView}
             type={DocumentationEntity.DATA_PRODUCT}
-            viewAllPermission={dataProductPermission.ViewAll}
-            onExtensionUpdate={handelExtensionUpdate}
-            onUpdate={(data: Domain | DataProduct) =>
-              onUpdate(data as DataProduct)
-            }
           />
         ),
       },
@@ -439,23 +398,22 @@ const DataProductsDetailsPage = ({
               key: DataProductTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  className="domain-height-with-resizable-panel"
+                  className="h-full domain-height-with-resizable-panel"
                   firstPanel={{
                     className: 'domain-resizable-panel-container',
+                    wrapInCard: false,
                     children: (
-                      <div className="p-x-md p-y-md">
-                        <AssetsTabs
-                          assetCount={assetCount}
-                          entityFqn={dataProduct.fullyQualifiedName}
-                          isSummaryPanelOpen={false}
-                          permissions={dataProductPermission}
-                          ref={assetTabRef}
-                          type={AssetsOfEntity.DATA_PRODUCT}
-                          onAddAsset={() => setAssetModelVisible(true)}
-                          onAssetClick={handleAssetClick}
-                          onRemoveAsset={handleAssetSave}
-                        />
-                      </div>
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={dataProduct.fullyQualifiedName}
+                        isSummaryPanelOpen={false}
+                        permissions={dataProductPermission}
+                        ref={assetTabRef}
+                        type={AssetsOfEntity.DATA_PRODUCT}
+                        onAddAsset={() => setAssetModelVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
                     ),
                     minWidth: 800,
                     flex: 0.87,
@@ -463,6 +421,7 @@ const DataProductsDetailsPage = ({
                   hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
                   secondPanel={{
+                    wrapInCard: false,
                     children: previewAsset && (
                       <EntitySummaryPanel
                         entityDetails={previewAsset}
@@ -488,20 +447,16 @@ const DataProductsDetailsPage = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <div className="p-md">
-            <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityDetails={dataProduct}
-              entityType={EntityType.DATA_PRODUCT}
-              handleExtensionUpdate={handelExtensionUpdate}
-              hasEditAccess={
-                (dataProductPermission.EditAll ||
-                  dataProductPermission.EditCustomFields) &&
-                !isVersionsView
-              }
-              hasPermission={dataProductPermission.ViewAll}
-              isVersionView={isVersionsView}
-            />
-          </div>
+          <CustomPropertyTable<EntityType.DATA_PRODUCT>
+            entityType={EntityType.DATA_PRODUCT}
+            hasEditAccess={
+              (dataProductPermission.EditAll ||
+                dataProductPermission.EditCustomFields) &&
+              !isVersionsView
+            }
+            hasPermission={dataProductPermission.ViewAll}
+            isVersionView={isVersionsView}
+          />
         ),
       },
     ];
@@ -556,9 +511,10 @@ const DataProductsDetailsPage = ({
           />
         </Col>
         <Col className="p-x-md" flex="320px">
-          <div style={{ textAlign: 'right' }}>
+          <div className="d-flex justify-end gap-3">
             {!isVersionsView && dataProductPermission.Create && (
               <Button
+                className="h-10"
                 data-testid="data-product-details-add-button"
                 type="primary"
                 onClick={() => setAssetModelVisible(true)}>
@@ -568,7 +524,7 @@ const DataProductsDetailsPage = ({
               </Button>
             )}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {dataProduct?.version && (
                 <Tooltip
                   title={t(
@@ -628,16 +584,24 @@ const DataProductsDetailsPage = ({
           </div>
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-            className="domain-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<DataProduct>
+          currentVersionData={dataProduct}
+          data={dataProduct}
+          isVersionView={isVersionsView}
+          permissions={dataProductPermission}
+          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
+          onUpdate={onUpdate}>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       <EntityNameModal<DataProduct>

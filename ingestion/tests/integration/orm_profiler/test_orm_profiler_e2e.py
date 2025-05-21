@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -93,7 +93,7 @@ class User(Base):
 
 # with weird characters of fqn
 class NewUser(Base):
-    __tablename__ = "new/users"
+    __tablename__ = "newUsers"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
     fullname = Column(String(256))
@@ -311,7 +311,7 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
         {
             "type": "Profiler",
             "profileSample": 50,
-            "tableFilterPattern": {"includes": ["new/users"]},
+            "tableFilterPattern": {"includes": ["newUsers"]},
         }
     )
     workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
@@ -323,7 +323,7 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
 
     table = metadata.get_by_name(
         entity=Table,
-        fqn=f"{service_name}.main.main.new/users",
+        fqn=f"{service_name}.main.main.newUsers",
         fields=["tableProfilerConfig"],
     )
     # setting sampleProfile from config has been temporarly removed
@@ -549,8 +549,7 @@ def test_workflow_values_partition(ingest, metadata, service_name):
     profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
 
     assert profile.rowCount == 4.0
-    # If we don't have any sample, default to 100
-    assert profile.profileSample == 100.0
+    assert profile.profileSample == None
 
     workflow_config["processor"] = {
         "type": "orm-profiler",
@@ -692,6 +691,8 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
         }
     )
 
@@ -711,6 +712,8 @@ def test_sample_data_ingestion(ingest, metadata, service_name):
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
             "tableFilterPattern": {"includes": ["users"]},
         }
     )

@@ -23,7 +23,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty, startsWith } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -92,8 +92,10 @@ import {
   getEncodedFqn,
 } from '../../utils/StringsUtils';
 import {
-  getQueryFilterToExcludeTerms,
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+  getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
+  getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
@@ -104,12 +106,11 @@ const TagPage = () => {
   const { fqn: tagFqn } = useFqn();
   const history = useHistory();
   const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
-  const { getEntityPermission } = usePermissionProvider();
+  const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
+
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -161,6 +162,23 @@ const TagPage = () => {
     return { editTagsPermission: false, editDescriptionPermission: false };
   }, [tagPermissions, tagItem?.deleted]);
 
+  const editEntitiesTagPermission = useMemo(
+    () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
+    [permissions]
+  );
+
+  const haveAssetEditPermission = useMemo(
+    () =>
+      editTagsPermission ||
+      !isEmpty(editEntitiesTagPermission.entitiesHavingPermission),
+    [editTagsPermission, editEntitiesTagPermission.entitiesHavingPermission]
+  );
+
+  const isCertificationClassification = useMemo(
+    () => startsWith(tagFqn, 'Certification.'),
+    [tagFqn]
+  );
+
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
       return;
@@ -191,9 +209,6 @@ const TagPage = () => {
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
-        setIsDescriptionEditable(false);
-      } else {
-        setIsDescriptionEditable(false);
       }
     }
   };
@@ -216,7 +231,7 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      history.push({
+      history.replace({
         pathname: getClassificationTagPath(
           tagItem.fullyQualifiedName ?? '',
           tab
@@ -241,11 +256,12 @@ const TagPage = () => {
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
+        name: name?.trim(),
         displayName: displayName?.trim(),
       };
 
@@ -327,6 +343,12 @@ const TagPage = () => {
         setPreviewAsset(undefined);
       }
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })
+      );
       setAssetCount(0);
     }
   };
@@ -417,20 +439,16 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur
                         description={tagItem?.description}
-                        entityFqn={tagItem?.fullyQualifiedName}
                         entityName={getEntityName(tagItem)}
                         entityType={EntityType.TAG}
                         hasEditAccess={editDescriptionPermission}
-                        isEdit={isDescriptionEditable}
                         showActions={!tagItem?.deleted}
                         showCommentsIcon={false}
-                        onCancel={() => setIsDescriptionEditable(false)}
-                        onDescriptionEdit={() => setIsDescriptionEditable(true)}
                         onDescriptionUpdate={onDescriptionUpdate}
                       />
                     </Col>
@@ -471,13 +489,23 @@ const TagPage = () => {
           <ResizablePanels
             className="tag-height-with-resizable-panel"
             firstPanel={{
+              wrapInCard: false,
               className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
                   entityFqn={tagItem?.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
-                  permissions={tagPermissions}
+                  permissions={
+                    {
+                      Create:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
+                      EditAll:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
+                    } as OperationPermission
+                  }
                   ref={assetTabRef}
                   type={AssetsOfEntity.TAG}
                   onAddAsset={() => setAssetModalVisible(true)}
@@ -489,6 +517,7 @@ const TagPage = () => {
             }}
             hideSecondPanel={!previewAsset}
             secondPanel={{
+              wrapInCard: false,
               children: previewAsset && (
                 <EntitySummaryPanel
                   entityDetails={previewAsset}
@@ -512,19 +541,20 @@ const TagPage = () => {
     assetCount,
     assetTabRef,
     handleAssetSave,
-    isDescriptionEditable,
     editTagsPermission,
     editDescriptionPermission,
   ]);
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
+      const iconUrl = getTagImageSrc(tagItem.style.iconURL);
+
       return (
         <img
           alt={tagItem.name ?? t('label.tag')}
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
-          src={tagItem.style?.iconURL}
+          src={iconUrl}
           width={32}
         />
       );
@@ -563,13 +593,13 @@ const TagPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 12]}>
         <Col span={24}>
           <Row
             className="data-classification"
             data-testid="data-classification"
             gutter={[0, 12]}>
-            <Col className="p-x-md" flex="auto">
+            <Col className="p-x-md" flex="1">
               <EntityHeader
                 badge={
                   tagItem.disabled && (
@@ -591,17 +621,19 @@ const TagPage = () => {
                 titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>
-            {editTagsPermission && (
+            {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  <Button
-                    data-testid="data-classification-add-button"
-                    type="primary"
-                    onClick={() => setAssetModalVisible(true)}>
-                    {t('label.add-entity', {
-                      entity: t('label.asset-plural'),
-                    })}
-                  </Button>
+                  {!isCertificationClassification && (
+                    <Button
+                      data-testid="data-classification-add-button"
+                      type="primary"
+                      onClick={() => setAssetModalVisible(true)}>
+                      {t('label.add-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                    </Button>
+                  )}
                   {manageButtonContent.length > 0 && (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}
@@ -640,7 +672,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs"
+            className="tabs-new"
             items={tabItems}
             onChange={activeTabHandler}
           />
@@ -687,7 +719,10 @@ const TagPage = () => {
         <AssetSelectionModal
           entityFqn={tagItem.fullyQualifiedName}
           open={assetModalVisible}
-          queryFilter={getQueryFilterToExcludeTerms(tagItem.fullyQualifiedName)}
+          queryFilter={getQueryFilterToExcludeTermsAndEntities(
+            tagItem.fullyQualifiedName,
+            editEntitiesTagPermission.entitiesNotHavingPermission
+          )}
           type={AssetsOfEntity.TAG}
           onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}

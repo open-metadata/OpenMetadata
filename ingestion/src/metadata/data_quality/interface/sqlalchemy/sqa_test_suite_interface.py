@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,8 +19,10 @@ from typing import Union
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-from metadata.data_quality.builders.sqa_validator_builder import SQAValidatorBuilder
+from metadata.data_quality.builders.validator_builder import (
+    SourceType,
+    ValidatorBuilder,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -51,16 +53,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table = None,
-        orm_table=None,
+        **kwargs,
     ):
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            sampler,
-            table_entity,
+            service_connection_config, ometa_client, sampler, table_entity, **kwargs
         )
+        self.source_type = SourceType.SQL
         self.create_session()
-        self._table = orm_table
 
         (
             self.table_sample_query,
@@ -76,7 +75,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
 
     @property
-    def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def dataset(self) -> Union[DeclarativeMeta, AliasedClass]:
         """_summary_
 
         Returns:
@@ -87,7 +86,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 "You must create a sampler first `<instance>.create_sampler(...)`."
             )
 
-        return self.sampler.random_sample()
+        return self.sampler.get_dataset()
 
     @property
     def runner(self) -> QueryRunner:
@@ -98,23 +97,14 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         """
         return self._runner
 
-    @property
-    def table(self):
-        """getter method for the table object
-
-        Returns:
-            Table: table object
-        """
-        return self._table
-
-    def _create_runner(self) -> None:
+    def _create_runner(self) -> QueryRunner:
         """Create a QueryRunner Instance"""
 
         return cls_timeout(TEN_MIN)(
             QueryRunner(
                 session=self.session,
-                table=self.table,
-                sample=self.sample,
+                dataset=self.dataset,
+                raw_dataset=self.sampler.raw_dataset,
                 partition_details=self.table_partition_config,
                 profile_sample_query=self.table_sample_query,
             )
@@ -122,5 +112,10 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
-        return SQAValidatorBuilder(self.runner, test_case, entity_type)
+    ) -> ValidatorBuilder:
+        return self.validator_builder_class(
+            runner=self.runner,
+            test_case=test_case,
+            entity_type=entity_type,
+            source_type=self.source_type,
+        )

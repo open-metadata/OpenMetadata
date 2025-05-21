@@ -53,7 +53,7 @@
       "type": "string"
     },
     "className": {
-      "description": "Full Qualified ClassName for the the application",
+      "description": "Full Qualified ClassName for the the application. Use can use 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.",
       "type": "string"
     },
     "sourcePythonClass": {
@@ -63,6 +63,10 @@
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
+    },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "../app.json#/definitions/agentType"
     },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
@@ -111,6 +115,19 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event subscriptions that will be created when the application is installed.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "../../../events/api/createEventSubscription.json"
+      }
+    },
+    "enabled": {
+      "description": "The app will be installable only if this flag is set to true.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false,

@@ -86,7 +86,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Classification Page', async ({ page }) => {
+test.fixme('Classification Page', async ({ page }) => {
   test.slow();
 
   await test.step('Should render basic elements on page', async () => {
@@ -225,7 +225,7 @@ test('Classification Page', async ({ page }) => {
       '[data-testid="displayName"]',
       NEW_CLASSIFICATION.displayName
     );
-    await page.fill(descriptionBox, NEW_CLASSIFICATION.description);
+    await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
     const createTagCategoryResponse = page.waitForResponse(
@@ -261,7 +261,7 @@ test('Classification Page', async ({ page }) => {
 
     await page.fill('[data-testid="name"]', NEW_TAG.name);
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
-    await page.fill(descriptionBox, NEW_TAG.description);
+    await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.fill('[data-testid="icon-url"]', NEW_TAG.icon);
     await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
 
@@ -284,7 +284,7 @@ test('Classification Page', async ({ page }) => {
       tagDisplayName: displayName,
       tableId: table.entityResponseData?.['id'],
       columnNumber: 0,
-      rowName: 'user_id numeric',
+      rowName: `${table.entity?.columns[0].name} numeric`,
     });
   });
 

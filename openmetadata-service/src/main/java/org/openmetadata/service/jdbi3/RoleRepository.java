@@ -26,6 +26,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -108,7 +109,8 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public RoleUpdater getUpdater(Role original, Role updated, Operation operation) {
+  public EntityRepository<Role>.EntityUpdater getUpdater(
+      Role original, Role updated, Operation operation, ChangeSource changeSource) {
     return new RoleUpdater(original, updated, operation);
   }
 
@@ -128,7 +130,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 

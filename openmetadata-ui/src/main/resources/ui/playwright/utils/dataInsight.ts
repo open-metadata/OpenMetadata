@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { KPIData } from '../constant/dataInsight.interface';
 import { descriptionBox } from './common';
 
 export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
@@ -19,18 +20,13 @@ export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
   if (kpis.data.length > 0) {
     for (const element of kpis.data) {
       await apiRequest.delete(
-        `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`,
-        (route) => {
-          route.fulfill({
-            status: 200,
-          });
-        }
+        `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`
       );
     }
   }
 };
 
-export const addKpi = async (page: Page, data) => {
+export const addKpi = async (page: Page, data: KPIData) => {
   const currentDate = new Date();
   const month =
     currentDate.getMonth() + 1 < 10

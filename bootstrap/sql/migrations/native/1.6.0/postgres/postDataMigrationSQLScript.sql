@@ -71,3 +71,9 @@ WHERE serviceType IN ('Snowflake', 'Redshift', 'BigQuery');
 
 -- Update all rows in the consumers_dlq table to set the source column to 'publisher'
 UPDATE consumers_dlq SET source = 'publisher';
+
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+DROP INDEX IF EXISTS event_time_index;
+
+CREATE INDEX idx_offset_event_time ON change_event ("offset", eventTime);

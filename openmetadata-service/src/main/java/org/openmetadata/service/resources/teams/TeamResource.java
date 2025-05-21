@@ -14,8 +14,6 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -52,11 +50,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -71,8 +69,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -91,6 +89,7 @@ import org.openmetadata.service.util.ResultList;
     requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
+  private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
@@ -377,7 +376,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team);
   }
 
@@ -398,7 +397,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
@@ -425,6 +424,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -451,6 +453,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -538,6 +543,32 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTeamAsync",
+      summary = "Asynchronously delete a team by id",
+      description = "Asynchronously delete a team by given `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this team and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteTeamByName",
@@ -611,7 +642,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -632,7 +663,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -663,7 +694,68 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/{teamId}/users")
+  @Operation(
+      operationId = "updateTeamUsers",
+      summary = "Update team users",
+      description =
+          "Update the list of users for a team. Replaces existing users with the provided list.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated team users",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Team not found")
+      })
+  public Response updateTeamUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamId") UUID teamId,
+      List<EntityReference> users) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{teamId}/users/{userId}")
+  @Operation(
+      operationId = "deleteTeamUser",
+      summary = "Remove a user from a team",
+      description = "Remove the user identified by `userId` from the team identified by `teamId`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User removed from team",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Team or user not found")
+      })
+  public Response deleteTeamUser(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID"))
+          @PathParam("teamId")
+          UUID teamId,
+      @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .deleteTeamUser(
+            securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
@@ -694,27 +786,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
-  }
-
-  private Team getTeam(CreateTeam ct, String user) {
-    if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
-      throw new IllegalArgumentException(CREATE_ORGANIZATION);
-    }
-    if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
-      throw new IllegalArgumentException(CREATE_GROUP);
-    }
-    return repository
-        .copy(new Team(), ct, user)
-        .withProfile(ct.getProfile())
-        .withIsJoinable(ct.getIsJoinable())
-        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
-        .withTeamType(ct.getTeamType())
-        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail())
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 }

@@ -12,6 +12,10 @@ public class InvalidServiceConnectionException extends WebServiceException {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
+  public InvalidServiceConnectionException(String message, Throwable e) {
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message, e);
+  }
+
   private InvalidServiceConnectionException(Response.Status status, String message) {
     super(status, ERROR_TYPE, message);
   }

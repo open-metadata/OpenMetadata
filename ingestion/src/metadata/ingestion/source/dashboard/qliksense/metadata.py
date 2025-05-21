@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +55,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -276,7 +277,11 @@ class QliksenseSource(DashboardServiceSource):
         return None
 
     def _get_database_table(
-        self, db_service_entity: DatabaseService, datamodel: QlikTable
+        self,
+        db_service_entity: DatabaseService,
+        datamodel: QlikTable,
+        schema_name: Optional[str],
+        database_name: Optional[str],
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
@@ -284,17 +289,6 @@ class QliksenseSource(DashboardServiceSource):
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
         if datamodel.tableName and db_service_entity:
             try:
-                if len(datamodel.connectorProperties.tableQualifiers) > 1:
-                    (
-                        database_name,
-                        schema_name,
-                    ) = datamodel.connectorProperties.tableQualifiers[-2:]
-                elif len(datamodel.connectorProperties.tableQualifiers) == 1:
-                    schema_name = datamodel.connectorProperties.tableQualifiers[-1]
-                    database_name = None
-                else:
-                    schema_name, database_name = None, None
-
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -316,18 +310,32 @@ class QliksenseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikDashboard,
-        db_service_name: Optional[str],
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
-                    om_table = self._get_database_table(
-                        db_service_entity, datamodel=datamodel
+                    if len(datamodel.connectorProperties.tableQualifiers) > 1:
+                        (
+                            database_name,
+                            schema_name,
+                        ) = datamodel.connectorProperties.tableQualifiers[-2:]
+                    elif len(datamodel.connectorProperties.tableQualifiers) == 1:
+                        schema_name = datamodel.connectorProperties.tableQualifiers[-1]
+                        database_name = None
+                    else:
+                        schema_name, database_name = None, None
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=datamodel.tableName,
+                    )
+                    om_table = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
                     )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]

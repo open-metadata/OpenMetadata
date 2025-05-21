@@ -50,6 +50,7 @@ function PipelineActionsDropdown({
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
   ingestionPipelinePermissions,
+  moreActionButtonProps,
 }: Readonly<PipelineActionsDropdownProps>) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -135,7 +136,7 @@ function PipelineActionsDropdown({
 
   const handleConfirmDelete = useCallback(
     (id: string, name: string, displayName?: string) => {
-      handleDeleteSelection({
+      handleDeleteSelection?.({
         id,
         name,
         displayName,
@@ -266,10 +267,12 @@ function PipelineActionsDropdown({
         trigger={['click']}
         onOpenChange={(value) => setIsOpen(value)}>
         <Button
+          className="pipeline-actions-dropdown-button"
           data-testid="more-actions"
           icon={<MoreIcon />}
           type="link"
           onClick={() => setIsOpen((value) => !value)}
+          {...moreActionButtonProps}
         />
       </Dropdown>
       {isKillModalOpen && selectedPipeline && id === selectedPipeline?.id && (

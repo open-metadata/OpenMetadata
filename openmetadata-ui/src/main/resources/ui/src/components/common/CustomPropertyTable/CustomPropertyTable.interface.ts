@@ -28,6 +28,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
@@ -48,6 +49,7 @@ export type ExtentionEntities = {
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.DATA_PRODUCT]: DataProduct;
   [EntityType.METRIC]: Metric;
+  [EntityType.DOMAIN]: Domain;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
@@ -55,8 +57,6 @@ export type ExtentionEntitiesKeys = keyof ExtentionEntities;
 export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   isVersionView?: boolean;
   entityType: T;
-  entityDetails: ExtentionEntities[T];
-  handleExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
   hasPermission: boolean;

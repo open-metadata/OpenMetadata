@@ -65,6 +65,7 @@ import org.openmetadata.service.util.ResultList;
 public class DataInsightChartResource
     extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
+  private final DataInsightChartMapper mapper = new DataInsightChartMapper();
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owners";
   private final SearchRepository searchRepository;
@@ -299,7 +300,7 @@ public class DataInsightChartResource
       @Context SecurityContext securityContext,
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
-        getDataInsightChart(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataInsightChart);
   }
 
@@ -381,7 +382,7 @@ public class DataInsightChartResource
       @Context SecurityContext securityContext,
       @Valid CreateDataInsightChart create) {
     DataInsightChart dataInsightChart =
-        getDataInsightChart(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataInsightChart);
   }
 
@@ -408,6 +409,31 @@ public class DataInsightChartResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDataInsightChartAsync",
+      summary = "Asynchronously delete a data insight chart by Id",
+      description = "Asynchronously delete a data insight chart by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data insight chart for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -535,16 +561,5 @@ public class DataInsightChartResource
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     return searchRepository.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
-  }
-
-  private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) {
-    return repository
-        .copy(new DataInsightChart(), create, user)
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withDataIndexType(create.getDataIndexType())
-        .withDimensions(create.getDimensions())
-        .withMetrics(create.getMetrics())
-        .withDisplayName(create.getDisplayName());
   }
 }
