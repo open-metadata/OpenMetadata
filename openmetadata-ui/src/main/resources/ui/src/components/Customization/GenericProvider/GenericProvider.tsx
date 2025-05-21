@@ -181,14 +181,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       if (isTabExpanded) {
         // When expanded, only return the left panel widget with updated width
-        return sourceLayout
-          .filter((widget) =>
-            widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-          )
-          .map((widget) => ({
-            ...widget,
-            w: targetWidth,
-          }));
+        return leftPanelWidget ? [{ ...leftPanelWidget, w: targetWidth }] : [];
       }
 
       // When not expanded, return all widgets with original width
