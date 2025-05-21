@@ -98,7 +98,7 @@ import {
   getTierTags,
   updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 
@@ -565,6 +565,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (tableDetails) {
+        const certificationTag: Table['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...tableDetails,
+          certification: certificationTag,
+        };
+
+        await onTableUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [tableDetails, onTableUpdate]
+  );
   const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
@@ -800,6 +815,7 @@ const TableDetailsPageV1: React.FC = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={tablePermissions}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleDisplayNameUpdate}
               onFollowClick={handleFollowTable}
               onOwnerUpdate={handleUpdateOwner}

@@ -51,7 +51,6 @@ import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
-  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
@@ -69,6 +68,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Certification from '../../Certification/Certification.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -117,6 +117,7 @@ export const DataAssetsHeader = ({
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
+  onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -359,17 +360,23 @@ export const DataAssetsHeader = ({
     setIsFollowingLoading(false);
   }, [onFollowClick]);
 
-  const { editDomainPermission, editOwnerPermission, editTierPermission } =
-    useMemo(
-      () => ({
-        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
-        editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-        editTierPermission:
-          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      }),
-      [permissions, dataAsset]
-    );
+  const {
+    editDomainPermission,
+    editOwnerPermission,
+    editTierPermission,
+    editCertificationPermission,
+  } = useMemo(
+    () => ({
+      editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+      editOwnerPermission:
+        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
+      editTierPermission:
+        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
+      editCertificationPermission:
+        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
+    }),
+    [permissions, dataAsset]
+  );
 
   const tierSuggestionRender = useMemo(() => {
     if (entityType === EntityType.TABLE) {
@@ -702,9 +709,15 @@ export const DataAssetsHeader = ({
             )}
 
             <Divider className="self-center vertical-divider" type="vertical" />
-            <ExtraInfoLabel
+            <Certification
+              currentCertificate={
+                'certification' in dataAsset
+                  ? dataAsset.certification?.tagLabel?.tagFQN
+                  : undefined
+              }
               dataTestId="certification-label"
               label={t('label.certification')}
+              permission={editCertificationPermission}
               value={
                 (dataAsset as Table).certification ? (
                   <CertificationTag
@@ -715,6 +728,7 @@ export const DataAssetsHeader = ({
                   t('label.no-entity', { entity: t('label.certification') })
                 )
               }
+              onCertificationUpdate={onCertificationUpdate}
             />
             {extraInfo}
           </div>

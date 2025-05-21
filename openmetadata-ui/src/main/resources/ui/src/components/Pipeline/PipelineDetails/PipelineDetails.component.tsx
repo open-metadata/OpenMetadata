@@ -40,7 +40,11 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -65,6 +69,7 @@ const PipelineDetails = ({
   onUpdateVote,
   onExtensionUpdate,
   handleToggleDelete,
+  onPipelineUpdate,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -306,6 +311,21 @@ const PipelineDetails = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (pipelineDetails && updatePipelineDetailsState) {
+        const certificationTag: Pipeline['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedPipelineDetails = {
+          ...pipelineDetails,
+          certification: certificationTag,
+        };
+
+        await onPipelineUpdate(updatedPipelineDetails, 'certification');
+      }
+    },
+    [pipelineDetails, onPipelineUpdate]
+  );
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.Pipeline),
     [tabs[0], tab]
@@ -331,6 +351,7 @@ const PipelineDetails = ({
             entityType={EntityType.PIPELINE}
             openTaskCount={feedCount.openTaskCount}
             permissions={pipelinePermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followPipeline}
             onOwnerUpdate={onOwnerUpdate}
