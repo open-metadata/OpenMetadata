@@ -41,7 +41,7 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
 source = [
-    "env/lib/python3.9/site-packages/metadata"
+    "src/metadata"
 ]
 relative_files = true
 branch = true
@@ -72,9 +72,6 @@ disallow_incomplete_defs = false
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-]
-addopts = [
-    "--import-mode=importlib",
 ]
 
 [project.entry-points.pytest11]
