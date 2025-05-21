@@ -182,6 +182,8 @@
     width: calc(58.33% - @size-lg);
     height: calc(100vh - @size-lg * 2);
     overflow: hidden;
+    background: linear-gradient(45deg, #194185 0%, #2e90fa 100%);
+    border-radius: @size-mlg;
 
     @media screen and (min-width: 1710px) {
       right: @size-xl;
@@ -195,27 +197,52 @@
     }
   }
 
+  .ant-carousel .slick-dots li {
+    width: 3% !important;
+    height: 5% !important;
+  }
+
   .carousel-header {
     color: @white;
     font-weight: 700;
-    font-size: 42px;
+    font-size: max(32px, 2.5vw);
+    line-height: 1.2;
 
     @media screen and (min-width: 1650px) {
       font-size: 50px;
     }
+
+    @media screen and (min-width: 2400px) {
+      font-size: 64px;
+    }
+
+    @media screen and (min-width: 3600px) {
+      font-size: 80px;
+    }
   }
 
   .carousal-description {
-    width: 600px;
+    width: min(600px, 80%);
     text-align: center;
-    margin: 16px auto;
+    margin: 16px auto 5%;
     padding: 0 48px;
-    color: @grey-200;
-    font-size: @size-md;
+    color: @grey-50;
+    font-size: max(14px, 1vw);
+    line-height: 1.5;
 
     @media screen and (min-width: 1650px) {
       font-size: 20px;
       width: 720px;
+    }
+
+    @media screen and (min-width: 2400px) {
+      font-size: 28px;
+      width: 940px;
+    }
+
+    @media screen and (min-width: 3600px) {
+      font-size: 48px;
+      width: 1800px;
     }
   }
 }
@@ -278,15 +305,9 @@
 
   .image-container {
     position: relative;
-    z-index: 8;
-    top: 10px;
 
     .governance-image {
-      width: 500px;
-
-      @media screen and (min-width: 1700px) {
-        width: 750px;
-      }
+      width: 60%;
     }
 
     .governance-top-left {
@@ -294,20 +315,7 @@
       top: -12px;
       left: 16%;
       animation: slideInFromLeft 1.5s ease-in-out;
-      width: 120px;
-
-      @media screen and (min-width: 1700px) {
-        left: 12%;
-        width: 200px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        left: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        left: 5%;
-      }
+      width: 14%;
     }
 
     .governance-middle-right {
@@ -315,20 +323,7 @@
       top: 50%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 160px;
-
-      @media screen and (min-width: 1700px) {
-        right: 12%;
-        width: 250px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 5%;
-      }
+      width: 20%;
     }
 
     .governance-bottom-right {
@@ -336,28 +331,11 @@
       bottom: -4%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 220px;
-
-      @media screen and (min-width: 1700px) {
-        right: 12%;
-        width: 300px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 5%;
-      }
+      width: 20%;
     }
 
     .collaboration-image {
-      width: 350px;
-
-      @media screen and (min-width: 1700px) {
-        width: 550px;
-      }
+      width: 46%;
     }
 
     .collab-top-left {
@@ -365,20 +343,7 @@
       top: -20px;
       left: 23%;
       animation: slideInFromLeft 1.5s ease-in-out;
-      width: 200px;
-
-      @media screen and (min-width: 1700px) {
-        left: 18%;
-        width: 330px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        left: 20%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        left: 16%;
-      }
+      width: 25%;
     }
 
     .collab-middle-right {
@@ -386,57 +351,23 @@
       top: 44%;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 200px;
-
-      @media screen and (min-width: 1700px) {
-        right: 16%;
-        width: 330px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 16%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 12%;
-      }
+      width: 25%;
     }
 
     .observability-image {
-      width: 370px;
-
-      @media screen and (min-width: 1700px) {
-        width: 550px;
-      }
+      width: 50%;
     }
 
     .observability-bottom-right {
       position: absolute;
-      bottom: -26px;
+      bottom: -32px;
       right: 22%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 250px;
-
-      @media screen and (min-width: 1700px) {
-        right: 18%;
-        width: 370px;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 18%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 16%;
-      }
+      width: 28%;
     }
 
     .discovery-image {
-      width: 500px;
-
-      @media screen and (min-width: 1700px) {
-        width: 750px;
-      }
+      width: 64%;
     }
 
     .discovery-top-right {
@@ -444,16 +375,7 @@
       top: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 130px;
-
-      @media screen and (min-width: 1700px) {
-        right: 12%;
-        width: 190px;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 10%;
-      }
+      width: 15%;
     }
 
     .discovery-middle-right {
@@ -461,24 +383,11 @@
       top: 40%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 130px;
-
-      @media screen and (min-width: 1700px) {
-        right: 12%;
-        width: 190px;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 10%;
-      }
+      width: 15%;
     }
 
     .collate-ai-img {
-      width: 360px;
-
-      @media screen and (min-width: 1700px) {
-        width: 550px;
-      }
+      width: 50%;
     }
 
     .ai-top-right {
@@ -486,16 +395,7 @@
       top: 12px;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 250px;
-
-      @media screen and (min-width: 1700px) {
-        right: 18%;
-        width: 350px;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 14%;
-      }
+      width: 30%;
     }
 
     .ai-bottom-right {
@@ -503,16 +403,7 @@
       bottom: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-      width: 200px;
-
-      @media screen and (min-width: 1700px) {
-        right: 14%;
-        width: 300px;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 12%;
-      }
+      width: 30%;
     }
 
     img {

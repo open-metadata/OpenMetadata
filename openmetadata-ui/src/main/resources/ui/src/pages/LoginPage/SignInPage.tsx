@@ -21,7 +21,6 @@ import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
-import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -285,15 +284,6 @@ const SignInPage = () => {
           </div>
         </Col>
         <Col className="form-carousel-container" span={14}>
-          <div className="absolute inset-0">
-            <img
-              alt="Login Background"
-              className="w-full h-max-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
           <LoginCarousel />
         </Col>
       </Row>

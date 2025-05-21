@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -221,15 +220,6 @@ const BasicSignUp = () => {
         </Col>
 
         <Col className="form-carousel-container" lg={14} sm={0}>
-          <div className="absolute inset-0">
-            <img
-              alt="bg-image"
-              className="w-full h-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
           <LoginCarousel />
         </Col>
       </Row>
