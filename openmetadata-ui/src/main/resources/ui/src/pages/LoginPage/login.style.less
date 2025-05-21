@@ -27,19 +27,6 @@
     justify-content: center;
   }
 
-  .form-carousel-container {
-    position: fixed;
-    right: @size-md;
-    top: @size-md;
-    width: calc(58.33% - @size-md);
-    height: calc(100vh - @size-md * 2);
-    overflow: hidden;
-
-    @media screen and (max-width: 1024px) {
-      display: none;
-    }
-  }
-
   .form-item {
     background-color: @white;
     border-radius: @border-radius-lg;
@@ -48,11 +35,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: @size-2xl;
+    margin: @size-2xl auto;
     padding: @size-xl @size-2xl;
     text-align: center;
     height: auto;
     max-width: 500px;
+
+    @media screen and (min-width: 1650px) {
+      min-width: 650px;
+      margin: auto;
+    }
 
     @media screen and (max-width: 1200px) {
       margin: @size-md;
@@ -79,11 +71,44 @@
         font-size: 24px;
         margin-top: @size-lg;
       }
+
+      @media screen and (min-width: 1650px) {
+        font-size: 40px;
+      }
+    }
+
+    .login-form {
+      margin-top: 3rem;
+      width: 380px;
+
+      @media screen and (min-width: 1650px) {
+        width: 550px;
+      }
+
+      @media screen and (max-width: 1024px) {
+        width: 100%;
+        max-width: 380px;
+        margin: 2rem auto 0;
+      }
+
+      .error-alert {
+        border-color: #fbb4ae;
+      }
+
+      .login-btn {
+        @media screen and (min-width: 1650px) {
+          font-size: 18px;
+        }
+      }
     }
 
     label {
       color: @grey-text;
       font-weight: 600;
+
+      @media screen and (min-width: 1650px) {
+        font-size: 20px;
+      }
     }
 
     .input-field {
@@ -91,10 +116,18 @@
       border-radius: @border-radius-xs;
       border: 1px solid @grey-22;
       background-color: @grey-23 !important;
+
+      @media screen and (min-width: 1650px) {
+        padding: @size-md @size-lg;
+      }
     }
 
     .input-field::placeholder {
       color: @grey-24;
+
+      @media screen and (min-width: 1650px) {
+        font-size: 18px;
+      }
     }
 
     #password,
@@ -109,20 +142,108 @@
       justify-content: space-between;
       align-items: center;
 
+      .forgot-password-link {
+        @media screen and (min-width: 1650px) {
+          font-size: 18px;
+        }
+      }
+
       @media screen and (max-width: 768px) {
         width: 100%;
       }
+
+      @media screen and (min-width: 1650px) {
+        width: 600px;
+      }
     }
 
-    @media screen and (min-width: 1600px) {
-      margin: auto;
+    .ant-btn-link.link-btn {
+      padding: @size-xs;
     }
+
+    .signup-text,
+    .ant-btn-link.link-btn {
+      @media screen and (min-width: 1650px) {
+        font-size: 18px;
+        padding: 0 @size-xs;
+      }
+    }
+
+    .sso-signup {
+      margin-top: @size-xl;
+      margin-bottom: @size-lg;
+    }
+  }
+
+  .form-carousel-container {
+    position: fixed;
+    right: @size-lg;
+    top: @size-lg;
+    width: calc(58.33% - @size-lg);
+    height: calc(100vh - @size-lg * 2);
+    overflow: hidden;
+    background: linear-gradient(45deg, #194185 0%, #2e90fa 100%);
+    border-radius: @size-mlg;
+
+    @media screen and (min-width: 1710px) {
+      right: @size-xl;
+      top: @size-xl;
+      width: calc(58.33% - @size-xl);
+      height: calc(100vh - @size-xl * 2);
+    }
+
+    @media screen and (max-width: 1024px) {
+      display: none;
+    }
+  }
+
+  .ant-carousel .slick-dots li {
+    width: 3% !important;
+    height: 5% !important;
   }
 
   .carousel-header {
     color: @white;
     font-weight: 700;
-    font-size: 42px;
+    font-size: max(32px, 2.5vw);
+    line-height: 1.2;
+
+    @media screen and (min-width: 1650px) {
+      font-size: 50px;
+    }
+
+    @media screen and (min-width: 2400px) {
+      font-size: 64px;
+    }
+
+    @media screen and (min-width: 3600px) {
+      font-size: 80px;
+    }
+  }
+
+  .carousal-description {
+    width: min(600px, 80%);
+    text-align: center;
+    margin: 16px auto 5%;
+    padding: 0 48px;
+    color: @grey-50;
+    font-size: max(14px, 1vw);
+    line-height: 1.5;
+
+    @media screen and (min-width: 1650px) {
+      font-size: 20px;
+      width: 720px;
+    }
+
+    @media screen and (min-width: 2400px) {
+      font-size: 28px;
+      width: 940px;
+    }
+
+    @media screen and (min-width: 3600px) {
+      font-size: 48px;
+      width: 1800px;
+    }
   }
 }
 
@@ -139,30 +260,8 @@
     }
   }
 }
-.login-form {
-  margin-top: 3rem;
-  width: 380px;
-
-  @media screen and (max-width: 1024px) {
-    width: 100%;
-    max-width: 380px;
-    margin: 2rem auto 0;
-  }
-
-  .error-alert {
-    border-color: #fbb4ae;
-  }
-}
 .login-alert {
   margin-top: 1rem;
-}
-.carousal-description {
-  width: 600px;
-  text-align: center;
-  margin: 16px auto;
-  padding: 0 48px;
-  color: @grey-200;
-  font-size: @size-md;
 }
 
 @keyframes fadeIn {
@@ -206,26 +305,17 @@
 
   .image-container {
     position: relative;
-    z-index: 8;
-    top: 10px;
+
+    .governance-image {
+      width: 60%;
+    }
 
     .governance-top-left {
       position: absolute;
       top: -12px;
       left: 16%;
       animation: slideInFromLeft 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        left: 22%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        left: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        left: 5%;
-      }
+      width: 14%;
     }
 
     .governance-middle-right {
@@ -233,18 +323,7 @@
       top: 50%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        right: 22%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 5%;
-      }
+      width: 20%;
     }
 
     .governance-bottom-right {
@@ -252,18 +331,11 @@
       bottom: -4%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 20%;
+    }
 
-      @media screen and (min-width: 1700px) {
-        right: 22%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 10%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 5%;
-      }
+    .collaboration-image {
+      width: 46%;
     }
 
     .collab-top-left {
@@ -271,18 +343,7 @@
       top: -20px;
       left: 23%;
       animation: slideInFromLeft 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        left: 30%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        left: 20%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        left: 16%;
-      }
+      width: 25%;
     }
 
     .collab-middle-right {
@@ -290,37 +351,23 @@
       top: 44%;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 25%;
+    }
 
-      @media screen and (min-width: 1700px) {
-        right: 30%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 16%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 12%;
-      }
+    .observability-image {
+      width: 50%;
     }
 
     .observability-bottom-right {
       position: absolute;
-      bottom: -26px;
+      bottom: -32px;
       right: 22%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 28%;
+    }
 
-      @media screen and (min-width: 1700px) {
-        right: 28%;
-      }
-
-      @media screen and (max-width: 1400px) {
-        right: 18%;
-      }
-
-      @media screen and (max-width: 1200px) {
-        right: 16%;
-      }
+    .discovery-image {
+      width: 64%;
     }
 
     .discovery-top-right {
@@ -328,14 +375,7 @@
       top: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        right: 22%;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 10%;
-      }
+      width: 15%;
     }
 
     .discovery-middle-right {
@@ -343,14 +383,11 @@
       top: 40%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 15%;
+    }
 
-      @media screen and (min-width: 1700px) {
-        right: 22%;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 10%;
-      }
+    .collate-ai-img {
+      width: 50%;
     }
 
     .ai-top-right {
@@ -358,29 +395,15 @@
       top: 12px;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        right: 28%;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 14%;
-      }
+      width: 30%;
     }
 
     .ai-bottom-right {
       position: absolute;
-      bottom: -28px;
+      bottom: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
-
-      @media screen and (min-width: 1700px) {
-        right: 22%;
-      }
-
-      @media screen and (max-width: 1300px) {
-        right: 12%;
-      }
+      width: 30%;
     }
 
     img {
@@ -389,11 +412,9 @@
   }
 }
 
-.sso-signup {
-  margin-top: @size-xl;
-  margin-bottom: @size-lg;
-}
-
-.ant-btn-link.link-btn {
-  padding: @size-xs;
+@media screen and (min-width: 1650px) {
+  #password,
+  #confirmPassword {
+    font-size: 18px;
+  }
 }
