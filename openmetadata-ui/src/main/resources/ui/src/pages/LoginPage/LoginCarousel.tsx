@@ -14,11 +14,13 @@
 import { Carousel, Typography } from 'antd';
 import { uniqueId } from 'lodash';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselContent = loginClassBase.getLoginCarouselContent();
+  const { t } = useTranslation();
 
   return (
     <div className="carousal-container" data-testid="carousel-container">
