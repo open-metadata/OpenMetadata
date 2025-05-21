@@ -15,7 +15,7 @@
 .data-assets-header-container {
   .data-asset-header-metadata {
     border-radius: 12px;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
     padding: 16px 20px;
     gap: 16px;
     display: flex;
@@ -75,7 +75,9 @@
     color: @primary-heading-color;
     max-width: 200px;
   }
-
+  .owner-label-container {
+    max-width: 148px;
+  }
   .domain-link-text.render-domain-lebel-style {
     color: @grey-700;
     display: inline-block;
@@ -91,11 +93,11 @@
     }
   }
   .ant-btn.ant-btn-default.source-url-button {
-    background-color: @blue-11;
-    color: @blue-9;
+    background-color: @primary-button-background;
+    color: @primary-heading-color;
     span.anticon {
       border-radius: 50%;
-      background-color: @blue-19;
+      background-color: @alert-info-icon-bg-1;
       padding: 4px;
       height: 32px;
       width: 32px;

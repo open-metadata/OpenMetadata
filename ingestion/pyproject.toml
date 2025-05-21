@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.7.0.0.dev0"
+version = "1.8.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
@@ -259,7 +259,8 @@ ignore = [
   "src/metadata/ingestion/*",
   "src/metadata/mixins/*",
   "src/metadata/parsers/*",
-  "src/metadata/pii/*",
+  "src/metadata/pii/scanners/*",
+  "src/metadata/pii/*processor.py",
   "src/metadata/profiler/*",
   "src/metadata/sampler/*",
   "src/metadata/readers/*",
@@ -281,3 +282,5 @@ reportDeprecated = false
 reportMissingTypeStubs = false
 reportAny = false
 reportExplicitAny = false
+# @override was only added in python 3.12: https://docs.python.org/3/library/typing.html#typing.override
+reportImplicitOverride = false

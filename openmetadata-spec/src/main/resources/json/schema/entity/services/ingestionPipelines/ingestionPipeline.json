@@ -176,6 +176,11 @@
       "description": "Set the logging level for the workflow.",
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
+    "raiseOnError": {
+      "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+      "type": "boolean",
+      "default": true
+    },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
       "type": "boolean",
@@ -209,6 +214,10 @@
     "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",

@@ -44,6 +44,7 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
+  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -55,15 +56,21 @@ import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -71,7 +78,6 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -89,8 +95,10 @@ import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
+  addServiceFollower,
   getServiceByFQN,
   patchService,
+  removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
@@ -100,12 +108,17 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
 import { removeAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -137,7 +150,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable } = useMemo(
+  const { isAirflowAvailable, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -163,7 +176,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
-
+  const USERId = currentUser?.id ?? '';
   const {
     paging: collateAgentPaging,
     pageSize: collateAgentPageSize,
@@ -215,6 +228,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
 
+  const { isFollowing, followers = [] } = useMemo(
+    () => ({
+      isFollowing: serviceDetails?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: serviceDetails?.followers ?? [],
+    }),
+    [serviceDetails, currentUser]
+  );
   const { CollateAIAgentsWidget } = useMemo(
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
@@ -275,7 +297,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         servicePermission,
         serviceDetails
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
@@ -290,10 +313,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => serviceDetails,
-    [serviceDetails]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: serviceId,
+  } = useMemo(() => serviceDetails, [serviceDetails]);
 
   const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
@@ -497,7 +521,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`,
         paging,
         include
       );
@@ -512,7 +536,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -526,7 +550,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -543,11 +567,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.FOLLOWERS,
-          ].join(','),
+          fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
           include,
           ...params,
         });
@@ -564,7 +584,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -578,7 +598,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -592,7 +612,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -608,7 +628,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -623,7 +643,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        fields: commonTableFields,
         paging,
         include,
       });
@@ -712,8 +732,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN,
         {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
-            isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS
-          },${isMetadataService ? '' : TabSpecificField.DOMAIN}`,
+            TabSpecificField.FOLLOWERS
+          },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
+            isMetadataService ? '' : TabSpecificField.DOMAIN
+          }`,
           include: Include.All,
         }
       );
@@ -731,6 +753,55 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
+  const followService = useCallback(async () => {
+    try {
+      const res = await addServiceFollower(serviceId, USERId ?? '');
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setServiceDetails((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const unFollowService = useCallback(async () => {
+    try {
+      const res = await removeServiceFollower(serviceId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setServiceDetails((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(serviceDetails),
+        })
+      );
+    }
+  }, [USERId, serviceId]);
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowService() : await followService();
+  }, [isFollowing, unFollowService, followService]);
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
       if (isEmpty(serviceDetails)) {
@@ -783,6 +854,35 @@ const ServiceDetailsPage: FunctionComponent = () => {
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
+  const handleDataProductUpdate = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData = {
+        ...serviceDetails,
+        dataProducts: dataProducts.map((dataProduct) =>
+          getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+        ),
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
     },
     [serviceDetails, serviceCategory]
@@ -854,7 +954,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -1125,6 +1225,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceDetails={serviceDetails}
         statusFilter={statusFilter}
         typeFilter={typeFilter}
+        workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
         onCollateAgentPageChange={onCollateAgentPageChange}
         onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         onPageChange={onPageChange}
@@ -1152,6 +1253,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       handleTypeFilterChange,
       statusFilter,
       typeFilter,
+      workflowStatesData?.mainInstanceState.startedAt,
     ]
   );
 
@@ -1271,6 +1373,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               serviceName={serviceCategory}
               servicePermission={servicePermission}
               showDeleted={showDeleted}
+              onDataProductUpdate={handleDataProductUpdate}
               onDescriptionUpdate={handleDescriptionUpdate}
               onShowDeletedChange={handleShowDeleted}
             />
@@ -1351,7 +1454,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    if (platform === AIRFLOW_HYBRID) {
+      serviceUtilClassBase.getExtraInfo();
+    }
   }, []);
 
   if (isLoading) {
@@ -1369,7 +1474,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         entity: getEntityName(serviceDetails),
       })}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
@@ -1388,6 +1493,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreService}
               onTierUpdate={handleUpdateTier}

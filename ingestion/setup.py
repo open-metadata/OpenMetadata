@@ -13,6 +13,7 @@
 Python Dependencies
 """
 
+import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -27,7 +28,8 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
-    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
+    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
@@ -49,7 +51,7 @@ VERSIONS = {
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableau-api-lib~=0.1",
+    "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
@@ -66,6 +68,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "presidio-analyzer": "presidio-analyzer==2.2.358",
 }
 
 COMMONS = {
@@ -188,7 +191,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2",
+        "clickhouse-sqlalchemy~=0.2.0",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -196,7 +199,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        "dagster_graphql~=1.1",
+        "dagster_graphql>=1.8.0",
     },
     "dbt": {
         "google-cloud",
@@ -250,6 +253,7 @@ plugins: Dict[str, Set[str]] = {
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -335,6 +339,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
@@ -350,8 +355,9 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.355",
+        VERSIONS["presidio-analyzer"],
     },
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
 }
 
 dev = {
@@ -434,7 +440,11 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
+    "faker==37.1.0",  # Fixed the version to prevent flaky tests!
 }
+
+if sys.version_info >= (3, 9):
+    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
@@ -456,6 +466,7 @@ playwright_dependencies = {
     *plugins["airflow"],
     *plugins["datalake-s3"],
     *plugins["dbt"],
+    *plugins["presidio-analyzer"],
     *e2e_test
     # Add other plugins as needed for Playwright tests
 }

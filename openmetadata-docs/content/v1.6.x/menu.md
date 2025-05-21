@@ -212,14 +212,6 @@ site_menu:
     url: /deployment/upgrade/docker
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
     url: /deployment/upgrade/kubernetes
-  - category: Deployment / Upgrade OpenMetadata / Version Changes
-    url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
-    url: /deployment/upgrade/versions/100-to-110
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.1.x to 1.2.x
-    url: /deployment/upgrade/versions/110-to-120
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
-    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
@@ -883,6 +875,8 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Data Insights
+    url: /how-to-guides/admin-guide/data-insights
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
     url: /how-to-guides/admin-guide/persona-landing-page-customization 
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
@@ -1072,6 +1066,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Sample Data Handling Using PII Tags
+    url: /how-to-guides/data-governance/classification/sample-data-using-pii-tag
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
     url: /how-to-guides/data-governance/classification/auto-classification
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
@@ -1101,6 +1097,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.9 Release
+    url: /releases/all-releases/#1.6.9-release
+  - category: Releases / All Releases / 1.6.8 Release
+    url: /releases/all-releases/#1.6.8-release
   - category: Releases / All Releases / 1.6.7 Release
     url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
@@ -1219,9 +1219,6 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
-
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts

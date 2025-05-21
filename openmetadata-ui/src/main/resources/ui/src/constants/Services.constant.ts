@@ -270,6 +270,10 @@ export const servicesDisplayName: { [key: string]: string } = {
 };
 
 export const DEF_UI_SCHEMA = {
+  supportsIncrementalMetadataExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -417,18 +421,10 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
   PipelineServiceType.Wherescape,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
 ];

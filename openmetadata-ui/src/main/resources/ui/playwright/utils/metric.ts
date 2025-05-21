@@ -175,6 +175,7 @@ export const updateRelatedMetric = async (
       hasText: dataAsset.entity.name,
     })
     .click();
+
   await page.locator('[data-testid="saveRelatedMetrics"]').click();
 
   await patchPromise;

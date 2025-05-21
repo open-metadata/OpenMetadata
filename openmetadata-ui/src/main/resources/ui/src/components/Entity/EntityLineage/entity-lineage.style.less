@@ -75,7 +75,7 @@
 }
 
 .custom-node-column-lineage {
-  background: @body-bg-color;
+  background: @background-primary;
   border: 1px solid;
   border-radius: 4px;
 
@@ -150,7 +150,7 @@
 .custom-control-edit-button {
   display: block !important;
   border: 1px solid @border-color;
-  background-color: @body-bg-color;
+  background-color: @background-primary;
 
   &.active {
     background-color: @primary-color;
@@ -248,6 +248,16 @@
   width: calc(100% - @sidebar-width);
   height: calc(100vh - @om-navbar-height);
 
+  &.sidebar-collapsed {
+    left: calc(72px + @padding-md);
+    width: calc(100% - 72px - @size-xl);
+  }
+
+  &.sidebar-expanded {
+    left: calc(228px + @padding-md);
+    width: calc(100% - 228px - @size-xl);
+  }
+
   .lineage-card {
     height: calc(100vh - @om-navbar-height);
     overflow-y: scroll;
@@ -284,7 +294,7 @@
 }
 
 .custom-edge-pipeline-button {
-  background-color: @body-bg-color;
+  background-color: @background-primary;
   color: @primary-color;
 
   &.green {

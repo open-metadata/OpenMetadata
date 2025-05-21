@@ -12,24 +12,25 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
-import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
-import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
-import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
-
-import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
+import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
+
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
@@ -87,6 +88,22 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  ExtraInfoLabel: jest
+    .fn()
+    .mockImplementation(({ label, value, dataTestId }) => (
+      <div data-testid={dataTestId}>
+        {label && <span>{label}</span>}
+        <div>{value}</div>
+      </div>
+    )),
+  ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
+    const props = {
+      href,
+      ...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+    };
+
+    return <a {...props}>{value}</a>;
+  }),
 }));
 
 jest.mock('../../common/CertificationTag/CertificationTag', () => {
@@ -293,8 +310,6 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
-
-    ``;
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
@@ -303,7 +318,7 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
-  it('should render certification when certification is present', () => {
+  it('should always render certification', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {
         tagFQN: 'Certification.Bronze',
@@ -321,7 +336,9 @@ describe('DataAssetsHeader component', () => {
       appliedDate: 1732814645688,
       expiryDate: 1735406645688,
     };
-    render(
+
+    // First test with certification
+    const { unmount } = render(
       <DataAssetsHeader
         {...mockProps}
         dataAsset={{
@@ -336,6 +353,16 @@ describe('DataAssetsHeader component', () => {
     const certificatComponent = screen.getByText(`CertificationTag`);
 
     expect(certificatComponent).toBeInTheDocument();
+
+    // Clean up the first render before rendering again
+    unmount();
+
+    // Second test without certification
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(screen.getByTestId('certification-label')).toContainHTML(
+      'label.no-entity'
+    );
   });
 
   it('should trigger the AutoPilot application when the button is clicked', () => {

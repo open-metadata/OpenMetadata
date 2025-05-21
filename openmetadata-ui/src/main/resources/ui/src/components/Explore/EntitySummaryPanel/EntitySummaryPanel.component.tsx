@@ -22,6 +22,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -32,6 +33,7 @@ import { stringToHTML } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 
@@ -59,7 +61,7 @@ export default function EntitySummaryPanel({
         get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsPermissionLoading(false);
@@ -84,6 +86,7 @@ export default function EntitySummaryPanel({
     if (!viewPermission) {
       return (
         <ErrorPlaceHolder
+          className="border-none h-min-80"
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -99,7 +102,11 @@ export default function EntitySummaryPanel({
             ? tab
             : DRAWER_NAVIGATION_OPTIONS.explore
         }
-        dataAsset={entity}
+        dataAsset={
+          entity as SearchedDataProps['data'][number]['_source'] & {
+            dataProducts: DataProduct[];
+          }
+        }
         entityType={type}
         highlights={highlights}
       />

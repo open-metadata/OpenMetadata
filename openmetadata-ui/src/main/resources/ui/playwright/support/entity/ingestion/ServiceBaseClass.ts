@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 import {
+  APIRequestContext,
   expect,
   Page,
   PlaywrightTestArgs,
@@ -35,6 +36,7 @@ import {
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
+import { ResponseDataType } from '../Entity.interface';
 
 class ServiceBaseClass {
   public category: Services;
@@ -43,7 +45,9 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
+  protected shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
+  public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(
     category: Services,
@@ -51,7 +55,8 @@ class ServiceBaseClass {
     serviceType: string,
     entity: string,
     shouldTestConnection = true,
-    shouldAddIngestion = true
+    shouldAddIngestion = true,
+    shouldAddDefaultFilters = false
   ) {
     this.category = category;
     this.serviceName = name;
@@ -59,7 +64,12 @@ class ServiceBaseClass {
     this.entityName = entity;
     this.shouldTestConnection = shouldTestConnection;
     this.shouldAddIngestion = shouldAddIngestion;
+    this.shouldAddDefaultFilters = shouldAddDefaultFilters;
     this.entityFQN = null;
+  }
+
+  getServiceName() {
+    return this.serviceName;
   }
 
   visitService() {
@@ -78,9 +88,6 @@ class ServiceBaseClass {
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
 
-    const statusPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     const ipPromise = page.waitForRequest(
       '/api/v1/services/ingestionPipelines/ip'
     );
@@ -88,7 +95,6 @@ class ServiceBaseClass {
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
-    await statusPromise;
     await ipPromise;
 
     await page.click('[data-testid="service-requirements"]');
@@ -100,7 +106,7 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(page);
+    this.serviceResponseData = await this.submitService(page);
 
     if (this.shouldAddIngestion) {
       await this.addIngestionPipeline(page);
@@ -222,15 +228,31 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
+    if (this.shouldAddDefaultFilters) {
+      await this.fillIngestionDetails(page);
+    }
+
     const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
         request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
         request.method() === 'POST'
     );
 
+    const saveServiceResponse = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/services/') &&
+        request.method() === 'POST'
+    );
+
     await page.getByTestId('submit-btn').getByText('Save').click();
 
+    const savedService = (await saveServiceResponse).response();
+
+    const serviceDetails = await (await savedService)?.json();
+
     await autoPilotApplicationRequest;
+
+    return serviceDetails;
   }
 
   async scheduleIngestion(page: Page) {
@@ -267,6 +289,18 @@ class ServiceBaseClass {
       .click();
 
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.click('#root\\/raiseOnError');
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -604,6 +638,16 @@ class ServiceBaseClass {
 
   async deleteService(page: Page) {
     await deleteService(this.category, this.serviceName, page);
+  }
+
+  async deleteServiceByAPI(apiContext: APIRequestContext) {
+    if (this.serviceResponseData.fullyQualifiedName) {
+      await apiContext.delete(
+        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          this.serviceResponseData.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      );
+    }
   }
 }
 

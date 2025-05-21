@@ -60,8 +60,8 @@ import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  User,
   EntityReference as UserTeams,
+  User,
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -250,7 +250,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important border-none"
+        className="mt-0-important border-none p-lg"
         doc={doc}
         heading={heading}
         permission={permission}
@@ -1131,7 +1131,6 @@ const TeamDetailsV1 = ({
               header={teamsCollapseHeader}
               key="1">
               <DescriptionV1
-                newLook
                 wrapInCard
                 description={currentTeam.description ?? ''}
                 entityName={getEntityName(currentTeam)}

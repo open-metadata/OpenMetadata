@@ -439,7 +439,7 @@ export interface ConfigClass {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -762,16 +762,6 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
-     * Tableau API version.
-     *
-     * Sigma API version.
-     *
-     * OpenMetadata server API version to use.
-     *
-     * Airbyte API version.
-     */
-    apiVersion?: string;
-    /**
      * Types of methods used to authenticate to the tableau instance
      *
      * Choose Auth Config Type.
@@ -779,10 +769,6 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the alation instance
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
-    /**
-     * Tableau Environment Name.
-     */
-    env?: string;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      *
@@ -795,10 +781,6 @@ export interface ConfigClass {
      * Tableau Site Name.
      */
     siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?: string;
     /**
      * SSL Configuration details.
      *
@@ -909,6 +891,14 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Sigma API version.
+     *
+     * OpenMetadata server API version to use.
+     *
+     * Airbyte API version.
+     */
+    apiVersion?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -4313,7 +4303,7 @@ export interface Pipeline {
     /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -4332,6 +4322,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */
@@ -4465,6 +4459,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -4759,6 +4754,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -5027,19 +5023,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**
@@ -5412,6 +5409,10 @@ export interface WorkflowConfig {
     config?:                  { [key: string]: any };
     loggerLevel?:             LogLevels;
     openMetadataServerConfig: OpenMetadataConnection;
+    /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
     /**
      * The percentage of successfully processed records that must be achieved for the pipeline
      * to be considered successful. Otherwise, the pipeline will be marked as failed.
