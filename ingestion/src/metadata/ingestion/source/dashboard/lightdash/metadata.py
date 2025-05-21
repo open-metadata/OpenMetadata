@@ -11,7 +11,7 @@
 """Lightdash source module"""
 
 import traceback
-from typing import Iterable, List, Optional, Any
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -38,7 +38,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
-    LightdashDashboard, LightdashSpace,
+    LightdashDashboard,
+    LightdashSpace,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -159,7 +160,9 @@ class LightdashSource(DashboardServiceSource):
             Iterable[CreateChartRequest]
         """
         # charts = self.charts
-        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")
+        logger.info(
+            f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}"
+        )
         for chart in dashboard_details.charts:
             try:
                 chart_url = (
@@ -169,16 +172,18 @@ class LightdashSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                yield Either(right=CreateChartRequest(
-                    name=EntityName(chart.uuid),
-                    displayName=chart.name,
-                    description=Markdown(chart.description)
-                    if chart.description
-                    else None,
-                    sourceUrl=SourceUrl(chart_url),
-                    service=self.context.get().dashboard_service,
-                    chartType=get_standard_chart_type(chart.chartType).value,
-                ))
+                yield Either(
+                    right=CreateChartRequest(
+                        name=EntityName(chart.uuid),
+                        displayName=chart.name,
+                        description=Markdown(chart.description)
+                        if chart.description
+                        else None,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=self.context.get().dashboard_service,
+                        chartType=get_standard_chart_type(chart.chartType).value,
+                    )
+                )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
