@@ -73,7 +73,9 @@ disallow_incomplete_defs = false
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
-pythonpath = ["src"]
+addopts = [
+    "--import-mode=importlib",
+]
 
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
