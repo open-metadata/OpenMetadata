@@ -177,11 +177,18 @@
 
   .form-carousel-container {
     position: fixed;
-    right: @size-md;
-    top: @size-md;
-    width: calc(58.33% - @size-md);
-    height: calc(100vh - @size-md * 2);
+    right: @size-lg;
+    top: @size-lg;
+    width: calc(58.33% - @size-lg);
+    height: calc(100vh - @size-lg * 2);
     overflow: hidden;
+
+    @media screen and (min-width: 1710px) {
+      right: @size-xl;
+      top: @size-xl;
+      width: calc(58.33% - @size-xl);
+      height: calc(100vh - @size-xl * 2);
+    }
 
     @media screen and (max-width: 1024px) {
       display: none;
@@ -466,14 +473,24 @@
       }
     }
 
+    .collate-ai-img {
+      width: 360px;
+
+      @media screen and (min-width: 1700px) {
+        width: 550px;
+      }
+    }
+
     .ai-top-right {
       position: absolute;
       top: 12px;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 250px;
 
       @media screen and (min-width: 1700px) {
-        right: 28%;
+        right: 18%;
+        width: 350px;
       }
 
       @media screen and (max-width: 1300px) {
@@ -483,12 +500,14 @@
 
     .ai-bottom-right {
       position: absolute;
-      bottom: -28px;
+      bottom: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 200px;
 
       @media screen and (min-width: 1700px) {
-        right: 22%;
+        right: 14%;
+        width: 300px;
       }
 
       @media screen and (max-width: 1300px) {
