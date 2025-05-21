@@ -39,3 +39,23 @@ SET json = jsonb_set(
 	'true'
 )
 where name = 'AutoPilotApplication';
+
+-- Update workflow settings with default values if present
+UPDATE openmetadata_settings
+SET json = jsonb_set(
+              jsonb_set(
+                jsonb_set(
+                  json,
+                  '{executorConfiguration,corePoolSize}',
+                  '10',
+                  true
+                ),
+                '{executorConfiguration,maxPoolSize}',
+                '20',
+                true
+              ),
+              '{executorConfiguration,jobLockTimeInMillis}',
+              '1296000000',
+              true
+           )
+WHERE configType = 'workflowSettings';
