@@ -2253,12 +2253,17 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@babel/runtime@^7.20.7", "@babel/runtime@^7.21.0", "@babel/runtime@^7.23.2", "@babel/runtime@^7.24.5", "@babel/runtime@^7.24.7":
+"@babel/runtime@^7.20.7", "@babel/runtime@^7.21.0", "@babel/runtime@^7.23.2", "@babel/runtime@^7.24.7":
   version "7.27.0"
   resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.27.0.tgz"
   integrity sha512-VtPOkrdPHZsKc/clNqyi9WUA8TINkZ4cGk63UUE3u4pmB2k+ZMQRDuIOagv8UVd6j7k0T3+RRIb7beKTebNbcw==
   dependencies:
     regenerator-runtime "^0.14.0"
+
+"@babel/runtime@^7.27.0":
+  version "7.27.1"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.27.1.tgz#9fce313d12c9a77507f264de74626e87fd0dc541"
+  integrity sha512-1x3D2xEk2fRo3PAhwQwu5UubzgiVWSXTBfWpVd2Mx2AzRqJuDJCsgaDVZ7HB5iGzDW1Hl1sWN2mFyKjmR9uAog==
 
 "@babel/template@^7.14.5", "@babel/template@^7.3.3":
   version "7.14.5"
@@ -3039,22 +3044,23 @@
     rc-resize-observer "^1.3.1"
     rc-util "^5.44.0"
 
-"@react-awesome-query-builder/antd@^6.6.14":
-  version "6.6.14"
-  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/antd/-/antd-6.6.14.tgz#4865d6d3f0a4f13ff9a5e34983a7db87bf0e1bee"
-  integrity sha512-v9aKJlqRxqCXOfvM+Nl4Mgcbt2u6XYCzaSjvvyuJB83VNvU9Zizw9GJZJg+XLfZqB9wYfwHJbM1Wr228ZTMGXQ==
+"@react-awesome-query-builder/antd@^6.6.15":
+  version "6.6.15"
+  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/antd/-/antd-6.6.15.tgz#ace78253a55e34fb8509925ad915fb13d68a4c60"
+  integrity sha512-WyAG1aSsOE29Q5TtK3bvg49zE4sci4TMTZqt0Ggaq7QoUnDhGX0EQ94EPzyl5mu0Eo22AmnVQAOOE6TM5TCozA==
   dependencies:
-    "@react-awesome-query-builder/ui" "^6.6.14"
+    "@babel/runtime" "^7.27.0"
+    "@react-awesome-query-builder/ui" "^6.6.15"
     lodash "^4.17.21"
     prop-types "^15.8.1"
     rc-picker "^4.5.0"
 
-"@react-awesome-query-builder/core@^6.6.14":
-  version "6.6.14"
-  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/core/-/core-6.6.14.tgz#f476e0a53fb2885e7a994cfcd74b4dbeac5e7b23"
-  integrity sha512-IG5TEbQ6FV8U64AV9pN4v8/uiCMA3aXDK91MfTCOYW5qhp5S4YVL7CS0EngF8b52tlajGMGBcdm5mwkkokiO/Q==
+"@react-awesome-query-builder/core@^6.6.15":
+  version "6.6.15"
+  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/core/-/core-6.6.15.tgz#26f3aa2792140b60864d0206d5d1c039222ebd5d"
+  integrity sha512-vAAEvuoAXRgpX2oN6Uovs5cblvMUePjxweCEa6j9t5QQ4qtn9X7lxaX+5RoMVSiVU5z4Ca2XwxtutEeuY+j6zg==
   dependencies:
-    "@babel/runtime" "^7.24.5"
+    "@babel/runtime" "^7.27.0"
     clone "^2.1.2"
     i18next "^23.11.5"
     immutable "^4.3.6"
@@ -3064,12 +3070,13 @@
     spel2js "^0.2.8"
     sqlstring "^2.3.3"
 
-"@react-awesome-query-builder/ui@^6.6.14":
-  version "6.6.14"
-  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/ui/-/ui-6.6.14.tgz#36511f84b8e79194a38536057bca19c6e6a6af86"
-  integrity sha512-tyKNa+amv2bzX6FK2x0rmS1laN72dyuISuklMikwVZX692EL4EoyTELMILS50GBUnobkbpqmk7Z7t/W+KDKgiw==
+"@react-awesome-query-builder/ui@^6.6.15":
+  version "6.6.15"
+  resolved "https://registry.yarnpkg.com/@react-awesome-query-builder/ui/-/ui-6.6.15.tgz#2bb2dc9f6554b7ff09445b80506659580cb3dcde"
+  integrity sha512-7mkyz+fnVWz1VFvmlYPa9CV2fQhayM8PkcYzymoRTGKiY11WWaAnE49PhCENZV3+48CvnF1z1Dv86Npatl5Lpw==
   dependencies:
-    "@react-awesome-query-builder/core" "^6.6.14"
+    "@babel/runtime" "^7.27.0"
+    "@react-awesome-query-builder/core" "^6.6.15"
     classnames "^2.5.1"
     lodash "^4.17.21"
     prop-types "^15.8.1"
