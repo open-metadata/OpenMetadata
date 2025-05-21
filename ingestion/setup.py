@@ -440,6 +440,7 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     *plugins["exasol"],
+    VERSIONS["opensearch"],
 }
 
 if sys.version_info >= (3, 9):
