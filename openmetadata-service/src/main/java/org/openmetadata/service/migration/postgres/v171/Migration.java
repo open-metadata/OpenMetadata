@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.postgres.v171;
 
 import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateServiceCharts;
+import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateWorkflowDefinitions;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -16,5 +17,9 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     updateServiceCharts();
+
+    // Updating WorkflowDefinition
+    initializeWorkflowHandler();
+    updateWorkflowDefinitions();
   }
 }
