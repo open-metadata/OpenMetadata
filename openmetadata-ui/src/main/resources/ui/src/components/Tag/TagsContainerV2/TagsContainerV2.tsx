@@ -75,6 +75,7 @@ const TagsContainerV2 = ({
   defaultState,
   newLook = false,
   sizeCap = LIST_SIZE,
+  externalControl,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -82,8 +83,26 @@ const TagsContainerV2 = ({
   const { onThreadLinkSelect } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
 
-  const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
+  const [internalIsEditTags, setInternalIsEditTags] = useState(false);
+
+  // Helper function to handle external/internal control
+  const handleExternalControl = useCallback(
+    (isOpen: boolean) => {
+      if (externalControl) {
+        isOpen
+          ? externalControl.onDropdownOpen()
+          : externalControl.onDropdownClose();
+      } else {
+        setInternalIsEditTags(isOpen);
+      }
+    },
+    [externalControl]
+  );
+
+  const isEditTags = externalControl
+    ? externalControl.isDropdownOpen
+    : internalIsEditTags;
 
   const {
     isGlossaryType,
@@ -158,17 +177,17 @@ const TagsContainerV2 = ({
     }
 
     form.resetFields();
-    setIsEditTags(false);
+    handleExternalControl(false);
   };
 
   const handleCancel = useCallback(() => {
-    setIsEditTags(false);
+    handleExternalControl(false);
     form.resetFields();
-  }, [form]);
+  }, [form, handleExternalControl]);
 
   const handleAddClick = useCallback(() => {
-    setIsEditTags(true);
-  }, [isGlossaryType]);
+    handleExternalControl(true);
+  }, [handleExternalControl]);
 
   const addTagButton = useMemo(
     () =>

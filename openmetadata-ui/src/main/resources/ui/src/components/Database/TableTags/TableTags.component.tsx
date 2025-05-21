@@ -32,8 +32,18 @@ const TableTags = <T extends TableUnion>({
   showInlineEditTagButton,
   handleTagSelection,
   entityType,
+  openTagDropdownKey,
+  handleChangeOpenTagDropdownKey,
 }: TableTagsComponentProps<T>) => {
   const { onThreadLinkSelect } = useGenericContext();
+  const dropdownKey = `${record.fullyQualifiedName}-${type}`;
+
+  // Only handle controlled mode
+  const isDropdownOpen = openTagDropdownKey === dropdownKey;
+
+  const handleDropdownChange = (key: string | null) => {
+    handleChangeOpenTagDropdownKey?.(key);
+  };
 
   return (
     <div
@@ -49,6 +59,11 @@ const TableTags = <T extends TableUnion>({
           }}
           entityFqn={entityFqn}
           entityType={entityType}
+          externalControl={{
+            isDropdownOpen,
+            onDropdownOpen: () => handleDropdownChange(dropdownKey),
+            onDropdownClose: () => handleDropdownChange(null),
+          }}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
           showInlineEditButton={showInlineEditTagButton}
@@ -56,6 +71,7 @@ const TableTags = <T extends TableUnion>({
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);
+            handleDropdownChange(null);
           }}>
           <>
             {!isReadOnly && (
