@@ -98,10 +98,14 @@ def _(*_, **__):
 
 
 @compiles(RandomNumFn, Dialects.Snowflake)
+@compiles(RandomNumFn, Dialects.Teradata)
 def _(*_, **__):
     """We use FROM <table> SAMPLE BERNOULLI (n) for sampling
     in snowflake. We'll return 0 to make sure we get all the rows
     from the already sampled results when executing row::MOD(0, 100) < profile_sample.
+
+    Teradata RANDOM(0,100) function can't be used inside ORDER BY clause. That's why
+    use the same trick.
     """
     return "0"
 
