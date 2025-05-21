@@ -34,7 +34,6 @@ import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 
 const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
@@ -192,6 +191,4 @@ const PersonaPageLayout = () => {
   );
 };
 
-export const PersonaPage = withPageLayout(i18n.t('label.persona-plural'))(
-  PersonaPageLayout
-);
+export const PersonaPage = withPageLayout(PersonaPageLayout);

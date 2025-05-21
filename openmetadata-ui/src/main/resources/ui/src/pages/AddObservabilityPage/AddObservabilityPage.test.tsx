@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddObservabilityPage from './AddObservabilityPage';
 
 const MOCK_DATA = [
@@ -95,10 +96,16 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-entity', {
+    entity: i18n.t('label.observability'),
+  }),
+};
+
 describe('Add ObservabilityPage Alerts Page Tests', () => {
   it('should render Add Observability Page', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -108,7 +115,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display SubTitle', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -120,7 +127,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should render Add alert button', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -130,7 +137,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display the correct breadcrumb', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -143,7 +150,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should navigate back when the cancel button is clicked', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });

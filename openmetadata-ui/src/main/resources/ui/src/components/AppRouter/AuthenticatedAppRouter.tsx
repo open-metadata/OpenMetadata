@@ -12,6 +12,7 @@
  */
 
 import React, { FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
@@ -270,6 +271,7 @@ const AddMetricPage = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
 
   const createBotPermission = useMemo(
     () =>
@@ -280,23 +282,56 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Routes>
-      <Route element={<ForbiddenPage />} path={ROUTES.FORBIDDEN} />
+      <Route
+        element={<ForbiddenPage pageTitle={t('label.no-access')} />}
+        path={ROUTES.FORBIDDEN}
+      />
       <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
       <Route element={<TourPageComponent />} path={ROUTES.TOUR} />
-      <Route element={<ExplorePageV1 />} path={ROUTES.EXPLORE} />
+      <Route
+        element={<ExplorePageV1 pageTitle={t('label.explore')} />}
+        path={ROUTES.EXPLORE}
+      />
       <Route element={<PlatformLineage />} path={ROUTES.PLATFORM_LINEAGE} />
       <Route
         element={<PlatformLineage />}
         path={ROUTES.PLATFORM_LINEAGE_WITH_FQN}
       />
-      <Route element={<ExplorePageV1 />} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
-        element={<EditConnectionFormPage />}
+        element={<ExplorePageV1 pageTitle={t('label.explore')} />}
+        path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={
+          <EditConnectionFormPage
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.connection'),
+            })}
+          />
+        }
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route element={<AddServicePage />} path={ROUTES.ADD_SERVICE} />
+      <Route
+        element={
+          <AddServicePage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.service'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_SERVICE}
+      />
       <Route element={<QueryPage />} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
-      <Route element={<AddQueryPage />} path={ROUTES.ADD_QUERY} />
+      <Route
+        element={
+          <AddQueryPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.query'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_QUERY}
+      />
       <Route
         element={
           <AdminProtectedRoute
@@ -305,7 +340,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.INGESTION_PIPELINE,
               permissions
             )}>
-            <AddIngestionPage />
+            <AddIngestionPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.ingestion'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.ADD_INGESTION}
@@ -318,7 +357,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.INGESTION_PIPELINE,
               permissions
             )}>
-            <EditIngestionPage />
+            <EditIngestionPage
+              pageTitle={t('label.edit-entity', {
+                entity: t('label.ingestion'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.EDIT_INGESTION}
@@ -357,7 +400,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
       <Route
-        element={<AddDataQualityTestPage />}
+        element={
+          <AddDataQualityTestPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.data-quality-test'),
+            })}
+          />
+        }
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
       <Route
@@ -368,7 +417,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TABLE,
               permissions
             )}>
-            <AddCustomMetricPage />
+            <AddCustomMetricPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.custom-metric'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.ADD_CUSTOM_METRIC}
@@ -400,26 +453,54 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
       <Route
-        element={<RequestDescriptionPage />}
+        element={
+          <RequestDescriptionPage pageTitle={t('label.request-description')} />
+        }
         path={ROUTES.REQUEST_DESCRIPTION}
       />
       <Route
-        element={<UpdateDescriptionPage />}
+        element={
+          <UpdateDescriptionPage pageTitle={t('label.update-description')} />
+        }
         path={ROUTES.UPDATE_DESCRIPTION}
       />
-      <Route element={<RequestTagsPage />} path={ROUTES.REQUEST_TAGS} />
-      <Route element={<UpdateTagsPage />} path={ROUTES.UPDATE_TAGS} />
+      <Route
+        element={<RequestTagsPage pageTitle={t('label.request-tag-plural')} />}
+        path={ROUTES.REQUEST_TAGS}
+      />
+      <Route
+        element={
+          <UpdateTagsPage
+            pageTitle={t('label.update-entity', {
+              entity: t('label.tag'),
+            })}
+          />
+        }
+        path={ROUTES.UPDATE_TAGS}
+      />
       <Route
         element={<TestSuiteDetailsPage />}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
       <Route element={<LogsViewerPage />} path={ROUTES.LOGS} />
       <Route
-        element={<TestSuiteIngestionPage />}
+        element={
+          <TestSuiteIngestionPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          />
+        }
         path={ROUTES.TEST_SUITES_ADD_INGESTION}
       />
       <Route
-        element={<TestSuiteIngestionPage />}
+        element={
+          <TestSuiteIngestionPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          />
+        }
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
       <Route
@@ -507,20 +588,53 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
       />
       <Route
-        element={<AddObservabilityPage />}
+        element={
+          <AddObservabilityPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.observability'),
+            })}
+          />
+        }
         path={ROUTES.ADD_OBSERVABILITY_ALERTS}
       />
       <Route
-        element={<AddObservabilityPage />}
+        element={
+          <AddObservabilityPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.observability'),
+            })}
+          />
+        }
         path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
       />
       <Route
-        element={<DataInsightPage />}
+        element={<DataInsightPage pageTitle={t('label.data-insight')} />}
         path={ROUTES.DATA_INSIGHT_WITH_TAB}
       />
-      <Route element={<DataInsightPage />} path={ROUTES.DATA_INSIGHT} />
-      <Route element={<AddKPIPage />} path={ROUTES.ADD_KPI} />
-      <Route element={<EditKPIPage />} path={ROUTES.EDIT_KPI} />
+      <Route
+        element={<DataInsightPage pageTitle={t('label.data-insight')} />}
+        path={ROUTES.DATA_INSIGHT}
+      />
+      <Route
+        element={
+          <AddKPIPage
+            pageTitle={t('label.add-new-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_KPI}
+      />
+      <Route
+        element={
+          <EditKPIPage
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        }
+        path={ROUTES.EDIT_KPI}
+      />
       <Route element={<AddTestSuitePage />} path={ROUTES.ADD_TEST_SUITES} />
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
       <Route
@@ -539,7 +653,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<SettingsRouter />} path="/settings" />
       <Route element={<DomainRouter />} path="/domain" />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-      <Route element={<AddMetricPage />} path={ROUTES.ADD_METRIC} />
+      <Route
+        element={
+          <AddMetricPage
+            pageTitle={t('label.add-new-entity', {
+              entity: t('label.metric'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_METRIC}
+      />
       <Route
         element={<EntityRouter />}
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}

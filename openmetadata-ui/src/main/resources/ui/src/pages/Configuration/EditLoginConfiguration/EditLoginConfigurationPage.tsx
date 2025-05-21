@@ -38,7 +38,6 @@ import {
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { generateFormFields } from '../../../utils/formUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -236,8 +235,4 @@ const EditLoginConfiguration = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.edit-entity', {
-    entity: i18n.t('label.login-configuration'),
-  })
-)(EditLoginConfiguration);
+export default withPageLayout(EditLoginConfiguration);

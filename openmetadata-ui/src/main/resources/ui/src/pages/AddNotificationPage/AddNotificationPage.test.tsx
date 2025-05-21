@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddNotificationPage from './AddNotificationPage';
 
 const mockNavigate = jest.fn();
@@ -73,6 +74,12 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: '' }),
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-entity', {
+    entity: i18n.t('label.notification-plural'),
+  }),
+};
+
 describe('AddNotificationPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,7 +87,7 @@ describe('AddNotificationPage', () => {
 
   it('should render Add Notification Page', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -92,7 +99,7 @@ describe('AddNotificationPage', () => {
 
   it('should display the correct breadcrumb', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -105,7 +112,7 @@ describe('AddNotificationPage', () => {
 
   it('should display SubTitle', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -117,7 +124,7 @@ describe('AddNotificationPage', () => {
 
   it('should render Add alert button', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -127,7 +134,7 @@ describe('AddNotificationPage', () => {
 
   it('should navigate back when the cancel button is clicked', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });

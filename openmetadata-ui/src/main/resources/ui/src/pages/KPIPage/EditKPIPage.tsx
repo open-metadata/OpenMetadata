@@ -53,7 +53,6 @@ import {
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getKPIChartType,
   KPIChartOptions,
@@ -460,8 +459,4 @@ const EditKPIPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.edit-entity', {
-    entity: i18n.t('label.kpi-uppercase'),
-  })
-)(EditKPIPage);
+export default withPageLayout(EditKPIPage);

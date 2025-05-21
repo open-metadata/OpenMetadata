@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
@@ -109,8 +109,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
 
-  const onLoadData = useCallback(
-    async (treeNode: ExploreTreeNode): Promise<void> => {
+  const onLoadData: TreeProps['loadData'] = useCallback(
+    async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
         if (treeNode.children) {
           return;
@@ -122,11 +122,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           currentBucketValue,
           filterField = [],
           rootIndex,
-        } = treeNode?.data as TreeNodeData;
+        } = (treeNode as ExploreTreeNode)?.data as TreeNodeData;
 
         const searchIndex = isRoot
           ? treeNode.key
-          : treeNode?.data?.parentSearchIndex;
+          : (treeNode as ExploreTreeNode)?.data?.parentSearchIndex;
 
         const { bucket: bucketToFind, queryFilter } =
           searchQueryParam !== ''
@@ -138,7 +138,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               }
             : getSubLevelHierarchyKey(
                 rootIndex === SearchIndex.DATABASE,
-                treeNode?.data?.filterField,
+                (treeNode as ExploreTreeNode)?.data?.filterField,
                 currentBucketKey as EntityFields,
                 currentBucketValue
               );
@@ -228,13 +228,17 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
+              rootIndex: isRoot
+                ? treeNode.key
+                : (treeNode as ExploreTreeNode).data?.rootIndex,
               dataId: bucket.key,
             },
           };
         });
 
-        setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
+        setTreeData((origin) =>
+          updateTreeData(origin, treeNode.key, children as ExploreTreeNode[])
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -246,8 +250,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
-  const onNodeSelect: TreeProps['onSelect'] = useCallback(
-    (_, { node }) => {
+  const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(
+    (
+      _selectedKeys: Key[],
+      info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
+    ) => {
+      const node = info.node as ExploreTreeNode;
       const filterField = node.data?.filterField;
       if (filterField) {
         onFieldValueSelect(filterField);

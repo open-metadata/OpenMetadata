@@ -15,8 +15,8 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateTag from './UpdateTagPage';
-
 const mockNavigate = jest.fn();
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
@@ -133,7 +133,14 @@ jest.mock('../../../hooks/useFqn', () => ({
 describe('UpdateTagPage', () => {
   it('should render component', async () => {
     await act(async () => {
-      render(<UpdateTag />, { wrapper: MemoryRouter });
+      render(
+        <UpdateTag
+          pageTitle={i18n.t('label.update-entity', {
+            entity: i18n.t('label.tag'),
+          })}
+        />,
+        { wrapper: MemoryRouter }
+      );
     });
 
     expect(
@@ -149,9 +156,15 @@ describe('UpdateTagPage', () => {
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
-    render(<UpdateTag />, { wrapper: MemoryRouter });
+    render(
+      <UpdateTag
+        pageTitle={i18n.t('label.update-entity', {
+          entity: i18n.t('label.tag'),
+        })}
+      />,
+      { wrapper: MemoryRouter }
+    );
     const cancelBtn = await screen.findByTestId('cancel-btn');
-
     act(() => {
       fireEvent.click(cancelBtn);
     });
@@ -161,7 +174,14 @@ describe('UpdateTagPage', () => {
 
   it('should submit form when submit button is clicked', async () => {
     const mockPostThread = postThread as jest.Mock;
-    render(<UpdateTag />, { wrapper: MemoryRouter });
+    render(
+      <UpdateTag
+        pageTitle={i18n.t('label.update-entity', {
+          entity: i18n.t('label.tag'),
+        })}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
     const submitBtn = await screen.findByTestId('submit-tag-request');
 

@@ -50,7 +50,6 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -337,8 +336,4 @@ const EditIngestionPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.edit-entity', {
-    entity: i18n.t('label.ingestion'),
-  })
-)(EditIngestionPage);
+export default withPageLayout(EditIngestionPage);

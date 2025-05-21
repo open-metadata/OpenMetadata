@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import i18n from '../../utils/i18next/LocalUtil';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -112,10 +113,18 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.edit-entity', {
+    entity: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.email'),
+    }),
+  }),
+};
+
 describe('EditEmailConfigPage', () => {
   it('should contain all necessary elements', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage />);
+      render(<EditEmailConfigPage {...mockProps} />);
     });
 
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalled();
@@ -127,7 +136,7 @@ describe('EditEmailConfigPage', () => {
 
   it('actions check', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage />);
+      render(<EditEmailConfigPage {...mockProps} />);
     });
 
     // Focus EmailConfigForm
@@ -169,7 +178,7 @@ describe('EditEmailConfigPage', () => {
     mockUpdateSettingsConfig.mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<EditEmailConfigPage />);
+      render(<EditEmailConfigPage {...mockProps} />);
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR, ENTITY_FETCH_ERROR);

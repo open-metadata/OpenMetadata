@@ -14,7 +14,7 @@ import {
   Config,
   Field,
   ImmutableTree,
-  JsonTree,
+  OldJsonTree,
   Utils as QbUtils,
   ValueSource,
 } from '@react-awesome-query-builder/antd';
@@ -117,7 +117,7 @@ export const AdvanceSearchProvider = ({
       QbUtils.Validation.sanitizeTree(
         QbUtils.loadTree(getEmptyJsonTree()),
         config
-      ),
+      ).fixedTree,
     []
   );
 
@@ -138,9 +138,9 @@ export const AdvanceSearchProvider = ({
 
     try {
       const filter = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(filter as JsonTree);
+      const immutableTree = QbUtils.loadTree(filter as OldJsonTree);
       if (QbUtils.isValidTree(immutableTree, config)) {
-        return filter as JsonTree;
+        return filter as OldJsonTree;
       }
     } catch {
       return undefined;
@@ -153,6 +153,7 @@ export const AdvanceSearchProvider = ({
   const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
     jsonTree
       ? QbUtils.Validation.sanitizeTree(QbUtils.loadTree(jsonTree), config)
+          .fixedTree
       : defaultTree
   );
   const [queryFilter, setQueryFilter] = useState<
@@ -283,7 +284,7 @@ export const AdvanceSearchProvider = ({
   };
 
   const loadTree = useCallback(
-    async (treeObj: JsonTree) => {
+    async (treeObj: OldJsonTree) => {
       const updatedConfig = config;
       const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
 

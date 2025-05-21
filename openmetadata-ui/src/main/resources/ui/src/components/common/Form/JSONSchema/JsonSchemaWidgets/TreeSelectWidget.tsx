@@ -63,7 +63,7 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       }
       treeData={treeData}
       onBlur={() => onBlur(rest.id, rest.value)}
-      onChange={onChange}
+      onChange={(value) => onChange(value)}
       onFocus={() => onFocus(rest.id, rest.value)}
       {...rest}
     />

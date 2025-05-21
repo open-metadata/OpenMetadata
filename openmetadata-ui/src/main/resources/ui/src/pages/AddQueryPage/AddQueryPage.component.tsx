@@ -51,7 +51,6 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -338,8 +337,4 @@ const AddQueryPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.query'),
-  })
-)(AddQueryPage);
+export default withPageLayout(AddQueryPage);

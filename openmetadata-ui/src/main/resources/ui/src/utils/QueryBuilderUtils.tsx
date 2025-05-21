@@ -14,6 +14,8 @@ import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   FieldOrGroup,
   Fields,
+  OldJsonItem,
+  OldJsonTree,
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
@@ -384,7 +386,7 @@ export const getJsonTreePropertyFromQueryFilter = (
 export const getJsonTreeFromQueryFilter = (
   queryFilter: QueryFilterInterface,
   fields?: Fields
-) => {
+): OldJsonTree => {
   try {
     const id1 = generateUUID();
     const id2 = generateUUID();
@@ -405,13 +407,12 @@ export const getJsonTreeFromQueryFilter = (
           ),
           id: id2,
           path: [id1, id2],
-        },
+        } as OldJsonItem,
       },
       id: id1,
-      path: [id1],
     };
   } catch {
-    return {};
+    return {} as OldJsonTree;
   }
 };
 

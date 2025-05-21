@@ -19,6 +19,7 @@ import React from 'react';
 import { MemoryRouter, Route } from 'react-router-dom';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddIngestionPage from './AddIngestionPage.component';
 const mockShowErrorToast = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -118,6 +119,12 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-entity', {
+    entity: i18n.t('label.ingestion-plural'),
+  }),
+};
+
 describe('Test AddIngestionPage component', () => {
   beforeEach(() => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
@@ -136,7 +143,7 @@ describe('Test AddIngestionPage component', () => {
       <MemoryRouter
         initialEntries={['/addIngestion/databaseServices/testIngestionType']}>
         <Route path="/addIngestion/:serviceCategory/:ingestionType">
-          <AddIngestionPage />
+          <AddIngestionPage {...mockProps} />
         </Route>
       </MemoryRouter>
     );

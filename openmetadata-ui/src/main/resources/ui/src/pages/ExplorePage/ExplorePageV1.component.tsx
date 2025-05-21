@@ -13,13 +13,7 @@
 
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
-import {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -52,7 +46,6 @@ import {
   generateTabItems,
   parseSearchParams,
 } from '../../utils/ExploreUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -61,7 +54,7 @@ import {
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-const ExplorePageV1: FunctionComponent = () => {
+const ExplorePageV1: FC<unknown> = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
@@ -396,6 +389,4 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.explore'))(
-  withAdvanceSearch(ExplorePageV1)
-);
+export default withPageLayout(withAdvanceSearch(ExplorePageV1));

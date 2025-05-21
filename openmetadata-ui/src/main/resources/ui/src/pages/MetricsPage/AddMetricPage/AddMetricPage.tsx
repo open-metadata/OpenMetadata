@@ -36,7 +36,6 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -345,8 +344,4 @@ const AddMetricPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.metric'),
-  })
-)(AddMetricPage);
+export default withPageLayout(AddMetricPage);

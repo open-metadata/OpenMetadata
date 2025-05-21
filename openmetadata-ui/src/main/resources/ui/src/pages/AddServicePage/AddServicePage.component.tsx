@@ -43,7 +43,6 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getAddServicePath,
   getServiceDetailsPath,
@@ -342,8 +341,4 @@ const AddServicePage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.service'),
-  })
-)(AddServicePage);
+export default withPageLayout(AddServicePage);

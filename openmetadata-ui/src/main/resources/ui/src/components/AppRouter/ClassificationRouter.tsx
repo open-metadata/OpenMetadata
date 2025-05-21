@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -22,6 +23,7 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 
 const ClassificationRouter = () => {
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
@@ -37,7 +39,7 @@ const ClassificationRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={tagCategoryPermission}>
-            <TagsPage />
+            <TagsPage pageTitle={t('label.tag-plural')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.TAGS}
@@ -45,7 +47,7 @@ const ClassificationRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={tagCategoryPermission}>
-            <TagsPage />
+            <TagsPage pageTitle={t('label.tag-plural')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.TAG_DETAILS}

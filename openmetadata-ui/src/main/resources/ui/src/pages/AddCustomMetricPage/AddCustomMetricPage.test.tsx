@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddCustomMetricPage from './AddCustomMetricPage';
 const mockUseParams = {
   fqn: 'sample_data.ecommerce_db.shopify.dim_address',
@@ -81,9 +82,15 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-entity', {
+    entity: i18n.t('label.custom-metric-plural'),
+  }),
+};
+
 describe('AddCustomMetricPage', () => {
   it('should render component', async () => {
-    render(<AddCustomMetricPage />);
+    render(<AddCustomMetricPage {...mockProps} />);
 
     expect(
       await screen.findByTestId('add-custom-metric-page-container')
@@ -98,7 +105,7 @@ describe('AddCustomMetricPage', () => {
 
   it("should render column profiler if dashboardType is 'column'", async () => {
     mockUseParams.dashboardType = 'column';
-    render(<AddCustomMetricPage />);
+    render(<AddCustomMetricPage {...mockProps} />);
 
     expect(await screen.findByText('SingleColumnProfile')).toBeInTheDocument();
   });

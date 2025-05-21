@@ -62,7 +62,6 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -365,8 +364,4 @@ const AddNotificationPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.notification-alert'),
-  })
-)(AddNotificationPage);
+export default withPageLayout(AddNotificationPage);

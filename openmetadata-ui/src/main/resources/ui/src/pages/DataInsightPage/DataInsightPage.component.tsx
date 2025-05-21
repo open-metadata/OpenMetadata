@@ -27,7 +27,6 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-insight.less';
@@ -180,4 +179,4 @@ const DataInsightPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.data-insight'))(DataInsightPage);
+export default withPageLayout(DataInsightPage);

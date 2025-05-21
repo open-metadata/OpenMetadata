@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import {
@@ -64,13 +65,13 @@ import {
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
-
 const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
 
   return (
     <Routes>
@@ -85,7 +86,11 @@ const SettingsRouter = () => {
               ResourceEntity.ROLE,
               permissions
             )}>
-            <AddRolePage />
+            <AddRolePage
+              pageTitle={t('label.add-new-entity', {
+                entity: t('label.role'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.ADD_ROLE}
@@ -98,7 +103,11 @@ const SettingsRouter = () => {
               ResourceEntity.POLICY,
               permissions
             )}>
-            <AddPolicyPage />
+            <AddPolicyPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.policy'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.ADD_POLICY}
@@ -113,7 +122,15 @@ const SettingsRouter = () => {
         path={ROUTES.ADD_POLICY_RULE}
       />
       <AdminProtectedRoute
-        element={<EditEmailConfigPage />}
+        element={
+          <EditEmailConfigPage
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.entity-configuration', {
+                entity: t('label.email'),
+              }),
+            })}
+          />
+        }
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
       />
@@ -121,7 +138,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={false}>
-            <EditUrlConfigurationPage />
+            <EditUrlConfigurationPage pageTitle={t('label.om-url-config')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.SETTINGS_OM_URL_CONFIG}
@@ -130,7 +147,11 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={false}>
-            <EditLoginConfiguration />
+            <EditLoginConfiguration
+              pageTitle={t('label.edit-entity', {
+                entity: t('label.login-configuration'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
@@ -171,7 +192,13 @@ const SettingsRouter = () => {
         path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
       <Route
-        element={<AddNotificationPage />}
+        element={
+          <AddNotificationPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.notification-alert'),
+            })}
+          />
+        }
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.EDIT_NOTIFICATION,
@@ -179,7 +206,13 @@ const SettingsRouter = () => {
         )}
       />
       <Route
-        element={<AddNotificationPage />}
+        element={
+          <AddNotificationPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.notification-alert'),
+            })}
+          />
+        }
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ADD_NOTIFICATION
@@ -220,7 +253,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute>
-            <PersonaPage />
+            <PersonaPage pageTitle={t('label.persona-plural')} />
           </AdminProtectedRoute>
         }
         path={getSettingPath(GlobalSettingOptions.PERSONA)}
@@ -343,7 +376,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute>
-            <LineageConfigPage />
+            <LineageConfigPage pageTitle={t('label.lineage-config')} />
           </AdminProtectedRoute>
         }
         path={getSettingPath(

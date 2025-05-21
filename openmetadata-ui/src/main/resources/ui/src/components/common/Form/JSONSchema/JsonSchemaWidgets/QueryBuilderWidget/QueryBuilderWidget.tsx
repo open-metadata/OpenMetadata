@@ -28,7 +28,6 @@ import {
   Builder,
   Config,
   ImmutableTree,
-  JsonTree,
   Query,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
@@ -98,10 +97,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         entityType
       );
 
-      const tree = QbUtils.checkTree(
-        QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter) as JsonTree),
+      const tree = QbUtils.sanitizeTree(
+        QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
         config
-      );
+      ).fixedTree;
 
       const queryFilterString = !isEmpty(tree)
         ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
@@ -191,13 +190,13 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         const parsedTree = getJsonTreeFromQueryFilter(
           parsedValue,
           config.fields
-        ) as JsonTree;
+        );
 
         if (Object.keys(parsedTree).length > 0) {
           const tree = QbUtils.Validation.sanitizeTree(
             QbUtils.loadTree(parsedTree),
             config
-          );
+          ).fixedTree;
           onTreeUpdate(tree, config);
           // Fetch count for default value
           debouncedFetchEntityCount(parsedValue);
@@ -211,15 +210,15 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           const parsedTree = getJsonTreeFromQueryFilter(
             updatedQ,
             config.fields
-          ) as JsonTree;
+          );
 
           if (Object.keys(parsedTree).length > 0) {
             const tree1 = QbUtils.Validation.sanitizeTree(
               QbUtils.loadTree(parsedTree),
               config
-            );
+            ).fixedTree;
             if (tree1) {
-              onTreeUpdate(tree1 as unknown as ImmutableTree, config);
+              onTreeUpdate(tree1, config);
             }
           }
         } catch (e) {

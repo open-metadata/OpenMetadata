@@ -13,6 +13,7 @@
 import { Space, Typography, UploadProps } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
@@ -30,7 +31,7 @@ export const UploadFile: FC<UploadFileProps> = ({
   const { t } = useTranslation();
 
   const handleUpload: UploadProps['customRequest'] = useCallback(
-    (options) => {
+    (options: UploadRequestOption) => {
       setUploading(true);
       try {
         const reader = new FileReader();

@@ -263,18 +263,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
+                  state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
                     openEntityInNewPage
                   )}
-                  to={{
-                    pathname: isObject(entityLink)
-                      ? entityLink.pathname
-                      : entityLink,
-                    state: {
-                      breadcrumbData: breadcrumbs.slice(0, -1),
-                    },
-                  }}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">

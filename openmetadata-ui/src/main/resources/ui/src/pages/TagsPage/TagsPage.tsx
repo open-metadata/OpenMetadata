@@ -57,7 +57,6 @@ import {
 } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -782,4 +781,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.tag-plural'))(TagsPage);
+export default withPageLayout(TagsPage);

@@ -30,7 +30,6 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
@@ -222,8 +221,4 @@ const AddRolePage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.role'),
-  })
-)(AddRolePage);
+export default withPageLayout(AddRolePage);

@@ -13,8 +13,8 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  JsonTree,
   ListValues,
+  OldJsonTree,
   RenderSettings,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
@@ -415,7 +415,7 @@ export const getCustomPropertyAdvanceSearchEnumOptions = (
 
 export const getEmptyJsonTree = (
   defaultField: string = EntityFields.OWNERS
-): JsonTree => {
+): OldJsonTree => {
   return {
     id: QbUtils.uuid(),
     type: 'group',

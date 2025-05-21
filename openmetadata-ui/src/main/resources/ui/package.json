@@ -229,6 +229,7 @@
     "webpack-dev-server": "4.15.2"
   },
   "resolutions": {
+    "@types/react": "^18.2.55",
     "history": "4.5.1",
     "prosemirror-model": "1.18.1",
     "prosemirror-state": "1.4.1",

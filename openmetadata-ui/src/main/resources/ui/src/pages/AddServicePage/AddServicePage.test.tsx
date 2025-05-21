@@ -19,6 +19,7 @@ import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowSta
 import { ServiceCategory } from '../../enums/service.enum';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
@@ -201,6 +202,10 @@ const baseAirflowMock = {
   fetchAirflowStatus: jest.fn(),
 };
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-new-entity'),
+};
+
 describe('AddServicePage', () => {
   afterEach(() => {
     jest.clearAllMocks();
@@ -208,7 +213,7 @@ describe('AddServicePage', () => {
 
   it('should render the component', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
@@ -219,7 +224,7 @@ describe('AddServicePage', () => {
 
   it('should handle service type selection', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const selectMySQLButton = screen.getByText('Select MySQL');
@@ -235,7 +240,7 @@ describe('AddServicePage', () => {
 
   it('should handle service type selection cancel', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const cancelButton = screen.getByText('Cancel');
@@ -252,7 +257,7 @@ describe('AddServicePage', () => {
 
   it('should show error when trying to proceed without selecting service type', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     const nextButton = screen.getByText('Next');
@@ -265,7 +270,7 @@ describe('AddServicePage', () => {
 
   it('should handle connection configuration', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // First select a service type
@@ -297,7 +302,7 @@ describe('AddServicePage', () => {
 
   it('should handle service creation success', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -336,7 +341,7 @@ describe('AddServicePage', () => {
 
   it('should handle back navigation in connection configuration', async () => {
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -372,7 +377,7 @@ describe('AddServicePage', () => {
     );
 
     await act(async () => {
-      render(<AddServicePage />, { wrapper: MemoryRouter });
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
     // Select service type
@@ -417,7 +422,7 @@ describe('AddServicePage', () => {
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
       .getExtraInfo as jest.Mock;
-    render(<AddServicePage />, { wrapper: MemoryRouter });
+    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).toHaveBeenCalled();
   });
@@ -430,7 +435,7 @@ describe('AddServicePage', () => {
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
       .getExtraInfo as jest.Mock;
-    render(<AddServicePage />, { wrapper: MemoryRouter });
+    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).not.toHaveBeenCalled();
   });

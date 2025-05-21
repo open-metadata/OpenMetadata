@@ -48,7 +48,6 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -406,8 +405,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.kpi-uppercase'),
-  })
-)(AddKPIPage);
+export default withPageLayout(AddKPIPage);

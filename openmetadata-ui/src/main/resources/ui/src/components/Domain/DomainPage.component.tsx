@@ -33,7 +33,6 @@ import {
   getDomainList,
   patchDomains,
 } from '../../rest/domainAPI';
-import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -237,4 +236,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.domain'))(DomainPage);
+export default withPageLayout(DomainPage);

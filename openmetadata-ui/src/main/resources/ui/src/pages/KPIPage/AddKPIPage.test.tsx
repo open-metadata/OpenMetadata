@@ -11,17 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddKPIPage from './AddKPIPage';
 import { KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
@@ -84,9 +77,15 @@ jest.mock('../../constants/DataInsight.constants', () => ({
   KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  }),
+};
+
 describe('Add KPI page', () => {
   it('Should render all the components', async () => {
-    render(<AddKPIPage />, { wrapper: MemoryRouter });
+    render(<AddKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('add-kpi-container');
     const breadCrumb = await screen.findByTestId('breadcrumb');
@@ -109,7 +108,7 @@ describe('Add KPI page', () => {
   });
 
   it('Should render all the form fields', async () => {
-    render(<AddKPIPage />, { wrapper: MemoryRouter });
+    render(<AddKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const formContainer = await screen.findByTestId('kpi-form');
 
@@ -134,7 +133,7 @@ describe('Add KPI page', () => {
   });
 
   it('should show validation error when description is empty', async () => {
-    render(<AddKPIPage />, { wrapper: MemoryRouter });
+    render(<AddKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const submitButton = await screen.findByTestId('submit-btn');
 
@@ -151,54 +150,5 @@ describe('Add KPI page', () => {
       validationMessages[validationMessages.length - 1];
 
     expect(lastValidationMessage).toBeInTheDocument();
-  });
-
-  it.skip('Should render the proper metric input based on metric type', async () => {
-    render(<AddKPIPage />, { wrapper: MemoryRouter });
-
-    const chart = await screen.findByTestId('chartType');
-
-    const chartInput = await findByRole(chart, 'combobox');
-
-    const metricType = await screen.findByTestId('metricType');
-
-    const metricInput = await findByRole(metricType, 'combobox');
-
-    act(() => {
-      userEvent.click(chartInput);
-    });
-
-    screen.debug(document.body);
-    await waitFor(() => screen.getByText('Owner KPI'));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Owner KPI'));
-    });
-
-    act(() => {
-      userEvent.click(metricInput);
-    });
-
-    // check for percentage type
-    await waitFor(() => screen.getByText('Percentage'));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Percentage'));
-    });
-
-    expect(
-      await screen.findByTestId('metric-percentage-input')
-    ).toBeInTheDocument();
-
-    // check for number type
-    await waitFor(() => screen.getByText('Number'));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Number'));
-    });
-
-    expect(
-      await screen.findByTestId('metric-number-input')
-    ).toBeInTheDocument();
   });
 });

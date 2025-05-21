@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
 import { isEmpty, lowerCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
@@ -50,12 +50,12 @@ import {
   SampleDataType,
 } from './SampleData.interface';
 
-const SampleDataTable = ({
+const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
   owners,
   permissions,
-}: SampleDataProps) => {
+}) => {
   const { isTourPage } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -271,4 +271,4 @@ const SampleDataTable = ({
   );
 };
 
-export default withLoader<SampleDataProps>(SampleDataTable);
+export default withLoader(SampleDataTable);

@@ -353,8 +353,4 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.update-entity', {
-    entity: i18n.t('label.tag'),
-  })
-)(UpdateTag);
+export default withPageLayout(UpdateTag);

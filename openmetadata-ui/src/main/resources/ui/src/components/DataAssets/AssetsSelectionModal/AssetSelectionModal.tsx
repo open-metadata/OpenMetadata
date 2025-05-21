@@ -153,6 +153,11 @@ export const AssetSelectionModal = ({
       page = 1,
       index = activeFilter,
       updatedQueryFilter,
+    }: {
+      searchText?: string;
+      page?: number;
+      index?: SearchIndex;
+      updatedQueryFilter?: Record<string, unknown>;
     }) => {
       try {
         setIsLoading(true);

@@ -15,6 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import RequestTag from './RequestTagPage';
 
 const mockNavigate = jest.fn();
@@ -102,7 +103,9 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 describe('RequestTagPage', () => {
   it('should render component', async () => {
-    render(<RequestTag />, { wrapper: MemoryRouter });
+    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(
       await screen.findByText('TitleBreadcrumb.component')
@@ -119,7 +122,9 @@ describe('RequestTagPage', () => {
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
-    render(<RequestTag />, { wrapper: MemoryRouter });
+    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+      wrapper: MemoryRouter,
+    });
     const cancelBtn = await screen.findByTestId('cancel-btn');
 
     act(() => {
@@ -131,7 +136,9 @@ describe('RequestTagPage', () => {
 
   it('should submit form when submit button is clicked', async () => {
     const mockPostThread = postThread as jest.Mock;
-    render(<RequestTag />, { wrapper: MemoryRouter });
+    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+      wrapper: MemoryRouter,
+    });
 
     const submitBtn = await screen.findByTestId('submit-tag-request');
 

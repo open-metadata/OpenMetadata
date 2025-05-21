@@ -15,6 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -134,9 +135,13 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+const mockProps = {
+  pageTitle: i18n.t('label.glossary'),
+};
+
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -144,7 +149,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 1', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -156,7 +161,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -178,7 +183,7 @@ describe('Test GlossaryComponent page', () => {
       (patchGlossaryTerm as jest.Mock).mockImplementation(() =>
         Promise.resolve({ data: '' })
       );
-      render(<GlossaryPage />);
+      render(<GlossaryPage {...mockProps} />);
       const handleGlossaryTermUpdate = await screen.findByTestId(
         'handleGlossaryTermUpdate'
       );

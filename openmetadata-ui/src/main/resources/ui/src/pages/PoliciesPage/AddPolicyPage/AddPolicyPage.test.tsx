@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../../utils/i18next/LocalUtil';
 import AddPolicyPage from './AddPolicyPage';
 
 jest.mock('../../../hoc/withPageLayout', () => ({
@@ -62,9 +63,15 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-entity', {
+    entity: i18n.t('label.policy'),
+  }),
+};
+
 describe('Test Add Policy Page', () => {
   it('Should Render the Add Policy page component', async () => {
-    render(<AddPolicyPage />, { wrapper: MemoryRouter });
+    render(<AddPolicyPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('add-policy-container');
 
@@ -84,7 +91,7 @@ describe('Test Add Policy Page', () => {
   });
 
   it('Form fields should render', async () => {
-    render(<AddPolicyPage />, { wrapper: MemoryRouter });
+    render(<AddPolicyPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const form = await screen.findByTestId('policy-form');
 

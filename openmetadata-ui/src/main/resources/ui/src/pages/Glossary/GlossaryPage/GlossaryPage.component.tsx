@@ -59,7 +59,6 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -535,4 +534,4 @@ const GlossaryPage = () => {
   return <div>{resizableLayout}</div>;
 };
 
-export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);
+export default withPageLayout(GlossaryPage);

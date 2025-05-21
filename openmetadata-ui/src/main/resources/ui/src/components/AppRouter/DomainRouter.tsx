@@ -15,6 +15,7 @@ import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import i18n from '../../utils/i18next/LocalUtil';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import AddDomain from '../Domain/AddDomain/AddDomain.component';
 import DomainPage from '../Domain/DomainPage.component';
@@ -34,7 +35,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage />
+            <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN}
@@ -42,7 +43,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage />
+            <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS}
@@ -50,7 +51,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage />
+            <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_TAB}

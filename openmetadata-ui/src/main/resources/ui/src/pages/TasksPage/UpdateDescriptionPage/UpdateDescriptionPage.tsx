@@ -46,7 +46,6 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -327,6 +326,4 @@ const UpdateDescription = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.update-description'))(
-  UpdateDescription
-);
+export default withPageLayout(UpdateDescription);

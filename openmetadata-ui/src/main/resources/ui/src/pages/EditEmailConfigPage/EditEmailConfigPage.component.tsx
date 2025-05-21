@@ -36,7 +36,6 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -192,10 +191,4 @@ function EditEmailConfigPage() {
   );
 }
 
-export default withPageLayout(
-  i18n.t('label.edit-entity', {
-    entity: i18n.t('label.entity-configuration', {
-      entity: i18n.t('label.email'),
-    }),
-  })
-)(EditEmailConfigPage);
+export default withPageLayout(EditEmailConfigPage);

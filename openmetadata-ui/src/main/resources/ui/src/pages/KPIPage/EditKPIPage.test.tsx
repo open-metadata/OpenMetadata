@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../utils/i18next/LocalUtil';
 import EditKPIPage from './EditKPIPage';
 import { KPI_DATA } from './KPIMock.mock';
 
@@ -76,9 +77,15 @@ jest.mock('../../constants/DataInsight.constants', () => ({
   KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.edit-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  }),
+};
+
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('edit-kpi-container');
     const breadCrumb = await screen.findByTestId('breadcrumb');
@@ -101,7 +108,7 @@ describe('Edit KPI page', () => {
   });
 
   it('Should render all the form fields', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const formContainer = await screen.findByTestId('kpi-form');
 
@@ -126,7 +133,7 @@ describe('Edit KPI page', () => {
   });
 
   it('Chart input and Metric type input should be disable for edit form', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const chart = await screen.findByTestId('chartType');
 

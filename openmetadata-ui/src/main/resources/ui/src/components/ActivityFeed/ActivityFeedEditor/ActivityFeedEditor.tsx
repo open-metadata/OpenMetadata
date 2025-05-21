@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
@@ -77,7 +78,9 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
      * Handle forward ref logic and provide method access to parent component
      */
     useImperativeHandle(ref, () => ({
-      ...editorRef.current,
+      getEditorContent: editorRef.current?.getEditorContent ?? (() => ''),
+      clearEditorContent: editorRef.current?.clearEditorContent ?? noop,
+      setEditorContent: editorRef.current?.setEditorContent ?? noop,
     }));
 
     return (

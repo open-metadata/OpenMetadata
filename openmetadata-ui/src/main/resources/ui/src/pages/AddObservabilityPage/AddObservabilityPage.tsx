@@ -50,7 +50,6 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -348,8 +347,4 @@ function AddObservabilityPage() {
   );
 }
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.observability'),
-  })
-)(AddObservabilityPage);
+export default withPageLayout(AddObservabilityPage);

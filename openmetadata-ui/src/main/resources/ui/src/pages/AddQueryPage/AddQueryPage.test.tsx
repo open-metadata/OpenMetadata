@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import i18n from '../../utils/i18next/LocalUtil';
 import AddQueryPage from './AddQueryPage.component';
 
 jest.mock('../../rest/tableAPI', () => ({
@@ -75,9 +76,13 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockProps = {
+  pageTitle: i18n.t('label.add-new-entity'),
+};
+
 describe('AddQueryPage test', () => {
   it('Component should render', async () => {
-    render(<AddQueryPage />);
+    render(<AddQueryPage {...mockProps} />);
 
     expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
