@@ -1119,7 +1119,7 @@ const TeamDetailsV1 = ({
 
         <Col
           className="teams-profile-container"
-          data-testid="team-detail-header"
+          data-testid="team-details-collapse"
           span={24}>
           {teamsCollapseHeader}
         </Col>
