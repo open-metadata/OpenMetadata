@@ -276,7 +276,7 @@ const SignInPage = () => {
               </div>
             ) : (
               <div className="m-t-md">
-                <Typography.Text className="text-lg text-grey-muted m-t-lg">
+                <Typography.Text className="text-xl text-grey-muted m-t-lg">
                   {t('message.om-description')}
                 </Typography.Text>
                 <div className="sso-signup">{getSignInButton()}</div>
