@@ -260,7 +260,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [pipelinePermissions, pipelineFQN]);
+  }, []);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
