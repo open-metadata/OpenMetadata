@@ -8,7 +8,7 @@ Test Suites are logical container allowing you to group related Test Cases toget
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ## Step 1: Creating a Test Suite
-From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
+From the vertical navigation bar, click on `Quality icon > Data Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
 
 {% image
   src="/images/v1.7/features/ingestion/workflows/data-quality/profiler-tab-view.png"
