@@ -226,6 +226,7 @@ const SignInPage = () => {
                           {t('label.password')}
                         </Typography.Text>
                         <Typography.Link
+                          className="forgot-password-link"
                           data-testid="forgot-password"
                           onClick={onClickForgotPassword}>
                           {t('label.forgot-password')}
@@ -243,7 +244,7 @@ const SignInPage = () => {
                   </Form.Item>
 
                   <Button
-                    className="w-full p-y-lg d-flex flex-center"
+                    className="w-full p-y-lg d-flex flex-center login-btn"
                     data-testid="login"
                     disabled={loading}
                     htmlType="submit"
@@ -255,7 +256,7 @@ const SignInPage = () => {
                 {!isAuthProviderLDAP && (
                   <>
                     {authConfig?.enableSelfSignup && (
-                      <div className="mt-4 d-flex flex-center">
+                      <div className="mt-4 d-flex flex-center signup-text">
                         <Typography.Text>
                           {t('message.new-to-the-platform')}
                         </Typography.Text>

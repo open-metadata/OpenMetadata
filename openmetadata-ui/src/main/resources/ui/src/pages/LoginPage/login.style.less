@@ -27,19 +27,6 @@
     justify-content: center;
   }
 
-  .form-carousel-container {
-    position: fixed;
-    right: @size-md;
-    top: @size-md;
-    width: calc(58.33% - @size-md);
-    height: calc(100vh - @size-md * 2);
-    overflow: hidden;
-
-    @media screen and (max-width: 1024px) {
-      display: none;
-    }
-  }
-
   .form-item {
     background-color: @white;
     border-radius: @border-radius-lg;
@@ -48,11 +35,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: @size-2xl;
+    margin: @size-2xl auto;
     padding: @size-xl @size-2xl;
     text-align: center;
     height: auto;
     max-width: 500px;
+
+    @media screen and (min-width: 1650px) {
+      min-width: 650px;
+      margin: auto;
+    }
 
     @media screen and (max-width: 1200px) {
       margin: @size-md;
@@ -79,11 +71,44 @@
         font-size: 24px;
         margin-top: @size-lg;
       }
+
+      @media screen and (min-width: 1650px) {
+        font-size: 40px;
+      }
+    }
+
+    .login-form {
+      margin-top: 3rem;
+      width: 380px;
+
+      @media screen and (min-width: 1650px) {
+        width: 550px;
+      }
+
+      @media screen and (max-width: 1024px) {
+        width: 100%;
+        max-width: 380px;
+        margin: 2rem auto 0;
+      }
+
+      .error-alert {
+        border-color: #fbb4ae;
+      }
+
+      .login-btn {
+        @media screen and (min-width: 1650px) {
+          font-size: 18px;
+        }
+      }
     }
 
     label {
       color: @grey-text;
       font-weight: 600;
+
+      @media screen and (min-width: 1650px) {
+        font-size: 20px;
+      }
     }
 
     .input-field {
@@ -91,10 +116,18 @@
       border-radius: @border-radius-xs;
       border: 1px solid @grey-22;
       background-color: @grey-23 !important;
+
+      @media screen and (min-width: 1650px) {
+        padding: @size-md @size-lg;
+      }
     }
 
     .input-field::placeholder {
       color: @grey-24;
+
+      @media screen and (min-width: 1650px) {
+        font-size: 18px;
+      }
     }
 
     #password,
@@ -109,13 +142,49 @@
       justify-content: space-between;
       align-items: center;
 
+      .forgot-password-link {
+        @media screen and (min-width: 1650px) {
+          font-size: 18px;
+        }
+      }
+
       @media screen and (max-width: 768px) {
         width: 100%;
       }
+
+      @media screen and (min-width: 1650px) {
+        width: 600px;
+      }
     }
 
-    @media screen and (min-width: 1600px) {
-      margin: auto;
+    .ant-btn-link.link-btn {
+      padding: @size-xs;
+    }
+
+    .signup-text,
+    .ant-btn-link.link-btn {
+      @media screen and (min-width: 1650px) {
+        font-size: 18px;
+        padding: 0 @size-xs;
+      }
+    }
+
+    .sso-signup {
+      margin-top: @size-xl;
+      margin-bottom: @size-lg;
+    }
+  }
+
+  .form-carousel-container {
+    position: fixed;
+    right: @size-md;
+    top: @size-md;
+    width: calc(58.33% - @size-md);
+    height: calc(100vh - @size-md * 2);
+    overflow: hidden;
+
+    @media screen and (max-width: 1024px) {
+      display: none;
     }
   }
 
@@ -123,6 +192,15 @@
     color: @white;
     font-weight: 700;
     font-size: 42px;
+  }
+
+  .carousal-description {
+    width: 600px;
+    text-align: center;
+    margin: 16px auto;
+    padding: 0 48px;
+    color: @grey-200;
+    font-size: @size-md;
   }
 }
 
@@ -139,30 +217,8 @@
     }
   }
 }
-.login-form {
-  margin-top: 3rem;
-  width: 380px;
-
-  @media screen and (max-width: 1024px) {
-    width: 100%;
-    max-width: 380px;
-    margin: 2rem auto 0;
-  }
-
-  .error-alert {
-    border-color: #fbb4ae;
-  }
-}
 .login-alert {
   margin-top: 1rem;
-}
-.carousal-description {
-  width: 600px;
-  text-align: center;
-  margin: 16px auto;
-  padding: 0 48px;
-  color: @grey-200;
-  font-size: @size-md;
 }
 
 @keyframes fadeIn {
@@ -209,14 +265,24 @@
     z-index: 8;
     top: 10px;
 
+    .governance-image {
+      width: 500px;
+
+      @media screen and (min-width: 1700px) {
+        width: 700px;
+      }
+    }
+
     .governance-top-left {
       position: absolute;
       top: -12px;
       left: 16%;
       animation: slideInFromLeft 1.5s ease-in-out;
+      width: 120px;
 
       @media screen and (min-width: 1700px) {
-        left: 22%;
+        left: 14%;
+        width: 150px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -233,9 +299,11 @@
       top: 50%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 160px;
 
       @media screen and (min-width: 1700px) {
-        right: 22%;
+        right: 14%;
+        width: 200px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -252,9 +320,11 @@
       bottom: -4%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 220px;
 
       @media screen and (min-width: 1700px) {
-        right: 22%;
+        right: 14%;
+        width: 250px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -266,14 +336,24 @@
       }
     }
 
+    .collaboration-image {
+      width: 350px;
+
+      @media screen and (min-width: 1700px) {
+        width: 500px;
+      }
+    }
+
     .collab-top-left {
       position: absolute;
       top: -20px;
       left: 23%;
       animation: slideInFromLeft 1.5s ease-in-out;
+      width: 200px;
 
       @media screen and (min-width: 1700px) {
-        left: 30%;
+        left: 20%;
+        width: 280px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -290,9 +370,11 @@
       top: 44%;
       right: 20%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 200px;
 
       @media screen and (min-width: 1700px) {
-        right: 30%;
+        right: 18%;
+        width: 280px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -304,14 +386,24 @@
       }
     }
 
+    .observability-image {
+      width: 370px;
+
+      @media screen and (min-width: 1700px) {
+        width: 500px;
+      }
+    }
+
     .observability-bottom-right {
       position: absolute;
       bottom: -26px;
       right: 22%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 250px;
 
       @media screen and (min-width: 1700px) {
-        right: 28%;
+        right: 20%;
+        width: 320px;
       }
 
       @media screen and (max-width: 1400px) {
@@ -323,14 +415,24 @@
       }
     }
 
+    .discovery-image {
+      width: 500px;
+
+      @media screen and (min-width: 1700px) {
+        width: 700px;
+      }
+    }
+
     .discovery-top-right {
       position: absolute;
       top: -16px;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 130px;
 
       @media screen and (min-width: 1700px) {
-        right: 22%;
+        right: 14%;
+        width: 170px;
       }
 
       @media screen and (max-width: 1300px) {
@@ -343,9 +445,11 @@
       top: 40%;
       right: 16%;
       animation: slideInFromRight 1.5s ease-in-out;
+      width: 130px;
 
       @media screen and (min-width: 1700px) {
-        right: 22%;
+        right: 14%;
+        width: 170px;
       }
 
       @media screen and (max-width: 1300px) {
@@ -389,11 +493,9 @@
   }
 }
 
-.sso-signup {
-  margin-top: @size-xl;
-  margin-bottom: @size-lg;
-}
-
-.ant-btn-link.link-btn {
-  padding: @size-xs;
+@media screen and (min-width: 1650px) {
+  #password,
+  #confirmPassword {
+    font-size: 18px;
+  }
 }

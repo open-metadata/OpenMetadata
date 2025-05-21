@@ -193,7 +193,7 @@ const BasicSignUp = () => {
                   </Form.Item>
 
                   <Button
-                    className="w-full p-y-lg d-flex flex-center"
+                    className="w-full p-y-lg d-flex flex-center login-btn"
                     htmlType="submit"
                     type="primary">
                     {t('label.create-entity', {
@@ -201,7 +201,7 @@ const BasicSignUp = () => {
                     })}
                   </Button>
 
-                  <div className="mt-4 d-flex flex-center">
+                  <div className="mt-4 d-flex flex-center signup-text">
                     <Typography.Text>
                       {t('message.already-a-user')}
                     </Typography.Text>
