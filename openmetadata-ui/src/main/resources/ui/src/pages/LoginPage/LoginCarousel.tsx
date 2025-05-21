@@ -46,20 +46,17 @@ const LoginCarousel = () => {
             <div className="image-container">
               <img
                 alt="slider"
+                className={data.imgClass}
                 key={`main-${currentIndex}-${idx}`}
-                loading="lazy"
                 src={data.image}
                 style={{ display: 'initial' }}
-                width={data.width}
               />
               {data.image1 && (
                 <img
                   alt="slider"
                   className={data.image1.position}
                   key={`img1-${currentIndex}-${idx}`}
-                  loading="lazy"
                   src={data.image1.image}
-                  width={data.image1.width}
                 />
               )}
               {data.image2 && (
@@ -67,9 +64,7 @@ const LoginCarousel = () => {
                   alt="slider"
                   className={data.image2.position}
                   key={`img2-${currentIndex}-${idx}`}
-                  loading="lazy"
                   src={data.image2.image}
-                  width={data.image2.width}
                 />
               )}
               {data.image3 && (
@@ -77,9 +72,7 @@ const LoginCarousel = () => {
                   alt="slider"
                   className={data.image3.position}
                   key={`img3-${currentIndex}-${idx}`}
-                  loading="lazy"
                   src={data.image3.image}
-                  width={data.image3.width}
                 />
               )}
             </div>
