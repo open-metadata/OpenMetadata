@@ -68,6 +68,9 @@ const MetricListPage = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
 
   const init = async () => {
     try {
@@ -136,6 +139,10 @@ const MetricListPage = () => {
     noop();
   };
 
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -184,9 +191,11 @@ const MetricListPage = () => {
             isReadOnly
             entityFqn={record.fullyQualifiedName ?? ''}
             entityType={EntityType.METRIC}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={noopWithPromise}
             hasTagEditAccess={false}
             index={index}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -204,9 +213,11 @@ const MetricListPage = () => {
             isReadOnly
             entityFqn={record.fullyQualifiedName ?? ''}
             entityType={EntityType.METRIC}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={noopWithPromise}
             hasTagEditAccess={false}
             index={index}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -215,7 +226,7 @@ const MetricListPage = () => {
       },
       ...ownerTableObject<Metric>(),
     ],
-    []
+    [openTagDropdownKey]
   );
 
   useEffect(() => {

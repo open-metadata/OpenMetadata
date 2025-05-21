@@ -79,6 +79,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 }) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
@@ -191,6 +194,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
+
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
 
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
     setExpandedRowKeys(keys as string[]);
@@ -336,10 +343,12 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={permissions.EditTags || permissions.EditAll}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -360,12 +369,14 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={
               permissions.EditGlossaryTerms || permissions.EditAll
             }
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -384,6 +395,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       tagFilter,
       theme,
       handleFieldTagsChange,
+      openTagDropdownKey,
     ]
   );
 
