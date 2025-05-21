@@ -30,8 +30,8 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
   caption="Column profile summary page"
  /%}
 
-### 1. Add a Profiler Ingestion
-From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
+### 1. Add a Profiler Agent
+From the Service Page, go to the Agents tab to add a new Agent and click on Add Profiler Agent.
 
 {% image
   src="/images/v1.7/features/ingestion/workflows/profiler/add-profiler-workflow.png"
@@ -39,8 +39,8 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
   caption="Add a profiler service"
  /%}
 
-### 2. Configure the Profiler Ingestion
-Here you can enter the Profiler Ingestion details.
+### 2. Configure the Profiler Agent
+Here you can enter the Profiler Agent details.
 
 {% image
   src="/images/v1.7/features/ingestion/workflows/profiler/configure-profiler-workflow.png"
