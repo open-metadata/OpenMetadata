@@ -116,6 +116,7 @@ export const AlignRightIconButton = ({
     <Tooltip title={title}>
       <Button
         className={classNames('border-none tab-expand-icon', className)}
+        data-testid="tab-expand-button"
         icon={<ExpandIcon />}
         size={size}
         type="text"

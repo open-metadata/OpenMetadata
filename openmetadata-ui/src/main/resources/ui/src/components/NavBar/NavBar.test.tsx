@@ -10,12 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { ONE_HOUR_MS } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
-
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import NavBar from './NavBar';
+import NavBarComponent from './NavBar';
+
+// Place these at the very top of your test file, before any imports!
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
+
+jest.mock('cookie-storage', () => ({
+  CookieStorage: class {
+    getItem(...args: any[]) {
+      return mockGetItem(...args);
+    }
+    setItem(...args: any[]) {
+      return mockSetItem(...args);
+    }
+    constructor() {
+      // Do nothing
+    }
+  },
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -103,6 +121,10 @@ jest.mock('../AppBar/SearchOptions', () => {
 jest.mock('../AppBar/Suggestions', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">Suggestions</div>);
 });
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+}));
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
 
@@ -115,16 +137,6 @@ jest.mock('antd', () => ({
   }),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  getVersion: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        version: '0.5.0-SNAPSHOT',
-      },
-    })
-  ),
-}));
-
 jest.mock('../../utils/NavbarUtils', () => ({
   getHelpDropdownItems: jest.fn().mockReturnValue([
     {
@@ -134,9 +146,15 @@ jest.mock('../../utils/NavbarUtils', () => ({
   ]),
 }));
 
+jest.mock('../../rest/miscAPI', () => ({
+  getVersion: jest.fn().mockResolvedValue({
+    version: '0.5.0-SNAPSHOT',
+  }),
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
-    render(<NavBar />);
+    render(<NavBarComponent />);
 
     expect(await screen.findByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
@@ -155,14 +173,61 @@ describe('Test NavBar Component', () => {
   });
 
   it('should call getVersion onMount', () => {
-    render(<NavBar />);
+    render(<NavBarComponent />);
 
     expect(getVersion).toHaveBeenCalled();
   });
 
   it('should call getHelpDropdownItems function', async () => {
-    render(<NavBar />);
+    render(<NavBarComponent />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
+  });
+});
+
+// --- Additional tests for fetchOMVersion one hour threshold ---
+describe('fetchOMVersion one hour threshold', () => {
+  const OLD_DATE_NOW = Date.now;
+
+  beforeEach(() => {
+    jest.resetModules();
+
+    global.Date.now = jest.fn();
+  });
+
+  afterEach(() => {
+    global.Date.now = OLD_DATE_NOW;
+  });
+
+  it('should NOT call getVersion if less than one hour since last fetch', async () => {
+    const now = 2000000;
+    const lastFetch = now - (ONE_HOUR_MS - 1000); // less than 1 hour ago
+    mockGetItem.mockReturnValue(String(lastFetch));
+    jest.spyOn(global.Date, 'now').mockReturnValue(now);
+
+    render(<NavBarComponent />);
+    await screen.findByTestId('global-search-bar');
+
+    expect(getVersion).not.toHaveBeenCalled();
+  });
+
+  it('should call getVersion and setItem if more than one hour since last fetch', async () => {
+    const now = 3000000;
+    const lastFetch = now - (ONE_HOUR_MS + 1000); // more than 1 hour ago
+    mockGetItem.mockReturnValue(String(lastFetch));
+    (global.Date.now as jest.Mock).mockReturnValue(now);
+
+    render(<NavBarComponent />);
+    await Promise.resolve();
+
+    await act(async () => {
+      expect(getVersion).toHaveBeenCalled();
+    });
+
+    expect(mockSetItem).toHaveBeenCalledWith(
+      'versionFetchTime',
+      '3000000',
+      expect.objectContaining({ expires: expect.any(Date) })
+    );
   });
 });

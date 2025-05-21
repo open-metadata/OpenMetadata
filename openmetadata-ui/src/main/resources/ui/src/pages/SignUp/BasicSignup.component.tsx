@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -193,7 +192,7 @@ const BasicSignUp = () => {
                   </Form.Item>
 
                   <Button
-                    className="w-full p-y-lg d-flex flex-center"
+                    className="w-full p-y-lg d-flex flex-center login-btn"
                     htmlType="submit"
                     type="primary">
                     {t('label.create-entity', {
@@ -201,7 +200,7 @@ const BasicSignUp = () => {
                     })}
                   </Button>
 
-                  <div className="mt-4 d-flex flex-center">
+                  <div className="mt-4 d-flex flex-center signup-text">
                     <Typography.Text>
                       {t('message.already-a-user')}
                     </Typography.Text>
@@ -221,15 +220,6 @@ const BasicSignUp = () => {
         </Col>
 
         <Col className="form-carousel-container" lg={14} sm={0}>
-          <div className="absolute inset-0">
-            <img
-              alt="bg-image"
-              className="w-full h-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
           <LoginCarousel />
         </Col>
       </Row>

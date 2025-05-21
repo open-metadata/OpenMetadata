@@ -69,11 +69,9 @@ describe('Test SignInPage Component', () => {
       wrapper: MemoryRouter,
     });
     const signInPage = await findByTestId(container, 'signin-page');
-    const bgImg = await findByTestId(container, 'bg-image');
     const LoginCarousel = await findByText(container, /LoginCarousel/i);
 
     expect(signInPage).toBeInTheDocument();
-    expect(bgImg).toBeInTheDocument();
     expect(LoginCarousel).toBeInTheDocument();
   });
 
