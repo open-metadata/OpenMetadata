@@ -504,8 +504,6 @@ export const updateThreadData = async (
 export const prepareFeedLink = (entityType: string, entityFQN: string) => {
   const withoutFeedEntities = [
     EntityType.WEBHOOK,
-    EntityType.GLOSSARY,
-    EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
     EntityType.KNOWLEDGE_PAGE,
   ];
