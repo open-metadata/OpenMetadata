@@ -122,7 +122,7 @@ const ForgotPassword = () => {
                   },
                 ]}>
                 <Input
-                  id="input-field"
+                  className="input-field"
                   placeholder={t('label.email')}
                   type="email"
                 />
@@ -142,7 +142,7 @@ const ForgotPassword = () => {
           <Col className="d-flex flex-center" span={24}>
             <Button
               className="p-0"
-              data-testid="signup"
+              data-testid="go-back-button"
               type="link"
               onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
