@@ -258,6 +258,10 @@ const PipelineDetails = ({
     []
   );
 
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
