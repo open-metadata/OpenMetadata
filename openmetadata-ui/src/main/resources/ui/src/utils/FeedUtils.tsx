@@ -507,6 +507,7 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
     EntityType.GLOSSARY,
     EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
+    EntityType.KNOWLEDGE_PAGE,
   ];
 
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
