@@ -72,19 +72,23 @@ const mockPermissions = {
 } as OperationPermission;
 
 describe('TableProfilerProvider', () => {
-  beforeEach(() => {
+  it('renders children without crashing', async () => {
     render(
       <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
         <div>Test Children</div>
       </TableProfilerProvider>
     );
-  });
 
-  it('renders children without crashing', async () => {
     expect(await screen.findByText('Test Children')).toBeInTheDocument();
   });
 
   it('test cases should be fetch on data quality tab', async () => {
+    render(
+      <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
+        <div>Test Children</div>
+      </TableProfilerProvider>
+    );
+
     const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
     expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
@@ -93,6 +97,28 @@ describe('TableProfilerProvider', () => {
       fields: ['testCaseResult', 'incidentId'],
       includeAllTests: true,
       limit: 10,
+      include: 'non-deleted',
+    });
+  });
+
+  it('test cases should be fetch on data quality tab with deleted', async () => {
+    render(
+      <TableProfilerProvider
+        permissions={mockPermissions}
+        table={{ ...MOCK_TABLE, deleted: true }}>
+        <div>Test Children</div>
+      </TableProfilerProvider>
+    );
+
+    const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+    expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
+    expect(mockGetListTestCase).toHaveBeenCalledWith({
+      entityLink: 'entityLink',
+      fields: ['testCaseResult', 'incidentId'],
+      includeAllTests: true,
+      limit: 10,
+      include: 'deleted',
     });
   });
 });

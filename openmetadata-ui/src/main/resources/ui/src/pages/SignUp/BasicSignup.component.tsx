@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
 
@@ -46,6 +47,8 @@ const BasicSignUp = () => {
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -75,13 +78,13 @@ const BasicSignUp = () => {
   return (
     <>
       <DocumentTitle title={t('label.sign-up')} />
-      <Row className="h-full" data-testid="signin-page">
-        <Col className="bg-white" span={10}>
-          <div className="mt-4 text-center flex-center flex-col">
-            <BrandImage height="auto" width={200} />
-            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-              {t('message.om-description')}
-            </Typography.Text>
+      <Row className="login-form-container" data-testid="signin-page">
+        <Col lg={10} sm={24}>
+          <div className="form-item">
+            <BrandImage isMonoGram height="auto" width={50} />
+            <Typography.Title className="header-text" level={3}>
+              {t('label.welcome-to')} {brandName}
+            </Typography.Title>
 
             {alert && (
               <div className="login-alert">
@@ -109,6 +112,7 @@ const BasicSignUp = () => {
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
                       autoFocus
+                      className="input-field"
                       placeholder={t('label.enter-entity-name', {
                         entity: t('label.first-lowercase'),
                       })}
@@ -121,6 +125,7 @@ const BasicSignUp = () => {
                     name="lastName"
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.last-name-lowercase'),
                       })}
@@ -131,6 +136,7 @@ const BasicSignUp = () => {
                     name="email"
                     rules={[{ type: 'email', required: true }]}>
                     <Input
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.email-lowercase'),
                       })}
@@ -150,6 +156,7 @@ const BasicSignUp = () => {
                     ]}>
                     <Input.Password
                       autoComplete="off"
+                      className="input-field"
                       placeholder={t('label.enter-entity', {
                         entity: t('label.password-lowercase'),
                       })}
@@ -180,28 +187,27 @@ const BasicSignUp = () => {
                     ]}>
                     <Input.Password
                       autoComplete="off"
+                      className="input-field"
                       placeholder={t('label.confirm-password')}
                     />
                   </Form.Item>
 
-                  <Button className="w-full" htmlType="submit" type="primary">
+                  <Button
+                    className="w-full p-y-lg d-flex flex-center"
+                    htmlType="submit"
+                    type="primary">
                     {t('label.create-entity', {
                       entity: t('label.account'),
                     })}
                   </Button>
 
-                  <Divider className="w-min-0  mt-8 mb-12 justify-center">
-                    <Typography.Text type="secondary">
-                      {t('label.or-lowercase')}
-                    </Typography.Text>
-                  </Divider>
-
                   <div className="mt-4 d-flex flex-center">
-                    <Typography.Text className="mr-4">
+                    <Typography.Text>
                       {t('message.already-a-user')}
                     </Typography.Text>
                     <Button
                       ghost
+                      className="link-btn"
                       data-testid="login"
                       type="link"
                       onClick={handleLogin}>
@@ -214,7 +220,7 @@ const BasicSignUp = () => {
           </div>
         </Col>
 
-        <Col className="relative" span={14}>
+        <Col className="form-carousel-container" lg={14} sm={0}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"

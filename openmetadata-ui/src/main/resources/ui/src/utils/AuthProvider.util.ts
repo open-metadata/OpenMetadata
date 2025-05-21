@@ -21,7 +21,6 @@ import {
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import process from 'process';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -35,6 +34,7 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
+import { getBasePath } from './HistoryUtils';
 import { setOidcToken } from './LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
@@ -42,7 +42,7 @@ const cookieStorage = new CookieStorage();
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+const subPath = getBasePath();
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()

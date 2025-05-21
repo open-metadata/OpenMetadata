@@ -124,6 +124,7 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.DATA_PRODUCTS]: () => (
     <DataProductsContainer
+      newLook
       dataProducts={tableClassBase.getDummyData().dataProducts ?? []}
       hasPermission={false}
       showHeader={false}

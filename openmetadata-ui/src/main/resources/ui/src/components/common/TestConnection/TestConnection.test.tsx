@@ -17,9 +17,9 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { WorkflowStatus } from '../../../generated/entity/automations/workflow';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
@@ -77,11 +77,14 @@ jest.mock('../../../rest/workflowAPI', () => ({
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
 }));
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest
-    .fn()
-    .mockImplementation(() => ({ isAirflowAvailable: true })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest
+      .fn()
+      .mockImplementation(() => ({ isAirflowAvailable: true })),
+  })
+);
 
 describe('Test Connection Component', () => {
   it('Should render the child component', async () => {

@@ -130,7 +130,10 @@ const TestCaseResultTab = () => {
       );
     } else if (!isEmpty(withoutSqlParams)) {
       return (
-        <Space className="parameter-value-container parameter-value" size={6}>
+        <Space
+          wrap
+          className="parameter-value-container parameter-value"
+          size={6}>
           {withoutSqlParams.map((param, index) => (
             <Space key={param.name} size={4}>
               <Typography.Text className="text-grey-muted">

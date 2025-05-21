@@ -14,10 +14,13 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { AIRFLOW_HYBRID } from '../../constants/constants';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../enums/service.enum';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
@@ -34,6 +37,17 @@ jest.mock('../../hooks/useApplicationStore', () => ({
     currentUser: { id: '1', name: 'test-user' },
     setInlineAlertDetails: mockSetInlineAlertDetails,
   }),
+}));
+
+jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
+  useAirflowStatus: jest.fn().mockImplementation(() => ({
+    platform: 'Argo',
+  })),
+}));
+
+jest.mock('../../utils/ServiceUtilClassBase', () => ({
+  getExtraInfo: jest.fn(),
+  getServiceConfigData: jest.fn(),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -179,7 +193,19 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+const baseAirflowMock = {
+  isFetchingStatus: false,
+  isAirflowAvailable: true,
+  error: undefined,
+  reason: '',
+  fetchAirflowStatus: jest.fn(),
+};
+
 describe('AddServicePage', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render the component', async () => {
     await act(async () => {
       render(<AddServicePage />, { wrapper: MemoryRouter });
@@ -381,5 +407,31 @@ describe('AddServicePage', () => {
 
     expect(postService).toHaveBeenCalled();
     expect(mockSetInlineAlertDetails).toHaveBeenCalled();
+  });
+
+  it('calls getExtraInfo when platform is Hybrid', () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      ...baseAirflowMock,
+      platform: AIRFLOW_HYBRID,
+    });
+
+    const mockGetExtraInfo = serviceUtilClassBaseModule.default
+      .getExtraInfo as jest.Mock;
+    render(<AddServicePage />, { wrapper: MemoryRouter });
+
+    expect(mockGetExtraInfo).toHaveBeenCalled();
+  });
+
+  it('does not call getExtraInfo when platform is not Hybrid', () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      ...baseAirflowMock,
+      platform: 'Argo',
+    });
+
+    const mockGetExtraInfo = serviceUtilClassBaseModule.default
+      .getExtraInfo as jest.Mock;
+    render(<AddServicePage />, { wrapper: MemoryRouter });
+
+    expect(mockGetExtraInfo).not.toHaveBeenCalled();
   });
 });

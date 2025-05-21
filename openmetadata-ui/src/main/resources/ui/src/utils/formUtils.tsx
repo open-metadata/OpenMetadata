@@ -31,6 +31,7 @@ import { compact, startCase, toString } from 'lodash';
 import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -168,6 +169,15 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
         <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+      );
+
+      break;
+
+    case FieldTypes.TREE_ASYNC_SELECT_LIST:
+      fieldElement = (
+        <TreeAsyncSelectList
+          {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
+        />
       );
 
       break;

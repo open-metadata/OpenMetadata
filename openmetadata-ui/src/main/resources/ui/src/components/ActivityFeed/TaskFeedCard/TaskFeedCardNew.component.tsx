@@ -18,7 +18,6 @@ import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
@@ -357,8 +356,8 @@ const TaskFeedCard = ({
                       ? 'task-card-assignee'
                       : ''
                   }`}>
-                  <AssigneesIcon height={20} width={20} />
                   <OwnerLabel
+                    isAssignee
                     avatarSize={24}
                     isCompactView={false}
                     owners={feed?.task?.assignees}

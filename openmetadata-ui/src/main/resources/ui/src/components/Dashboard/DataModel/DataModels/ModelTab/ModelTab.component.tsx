@@ -12,7 +12,15 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
+import {
+  cloneDeep,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  set,
+  uniqBy,
+} from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,18 +40,25 @@ import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
+import { UpdatedColumnFieldData } from '../../../../Database/SchemaTable/SchemaTable.interface';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 const ModelTab = () => {
@@ -60,10 +75,18 @@ const ModelTab = () => {
     deleted: isReadOnly,
   } = dataModel;
 
+  const { tableColumns, deleted } = useMemo(
+    () => ({
+      tableColumns: dataModel?.columns ?? [],
+      deleted: dataModel?.deleted,
+    }),
+    [dataModel]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
+    editDisplayNamePermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -71,6 +94,8 @@ const ModelTab = () => {
       hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
       hasEditGlossaryTermPermission:
         permissions.EditAll || permissions.EditGlossaryTerms,
+      editDisplayNamePermission:
+        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
     };
   }, [permissions]);
 
@@ -117,6 +142,56 @@ const ModelTab = () => {
     [editColumnDescription, data]
   );
 
+  const updateColumnFields = ({
+    fqn,
+    field,
+    value,
+    columns,
+  }: UpdatedColumnFieldData) => {
+    columns?.forEach((col) => {
+      if (col.fullyQualifiedName === fqn) {
+        set(col, field, value);
+      } else {
+        updateColumnFields({
+          fqn,
+          field,
+          value,
+          columns: col.children as Column[],
+        });
+      }
+    });
+  };
+  const handleColumnUpdate = async (updatedColumns: Column[]) => {
+    if (dataModel && !isEqual(tableColumns, updatedColumns)) {
+      const updatedTableDetails = {
+        ...dataModel,
+        columns: updatedColumns,
+      };
+      await onUpdate(updatedTableDetails);
+    }
+  };
+
+  const handleEditColumnData = async (
+    data: EntityName,
+    fullyQualifiedName?: string
+  ) => {
+    const { displayName } = data as EntityNameWithAdditionFields;
+
+    if (!fullyQualifiedName) {
+      return; // Early return if id is not provided
+    }
+
+    const tableCols = cloneDeep(tableColumns);
+
+    updateColumnFields({
+      fqn: fullyQualifiedName,
+      value: isEmpty(displayName) ? undefined : displayName,
+      field: 'displayName',
+      columns: tableCols,
+    });
+
+    await handleColumnUpdate(tableCols);
+  };
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -126,9 +201,27 @@ const ModelTab = () => {
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
-        render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
-        ),
+        render: (_, record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <DisplayName
+              allowRename={editDisplayNamePermission}
+              displayName={displayName}
+              id={record.fullyQualifiedName ?? ''}
+              link={
+                record.fullyQualifiedName
+                  ? getEntityDetailsPath(
+                      EntityType.DASHBOARD_DATA_MODEL,
+                      record.fullyQualifiedName
+                    )
+                  : ''
+              }
+              name={record.name}
+              onEditDisplayName={handleEditColumnData}
+            />
+          );
+        },
       },
       {
         title: t('label.type'),

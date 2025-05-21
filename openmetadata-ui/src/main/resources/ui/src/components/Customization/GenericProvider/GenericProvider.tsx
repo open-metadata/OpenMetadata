@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, once } from 'lodash';
+import { once } from 'lodash';
 import {
   createContext,
   useCallback,
@@ -153,30 +153,40 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   // Handle the left side panel expand collapse
   useEffect(() => {
     setLayout((prev) => {
-      if (!prev || !leftPanelWidget) {
+      // If layout is empty or no left panel widget, return as is
+      if (!prev?.length || !leftPanelWidget) {
+        return prev;
+      }
+
+      // Check if we need to update the layout
+      const currentLeftPanel = prev.find((widget) =>
+        widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+      );
+
+      const targetWidth = isTabExpanded ? 8 : 6;
+
+      // If the width is already what we want, don't update
+      if (currentLeftPanel?.w === targetWidth) {
         return prev;
       }
 
       if (isTabExpanded) {
-        const widget = leftPanelWidget;
-        widget.w = 8;
-
-        // Store the expanded layout
-        expandedLayout.current = prev;
-
-        return [widget];
-      } else {
-        const leftPanelWidget = expandedLayout.current.find((widget) =>
-          widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-        );
-
-        if (leftPanelWidget) {
-          leftPanelWidget.w = 6;
-        }
-
-        // Restore the collapsed layout
-        return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
+        // Store the current layout before modifying
+        expandedLayout.current = [...prev];
       }
+
+      // Get the source layout to modify
+      const sourceLayout = isTabExpanded
+        ? prev
+        : expandedLayout.current || prev;
+
+      // Update the layout with new width
+      return sourceLayout.map((widget) => ({
+        ...widget,
+        w: widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+          ? targetWidth
+          : widget.w,
+      }));
     });
   }, [isTabExpanded, leftPanelWidget]);
 

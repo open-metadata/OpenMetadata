@@ -40,7 +40,7 @@ const PermissionErrorPlaceholder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
+          <Typography.Paragraph className="w-68" style={{ marginBottom: '0' }}>
             {t('message.no-access-placeholder')}
           </Typography.Paragraph>
         </div>

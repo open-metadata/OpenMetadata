@@ -13,9 +13,9 @@
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
@@ -101,12 +101,15 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => {
   };
 });
 
-jest.mock('../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockReturnValue({
-    isAirflowAvailable: true,
-    isFetchingStatus: false,
-  }),
-}));
+jest.mock(
+  '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    }),
+  })
+);
 
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({

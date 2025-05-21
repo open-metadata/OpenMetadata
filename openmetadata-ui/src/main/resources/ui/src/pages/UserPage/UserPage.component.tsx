@@ -174,12 +174,16 @@ const UserPage = () => {
     fetchUserData();
   }, [username]);
 
-  if (userData?.name !== username || isLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 
   if (isError && isEmpty(userData)) {
     return errorPlaceholder;
+  }
+
+  if (userData?.name !== username) {
+    return <Loader />;
   }
 
   return (

@@ -62,6 +62,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     data: TestCaseParameterDefinition,
     DynamicField?: ReactElement
   ) => {
+    const label = getEntityName(data);
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
       validator(_, formValue) {
         if (data?.validationRule) {
@@ -91,7 +92,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     let Field = (
       <Input
         placeholder={`${t('message.enter-a-field', {
-          field: data.displayName,
+          field: label,
         })}`}
       />
     );
@@ -99,7 +100,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       Field = (
         <Select
           placeholder={`${t('label.please-select-entity', {
-            entity: data.displayName,
+            entity: label,
           })}`}>
           {data.optionValues.map((value) => (
             <Select.Option key={value}>{value}</Select.Option>
@@ -162,7 +163,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             Field = (
               <Input
                 placeholder={`${t('message.enter-a-field', {
-                  field: data.displayName,
+                  field: label,
                 })}`}
               />
             );
@@ -178,7 +179,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             <InputNumber
               className="w-full"
               placeholder={`${t('message.enter-a-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -197,7 +198,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           Field = (
             <Input
               placeholder={`${t('message.enter-comma-separated-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -234,14 +235,14 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                           {
                             required: data.required,
                             message: `${t('message.field-text-is-required', {
-                              fieldText: data.displayName,
+                              fieldText: label,
                             })}`,
                           },
                         ]}>
                         {DynamicField ?? (
                           <Input
                             placeholder={`${t('message.enter-a-field', {
-                              field: data.displayName,
+                              field: label,
                             })}`}
                           />
                         )}
@@ -270,13 +271,13 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       <Form.Item
         data-testid="parameter"
         key={data.name}
-        label={`${data.displayName}:`}
+        label={label}
         name={data.name}
         rules={[
           {
             required: data.required,
             message: `${t('message.field-text-is-required', {
-              fieldText: data.displayName,
+              fieldText: label,
             })}`,
           },
           ruleValidation,

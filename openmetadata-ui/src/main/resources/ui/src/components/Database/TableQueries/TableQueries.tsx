@@ -262,13 +262,16 @@ const TableQueries: FC<TableQueriesProp> = ({
             queries[0]
           : queries[0];
         setSelectedQuery(selectedQueryData);
-        navigate({
-          search: stringifySearchParams({
-            tableId,
-            query: selectedQueryData.id,
-            queryFrom: pageNumber,
-          }),
-        });
+        navigate(
+          {
+            search: stringifySearchParams({
+              tableId,
+              query: selectedQueryData.id,
+              queryFrom: pageNumber,
+            }),
+          },
+          { replace: true }
+        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

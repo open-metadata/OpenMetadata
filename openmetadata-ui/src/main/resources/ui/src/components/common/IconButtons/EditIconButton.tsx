@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, ButtonProps, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
@@ -128,17 +128,42 @@ export const AlignRightIconButton = ({
 export const CardExpandCollapseIconButton = ({
   title,
   className,
+  disabled,
+  ...props
+}: IconButtonPropsInternal) => {
+  const button = (
+    <Button
+      className={classNames('bordered', className)}
+      disabled={disabled}
+      icon={<CardExpandCollapseIcon />}
+      type="text"
+      {...props}
+    />
+  );
+
+  return (
+    <Tooltip title={title}>
+      {/* Adding span to fix the issue with className is not being applied for disabled button
+        Refer this comment for more details https://github.com/ant-design/ant-design/issues/21404#issuecomment-586800984 */}
+      {disabled ? <span className={className}>{button}</span> : button}
+    </Tooltip>
+  );
+};
+
+export const PlusIconButton = ({
+  title,
+  className,
   size,
   ...props
 }: IconButtonPropsInternal) => {
   return (
-    <Button
-      className={classNames('bordered', className)}
-      icon={<CardExpandCollapseIcon />}
-      size={size}
-      title={title}
-      type="text"
-      {...props}
-    />
+    <Tooltip title={title}>
+      <Button
+        className={classNames('bordered', className)}
+        icon={<PlusOutlined />}
+        size={size}
+        {...props}
+      />
+    </Tooltip>
   );
 };

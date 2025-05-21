@@ -147,16 +147,15 @@ export const DataAssetsHeader = ({
     ) : null;
   }, [dataAsset]);
 
-  const excludeEntityService = useMemo(
-    () =>
-      [
-        EntityType.DATABASE,
-        EntityType.DATABASE_SCHEMA,
-        EntityType.API_COLLECTION,
-        ...SERVICE_TYPES,
-      ].includes(entityType),
-    [entityType]
-  );
+  const excludeEntityService = useMemo(() => {
+    const filteredServiceTypes = SERVICE_TYPES.filter(
+      (type) => type !== EntityType.DATABASE_SERVICE
+    );
+
+    return [EntityType.API_COLLECTION, ...filteredServiceTypes].includes(
+      entityType
+    );
+  }, [entityType]);
 
   const hasFollowers = 'followers' in dataAsset;
 
@@ -314,8 +313,11 @@ export const DataAssetsHeader = ({
   );
 
   const showCompressedExtraInfoItems = useMemo(
-    () => getEntityExtraInfoLength(extraInfo) <= 1,
-    [extraInfo]
+    () =>
+      entityType === EntityType.METRIC
+        ? false
+        : getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo, entityType]
   );
 
   const handleOpenTaskClick = () => {
@@ -476,7 +478,7 @@ export const DataAssetsHeader = ({
               isCustomizedView ? { ...link, url: '', noLink: true } : link
             )}
           />
-          <Row>
+          <Row gutter={[20, 0]}>
             <Col className="w-min-0" flex="1">
               <EntityHeaderTitle
                 badge={alertBadge}
@@ -494,8 +496,8 @@ export const DataAssetsHeader = ({
                 serviceName={dataAssetServiceName}
               />
             </Col>
-            <Col className="flex items-center ">
-              <Space className="">
+            <Col className="flex items-center">
+              <Space>
                 <ButtonGroup
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
@@ -577,6 +579,13 @@ export const DataAssetsHeader = ({
                     onRestoreEntity={onRestoreDataAsset}
                   />
                 </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
               </Space>
             </Col>
           </Row>
@@ -713,14 +722,6 @@ export const DataAssetsHeader = ({
               }
             />
             {extraInfo}
-          </div>
-          <div className="mt-2">
-            {activeAnnouncement && (
-              <AnnouncementCard
-                announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementDrawer}
-              />
-            )}
           </div>
         </Col>
       </Row>

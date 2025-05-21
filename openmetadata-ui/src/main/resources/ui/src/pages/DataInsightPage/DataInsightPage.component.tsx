@@ -108,14 +108,22 @@ const DataInsightPage = () => {
     }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (noDataInsightPermission || noKPIPermission) {
     return (
       <Row align="middle" className="w-full h-full" justify="center">
         <Col span={24}>
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </Col>
       </Row>
     );

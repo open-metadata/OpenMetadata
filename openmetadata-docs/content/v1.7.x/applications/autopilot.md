@@ -6,6 +6,8 @@ collate: true
 
 # Autopilot Application
 
+{% youtube videoId="PKvKWZ8vseU" start="0:00" end="1:45" width="800px" height="450px" /%}
+
 The **Autopilot Application** simplifies and accelerates the onboarding of new data services by automatically deploying and triggering essential ingestion workflows.  
 With minimal input—just the service connection details—Autopilot sets up the entire metadata ingestion process using well-defined defaults.
 

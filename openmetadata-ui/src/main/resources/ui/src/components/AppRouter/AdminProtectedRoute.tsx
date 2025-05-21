@@ -31,7 +31,12 @@ const AdminProtectedRoute = ({
   if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
   } else if (!hasPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return <Navigate replace state={{ from: location }} to={ROUTES.SIGNIN} />;

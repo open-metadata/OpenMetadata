@@ -19,7 +19,13 @@ import { Alert } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import {
+  AIRFLOW_HYBRID,
+  COLLATE_SAAS,
+  COLLATE_SAAS_RUNNER,
+  RUNNER,
+} from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
@@ -53,9 +59,11 @@ const ConnectionConfigForm = ({
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
+  const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
+
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -102,6 +110,17 @@ const ConnectionConfigForm = ({
     [data, serviceCategory, serviceType]
   );
 
+  const shouldShowIPAlert = useMemo(() => {
+    return (
+      !isEmpty(connSch.schema) &&
+      isAirflowAvailable &&
+      hostIp &&
+      (platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER)
+    );
+  }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
+
   // Remove the filters property from the schema
   // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
@@ -122,6 +141,17 @@ const ConnectionConfigForm = ({
   const uiSchema = useMemo(() => {
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);
+
+  useEffect(() => {
+    const current = (
+      formRef.current?.state?.formData as Record<string, unknown>
+    )?.[RUNNER];
+    if (typeof current === 'string') {
+      setIngestionRunner(current);
+    } else {
+      setIngestionRunner(undefined);
+    }
+  }, [formRef.current?.state?.formData]);
 
   return (
     <Fragment>
@@ -147,16 +177,14 @@ const ConnectionConfigForm = ({
             {t('message.no-config-available')}
           </div>
         )}
-        {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
+        {shouldShowIPAlert && (
           <Alert
             data-testid="ip-address"
             description={
               <Transi18next
                 i18nKey="message.airflow-host-ip-address"
                 renderElement={<strong />}
-                values={{
-                  hostIp,
-                }}
+                values={{ hostIp }}
               />
             }
             type="info"

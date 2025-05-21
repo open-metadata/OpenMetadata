@@ -204,7 +204,7 @@ const TaskFeedCard = ({
           </Col>
           {!showThread ? (
             <Col span={24}>
-              <div className="d-flex items-start p-l-lg gap-2">
+              <div className="d-flex items-center p-l-lg gap-2">
                 {postLength > 0 && (
                   <>
                     <div className="thread-users-profile-pic">
@@ -235,7 +235,6 @@ const TaskFeedCard = ({
 
                 <Typography.Text
                   className={classNames(
-                    'p-t-xss',
                     postLength > 0
                       ? 'm-l-sm text-sm text-grey-muted'
                       : 'text-sm text-grey-muted'

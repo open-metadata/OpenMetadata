@@ -53,7 +53,6 @@ describe('Test appearance config page', () => {
     expect(screen.getByTestId('customFaviconUrlPath')).toBeInTheDocument();
 
     expect(screen.getByText('label.custom-theme')).toBeInTheDocument();
-    expect(screen.getByTestId('custom-theme-beta-tag')).toBeInTheDocument();
 
     expect(screen.getByTestId('primaryColor-color-input')).toBeInTheDocument();
     expect(screen.getByTestId('errorColor-color-input')).toBeInTheDocument();

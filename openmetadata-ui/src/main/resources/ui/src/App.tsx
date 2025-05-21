@@ -22,6 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import AirflowStatusProvider from './context/AirflowStatusProvider/AirflowStatusProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
@@ -84,7 +85,9 @@ const App: FC = () => {
                             <ApplicationsProvider>
                               <AsyncDeleteProvider>
                                 <EntityExportModalProvider>
-                                  <AppRouter />
+                                  <AirflowStatusProvider>
+                                    <AppRouter />
+                                  </AirflowStatusProvider>
                                 </EntityExportModalProvider>
                               </AsyncDeleteProvider>
                             </ApplicationsProvider>

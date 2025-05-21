@@ -110,7 +110,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           value: (
             <OwnerLabel
               avatarSize={18}
+              isCompactView={false}
               owners={(source?.owners as EntityReference[]) ?? []}
+              showLabel={false}
             />
           ),
         },

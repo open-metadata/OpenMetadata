@@ -50,7 +50,6 @@ const TableTags = <T extends TableUnion>({
           entityType={entityType}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
-          showHeader={false}
           showInlineEditButton={showInlineEditTagButton}
           sizeCap={TAG_LIST_SIZE}
           tagType={type}
