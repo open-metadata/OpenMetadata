@@ -17,8 +17,7 @@ from typing import Dict, Optional, Union
 from sqlalchemy import Column
 from sqlalchemy import Table as SqaTable
 from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeMeta, Query
-from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
@@ -78,9 +77,9 @@ class BigQuerySampler(SQASampler):
             self._table.__table__.schema = (
                 f"{self.entity.database.name}.{self._table.__table__.schema}"
             )
-            self._table.__table_args__["schema"] = (
-                f"{self.entity.database.name}.{self._table.__table_args__['schema']}"
-            )
+            self._table.__table_args__[
+                "schema"
+            ] = f"{self.entity.database.name}.{self._table.__table_args__['schema']}"
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
