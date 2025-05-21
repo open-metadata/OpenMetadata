@@ -19,6 +19,7 @@ class LightdashChart(BaseModel):
     pinnedListUuid: Optional[str] = None
     spaceName: str
     chartType: Optional[str] = None
+    chartKind: Optional[str] = None
     dashboardUuid: Optional[str] = None
     dashboardName: Optional[str] = None
 

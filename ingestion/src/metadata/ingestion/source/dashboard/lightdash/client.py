@@ -188,6 +188,7 @@ class LightdashApiClient:
                             spaceUuid=dashboard.spaceUuid,
                             spaceName=dashboard.spaceName,
                             chartType=chart["lastVersionChartKind"],
+                            chartKind=chart["lastVersionChartKind"],
                         )
                     )
                 else:

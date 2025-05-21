@@ -169,6 +169,8 @@ class LightdashSource(DashboardServiceSource):
                     f"{clean_uri(self.service_connection.hostPort)}/projects/{dashboard_details.projectUuid}"
                     f"/saved/{chart.uuid}"
                 )
+                chart_type = get_standard_chart_type(chart.chartKind).value
+
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
@@ -181,7 +183,7 @@ class LightdashSource(DashboardServiceSource):
                         else None,
                         sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,
-                        chartType=get_standard_chart_type(chart.chartType).value,
+                        chartType=chart_type,
                     )
                 )
                 self.status.scanned(chart.name)
