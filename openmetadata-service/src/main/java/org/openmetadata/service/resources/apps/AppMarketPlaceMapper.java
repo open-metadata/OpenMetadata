@@ -54,7 +54,7 @@ public class AppMarketPlaceMapper
   private String validateAppClass(String className) {
     className =
         Objects.requireNonNull(className, "AppMarketPlaceDefinition.className cannot be null");
-    if (!className.startsWith("org.openmetadata.") || !className.contains("io.collate.")) {
+    if (!className.startsWith("org.openmetadata.") && !className.startsWith("io.collate.")) {
       throw new BadRequestException(
           "Only classes from org.openmetadata or io.collate packages are allowed: " + className);
     }
