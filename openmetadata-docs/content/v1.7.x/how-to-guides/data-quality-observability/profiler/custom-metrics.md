@@ -24,7 +24,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
   caption="Input SQL query"
  /%}
 
-- Once the custom metric is defined, run the **ingestion** process in the **Database Services**.
+- Once the custom metric is defined, run the **ingestion agent** in the **Database Services**.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric3.png"
@@ -32,7 +32,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
   caption="Run Ingestion"
  /%}
 
-- After the ingestion process is complete, return to the same dataset to view the computed custom metric within the table profile.
+- After the ingestion agent process, return to the same dataset to view the computed custom metric within the table profile.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric4.png"
@@ -54,19 +54,19 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/column-metric2.png"
-  alt="Run Ingestion"
-  caption="Run Ingestion"
+  alt="Run Ingestion Agent"
+  caption="Run Ingestion Agent"
  /%}
 
 - Save and run the profiler workflow to generate the metric.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/column-metric3.png"
-  alt="Run Ingestion"
-  caption="Run Ingestion"
+  alt="Run Ingestion Agent"
+  caption="Run Ingestion Agent"
  /%}
 
-- After the ingestion process is complete, return to the same dataset to view the computed custom metric within the column profile.
+- After the ingestion agent process, return to the same dataset to view the computed custom metric within the column profile.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/column-metric4.png"
