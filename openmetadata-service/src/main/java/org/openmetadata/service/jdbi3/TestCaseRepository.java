@@ -194,11 +194,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     } catch (EntityNotFoundException e) {
       // If the test suite is not found, we'll create a new one
       EntityLink entityLink = EntityLink.parse(test.getEntityLink());
-      TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
       TestSuiteMapper mapper = new TestSuiteMapper();
-      CreateTestSuite createTestSuite = new CreateTestSuite()
-        .withName(entityLink.getEntityFQN() + ".testSuite")
-        .withBasicEntityReference(entityLink.getEntityFQN());
+      CreateTestSuite createTestSuite =
+          new CreateTestSuite()
+              .withName(entityLink.getEntityFQN() + ".testSuite")
+              .withBasicEntityReference(entityLink.getEntityFQN());
       TestSuite testSuite = mapper.createToEntity(createTestSuite, INGESTION_BOT_NAME);
       testSuiteRepository.create(null, testSuite);
       entityReference = testSuite.getEntityReference();
