@@ -291,18 +291,10 @@ public class OpenSearchSourceBuilderFactory
     if (fvb.getModifier() != null) {
       switch (fvb.getModifier().value()) {
         case "log":
-          condition =
-              QueryBuilders.boolQuery()
-                  .filter(condition)
-                  .filter(QueryBuilders.rangeQuery(fvb.getField()).gt(0));
           factorBuilder.modifier(FieldValueFactorFunction.Modifier.LOG);
           break;
         case "log1p":
           try {
-            condition =
-                QueryBuilders.boolQuery()
-                    .filter(condition)
-                    .filter(QueryBuilders.rangeQuery(fvb.getField()).gt(-1));
             factorBuilder.modifier(FieldValueFactorFunction.Modifier.LOG1P);
           } catch (NoSuchFieldError e) {
             factorBuilder.modifier(FieldValueFactorFunction.Modifier.LOG);
@@ -310,10 +302,6 @@ public class OpenSearchSourceBuilderFactory
           break;
         case "sqrt":
           try {
-            condition =
-                QueryBuilders.boolQuery()
-                    .filter(condition)
-                    .filter(QueryBuilders.rangeQuery(fvb.getField()).gte(0));
             factorBuilder.modifier(FieldValueFactorFunction.Modifier.SQRT);
           } catch (NoSuchFieldError ignored) {
           }
