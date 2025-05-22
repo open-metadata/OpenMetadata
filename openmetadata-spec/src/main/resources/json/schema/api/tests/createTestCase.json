@@ -50,7 +50,7 @@
       "description": "Tags for this test case. This is an inherited field from the parent entity and is not set directly on the test case.",
       "type": "array",
       "items": {
-        "$ref": "../type/tagLabel.json"
+        "$ref": "../../type/tagLabel.json"
       },
       "default": []
     }

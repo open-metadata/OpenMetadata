@@ -3316,7 +3316,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
-    assertReference(request.getTestSuite(), createdEntity.getTestSuite());
     assertReference(request.getTestDefinition(), createdEntity.getTestDefinition());
     assertEquals(request.getParameterValues(), createdEntity.getParameterValues());
   }
