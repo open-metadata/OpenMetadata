@@ -37,6 +37,10 @@ jest.mock(
   })
 );
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {
     it('should return the correct query filter', () => {

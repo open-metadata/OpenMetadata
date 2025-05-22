@@ -37,7 +37,11 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => mockParam),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
 jest.mock('../../hooks/useTableFilters', () => ({

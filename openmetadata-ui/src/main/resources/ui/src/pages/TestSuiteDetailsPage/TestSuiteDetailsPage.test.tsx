@@ -80,12 +80,23 @@ jest.mock('../../hooks/useApplicationStore', () => {
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => {
   return {
-    useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
-    useLocation: jest.fn().mockImplementation(() => ({
-      pathname: mockLocationPathname,
-    })),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    fqn: 'testSuiteFQN',
+  })),
+}));
+
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: () => ({
+    pathname: mockLocationPathname,
+  }),
+}));
+
 jest.mock('../../rest/testAPI', () => {
   return {
     getTestSuiteByName: jest.fn().mockImplementation(() => Promise.resolve()),

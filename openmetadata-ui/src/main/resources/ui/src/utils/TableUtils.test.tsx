@@ -46,6 +46,10 @@ jest.mock('./EntityLink', () => ({
   getTableEntityLink: jest.fn(),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 describe('TableUtils', () => {
   it('getTierTags should return the correct usage percentile', () => {
     const tags = [

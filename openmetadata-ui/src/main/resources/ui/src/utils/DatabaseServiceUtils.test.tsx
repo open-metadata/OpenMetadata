@@ -40,6 +40,10 @@ jest.mock(
   })
 );
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 describe('ExtraDatabaseServiceDropdownOptions', () => {
   it('should render import button when user has editAll permission', () => {
     const permission = {
