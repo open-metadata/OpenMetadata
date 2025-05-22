@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_7_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_7_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1648,6 +1648,75 @@ We bring new connectors in each release, continuously expanding our coverage. Th
 • **Cockroach DB**: The cloud native distributed SQL Database.
 
 And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
+    },
+  },
+  {
+    id: 69,
+    version: 'v1.7.1',
+    description: 'Released on 22nd May 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Login page UI.
+- DQ failure lineage tracing.
+- Add Domain selection while creating tags.
+- Add support for Korean language.
+- Support edit display name for dashboard Data model.
+- Configurable account usage for incremental metadata extraction.
+- Add athena schema comment support.
+- Support dynamic height for detail page widgets.
+- Add support for following databases, schemas and services.
+- Allow editing of sql function in column level lineage.
+- Support chart export in cost analysis.
+- Add domain-level permissions while creating/updating dataProduct.
+- Add support to add and edit Data Product from entity page.
+- Add bulk edit action for glossary listing page.
+- PDF export quality.${CollateIconWithLinkMD}
+- Support un-nesting to parent level knowledge article.${CollateIconWithLinkMD}
+- Support brush for zoom support within charts.${CollateIconWithLinkMD}
+      `,
+      Fixes: `- Severity on incident POST creation.
+- Service insights PDF export.
+- Can't run table diffs on snowflake when using private key authentication.
+- Self signup login error not showing.
+- Service connection config not getting updated with multiple project ids after ingestion .
+- Data assets order in explore left panel.
+- Added display name and description in Testcase Alert emails.
+- PostgreSQL schemas getting filtered out.
+- Make prompt=login as optional.
+- Apps allowing submission of negative numbers for some config fields.
+- Error Connecting S3 container to pipeline or tables in lineage edit mode.
+- Mentions on task should trigger @mention alert.
+- Postgres Duplicate table constraint error when re-ingesting.
+- Unsupported Pipeline entity for lineage error.
+- Issue with refresh for loggedInUser return 401.
+- Render settings menu based on permissions.
+- Data products not visible when redirecting from assets listing to entity page.
+- Make certification always visible.
+- Dots are misaligned / unclear in multi-metric view of Test Case Metrics.
+- Snowflake Tags Not Reattached or Re-ingested After Initial Ingestion.
+- Remove data products associated with the old domain when an entity's domain is updated.
+- Multiple image insertion issue and ensure proper inline error messaging for Rich Text Editor.
+- Handle udf definition fetch exceptions.
+- parquet endpoint null case error.
+- Deleted user page shows a spinner instead of "User not found".
+- Enum cleanup not triggering when all enum keys are removed in custom property.
+- Inconsistent behavior when reassigning asset to a different domain via bulkAsset API.
+- Airbyte pipeline lineage extraction.
+- Add include field for list incident API.
+- Metadata ingestion errors from Azure Data Lake.
+- Support Ingesting Multiple Owners for dbt Models from manifest.json.
+- Error ingesting using Datalake adls connector.
+- PostgreSQL Sample Data Err- FATAL: too many connections for role "role_name".
+- Testcase "Column values to be uniqu- oracledb error (ORA-00937).
+- Alert Triggering on Both Failure and Success of the Test Case even if configured for failure only.
+- PBI lineage when source parameters are used and lineage needs to be created from source expression.
+- Comments not reflecting after ingestion for DB columns in Vertica.
+- Custom theme styling issues.
+- Entity right panel collapsing issue.
+- Feeds count not showing up in PipelineDetails page.
+- Reverse metadata workflow exits with 1 when test connection fails.${CollateIconWithLinkMD}
+- Knowledge center card in entity page not containing data.${CollateIconWithLinkMD}
+      `,
     },
   },
 ];
