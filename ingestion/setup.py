@@ -375,16 +375,13 @@ dev = {
     *plugins["sample-data"],
 }
 
-# Dependencies for unit testing in addition to dev dependencies and all plugins
+# Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    # We need to install the plugins for unit tests, as they are not installed by default
-    # FIXME: This is a temporary fix until we have a better solution for testing plugins
-    VERSIONS["airflow"],
 }
 
 test = {
@@ -506,7 +503,14 @@ setup(
         "e2e_test": list(e2e_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        "all": filter_requirements({"airflow", "db2", "great-expectations", "pymsql"}),
+        # FIXME: all-dev-env is a temporary solution to install all dependencies except
+        # those that might conflict with each other or cause issues in the dev environment
+        # This covers all development cases where none of the plugins are used
+        "all-dev-env": filter_requirements(
+            {"airflow", "db2", "great-expectations", "pymssql"}
+        ),
+        # enf-of-fixme
+        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
