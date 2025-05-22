@@ -510,7 +510,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage />
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_TAB}
@@ -522,7 +526,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage />
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY}

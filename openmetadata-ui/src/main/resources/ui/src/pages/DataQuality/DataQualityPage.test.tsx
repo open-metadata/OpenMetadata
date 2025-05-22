@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
+import i18n from '../../utils/i18next/LocalUtil';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -86,9 +87,13 @@ jest.mock('react-router-dom', () => {
   };
 });
 
+const mockProps = {
+  pageTitle: i18n.t('label.data-quality'),
+};
+
 describe('DataQualityPage', () => {
   it('component should render', async () => {
-    render(<DataQualityPage />, { wrapper: MemoryRouter });
+    render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('page-title')).toBeInTheDocument();
     expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();
