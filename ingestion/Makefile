@@ -73,7 +73,8 @@ unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Onl
 	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit \
 	 	--ignore=$(INGESTION_DIR)/tests/unit/great_expectations/test_ometa_validation_action.py \
-	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py
+	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
+	 	--ignore-glob="*airflow*"
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
