@@ -31,7 +31,7 @@ class QueryInfo(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     statement: Union[str, TextClause]
-    parameters: Optional[Dict[str, Any]]
+    parameters: Optional[Union[Dict[str, Any], Tuple[Any, ...]]]
     start_time: datetime
     end_time: Optional[datetime] = None
     duration_ms: Optional[float] = None

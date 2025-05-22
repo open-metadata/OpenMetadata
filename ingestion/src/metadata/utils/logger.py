@@ -19,9 +19,6 @@ from functools import singledispatch
 from types import DynamicClassAttribute
 from typing import Dict, Optional, Union
 
-from sqlalchemy.orm import Query
-from sqlalchemy.sql import Select
-
 from metadata.data_quality.api.models import (
     TableAndTests,
     TestCaseResultResponse,
