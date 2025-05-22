@@ -203,7 +203,7 @@ def test_us_ssn_extraction(fake_en_us, analyzer):
 def test_aadhaar_extraction(analyzer):
     # fake = local_fake_factory("en_IN")  # Use Indian locale
     # samples = [fake.aadhaar_id() for _ in range(100)]
-    # Unfortunately, the generated aadhaar_id by Faker are not valid
+    # Unfortunately, the generated aadhaar_ids by Faker are not always valid
     samples = [
         "466299546357",
         "967638147560",
@@ -224,7 +224,28 @@ def test_aadhaar_extraction(analyzer):
     )
 
 
-# TODO: Add more test for local entities
+def test_indian_passport_extraction(analyzer):
+    # Randomly generated valid Indian passport numbers
+    samples = [
+        "A1234567",
+        "B7654321",
+        "C2345678",
+        "D3456789",
+        "E4567890",
+        "F5678901",
+        "G6789012",
+        "H7890123",
+        "J8901234",
+        "K9012345",
+    ]
+
+    context = ["passport", "document"]
+    extracted = extract_pii_tags(analyzer, samples, context=context)
+    assert get_top_pii_tag(extracted) == PIITag.IN_PASSPORT, (
+        PIITag.IN_PASSPORT,
+        samples,
+        extracted,
+    )
 
 
 def test_extract_pii_from_column_names():

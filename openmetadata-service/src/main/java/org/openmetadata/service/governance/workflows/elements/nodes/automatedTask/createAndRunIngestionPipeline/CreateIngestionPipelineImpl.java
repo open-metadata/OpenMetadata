@@ -155,16 +155,24 @@ public class CreateIngestionPipelineImpl {
         pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
       LOG.debug(
           String.format(
-              "Service '%s' does not support Ingestion Pipeline of type '%s'",
-              service.getDisplayName(), pipelineType));
+              "[GovernanceWorkflows] Service '%s' does not support Ingestion Pipeline of type '%s'",
+              service.getName(), pipelineType));
       return new CreateIngestionPipelineResult(null, true);
     }
+    LOG.info(
+        "[GovernanceWorkflows] Creating '{}' Agent for '{}'",
+        pipelineType.value(),
+        service.getName());
 
     boolean wasSuccessful = true;
 
     IngestionPipeline ingestionPipeline = getOrCreateIngestionPipeline(pipelineType, service);
 
     if (deploy) {
+      LOG.info(
+          "[GovernanceWorkflows] Deploying '{}' for '{}'",
+          ingestionPipeline.getDisplayName(),
+          service.getName());
       wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       if (wasSuccessful) {
         // Mark the pipeline as deployed
@@ -172,6 +180,11 @@ public class CreateIngestionPipelineImpl {
         IngestionPipelineRepository repository =
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
+      } else {
+        LOG.warn(
+            "[GovernanceWorkflows] '{}' deployment failed for '{}'",
+            pipelineType.value(),
+            service.getName());
       }
     }
 

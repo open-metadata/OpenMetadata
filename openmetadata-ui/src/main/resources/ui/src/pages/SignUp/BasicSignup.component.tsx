@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -26,6 +25,7 @@ import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
 
@@ -46,6 +46,8 @@ const BasicSignUp = () => {
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -78,10 +80,10 @@ const BasicSignUp = () => {
       <Row className="login-form-container" data-testid="signin-page">
         <Col lg={10} sm={24}>
           <div className="form-item">
-            <BrandImage height="auto" width={160} />
-            <Typography.Text className="text-lg text-grey-muted m-t-lg">
-              {t('message.om-description')}
-            </Typography.Text>
+            <BrandImage isMonoGram height="auto" width={50} />
+            <Typography.Title className="header-text" level={3}>
+              {t('label.welcome-to')} {brandName}
+            </Typography.Title>
 
             {alert && (
               <div className="login-alert">
@@ -190,7 +192,7 @@ const BasicSignUp = () => {
                   </Form.Item>
 
                   <Button
-                    className="w-full p-y-lg d-flex flex-center"
+                    className="w-full p-y-lg d-flex flex-center login-btn"
                     htmlType="submit"
                     type="primary">
                     {t('label.create-entity', {
@@ -198,12 +200,13 @@ const BasicSignUp = () => {
                     })}
                   </Button>
 
-                  <div className="mt-4 d-flex flex-center">
-                    <Typography.Text className="mr-4">
+                  <div className="mt-4 d-flex flex-center signup-text">
+                    <Typography.Text>
                       {t('message.already-a-user')}
                     </Typography.Text>
                     <Button
                       ghost
+                      className="link-btn"
                       data-testid="login"
                       type="link"
                       onClick={handleLogin}>
@@ -217,15 +220,6 @@ const BasicSignUp = () => {
         </Col>
 
         <Col className="form-carousel-container" lg={14} sm={0}>
-          <div className="absolute inset-0">
-            <img
-              alt="bg-image"
-              className="w-full h-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
           <LoginCarousel />
         </Col>
       </Row>
