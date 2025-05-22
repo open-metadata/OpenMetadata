@@ -175,7 +175,7 @@ jobs:
       - name: Merge Reports and Generate Slack Notification
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
-          RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
+          RUN_TITLE: "MySQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
