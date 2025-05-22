@@ -26,10 +26,16 @@ import {
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
+import { useParams } from 'react-router-dom';
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
-import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import {
+  ChangeDescription,
+  TestCaseParameterValue,
+} from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
+import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -47,17 +53,24 @@ const TestCaseResultTab = () => {
     showAILearningBanner,
     testCasePermission,
   } = useTestCaseStore();
+  const { version } = useParams<{ version: string }>();
+  const isVersionPage = !isUndefined(version);
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
 
   const { hasEditPermission, hasEditDescriptionPermission } = useMemo(() => {
-    return {
-      hasEditPermission: testCasePermission?.EditAll,
-      hasEditDescriptionPermission:
-        testCasePermission?.EditAll || testCasePermission?.EditDescription,
-    };
-  }, [testCasePermission]);
+    return isVersionPage
+      ? {
+          hasEditPermission: false,
+          hasEditDescriptionPermission: false,
+        }
+      : {
+          hasEditPermission: testCasePermission?.EditAll,
+          hasEditDescriptionPermission:
+            testCasePermission?.EditAll || testCasePermission?.EditDescription,
+        };
+  }, [testCasePermission, isVersionPage]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -119,6 +132,20 @@ const TestCaseResultTab = () => {
     []
   );
 
+  const description = useMemo(() => {
+    return isVersionPage
+      ? getEntityVersionByField(
+          testCaseData?.changeDescription as ChangeDescription,
+          EntityField.DESCRIPTION,
+          testCaseData?.description
+        )
+      : testCaseData?.description;
+  }, [
+    testCaseData?.changeDescription,
+    testCaseData?.description,
+    isVersionPage,
+  ]);
+
   const testCaseParams = useMemo(() => {
     if (testCaseData?.useDynamicAssertion) {
       return (
@@ -163,7 +190,8 @@ const TestCaseResultTab = () => {
       gutter={[0, 20]}>
       <Col span={24}>
         <DescriptionV1
-          description={testCaseData?.description}
+          wrapInCard
+          description={description}
           entityType={EntityType.TEST_CASE}
           hasEditAccess={hasEditDescriptionPermission}
           showCommentsIcon={false}
