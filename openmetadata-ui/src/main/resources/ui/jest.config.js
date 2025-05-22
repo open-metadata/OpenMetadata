@@ -65,7 +65,9 @@ module.exports = {
     'react-antd-column-resize':
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
-  transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal))',
+  ],
 
   // TypeScript
   preset: 'ts-jest',
@@ -82,14 +84,17 @@ module.exports = {
   moduleDirectories: ['node_modules', 'src'],
 
   reporters: [
-    "default",
-    ["jest-junit", {
-        outputDirectory: "../../../../target/test-reports",
-        outputName: "jest-junit.xml",
-        classNameTemplate: "{classname}",
-        titleTemplate: "{title}",
-        ancestorSeparator: " › ",
-        usePathForSuiteName: "true"
-    }]
-  ]
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: '../../../../target/test-reports',
+        outputName: 'jest-junit.xml',
+        classNameTemplate: '{classname}',
+        titleTemplate: '{title}',
+        ancestorSeparator: ' › ',
+        usePathForSuiteName: 'true',
+      },
+    ],
+  ],
 };

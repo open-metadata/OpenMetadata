@@ -12,95 +12,148 @@
  */
 
 import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
+import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useAuth } from '../../hooks/authHooks';
+import { EntityType } from '../../enums/entity.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import TestSuiteDetailsPage from '../TestSuiteDetailsPage/TestSuiteDetailsPage.component';
 import './data-quality-page.less';
+import DataQualityClassBase from './DataQualityClassBase';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
+import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { t } = useTranslation();
+  const { tab: activeTab } = useRequiredParams<{ tab: DataQualityPageTabs }>();
   const navigate = useNavigate();
-  const { tab } = useRequiredParams<{ tab: DataQualityPageTabs }>();
-  const { isAdminUser } = useAuth();
-  const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
+  const menuItems: MenuProps['items'] = useMemo(() => {
+    const data = DataQualityClassBase.getLeftSideBar();
 
-  const menuItems: MenuProps['items'] = useMemo(
-    () => [
-      {
-        label: t('label.test-suite-plural'),
-        key: DataQualityPageTabs.TEST_SUITES,
-      },
-    ],
-    [t]
+    return data.map((value) => {
+      const SvgIcon = value.icon;
+
+      return {
+        key: value.key,
+        label: (
+          <TabsLabel
+            description={value.description}
+            id={value.id}
+            name={value.label}
+          />
+        ),
+        icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
+      };
+    });
+  }, []);
+
+  const tabDetailsComponent = useMemo(() => {
+    return DataQualityClassBase.getDataQualityTab();
+  }, []);
+
+  const extraDropdownContent = useMemo(
+    () => DataQualityClassBase.getManageExtraOptions(activeTab),
+    [activeTab]
   );
 
-  const handleTabChange = (key: string) => {
-    if (key !== tab) {
-      navigate(getDataQualityPagePath(key as DataQualityPageTabs));
+  const handleTabChange: MenuProps['onClick'] = (event) => {
+    const activeKey = event.key;
+    if (activeKey !== activeTab) {
+      navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
 
-  const hasViewPermission = useMemo(() => {
-    return (
-      isAdminUser ||
-      permissions?.[ResourceEntity.TEST_SUITE]?.ViewAll ||
-      permissions?.[ResourceEntity.TEST_SUITE]?.ViewBasic
-    );
-  }, [isAdminUser, permissions]);
-
-  if (!hasViewPermission) {
-    return <Navigate replace to="/" />;
-  }
-
   return (
-    <div className="data-quality-page">
-      <Row className="page-header" gutter={[16, 16]}>
-        <Col span={24}>
-          <Typography.Title level={5}>
-            {t('label.data-quality')}
-          </Typography.Title>
-        </Col>
-        <Col span={24}>
-          <Menu
-            items={menuItems}
-            mode="horizontal"
-            selectedKeys={[tab ?? DataQualityPageTabs.TEST_SUITES]}
-            onClick={({ key }) => handleTabChange(key)}
-          />
-        </Col>
-      </Row>
-      <Card className="page-layout-card">
-        <Routes>
-          <Route
-            element={<TestSuites />}
-            path={getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES)}
-          />
-          <Route
-            element={<TestSuiteDetailsPage />}
-            path={ROUTES.TEST_SUITES_WITH_FQN}
-          />
-          <Route
-            element={
-              <Navigate
-                replace
-                to={getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES)}
+    <div>
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: (
+            <LeftPanelCard id="data-quality">
+              <Menu
+                className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
+                data-testid="tabs"
+                items={menuItems}
+                mode="inline"
+                selectedKeys={[
+                  activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
+                ]}
+                onClick={handleTabChange}
               />
-            }
-            path="*"
-          />
-        </Routes>
-      </Card>
+            </LeftPanelCard>
+          ),
+        }}
+        pageTitle={t('label.data-quality')}
+        secondPanel={{
+          children: (
+            <Card className="h-full overflow-y-auto">
+              <DataQualityProvider>
+                <Row data-testid="data-insight-container" gutter={[0, 16]}>
+                  <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>
+                    <Typography.Title
+                      className="m-b-md"
+                      data-testid="page-title"
+                      level={5}>
+                      {t('label.data-quality')}
+                    </Typography.Title>
+                    <Typography.Paragraph
+                      className="text-grey-muted"
+                      data-testid="page-sub-title">
+                      {t('message.page-sub-header-for-data-quality')}
+                    </Typography.Paragraph>
+                  </Col>
+                  {isEmpty(extraDropdownContent) ? null : (
+                    <Col className="d-flex justify-end" span={1}>
+                      <ManageButton
+                        entityName={EntityType.TEST_CASE}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                      />
+                    </Col>
+                  )}
+                  <Col span={24}>
+                    <Routes>
+                      {tabDetailsComponent.map((tab) => (
+                        <Route
+                          Component={tab.component}
+                          key={tab.key}
+                          path={tab.path}
+                        />
+                      ))}
+
+                      <Route
+                        element={
+                          <Navigate
+                            to={getDataQualityPagePath(
+                              DataQualityClassBase.getDefaultActiveTab()
+                            )}
+                          />
+                        }
+                        path={ROUTES.DATA_QUALITY}
+                      />
+                    </Routes>
+                  </Col>
+                </Row>
+              </DataQualityProvider>
+            </Card>
+          ),
+          className: 'content-resizable-panel-container',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
     </div>
   );
 };
 
-export default DataQualityPage;
+export default withPageLayout(DataQualityPage);

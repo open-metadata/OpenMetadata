@@ -57,6 +57,7 @@ const EntityRouter = () => {
           />
         </>
       ) : (
+        // If no route match, then redirect to not found page
         <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
       )}
     </Routes>

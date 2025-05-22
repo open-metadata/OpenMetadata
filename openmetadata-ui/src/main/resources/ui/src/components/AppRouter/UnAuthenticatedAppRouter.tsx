@@ -69,20 +69,17 @@ export const UnAuthenticatedAppRouter = () => {
   return (
     <Routes>
       <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
-
       {CallbackComponent && (
         <Route element={<CallbackComponent />} path={ROUTES.CALLBACK} />
       )}
-
       {!isSigningUp && (
         <Route
           element={<Navigate replace to={ROUTES.SIGNIN} />}
           path={ROUTES.HOME}
         />
       )}
-
+      {/* keep this route before any conditional JSX.Element rendering */}
       <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
-
       {isBasicAuthProvider && (
         <>
           <Route element={<BasicSignupPage />} path={ROUTES.REGISTER} />

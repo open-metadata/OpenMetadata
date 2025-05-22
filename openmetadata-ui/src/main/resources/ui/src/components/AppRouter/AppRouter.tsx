@@ -30,13 +30,20 @@ import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
 const AppRouter = () => {
   const location = useCustomLocation();
+  // web analytic instance
   const analytics = useAnalytics();
   const { currentUser, isAuthenticated, isApplicationLoading } =
     useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
+    /**
+     * Ignore the slash path because we are treating my data as
+     * default path.
+     * And check if analytics instance is available
+     */
     if (pathname !== '/' && !isNil(analytics)) {
+      // track the page view on route change
       analytics.page();
     }
   }, [location.pathname]);
@@ -45,6 +52,10 @@ const AppRouter = () => {
     (event: MouseEvent) => {
       const eventValue =
         (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+      /**
+       * Ignore the click event if the event value is undefined
+       * And analytics instance is not available
+       */
       if (eventValue && !isNil(analytics)) {
         analytics.track(eventValue);
       }
@@ -59,6 +70,13 @@ const AppRouter = () => {
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
 
+  /**
+   * isApplicationLoading is true when the application is loading in AuthProvider
+   * and is false when the application is loaded.
+   * If the application is loading, show the loader.
+   * If the user is authenticated, show the AppContainer.
+   * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+   */
   if (isApplicationLoading) {
     return <Loader fullScreen />;
   }
@@ -78,6 +96,9 @@ const AppRouter = () => {
         }
         path={ROUTES.SIGNUP}
       />
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in,
+       * the callbacks should be available. This ensures consistent behavior across different authentication scenarios.
+       */}
       <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
       <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
       {isAuthenticated ? (
