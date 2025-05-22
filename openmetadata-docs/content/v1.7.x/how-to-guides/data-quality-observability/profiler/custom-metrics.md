@@ -32,7 +32,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
   caption="Run Ingestion"
  /%}
 
-- After the ingestion agent process, return to the same dataset to view the computed custom metric within the table profile.
+- After running the ingestion profiler agent, return to the same dataset to view the computed custom metric within the table profile.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric4.png"
@@ -66,7 +66,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
   caption="Run Ingestion Agent"
  /%}
 
-- After the ingestion agent process, return to the same dataset to view the computed custom metric within the column profile.
+- After running the ingestion profiler agent, return to the same dataset to view the computed custom metric in the column profile.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/column-metric4.png"
