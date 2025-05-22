@@ -73,7 +73,7 @@ source:
         dbtConfigType: s3
 ```
 ```yaml {% srNumber=1 %}
-        dbtSecurityConfig:
+      dbtSecurityConfig:
 ```
 
 {% partial file="/v1.7/connectors/yaml/common/aws-config.md" /%}
