@@ -578,6 +578,18 @@ test.describe('Activity feed', () => {
       await afterActionUser2();
     });
   });
+
+  test('Verify feed count', async ({ page }) => {
+    await redirectToHomePage(page);
+    await entity.visitEntityPage(page);
+    await page.getByTestId('request-description').click();
+    await createDescriptionTask(page, {
+      term: entity.entity.displayName,
+      assignee: user1.responseData.name,
+    });
+
+    await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
+  });
 });
 
 base.describe('Activity feed with Data Consumer User', () => {

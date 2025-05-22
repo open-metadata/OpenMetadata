@@ -5,7 +5,7 @@ slug: /how-to-guides/data-quality-observability/profiler/tab
 
 # Profiler Tab
 
-The Profiler & Data Quality tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. 
+The Data Observability tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. 
 
 ## Table Profile Tab
 

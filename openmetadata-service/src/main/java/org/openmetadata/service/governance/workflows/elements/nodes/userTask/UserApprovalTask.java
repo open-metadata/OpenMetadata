@@ -103,7 +103,8 @@ public class UserApprovalTask implements NodeInterface {
       attachWorkflowInstanceStageListeners(subProcess);
     }
 
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 

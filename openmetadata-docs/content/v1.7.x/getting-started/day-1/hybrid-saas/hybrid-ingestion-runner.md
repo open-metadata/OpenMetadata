@@ -1,6 +1,6 @@
 ---
 title: Hybrid Ingestion Runner
-slug: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner.md
+slug: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner
 collate: true
 ---
 
@@ -50,7 +50,7 @@ src="/images/v1.7/getting-started/ingestion-runner-service.png"
 
 ### 3. Manage Secrets Securely
 
-When executing workflows on your Hybrid environment, you have to use your existing cloud provider's Secrets Manager to store sensitive credentials (like usernames and passwords), and reference them securely in Collate via the Hybrid Runner.
+When executing workflows on your Hybrid environment, you have to use your existing cloud provider's Secrets Manager to store sensitive credentials (like passwords or token), and reference them securely in Collate via the Hybrid Runner.
 
 Collate never stores or accesses these secrets directly—only the Hybrid Runner retrieves them at runtime from your own infrastructure.
 
@@ -61,44 +61,25 @@ Collate never stores or accesses these secrets directly—only the Hybrid Runner
   - **Azure Key Vault**
   - **GCP Secret Manager**
 
-- In the service connection form in Collate, reference the secret using the `secret:` prefix followed by the full path to your secret.
-
-📌 **For example, in AWS Secrets Manager**, if your secret is stored at:
-```arn:aws:secretsmanager:us-east-1:123456789012:secret:my/database/credentials```
-
-And inside that secret, you have `username` and `password` keys, the reference in Collate would look like:
-
-```yaml
-username: secret:/my/database/credentials/username
-password: secret:/my/database/credentials/password
-```
+When creating a secret, store the value as-is (e.g., `password123`) without any additional formatting or encoding. The Hybrid Runner will handle the retrieval and decryption of the secret value at runtime.
+For example, in AWS Secrets Manager, you can click on `Store a new secret` > `Other type of secret` > `Plaintext`. You need to paste the secret as-is, without any other formatting (such as quotes, JSON, etc.).
 
 {% image
-src="/images/v1.7/getting-started/ingestion-runner-service.png"
+src="/images/v1.7/getting-started/hybrid-create-secret.png"
 /%}
 
+Finally, in the service connection form in Collate, reference the secret using the `secret:` prefix followed by the full path to your secret.
 
-## Troubleshooting
+📌 **For example, in AWS Secrets Manager**, if your secret is stored at: `/my/database/password`, you would reference it in the service connection form as:
 
-### The agent is not connecting to the server
+```yaml
+password: secret:/my/database/password
+```
 
-- Ensure the server URL contains the `wss://` protocol.
-- Your cloud has outbound traffic to Collate.
-- `AUTH_TOKEN` contains a valid access token.
+{% note %}
 
-### Ingestion workflows are failing in Argo
+Note that this approach to handling secrets only works for values that are considered secrets in the connection form.
 
-- Check the `ARGO_INGESTION_IMAGE` has a valid image name and tag.
-- Contact Collate support if needed.
+You can identify these values since they mask the typing and have an icon on the right that toggles showing or hiding the input values.
 
-### The runner is not able to trigger ingestion
-
-- Verify the `ARGO_EXTRA_ENVS` variable contains the correct keys for the secrets manager.
-
-### General Troubleshooting Table
-
-| Issue                | Solution                                              |
-|----------------------|--------------------------------------------------------|
-| Runner not connected | Check token, endpoint, and network config              |
-| Secret not resolved  | Verify path and permissions in Secrets Manager         |
-| Ingestion stuck or failed | Check Argo logs and verify credentials and runner status |
+{% /note %}
