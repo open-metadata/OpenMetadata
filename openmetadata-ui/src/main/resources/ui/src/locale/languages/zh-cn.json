@@ -593,6 +593,7 @@
     "foreign": "外键",
     "foreign-key": "外键",
     "forgot-password": "忘记密码",
+    "forgot-your-password": "忘记密码了？",
     "format": "Format",
     "fqn-uppercase": "FQN",
     "frequently-joined-column-plural": "经常连接查询的列 (Frequently Joined Column)",
