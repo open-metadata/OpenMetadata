@@ -48,12 +48,6 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
-jest.mock('react-lazylog', () => ({
-  LazyLog: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
-}));
-
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()

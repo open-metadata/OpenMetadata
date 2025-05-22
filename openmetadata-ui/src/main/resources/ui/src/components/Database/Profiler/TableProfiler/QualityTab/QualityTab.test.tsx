@@ -76,6 +76,7 @@ jest.mock('../../../../../hooks/useFqn', () => ({
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
@@ -207,10 +208,8 @@ describe('QualityTab', () => {
   });
 
   it('should call limitWrapper', async () => {
-    await act(async () => {
-      render(<QualityTab />);
-      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
-    });
+    render(<QualityTab />);
+    fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'dataQuality' }),

@@ -37,6 +37,12 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   }));
 });
 
+jest.mock('react-router-dom', () => {
+  return {
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  };
+});
+
 describe('VersionTable component', () => {
   it('VersionTable should show column display names along with name if present', () => {
     render(<VersionTable {...mockVersionTableProps} />);

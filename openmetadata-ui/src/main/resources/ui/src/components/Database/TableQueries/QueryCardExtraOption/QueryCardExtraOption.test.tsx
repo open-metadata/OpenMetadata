@@ -49,6 +49,12 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
+jest.mock('react-router-dom', () => {
+  return {
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  };
+});
+
 describe('QueryCardExtraOption component test', () => {
   it('Component should render', async () => {
     render(<QueryCardExtraOption {...mockProps} />);

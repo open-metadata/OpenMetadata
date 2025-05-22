@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
@@ -134,9 +133,7 @@ describe('MlModelVersion tests', () => {
 
     expect(customPropertyTabLabel).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/mlmodel/mlflow_svc.eta_predictions/versions/0.3/custom_properties'

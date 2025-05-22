@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   AlertType,
@@ -120,11 +119,11 @@ describe('AlertDetailsComponent', () => {
     const editButton = screen.getByRole('button', { name: 'label.edit' });
     const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
-    userEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
 
     expect(mockDelete).toHaveBeenCalled();
 
-    userEvent.click(editButton);
+    fireEvent.click(editButton);
 
     expect(mockPush).toHaveBeenCalledWith('Edit Alert Link/alertId');
   });

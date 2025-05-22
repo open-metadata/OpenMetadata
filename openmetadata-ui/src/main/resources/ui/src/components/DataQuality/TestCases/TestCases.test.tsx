@@ -24,9 +24,7 @@ const testCasePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
-  tab?: DataQualityPageTabs;
-};
+
 const mockLocation = { search: '' };
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -65,7 +63,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
 jest.mock('../../common/NextPrevious/NextPrevious', () => {

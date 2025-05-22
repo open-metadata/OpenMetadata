@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
   ingestionDataName,
@@ -160,9 +159,7 @@ describe('PipelineAction', () => {
 
     const logsButton = screen.getByText('label.log-plural');
 
-    await act(async () => {
-      userEvent.click(logsButton);
-    });
+    fireEvent.click(logsButton);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/searchServices/OpenMetadata.OpenMetadata_elasticSearchReIndex/logs'
@@ -178,9 +175,7 @@ describe('PipelineAction', () => {
 
     const resumeButton = screen.getByText('label.resume');
 
-    await act(async () => {
-      userEvent.click(resumeButton);
-    });
+    fireEvent.click(resumeButton);
 
     expect(
       mockPipelineActionsProps.handleEnableDisableIngestion

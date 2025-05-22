@@ -94,7 +94,7 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
+      selectElm && fireEvent.click(selectElm);
     });
 
     const option1 = screen.getByTestId('option-test1');
@@ -110,7 +110,7 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
+      selectElm && fireEvent.click(selectElm);
     });
 
     const option1 = screen.getByTestId('option-test1');
@@ -131,7 +131,7 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
+      selectElm && fireEvent.click(selectElm);
     });
 
     const column = screen.getByTestId('option-column1');

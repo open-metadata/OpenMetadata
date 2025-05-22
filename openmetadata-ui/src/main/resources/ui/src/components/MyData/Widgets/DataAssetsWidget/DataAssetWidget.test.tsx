@@ -62,14 +62,12 @@ describe('DataAssetsWidget', () => {
   });
 
   it('should render DataAssetsWidget', async () => {
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
+    render(<DataAssetsWidget {...widgetProps} />);
 
-      expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
-      expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
-      expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-      expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
-    });
+    expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
+    expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
   });
 
   it('should handle close click when in edit view', async () => {

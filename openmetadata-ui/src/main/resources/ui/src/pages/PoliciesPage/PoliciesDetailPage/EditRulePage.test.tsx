@@ -19,6 +19,7 @@ import EditRulePage from './EditRulePage';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({

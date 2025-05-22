@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
 import DataInsightHeader from './DataInsightHeader.component';
 
@@ -92,7 +91,7 @@ describe('DataInsightHeader component', () => {
       screen.getByText('message.data-insight-subtitle')
     ).toBeInTheDocument();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: 'label.add-entity',
       })

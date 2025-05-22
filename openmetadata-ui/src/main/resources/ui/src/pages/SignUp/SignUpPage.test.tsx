@@ -63,6 +63,10 @@ jest.mock('../../utils/AuthProvider.util', () => ({
   getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
 describe('SignUp page', () => {
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>

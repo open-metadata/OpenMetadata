@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -263,9 +262,7 @@ describe('ServiceConfig', () => {
     render(<ConnectionConfigForm {...mockProps} />);
     const submitButton = await screen.findByTestId('submit-button');
 
-    await act(async () => {
-      userEvent.click(submitButton);
-    });
+    fireEvent.click(submitButton);
 
     expect(mockSubmit).toHaveBeenCalledWith(formData);
   });

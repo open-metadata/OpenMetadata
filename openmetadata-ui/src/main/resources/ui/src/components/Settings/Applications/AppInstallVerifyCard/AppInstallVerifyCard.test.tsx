@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import { mockUserData } from '../../Users/mocks/User.mocks';
 import AppInstallVerifyCard from './AppInstallVerifyCard.component';
@@ -83,11 +82,11 @@ describe('AppInstallVerifyCard', () => {
       screen.getByText('label.updated getRelativeTime')
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(mockOnCancel).toHaveBeenCalled();
 
-    userEvent.click(screen.getByRole('button', { name: 'Next Button' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next Button' }));
 
     expect(mockOnSave).toHaveBeenCalled();
   });

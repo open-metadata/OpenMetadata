@@ -29,6 +29,9 @@ const mockProp = {
 
 jest.mock('react-i18next', () => ({
   Trans: jest.fn().mockImplementation(() => <div>Trans</div>),
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
 }));
 
 describe('Test EntityDelete Modal Component', () => {

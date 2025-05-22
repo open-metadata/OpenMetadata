@@ -27,6 +27,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'terms',
     version: 'glossaryVersion',
   })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(

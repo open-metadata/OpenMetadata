@@ -16,10 +16,15 @@ import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockReturnValue({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
 }));
+
 jest.mock('./FilterErrorPlaceHolder', () => {
   return jest
     .fn()

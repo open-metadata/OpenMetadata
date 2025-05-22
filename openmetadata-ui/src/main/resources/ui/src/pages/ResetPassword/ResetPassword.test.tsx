@@ -19,6 +19,10 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
     .mockImplementation(() => ({ search: '?user=admin&token=token' }));
 });
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
 const mockHandleResetPassword = jest.fn();
 jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
   return {

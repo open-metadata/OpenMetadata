@@ -118,6 +118,7 @@ jest.mock('react-router-dom', () => ({
     hash: '',
     state: null,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({

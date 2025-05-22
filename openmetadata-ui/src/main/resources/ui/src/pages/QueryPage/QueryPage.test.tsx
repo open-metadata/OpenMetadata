@@ -25,6 +25,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'testDatasetFQN',
     queryId: 'queryId',
   })),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({

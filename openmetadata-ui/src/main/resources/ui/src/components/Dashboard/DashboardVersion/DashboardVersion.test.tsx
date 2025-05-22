@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   dashboardVersionProps,
@@ -207,9 +206,7 @@ describe('DashboardVersion tests', () => {
 
     expect(customPropertyTabLabel).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'

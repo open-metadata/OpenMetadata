@@ -74,6 +74,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => params),
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {

@@ -39,7 +39,7 @@ jest.mock('../../../utils/CommonUtils', () => ({
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
-  getDomainPath: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDomainPath: jest.fn().mockImplementation(() => -1),
 }));
 jest.mock('../../common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -104,9 +104,7 @@ describe('AddDomain', () => {
     render(<AddDomain />);
 
     const cancelButton = await screen.findByTestId('cancel-button');
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
     expect(mockNavigate).toHaveBeenCalledWith(-1);
   });

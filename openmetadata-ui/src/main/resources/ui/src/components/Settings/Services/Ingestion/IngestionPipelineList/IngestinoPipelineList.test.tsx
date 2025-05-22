@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
@@ -77,6 +77,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 describe('IngestionPipelineList', () => {
@@ -135,15 +136,11 @@ describe('IngestionPipelineList', () => {
 
     const rowSelection = screen.getByText('rowSelection');
 
-    await act(async () => {
-      userEvent.click(rowSelection);
-    });
+    fireEvent.click(rowSelection);
 
     const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
 
-    await act(async () => {
-      userEvent.click(bulkDeployButton);
-    });
+    fireEvent.click(bulkDeployButton);
 
     expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
   });

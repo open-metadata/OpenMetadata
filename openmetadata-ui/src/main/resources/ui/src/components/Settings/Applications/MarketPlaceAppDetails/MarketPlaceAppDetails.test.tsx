@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   queryByTestId,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
@@ -119,7 +119,7 @@ describe('MarketPlaceAppDetails component', () => {
     expect(appName).not.toBeInTheDocument();
 
     // actions check
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
@@ -172,7 +172,7 @@ describe('MarketPlaceAppDetails component', () => {
 
     // app install action check
     // making install button enable by rejecting promise in getApplicationByName
-    userEvent.click(screen.getByRole('button', { name: 'label.install' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.install' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('app install path');
   });

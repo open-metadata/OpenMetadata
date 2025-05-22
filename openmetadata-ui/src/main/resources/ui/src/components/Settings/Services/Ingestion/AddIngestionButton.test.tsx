@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
@@ -39,9 +39,7 @@ describe('AddIngestionButton', () => {
     });
     const addIngestionButton = screen.getByTestId('add-new-ingestion-button');
 
-    await act(async () => {
-      userEvent.click(addIngestionButton);
-    });
+    fireEvent.click(addIngestionButton);
 
     expect(mockNavigate).toHaveBeenCalledTimes(0);
 

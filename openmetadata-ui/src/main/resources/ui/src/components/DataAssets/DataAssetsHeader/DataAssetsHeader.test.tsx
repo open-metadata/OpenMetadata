@@ -13,7 +13,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
 import {
   Container,
   StorageServiceType,
@@ -59,9 +58,7 @@ const mockProps: DataAssetsHeaderProps = {
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => ({
-    serviceCategory: ServiceCategory.DATABASE_SERVICES,
-  })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/applicationAPI', () => ({

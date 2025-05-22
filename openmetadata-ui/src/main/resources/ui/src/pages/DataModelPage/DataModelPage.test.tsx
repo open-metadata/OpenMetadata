@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
@@ -164,13 +164,11 @@ describe('DataModelPage component', () => {
     });
 
     // toggle delete
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: TOGGLE_DELETE,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: TOGGLE_DELETE,
+      })
+    );
 
     expect(screen.getByText(DATA_MODEL_DELETED)).toBeInTheDocument();
   });
@@ -181,13 +179,11 @@ describe('DataModelPage component', () => {
     });
 
     // follow data model
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DATA_MODEL,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: FOLLOW_DATA_MODEL,
+      })
+    );
 
     expect(addDataModelFollower).toHaveBeenCalled();
   });
@@ -206,13 +202,11 @@ describe('DataModelPage component', () => {
     });
 
     // unfollow data model
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DATA_MODEL,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: FOLLOW_DATA_MODEL,
+      })
+    );
 
     expect(removeDataModelFollower).toHaveBeenCalled();
   });
@@ -223,13 +217,11 @@ describe('DataModelPage component', () => {
     });
 
     // update data model
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_DATA_MODEL,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: UPDATE_DATA_MODEL,
+      })
+    );
 
     expect(patchDataModelDetails).toHaveBeenCalledTimes(3);
   });
@@ -240,13 +232,11 @@ describe('DataModelPage component', () => {
     });
 
     // update vote
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_VOTE,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: UPDATE_VOTE,
+      })
+    );
 
     expect(updateDataModelVotes).toHaveBeenCalled();
   });
@@ -269,21 +259,21 @@ describe('DataModelPage component', () => {
 
     await act(async () => {
       // update data model
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: UPDATE_DATA_MODEL,
         })
       );
 
       // follow data model
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: FOLLOW_DATA_MODEL,
         })
       );
 
       // update vote
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: UPDATE_VOTE,
         })

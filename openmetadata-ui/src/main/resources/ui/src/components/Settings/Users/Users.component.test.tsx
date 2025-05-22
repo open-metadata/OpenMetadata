@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -221,9 +220,7 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('AfterDeleteActionButton'));
-    });
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
 
     expect(mockProp.afterDeleteAction).toHaveBeenCalled();
   });
@@ -235,9 +232,7 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('UpdateUserDetailsButton'));
-    });
+    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
 
     expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });

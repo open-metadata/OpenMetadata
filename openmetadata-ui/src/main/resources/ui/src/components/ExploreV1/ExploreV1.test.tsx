@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
@@ -142,9 +141,7 @@ describe('ExploreV1', () => {
   it('changes sort order when sort button is clicked', () => {
     render(<ExploreV1 {...props} />);
 
-    act(() => {
-      userEvent.click(screen.getByTestId('sort-order-button'));
-    });
+    fireEvent.click(screen.getByTestId('sort-order-button'));
 
     expect(onChangeSortOder).toHaveBeenCalled();
   });

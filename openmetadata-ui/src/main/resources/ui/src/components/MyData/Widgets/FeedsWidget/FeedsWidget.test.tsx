@@ -134,6 +134,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
 describe('FeedsWidget', () => {
   it('should call getFeedData for owner conversation on load for non admin user', () => {
     render(<FeedsWidget {...widgetProps} />);

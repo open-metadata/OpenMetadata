@@ -19,6 +19,10 @@ import {
 } from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
 jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
     .fn()

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PersonaDetailsCard } from './PersonaDetailsCard';
 
@@ -80,9 +80,7 @@ describe('PersonaDetailsCard Component', () => {
       render(<PersonaDetailsCard persona={personaWithDescription} />);
     });
     const personaCardTitle = await screen.findByText('John Doe');
-    await act(async () => {
-      userEvent.click(personaCardTitle);
-    });
+    fireEvent.click(personaCardTitle);
 
     expect(mockNavigate).toHaveBeenCalledWith('/settings/persona/john-doe');
   });

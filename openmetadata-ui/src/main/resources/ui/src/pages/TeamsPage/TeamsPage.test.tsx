@@ -23,6 +23,10 @@ import { getTeamByName } from '../../rest/teamsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TeamsPage from './TeamsPage';
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
 jest.mock('./AddTeamForm', () => {
   return jest.fn().mockImplementation(() => <p>AddTeamForm</p>);
 });

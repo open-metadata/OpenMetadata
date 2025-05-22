@@ -112,9 +112,9 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
     .fn()
     .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
 });
-jest.mock('../common/CmdKIcon/CmdKIcon.component', () => {
-  return jest.fn().mockReturnValue(<div data-testid="cmd">CmdKIcon</div>);
-});
+// jest.mock('../common/CmdKIcon/CmdKIcon.component', () => {
+//   return jest.fn().mockReturnValue(<div data-testid="cmd">CmdKIcon</div>);
+// });
 jest.mock('../AppBar/SearchOptions', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">SearchOptions</div>);
 });
@@ -122,7 +122,7 @@ jest.mock('../AppBar/Suggestions', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">Suggestions</div>);
 });
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('antd', () => ({

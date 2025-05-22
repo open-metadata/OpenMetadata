@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import ServicesPage from './ServicesPage';
 
@@ -87,7 +87,9 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/databases']}>
-          <Route element={<ServicesPage />} path="/services/:tab" />
+          <Routes>
+            <Route element={<ServicesPage />} path="/services/:tab" />
+          </Routes>
         </MemoryRouter>
       );
     });
@@ -99,7 +101,9 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/databases?tab=pipelines']}>
-          <Route element={<ServicesPage />} path="/services/:tab" />
+          <Routes>
+            <Route element={<ServicesPage />} path="/services/:tab" />
+          </Routes>
         </MemoryRouter>
       );
     });
@@ -117,7 +121,9 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/services']}>
-          <Route element={<ServicesPage />} path="/services/:tab" />
+          <Routes>
+            <Route element={<ServicesPage />} path="/services/:tab" />
+          </Routes>
         </MemoryRouter>
       );
     });

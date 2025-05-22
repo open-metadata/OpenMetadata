@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
@@ -108,11 +107,11 @@ describe('Test SampleDataTable Component', () => {
 
     expect(dropdown).toBeInTheDocument();
 
-    userEvent.click(dropdown);
+    fireEvent.click(dropdown);
 
     const deleteButton = screen.getByTestId('delete-button-details-container');
 
-    userEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
 
     const deleteModal = screen.getByText('EntityDeleteModal');
 

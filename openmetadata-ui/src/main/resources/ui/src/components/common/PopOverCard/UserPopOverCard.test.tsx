@@ -127,11 +127,9 @@ describe('Test UserPopOverCard components', () => {
         () => new Promise(noop)
       );
 
-      await act(async () => {
-        render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
+      render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
 
-        expect(await screen.findByText('Loader')).toBeInTheDocument();
-      });
+      expect(screen.getByText('Loader')).toBeInTheDocument();
     });
 
     it('should show no data message when user data is empty', async () => {

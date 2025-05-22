@@ -12,6 +12,7 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -179,7 +180,7 @@ describe('AppDetails component', () => {
     expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
 
     // back button
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
@@ -188,7 +189,7 @@ describe('AppDetails component', () => {
     );
 
     // menu items
-    userEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByTestId('manage-button'));
 
     // uninstall app
     ConfirmAction('label.uninstall');

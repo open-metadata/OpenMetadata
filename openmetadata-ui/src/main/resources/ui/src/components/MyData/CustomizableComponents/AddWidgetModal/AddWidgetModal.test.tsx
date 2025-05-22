@@ -137,17 +137,13 @@ describe('AddWidgetModal component', () => {
   });
 
   it('AddWidgetModal should call handleAddWidget when clicked on add widget button', async () => {
-    await act(async () => {
-      render(<AddWidgetModal {...mockProps} />);
-    });
+    render(<AddWidgetModal {...mockProps} />);
 
-    expect(mockProps.handleAddWidget).toHaveBeenCalledTimes(0);
-
-    const addWidgetButton = screen.getByText('getAddWidgetHandler');
+    const addWidgetButton = await screen.findByText('getAddWidgetHandler');
 
     expect(addWidgetButton).toBeInTheDocument();
 
-    await act(async () => userEvent.click(addWidgetButton));
+    await userEvent.click(addWidgetButton);
 
     expect(mockProps.handleAddWidget).toHaveBeenCalledTimes(1);
     expect(mockProps.handleAddWidget).toHaveBeenCalledWith(

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
 
@@ -119,9 +118,7 @@ describe('TableVersion tests', () => {
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(versionTable).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'

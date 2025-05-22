@@ -25,9 +25,7 @@ const testSuitePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
-  tab?: DataQualityPageTabs;
-};
+
 const mockLocation = {
   search: '',
 };
@@ -85,7 +83,7 @@ jest.mock('react-router-dom', () => {
       .mockImplementation(({ children, ...rest }) => (
         <div {...rest}>{children}</div>
       )),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
 jest.mock('../../../common/NextPrevious/NextPrevious', () => {

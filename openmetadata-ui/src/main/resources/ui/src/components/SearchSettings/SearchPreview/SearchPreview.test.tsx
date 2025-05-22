@@ -68,6 +68,7 @@ jest.mock('react-router-dom', () => ({
     hash: '',
     state: {},
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('react-i18next', () => ({

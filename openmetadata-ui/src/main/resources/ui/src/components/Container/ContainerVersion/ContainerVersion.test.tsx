@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { containerVersionMockProps } from '../../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
@@ -122,9 +121,7 @@ describe('ContainerVersion tests', () => {
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(versionTable).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/container/s3_storage_sample.departments.finance.expenditures/versions/0.3/custom_properties'

@@ -32,6 +32,10 @@ jest.mock('../../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue({}),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
 describe('RelatedTerms', () => {
   it('should render the component', () => {
     const { container } = render(<RelatedTerms />);

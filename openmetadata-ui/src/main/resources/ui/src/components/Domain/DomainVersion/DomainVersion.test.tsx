@@ -83,6 +83,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'Domain1',
     version: 0.4,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/domainAPI', () => ({

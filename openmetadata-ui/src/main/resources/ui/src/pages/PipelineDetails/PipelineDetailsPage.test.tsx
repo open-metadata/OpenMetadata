@@ -20,6 +20,7 @@ jest.mock('react-router-dom', () => ({
     pipelineFQN: 'sample_airflow.snowflake_etl',
     tab: 'details',
   }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../rest/miscAPI', () => ({

@@ -12,6 +12,7 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -213,7 +214,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -234,7 +235,7 @@ describe('AppRunsHistory', () => {
       limit: 10,
     });
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -274,7 +275,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText('label.log-plural'));
 
     expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
   });
@@ -307,9 +308,7 @@ describe('AppRunsHistory', () => {
 
     expect(stopButton).toBeInTheDocument();
 
-    act(() => {
-      userEvent.click(stopButton);
-    });
+    fireEvent.click(stopButton);
 
     expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
   });
