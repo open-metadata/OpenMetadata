@@ -372,6 +372,18 @@ dev = {
     *plugins["sample-data"],
 }
 
+# Dependencies for unit testing in addition to dev dependencies and all plugins
+test_unit = {
+    "pytest==7.0.0",
+    "pytest-cov",
+    "pytest-order",
+    "dirty-equals",
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # We need to install the plugins for unit tests, as they are not installed by default
+    # FIXME: This is a temporary fix until we have a better solution for testing plugins
+    VERSIONS["airflow"],
+}
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.27.0",
@@ -385,7 +397,6 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    "pytest-pythonpath",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
@@ -468,10 +479,6 @@ playwright_dependencies = {
     # Add other plugins as needed for Playwright tests
 }
 
-extended_testing = {
-    "Faker",  # For Sample Data Generation
-}
-
 
 def filter_requirements(filtered: Set[str]) -> List[str]:
     """Filter out requirements from base_requirements"""
@@ -489,14 +496,13 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 setup(
     install_requires=list(base_requirements),
     extras_require={
-        "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
-        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "all": filter_requirements({"airflow", "db2", "great-expectations", "pymsql"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
