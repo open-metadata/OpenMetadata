@@ -100,11 +100,11 @@ public interface SearchIndex {
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domain", getEntityWithDisplayName(entity.getDomain()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    map.put(
-        "totalVotes",
+    int totalVotes =
         nullOrEmpty(entity.getVotes())
             ? 0
-            : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
+            : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
+    map.put("totalVotes", totalVotes);
     map.put("descriptionStatus", getDescriptionStatus(entity));
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
