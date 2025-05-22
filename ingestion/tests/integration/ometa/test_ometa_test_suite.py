@@ -112,7 +112,6 @@ class OMetaTestSuiteTest(TestCase):
                 entityLink=EntityLink(
                     "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
                 ),
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
                 parameterValues=[TestCaseParameterValue(name="foo", value="10")],
             )

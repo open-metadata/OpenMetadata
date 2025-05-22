@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -62,6 +64,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
@@ -172,15 +175,35 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
-    // validate test definition and test suite
-    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "", Include.NON_DELETED);
-    test.setTestSuite(testSuite.getEntityReference());
+    // Get existing basic test suite or create a new one if it doesn't exist
+    EntityReference testSuite = getOrCreateTestSuite(test);
+    test.setTestSuite(testSuite);
 
+    // validate test definition
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
     test.setTestDefinition(testDefinition.getEntityReference());
 
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
+  }
+
+  private EntityReference getOrCreateTestSuite(TestCase test) {
+    EntityReference entityReference = null;
+    try {
+      entityReference = getTestSuite(test);
+    } catch (EntityNotFoundException e) {
+      // If the test suite is not found, we'll create a new one
+      EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+      TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      TestSuiteMapper mapper = new TestSuiteMapper();
+      CreateTestSuite createTestSuite = new CreateTestSuite()
+        .withName(entityLink.getEntityFQN() + ".testSuite")
+        .withBasicEntityReference(entityLink.getEntityFQN());
+      TestSuite testSuite = mapper.createToEntity(createTestSuite, INGESTION_BOT_NAME);
+      testSuiteRepository.create(null, testSuite);
+      entityReference = testSuite.getEntityReference();
+    }
+    return entityReference;
   }
 
   private EntityReference getTestSuite(TestCase test) throws EntityNotFoundException {
@@ -469,6 +492,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public void isTestSuiteBasic(String testSuiteFqn) {
+    if (testSuiteFqn == null) {
+      // If the test suite FQN is not provided, we'll assume it's a basic test suite
+      return;
+    }
+
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
     if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(

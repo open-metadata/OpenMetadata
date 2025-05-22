@@ -1602,7 +1602,6 @@ class SampleDataSource(
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=suite.fullyQualifiedName.root,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]

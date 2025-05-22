@@ -196,7 +196,6 @@ class OMetaTestsMixin:
             CreateTestCaseRequest(
                 name=test_case_fqn.split(".")[-1],
                 entityLink=entity_link,
-                testSuite=test_suite_fqn,
                 testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
             )  # type: ignore
