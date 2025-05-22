@@ -698,9 +698,9 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
         JsonUtils.convertValue(setting.getConfigValue(), WorkflowSettings.class);
 
     // Assert default values
-    assertEquals(50, workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(10, workflowSettings.getExecutorConfiguration().getCorePoolSize());
     assertEquals(1000, workflowSettings.getExecutorConfiguration().getQueueSize());
-    assertEquals(100, workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(20, workflowSettings.getExecutorConfiguration().getMaxPoolSize());
     assertEquals(20, workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
     assertEquals(7, workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
 
