@@ -13,6 +13,10 @@ endif
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
 
+.PHONY: install_dev_env
+install_dev_env:  ## Install all dependencies for development (in edit mode)
+	python -m pip install -e "$(INGESTION_DIR)[all, dev, test-unit]"
+
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
 	python -m pip install "$(INGESTION_DIR)[dev]/"
