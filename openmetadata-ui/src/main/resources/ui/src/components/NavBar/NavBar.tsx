@@ -67,7 +67,7 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
@@ -319,7 +319,10 @@ const NavBar = () => {
     }
 
     const handleDocumentVisibilityChange = async () => {
-      if (isProtectedRoute(location.pathname) && isTourRoute) {
+      if (
+        applicationRoutesClass.isProtectedRoute(location.pathname) &&
+        isTourRoute
+      ) {
         return;
       }
       const newVersion = await getVersion();
