@@ -427,3 +427,6 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const ONE_HOUR_MS = 60 * 60 * 1000;

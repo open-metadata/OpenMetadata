@@ -30,20 +30,17 @@ class LoginClassBase {
         title: 'governance',
         image: governanceImg,
         descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
-        width: '500px',
+        imgClass: 'governance-image',
         image1: {
           image: governanceList,
-          width: '120px',
           position: 'governance-top-left',
         },
         image2: {
           image: governanceItems,
-          width: '160px',
           position: 'governance-middle-right',
         },
         image3: {
           image: governanceReviewer,
-          width: '220px',
           position: 'governance-bottom-right',
         },
       },
@@ -51,15 +48,13 @@ class LoginClassBase {
         title: 'data-collaboration',
         image: collaborationImg,
         descriptionKey: 'deeply-understand-table-relations-message',
-        width: '350px',
+        imgClass: 'collaboration-image',
         image1: {
           image: collaborationTabs,
-          width: '200px',
           position: 'collab-top-left',
         },
         image2: {
           image: collaborationMenu,
-          width: '200px',
           position: 'collab-middle-right',
         },
       },
@@ -68,10 +63,9 @@ class LoginClassBase {
         image: dataObservabilityImg,
         descriptionKey:
           'discover-your-data-and-unlock-the-value-of-data-assets',
-        width: '370px',
+        imgClass: 'observability-image',
         image1: {
           image: observabilityTestcase,
-          width: '250px',
           position: 'observability-bottom-right',
         },
       },
@@ -79,15 +73,13 @@ class LoginClassBase {
         title: 'data-discovery',
         image: discoveryImg,
         descriptionKey: 'enables-end-to-end-metadata-management',
-        width: '500px',
+        imgClass: 'discovery-image',
         image1: {
           image: discoveryLanguage,
-          width: '130px',
           position: 'discovery-top-right',
         },
         image2: {
           image: discoveryDataAssets,
-          width: '130px',
           position: 'discovery-middle-right',
         },
       },
