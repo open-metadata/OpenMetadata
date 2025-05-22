@@ -15,16 +15,20 @@ Test Bigquery connector with CLI
 import random
 from typing import List, Tuple
 
+import pytest
+
+from ingestion.tests.cli_e2e.base.e2e_types import E2EType
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
     DmlOperationType,
     ProfileSampleType,
     SystemProfile,
+    Table,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -123,7 +127,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -131,7 +135,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 2
+        return 3
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -139,7 +143,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def delete_queries() -> List[str]:
@@ -209,3 +213,21 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def get_expected_test_case_results(self):
         return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]
+
+    @pytest.mark.order(9999)
+    def test_profiler_w_partition_table(self):
+        """Test profiler sample for partitioned table"""
+        self.build_config_file(
+            E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]}
+        )
+        self.run_command()
+
+        self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})
+        self.run_command("profile")
+        table: Table = self.openmetadata.get_latest_table_profile(
+            FullyQualifiedEntityName(
+                "local_bigquery.open-metadata-beta.w_partition.w_time_partition"
+            )
+        )
+        # We ingest 1 row for each day and the profiler should default to the latest partition
+        assert table.profile.rowCount == 1

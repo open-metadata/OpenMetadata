@@ -890,6 +890,7 @@ class SampleDataSource(
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
                 sourceUrl=table.get("sourceUrl"),
+                tablePartition=table.get("tablePartition"),
             )
 
             yield Either(right=table_and_db)

@@ -21,7 +21,7 @@ module-rgx=(([a-z_][a-z0-9_]*)|([a-zA-Z0-9]+))$
 fail-under=6.0
 init-hook='from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))'
 extension-pkg-allow-list=pydantic
-load-plugins=ingestion.plugins.print_checker
+load-plugins=ingestion.plugins.print_checker,ingestion.plugins.import_checker
 max-public-methods=25
 
 [MESSAGES CONTROL]

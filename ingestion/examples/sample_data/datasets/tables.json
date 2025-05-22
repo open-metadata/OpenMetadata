@@ -15039,7 +15039,16 @@
             "updatedAt": 1638354087862,
             "updatedBy": "anonymous",
             "href": "http://localhost:8585/api/v1/tables/96b4af15-3bdf-4483-a602-3014bbd8ebc6",
-            "tableType": "Regular",
+            "tableType": "Partitioned",
+            "tablePartition": {
+                "columns": [
+                    {
+                        "columnName": "_PARTITIONTIME",
+                        "intervalType": "INGESTION-TIME",
+                        "interval": "DAY"
+                    }
+                ]
+            },
             "columns": [
                 {
                     "name": "comments",
@@ -15694,7 +15703,16 @@
             "updatedAt": 1638354087891,
             "updatedBy": "anonymous",
             "href": "http://localhost:8585/api/v1/tables/afce49e7-8ae1-41e3-971e-8f79c254b24a",
-            "tableType": "Regular",
+            "tableType": "Partitioned",
+            "tablePartition": {
+                "columns": [
+                    {
+                        "columnName": "_PARTITIONDATE",
+                        "intervalType": "INGESTION-TIME",
+                        "interval": "DAY"
+                    }
+                ]
+            },
             "columns": [
                 {
                     "name": "comments",
