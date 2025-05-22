@@ -65,10 +65,7 @@ module.exports = {
     'react-antd-column-resize':
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!@azure/msal-react)',
-    'node_modules/(?!ci-info)',
-  ],
+  transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
 
   // TypeScript
   preset: 'ts-jest',
