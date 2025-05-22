@@ -423,6 +423,7 @@ export const BETA_SERVICES = [
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
+  PipelineServiceType.Ssis,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

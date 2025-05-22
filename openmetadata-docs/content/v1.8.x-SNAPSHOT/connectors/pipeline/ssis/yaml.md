@@ -18,13 +18,13 @@ Configure and schedule SSIS metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.8/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the SSIS ingestion, you will need to install:
 
@@ -74,11 +74,11 @@ In terms of `connection` we support the following selections:
 
 {% /codeInfo %}
 
-{% partial file="/v1.8/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.8/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.8/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -101,7 +101,12 @@ source:
         hostPort: localhost:1433
 ```
 
-**storage**
+**storage**:  
+To extract task dependencies and lineage, the connector needs access to your SSIS package XML files.  
+You can either provide the local path to your project folders, or upload your projects to an S3 bucket and supply the bucket name along with S3 credentials.
+
+- For s3
+
 Pass the `S3` credentials where your package folders are uploaded and specify the bucket name inside the `bucketNames` field.
 
 
@@ -116,17 +121,20 @@ Pass the `S3` credentials where your package folders are uploaded and specify th
         bucketNames: 
           - bucket_name
 ```
+- For Local
+```yaml {% srNumber=8 %}
+  localProjectsPath: /home/user/repos/
+```
 
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.8/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.8/connectors/yaml/ingestion-sink.md" /%}
-
-{% partial file="/v1.8/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.8/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
 

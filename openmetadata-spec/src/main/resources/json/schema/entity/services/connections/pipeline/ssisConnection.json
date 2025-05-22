@@ -11,6 +11,23 @@
         "type": "string",
         "enum": ["SSIS"],
         "default": "SSIS"
+      },
+      "localProjectsPath": {
+        "title": "Local Projects Path",
+        "description": "Path leading to your projects",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["local"],
+            "readOnly": true,
+            "default": "local"
+          },
+          "projectsPath": {
+            "type": "string"
+          }
+        },
+        "required": ["projectsPath"]
       }
     },
     "properties": {
@@ -25,14 +42,17 @@
         "description": "Underlying database connection",
         "$ref": "../database/mssqlConnection.json"
       },
-      "storageConnection": {
-        "title": "Storage Connection",
-        "description": "Storage Connection having package files",
-        "$ref": "../storage/s3Connection.json"
-      },
-      "localProjectsPath": {
-        "title": "Local Projects Path",
-        "description": "Path leading to your projects"
+      "packageConnection": {
+        "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+        "description": "Underlying storage connection",
+        "oneOf": [
+          {
+            "$ref": "../storage/s3Connection.json"
+          },
+          {
+            "$ref": "#/definitions/localProjectsPath"
+          }
+        ]
       },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
@@ -40,6 +60,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["databaseConnection"]
+    "required": ["databaseConnection", "packageConnection"]
   }
   

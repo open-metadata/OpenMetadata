@@ -150,13 +150,9 @@ export interface ConfigClass {
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
-     * Path leading to your projects
+     * Underlying storage connection
      */
-    localProjectsPath?: any;
-    /**
-     * Storage Connection having package files
-     */
-    storageConnection?: S3Connection;
+    packageConnection?: SSISProjectsLocationLocalPathOrS3Bucket;
     awsConfig?:         AWSCredentials;
     /**
      * Airbyte API version.
@@ -854,6 +850,44 @@ export interface NifiCredentialsConfiguration {
 }
 
 /**
+ * Underlying storage connection
+ *
+ * S3 Connection.
+ *
+ * Path leading to your projects
+ */
+export interface SSISProjectsLocationLocalPathOrS3Bucket {
+    awsConfig?: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?:         S3Type;
+    projectsPath?: string;
+    [property: string]: any;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    Local = "local",
+    S3 = "S3",
+}
+
+/**
  * SASL Configuration details.
  *
  * SASL client configuration.
@@ -893,39 +927,6 @@ export enum KafkaSecurityProtocol {
     Plaintext = "PLAINTEXT",
     SSL = "SSL",
     SaslSSL = "SASL_SSL",
-}
-
-/**
- * Storage Connection having package files
- *
- * S3 Connection.
- */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
-    /**
-     * Bucket Names of the data source.
-     */
-    bucketNames?:         string[];
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Regex to only fetch containers that matches the pattern.
-     */
-    containerFilterPattern?:     FilterPattern;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: S3Type;
-}
-
-/**
- * Service Type
- *
- * S3 service type
- */
-export enum S3Type {
-    S3 = "S3",
 }
 
 /**

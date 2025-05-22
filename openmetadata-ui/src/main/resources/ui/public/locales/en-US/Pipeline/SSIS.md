@@ -110,6 +110,18 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
+$$section
+### Project Location $(id="packageConnection")
+
+You have two options to provide your SSIS projects for ingestion:
+
+1. **Local Path**:<span style="font-size: 1.1em; color: #b22222; font-style: italic; font-weight: bold;">If you are using the Local Path option, you must run the ingestion workflow through the CLI instead of the UI.</span>
+2. **S3 Bucket**: Upload your SSIS projects to an S3 bucket and provide the bucket name along with the necessary S3 credentials.
+
+You can choose either of these methods based on your setup and requirements.
+$$
+
+
 ## S3Connection
 
 In this section, we provide guides and references to use the S3 connector.
@@ -234,7 +246,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 $$
 
 $$section
-### Bucket Name $(id="bucketName")
+### Bucket Name $(id="bucketNames")
 
 Provide the name of the bucket that contains your project folders
 $$

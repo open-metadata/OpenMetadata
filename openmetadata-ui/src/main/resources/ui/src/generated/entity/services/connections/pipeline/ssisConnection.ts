@@ -19,13 +19,9 @@ export interface SsisConnection {
      */
     databaseConnection: MssqlConnection;
     /**
-     * Path leading to your projects
+     * Underlying storage connection
      */
-    localProjectsPath?: any;
-    /**
-     * Storage Connection having package files
-     */
-    storageConnection?:          S3Connection;
+    packageConnection:           SSISProjectsLocationLocalPathOrS3Bucket;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -218,12 +214,14 @@ export enum MssqlType {
 }
 
 /**
- * Storage Connection having package files
+ * Underlying storage connection
  *
  * S3 Connection.
+ *
+ * Path leading to your projects
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface SSISProjectsLocationLocalPathOrS3Bucket {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -238,7 +236,9 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?:         S3Type;
+    projectsPath?: string;
+    [property: string]: any;
 }
 
 /**
@@ -293,6 +293,7 @@ export interface AWSCredentials {
  * S3 service type
  */
 export enum S3Type {
+    Local = "local",
     S3 = "S3",
 }
 

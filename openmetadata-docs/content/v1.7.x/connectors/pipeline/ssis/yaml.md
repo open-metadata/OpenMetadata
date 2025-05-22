@@ -101,7 +101,12 @@ source:
         hostPort: localhost:1433
 ```
 
-**storage**
+**storage**:  
+To extract task dependencies and lineage, the connector needs access to your SSIS package XML files.  
+You can either provide the local path to your project folders, or upload your projects to an S3 bucket and supply the bucket name along with S3 credentials.
+
+- For s3
+
 Pass the `S3` credentials where your package folders are uploaded and specify the bucket name inside the `bucketNames` field.
 
 
@@ -116,7 +121,10 @@ Pass the `S3` credentials where your package folders are uploaded and specify th
         bucketNames: 
           - bucket_name
 ```
-
+- For Local
+```yaml {% srNumber=8 %}
+  localProjectsPath: /home/user/repos/
+```
 
 {% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
