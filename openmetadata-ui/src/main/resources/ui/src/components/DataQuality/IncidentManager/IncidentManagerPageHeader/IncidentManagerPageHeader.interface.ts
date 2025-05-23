@@ -17,4 +17,5 @@ export interface IncidentManagerPageHeaderProps {
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   testCaseData?: TestCase;
   fetchTaskCount: () => void;
+  isVersionPage?: boolean;
 }

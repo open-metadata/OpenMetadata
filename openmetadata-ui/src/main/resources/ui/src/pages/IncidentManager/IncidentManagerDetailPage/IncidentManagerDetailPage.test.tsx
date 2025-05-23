@@ -17,7 +17,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 
@@ -110,7 +110,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: () => mockHistory,
   useParams: () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
-    tab: IncidentManagerTabs.TEST_CASE_RESULTS,
+    tab: TestCasePageTabs.TEST_CASE_RESULTS,
   }),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>

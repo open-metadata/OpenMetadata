@@ -127,7 +127,6 @@ import {
   getEntityDetailsPath,
   getGlossaryPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
@@ -138,6 +137,7 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
@@ -1581,7 +1581,7 @@ export const getEntityLinkFromType = (
     case EntityType.APPLICATION:
       return getApplicationDetailsPath(fullyQualifiedName);
     case EntityType.TEST_CASE:
-      return getIncidentManagerDetailPagePath(fullyQualifiedName);
+      return getTestCaseDetailPagePath(fullyQualifiedName);
     case EntityType.TEST_SUITE:
       return getEntityDetailsPath(
         EntityType.TABLE,
