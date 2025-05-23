@@ -93,7 +93,6 @@ describe('getJsonTreeFromQueryFilter', () => {
         },
       },
       id: 'uuid1',
-      path: ['uuid1'],
     });
   });
 

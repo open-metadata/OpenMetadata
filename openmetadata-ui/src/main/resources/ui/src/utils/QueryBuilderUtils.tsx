@@ -59,25 +59,22 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (!('subfields' in currentField)) {
-      continue;
-    }
-
-    // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
-    if (i === 1) {
+    if (i === 1 && (currentField as any)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = currentField.subfields[remainingPath];
+      const remainingField = (currentField as any).subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!currentField?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = currentField.subfields[fieldParts[i]] as FieldOrGroup;
+    currentField = (currentField as any).subfields[
+      fieldParts[i]
+    ] as FieldOrGroup;
   }
 
   return currentField?.type;

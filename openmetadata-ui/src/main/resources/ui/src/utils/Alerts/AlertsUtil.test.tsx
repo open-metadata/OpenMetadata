@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -270,9 +269,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -292,9 +289,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -319,9 +314,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -346,9 +339,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -373,9 +364,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -395,9 +384,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -512,9 +499,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
