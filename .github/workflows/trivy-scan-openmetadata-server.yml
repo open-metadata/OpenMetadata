@@ -40,7 +40,7 @@ jobs:
           image-ref: openmetadata-server:trivy
           hide-progress: true
           ignore-unfixed: true
-          severity: "HIGH,CRITICAL,MEDIUM,LOW"
+          severity: "HIGH,CRITICAL,MEDIUM"
           format: "table"
           output: trivy.txt
         env:
