@@ -129,53 +129,49 @@ const DataInsightPage = () => {
   }
 
   return (
-    <div>
-      <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: <LeftPanel />,
-        }}
-        pageTitle={t('label.data-insight')}
-        secondPanel={{
-          children: (
-            <DataInsightProvider>
-              <Card className="h-full overflow-y-auto">
-                <Row data-testid="data-insight-container" gutter={[16, 16]}>
-                  {isHeaderVisible && (
-                    <Col span={24}>
-                      <DataInsightHeader
-                        onScrollToChart={handleScrollToChart}
-                      />
-                    </Col>
-                  )}
+    <ResizableLeftPanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        minWidth: 280,
+        flex: 0.13,
+        children: <LeftPanel />,
+      }}
+      pageTitle={t('label.data-insight')}
+      secondPanel={{
+        children: (
+          <DataInsightProvider>
+            <Card className="h-full overflow-y-auto">
+              <Row data-testid="data-insight-container" gutter={[16, 16]}>
+                {isHeaderVisible && (
                   <Col span={24}>
-                    <Routes>
-                      {dataInsightTabs.map((tab) => (
-                        <Route
-                          element={<tab.component />}
-                          key={tab.key}
-                          path={tab.path}
-                        />
-                      ))}
-                      <Route
-                        element={<Navigate to={getDataInsightPathWithFqn()} />}
-                        path="*"
-                      />
-                    </Routes>
+                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
                   </Col>
-                </Row>
-              </Card>
-            </DataInsightProvider>
-          ),
-          className: 'content-resizable-panel-container',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
-    </div>
+                )}
+                <Col span={24}>
+                  <Routes>
+                    {dataInsightTabs.map((tab) => (
+                      <Route
+                        element={<tab.component />}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    ))}
+                    <Route
+                      element={<Navigate to={getDataInsightPathWithFqn()} />}
+                      path="*"
+                    />
+                  </Routes>
+                </Col>
+              </Row>
+            </Card>
+          </DataInsightProvider>
+        ),
+        className: 'content-resizable-panel-container',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
   );
 };
 

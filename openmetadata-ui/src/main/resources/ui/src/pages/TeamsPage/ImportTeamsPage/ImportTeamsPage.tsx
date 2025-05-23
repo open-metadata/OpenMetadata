@@ -124,13 +124,10 @@ const ImportTeamsPage = () => {
 
   const handleViewClick = () => {
     if (team) {
-      const searchParams = new URLSearchParams();
-      searchParams.set('activeTab', type);
-      navigate(
-        `${getTeamsWithFqnPath(
-          team.fullyQualifiedName ?? team.name
-        )}?${searchParams.toString()}`
-      );
+      navigate({
+        pathname: getTeamsWithFqnPath(team.fullyQualifiedName ?? team.name),
+        search: QueryString.stringify({ activeTab: type }),
+      });
     }
   };
 

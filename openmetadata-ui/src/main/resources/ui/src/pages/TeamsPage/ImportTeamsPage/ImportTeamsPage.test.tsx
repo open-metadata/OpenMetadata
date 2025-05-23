@@ -240,9 +240,7 @@ describe('ImportTeamsPage', () => {
     });
     const cancelBtn = await screen.findByTestId('cancel');
 
-    await act(async () => {
-      fireEvent.click(cancelBtn);
-    });
+    fireEvent.click(cancelBtn);
 
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),

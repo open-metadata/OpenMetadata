@@ -62,9 +62,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 describe('Test DeleteWidgetV1 Component', () => {
   it('Component should render properly', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockProps} />);
-    });
+    render(<DeleteWidgetModal {...mockProps} />);
 
     const deleteModal = await screen.findByTestId('delete-modal');
     const footer = await screen.findByTestId('footer');
@@ -84,56 +82,48 @@ describe('Test DeleteWidgetV1 Component', () => {
   });
 
   it('Delete click should work properly', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockProps} />);
+    render(<DeleteWidgetModal {...mockProps} />);
 
-      const inputBox = await screen.findByTestId('confirmation-text-input');
-      const confirmButton = await screen.findByTestId('confirm-button');
-      const hardDelete = await screen.findByTestId('hard-delete');
+    const inputBox = await screen.findByTestId('confirmation-text-input');
+    const confirmButton = await screen.findByTestId('confirm-button');
+    const hardDelete = await screen.findByTestId('hard-delete');
 
-      userEvent.click(hardDelete);
+    fireEvent.click(hardDelete);
 
-      userEvent.type(inputBox, 'DELETE');
+    fireEvent.change(inputBox, { target: { value: 'DELETE' } });
 
-      expect(confirmButton).not.toBeDisabled();
+    expect(confirmButton).not.toBeDisabled();
 
-      userEvent.click(confirmButton);
-    });
+    fireEvent.click(confirmButton);
   });
 
   it('Delete click should work properly regardless of capitalization', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockProps} />);
+    render(<DeleteWidgetModal {...mockProps} />);
 
-      const inputBox = await screen.findByTestId('confirmation-text-input');
-      const confirmButton = await screen.findByTestId('confirm-button');
-      const hardDelete = await screen.findByTestId('hard-delete');
+    const inputBox = await screen.findByTestId('confirmation-text-input');
+    const confirmButton = await screen.findByTestId('confirm-button');
+    const hardDelete = await screen.findByTestId('hard-delete');
 
-      userEvent.click(hardDelete);
+    fireEvent.click(hardDelete);
 
-      userEvent.type(inputBox, 'delete');
+    fireEvent.change(inputBox, { target: { value: 'delete' } });
 
-      expect(confirmButton).not.toBeDisabled();
+    expect(confirmButton).not.toBeDisabled();
 
-      userEvent.click(confirmButton);
-    });
+    userEvent.click(confirmButton);
   });
 
   it('Discard click should work properly', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockProps} />);
-      const discardButton = await screen.findByTestId('discard-button');
+    render(<DeleteWidgetModal {...mockProps} />);
+    const discardButton = await screen.findByTestId('discard-button');
 
-      userEvent.click(discardButton);
+    fireEvent.click(discardButton);
 
-      expect(mockProps.onCancel).toHaveBeenCalled();
-    });
+    expect(mockProps.onCancel).toHaveBeenCalled();
   });
 
   it('onLogoutHandler should not be called if entityType is user and EntityId and CurrentUser id is different', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockPropsUser} entityId="456" />);
-    });
+    render(<DeleteWidgetModal {...mockPropsUser} entityId="456" />);
 
     const confirmButton = screen.getByTestId('confirm-button');
 
@@ -153,9 +143,7 @@ describe('Test DeleteWidgetV1 Component', () => {
   });
 
   it('onLogoutHandler should be called if entityType is user and EntityId and CurrentUser id is same', async () => {
-    await act(async () => {
-      render(<DeleteWidgetModal {...mockPropsUser} />);
-    });
+    render(<DeleteWidgetModal {...mockPropsUser} />);
 
     const confirmButton = screen.getByTestId('confirm-button');
 

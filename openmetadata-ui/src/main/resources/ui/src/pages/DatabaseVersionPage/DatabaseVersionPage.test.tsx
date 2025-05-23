@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import DatabaseVersionPage from './DatabaseVersionPage';
 
@@ -158,7 +157,7 @@ describe('DatabaseVersionPage', () => {
     });
 
     // for tab change
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('tab', {
         name: CUSTOM_PROPERTY_TAB_NAME,
       })
@@ -167,14 +166,14 @@ describe('DatabaseVersionPage', () => {
     expect(screen.getByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
 
     // for back handler
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: DATA_ASSET_VERSION_HEADER,
       })
     );
 
     // for version handler
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: ENTITY_VERSION_TIMELINE,
       })
