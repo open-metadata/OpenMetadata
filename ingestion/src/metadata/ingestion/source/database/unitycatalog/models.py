@@ -68,4 +68,4 @@ class Type(BaseModel):
     fields: Optional[List[ColumnJson]] = None
 
 
-ColumnJson.update_forward_refs()
+ColumnJson.model_rebuild()
