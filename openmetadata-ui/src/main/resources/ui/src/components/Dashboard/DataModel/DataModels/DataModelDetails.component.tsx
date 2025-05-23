@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
@@ -36,6 +37,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
+import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../../common/IconButtons/EditIconButton';
@@ -207,6 +209,21 @@ const DataModelDetails = ({
       ),
     [tabs[0], activeTab]
   );
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dataModelData) {
+        const certificationTag: DashboardDataModel['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...dataModelData,
+          certification: certificationTag,
+        };
+
+        await onUpdateDataModel(updatedTableDetails as DashboardDataModel);
+      }
+    },
+    [onUpdateDataModel, dataModelData]
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -229,6 +246,7 @@ const DataModelDetails = ({
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             openTaskCount={feedCount.openTaskCount}
             permissions={dataModelPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}

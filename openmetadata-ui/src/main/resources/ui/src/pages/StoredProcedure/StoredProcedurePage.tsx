@@ -69,7 +69,7 @@ import {
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
@@ -512,6 +512,24 @@ const StoredProcedurePage = () => {
     }
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (storedProcedure) {
+        const certificationTag: StoredProcedure['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedStoredProcedureDetails = {
+          ...storedProcedure,
+          certification: certificationTag,
+        };
+
+        await handleStoreProcedureUpdate(
+          updatedStoredProcedureDetails,
+          'certification'
+        );
+      }
+    },
+    [storedProcedure, handleStoreProcedureUpdate]
+  );
   useEffect(() => {
     if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
@@ -552,6 +570,7 @@ const StoredProcedurePage = () => {
             entityType={EntityType.STORED_PROCEDURE}
             openTaskCount={feedCount.openTaskCount}
             permissions={storedProcedurePermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollow}
             onOwnerUpdate={handleUpdateOwner}

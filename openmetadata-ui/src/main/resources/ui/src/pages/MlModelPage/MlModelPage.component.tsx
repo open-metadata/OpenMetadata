@@ -257,6 +257,23 @@ const MlModelPage = () => {
     },
     [saveUpdatedMlModelData]
   );
+  const onMlModelUpdateCertification = async (
+    updatedMlModel: Mlmodel,
+    key?: keyof Mlmodel
+  ) => {
+    try {
+      const response = await saveUpdatedMlModelData(updatedMlModel);
+      setMlModelDetail((previous) => {
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
@@ -289,6 +306,7 @@ const MlModelPage = () => {
       updateMlModelDetailsState={updateMlModelDetailsState}
       versionHandler={versionHandler}
       onMlModelUpdate={handleMlModelUpdate}
+      onMlModelUpdateCertification={onMlModelUpdateCertification}
       onUpdateVote={updateVote}
     />
   );
