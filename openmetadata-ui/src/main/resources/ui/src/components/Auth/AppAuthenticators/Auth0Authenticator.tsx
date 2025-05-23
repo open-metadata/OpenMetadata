@@ -20,22 +20,26 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
-
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
   children: ReactNode;
-  onLogoutSuccess: () => void;
 }
 
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLogoutSuccess }: Props, ref) => {
+  ({ children }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
     const { t } = useTranslation();
-    const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
-      useAuth0();
+    const {
+      loginWithRedirect,
+      getAccessTokenSilently,
+      getIdTokenClaims,
+      logout,
+    } = useAuth0();
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -45,8 +49,13 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
         });
       },
       invokeLogout() {
-        setIsAuthenticated(false);
-        onLogoutSuccess();
+        try {
+          logout();
+        } finally {
+          setIsAuthenticated(false);
+          // This will cleanup the application state and redirect to login page
+          handleSuccessfulLogout();
+        }
       },
       renewIdToken(): Promise<string> {
         let idToken = '';

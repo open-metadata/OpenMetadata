@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../LocalStorageUtils';
@@ -84,6 +83,7 @@ class TokenService {
     if (isExpired || timeoutExpiry <= 0) {
       // Logic to refresh the token
       const newToken = await this.fetchNewToken();
+      newToken && this.refreshSuccessCallback && this.refreshSuccessCallback();
       // To update all the tabs on updating channel token
       // Notify all tabs that the token has been refreshed
       localStorage.setItem(REFRESHED_KEY, 'true');
@@ -105,8 +105,9 @@ class TokenService {
         // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message !== 'Frame window timed out') {
           // Perform logout for any error
-          useApplicationStore.getState().onLogoutHandler();
           this.clearRefreshInProgress();
+
+          throw error;
         }
         // Do nothing
       } finally {

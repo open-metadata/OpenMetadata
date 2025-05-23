@@ -12,7 +12,8 @@
  */
 import { HttpStatusCode } from 'axios';
 import axiosClient from '.';
-import { useApplicationStore } from '../hooks/useApplicationStore';
+import { ROUTES } from '../constants/constants';
+import { history } from '../utils/HistoryUtils';
 
 const BASE_URL = '/auth';
 
@@ -28,7 +29,7 @@ export const renewToken = async () => {
   const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
 
   if (data.status === HttpStatusCode.Found) {
-    useApplicationStore.getState().onLoginHandler();
+    history.push(ROUTES.LOGOUT);
   }
 
   return data.data;

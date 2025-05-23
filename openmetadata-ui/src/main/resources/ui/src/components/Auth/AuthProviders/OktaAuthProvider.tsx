@@ -21,18 +21,18 @@ import React, {
 } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
-import { OidcUser } from './AuthProvider.interface';
+import { useAuthProvider } from './AuthProvider';
 
 interface Props {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
 }
 
 export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
-  onLoginSuccess,
 }: Props) => {
   const { authConfig } = useApplicationStore();
+  const { handleSuccessfulLogin } = useAuthProvider();
+
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as unknown as OktaAuthOptions;
 
@@ -93,7 +93,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
               sub: info.sub,
             },
           };
-          onLoginSuccess(user);
+          handleSuccessfulLogin(user);
         })
         .catch(async (err) => {
           // eslint-disable-next-line no-console
@@ -102,7 +102,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
           await customAuthHandler();
         });
     },
-    [onLoginSuccess]
+    [handleSuccessfulLogin]
   );
 
   return (

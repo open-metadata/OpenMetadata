@@ -16,17 +16,16 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
-    const history = useHistory();
+    const { handleSuccessfulLogout } = useAuthProvider();
 
     const handleLogin = () => {
       setIsAuthenticated(false);
@@ -36,12 +35,12 @@ export const GenericAuthenticator = forwardRef(
     };
 
     const handleLogout = async () => {
-      await logoutUser();
-
-      TokenService.getInstance().clearRefreshInProgress();
-      history.push(ROUTES.SIGNIN);
-      setOidcToken('');
-      setIsAuthenticated(false);
+      try {
+        await logoutUser();
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
+      }
     };
 
     const handleSilentSignIn = async () => {
