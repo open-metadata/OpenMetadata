@@ -73,6 +73,9 @@ export const DashboardChartTable = ({
     chart: ChartType;
     index: number;
   }>();
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
 
   const fetchChartPermissions = useCallback(async (id: string) => {
     try {
@@ -262,6 +265,10 @@ export const DashboardChartTable = ({
     }
   };
 
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -343,10 +350,12 @@ export const DashboardChartTable = ({
             <TableTags<ChartType>
               entityFqn={dashboardDetails?.fullyQualifiedName ?? ''}
               entityType={EntityType.DASHBOARD}
+              handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
               handleTagSelection={handleChartTagSelection}
               hasTagEditAccess={hasEditTagAccess(record)}
               index={index}
               isReadOnly={dashboardDetails?.deleted}
+              openTagDropdownKey={openTagDropdownKey}
               record={record}
               tags={tags}
               type={TagSource.Classification}
@@ -368,10 +377,12 @@ export const DashboardChartTable = ({
           <TableTags<ChartType>
             entityFqn={dashboardDetails?.fullyQualifiedName ?? ''}
             entityType={EntityType.DASHBOARD}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleChartTagSelection}
             hasTagEditAccess={hasEditGlossaryTermAccess(record)}
             index={index}
             isReadOnly={dashboardDetails?.deleted}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -388,6 +399,7 @@ export const DashboardChartTable = ({
       onThreadLinkSelect,
       hasEditTagAccess,
       handleUpdateChart,
+      openTagDropdownKey,
       handleChartTagSelection,
       charts,
     ]

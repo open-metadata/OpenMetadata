@@ -88,6 +88,9 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -212,6 +215,10 @@ const SearchIndexFieldsTable = ({
     [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
+
   const fields: ColumnsType<SearchIndexField> = useMemo(
     () => [
       {
@@ -262,10 +269,12 @@ const SearchIndexFieldsTable = ({
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
             entityType={EntityType.SEARCH_INDEX}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -285,10 +294,12 @@ const SearchIndexFieldsTable = ({
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
             entityType={EntityType.SEARCH_INDEX}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -306,6 +317,7 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
+      openTagDropdownKey,
     ]
   );
 

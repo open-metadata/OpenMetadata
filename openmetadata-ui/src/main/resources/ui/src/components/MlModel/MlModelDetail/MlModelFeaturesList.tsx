@@ -35,6 +35,9 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
   const { data, onUpdate, permissions } = useGenericContext<Mlmodel>();
 
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
@@ -65,6 +68,10 @@ const MlModelFeaturesList = () => {
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
     setEditDescription(false);
+  };
+
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
   };
 
   const handleDescriptionChange = async (value: string) => {
@@ -167,10 +174,14 @@ const MlModelFeaturesList = () => {
                           <TableTags<MlFeature>
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
+                            handleChangeOpenTagDropdownKey={
+                              handleOpenTagDropdownKey
+                            }
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
+                            openTagDropdownKey={openTagDropdownKey}
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
@@ -190,10 +201,14 @@ const MlModelFeaturesList = () => {
                           <TableTags<MlFeature>
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
+                            handleChangeOpenTagDropdownKey={
+                              handleOpenTagDropdownKey
+                            }
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditGlossaryTermPermission}
                             index={index}
                             isReadOnly={isDeleted}
+                            openTagDropdownKey={openTagDropdownKey}
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
