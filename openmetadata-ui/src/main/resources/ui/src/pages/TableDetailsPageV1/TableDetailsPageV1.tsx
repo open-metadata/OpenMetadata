@@ -209,7 +209,7 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
@@ -500,7 +500,7 @@ const TableDetailsPageV1: React.FC = () => {
       queryCount,
       isTourOpen,
       tablePermissions,
-      activeTab: activeTab as EntityTabs,
+      activeTab,
       deleted,
       tableDetails,
       feedCount,
@@ -548,12 +548,7 @@ const TableDetailsPageV1: React.FC = () => {
   ]);
 
   const isExpandViewSupported = useMemo(
-    () =>
-      checkIfExpandViewSupported(
-        tabs[0],
-        activeTab as EntityTabs,
-        PageType.Table
-      ),
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
     [tabs[0], activeTab]
   );
 

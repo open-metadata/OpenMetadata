@@ -131,14 +131,19 @@ const Ingestion: React.FC<IngestionProps> = ({
     (e: RadioChangeEvent) => {
       const key = e.target.value;
 
-      navigate({
-        pathname: getServiceDetailsPath(
-          decodedServiceFQN,
-          serviceCategory,
-          tab,
-          key
-        ),
-      });
+      navigate(
+        {
+          pathname: getServiceDetailsPath(
+            decodedServiceFQN,
+            serviceCategory,
+            tab,
+            key
+          ),
+        },
+        {
+          replace: true,
+        }
+      );
     },
     [history, decodedServiceFQN, serviceCategory, tab]
   );

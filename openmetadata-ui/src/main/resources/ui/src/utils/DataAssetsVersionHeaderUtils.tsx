@@ -14,7 +14,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Space, Typography } from 'antd';
-
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -49,6 +48,29 @@ export const VersionExtraInfoLink = ({
         {stringToHTML(value)}
       </Typography.Link>
     </div>
+  </>
+);
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
   </>
 );
 
@@ -199,26 +221,3 @@ export const getDataAssetsVersionHeaderInfo = (
       return null;
   }
 };
-
-export const VersionExtraInfoLabel = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
-        {!isEmpty(label) && (
-          <span className="text-grey-muted">{`${label}: `}</span>
-        )}
-      </Typography.Text>
-
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
-        {stringToHTML(value)}
-      </Typography.Text>
-    </Space>
-  </>
-);

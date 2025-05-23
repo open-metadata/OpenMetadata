@@ -93,9 +93,14 @@ export const GlobalSearchBar = () => {
   );
 
   const handleSelectOption = useCallback((text: string) => {
-    navigate({
-      search: `?withinPageSearch=${text}`,
-    });
+    navigate(
+      {
+        search: `?withinPageSearch=${text}`,
+      },
+      {
+        replace: true,
+      }
+    );
   }, []);
 
   const debouncedOnChange = useCallback(

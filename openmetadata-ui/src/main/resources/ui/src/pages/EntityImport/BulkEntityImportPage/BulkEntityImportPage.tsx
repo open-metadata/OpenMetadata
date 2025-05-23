@@ -112,7 +112,7 @@ const BulkEntityImportPage = () => {
   const fetchEntityData = useCallback(async () => {
     try {
       const response = await entityUtilClassBase.getEntityByFqn(
-        entityType as EntityType,
+        entityType,
         fqn
       );
       setEntity(response);
@@ -128,18 +128,12 @@ const BulkEntityImportPage = () => {
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      entity
-        ? getBulkEntityBreadcrumbList(
-            entityType as EntityType,
-            entity,
-            isBulkEdit
-          )
-        : [],
+      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
     [entityType, entity, isBulkEdit]
   );
 
   const importedEntityType = useMemo(
-    () => getImportedEntityType(entityType as EntityType),
+    () => getImportedEntityType(entityType),
     [entityType]
   );
 
@@ -186,7 +180,7 @@ const BulkEntityImportPage = () => {
         const result = e.target?.result as string;
         const validationResponse = await validateCsvString(
           result,
-          entityType as EntityType,
+          entityType,
           fqn,
           isBulkEdit
         );
@@ -233,7 +227,7 @@ const BulkEntityImportPage = () => {
       const api = getImportValidateAPIEntityType(entityType);
 
       const response = await api({
-        entityType: entityType as EntityType,
+        entityType,
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
@@ -366,9 +360,7 @@ const BulkEntityImportPage = () => {
               fqn,
             })
           );
-          navigate(
-            entityUtilClassBase.getEntityLink(entityType as EntityType, fqn)
-          );
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
           handleResetImportJob();
           setIsValidating(false);
         }

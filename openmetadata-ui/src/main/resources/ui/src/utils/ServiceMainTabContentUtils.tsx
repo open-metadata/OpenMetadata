@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
@@ -107,7 +106,7 @@ export const getServiceMainTabColumns = (
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {
-          title: t('label.usage').toString(),
+          title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,

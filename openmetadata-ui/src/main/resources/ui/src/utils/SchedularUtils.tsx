@@ -30,7 +30,7 @@ import {
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -296,7 +296,7 @@ export const checkDOWValidity = async (dow: string) => {
 
   // If dow is not valid or dow range is not valid, throw an error
   if (isDayValid || isDayRangeValid) {
-    return Promise.reject(i18n.t('message.cron-dow-validation-failure'));
+    return Promise.reject(t('message.cron-dow-validation-failure'));
   }
 
   return Promise.resolve();
@@ -311,7 +311,7 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   const isFrequencyInSeconds = /Every \d* *second/.test(description);
 
   if (isFrequencyInMinutes || isFrequencyInSeconds) {
-    return Promise.reject(i18n.t('message.cron-less-than-hour-message'));
+    return Promise.reject(t('message.cron-less-than-hour-message'));
   }
 
   // Check if dow is other than 0-6
@@ -336,7 +336,7 @@ export const getRaiseOnErrorFormField = (
 ) => {
   return {
     name: 'raiseOnError',
-    label: i18n.t('label.raise-on-error'),
+    label: t('label.raise-on-error'),
     type: FieldTypes.SWITCH,
     required: false,
     formItemProps: {

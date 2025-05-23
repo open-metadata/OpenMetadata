@@ -14,7 +14,6 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -31,7 +30,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import { t } from '../../../utils/i18n';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -139,7 +138,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-
         width: 272,
         render: (tags) => (
           <TagsViewer
@@ -152,7 +150,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
-
         width: 272,
         render: (tags) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />

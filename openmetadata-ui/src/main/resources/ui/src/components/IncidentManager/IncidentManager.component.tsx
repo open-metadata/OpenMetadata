@@ -363,9 +363,14 @@ const IncidentManager = ({
     ) {
       fetchTestCaseIncidents(filters);
       if (searchParams) {
-        navigate({
-          search: QueryString.stringify(filters),
-        });
+        navigate(
+          {
+            search: QueryString.stringify(filters),
+          },
+          {
+            replace: true,
+          }
+        );
       }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));

@@ -50,7 +50,7 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import i18n, { t } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -386,7 +386,7 @@ export const getDomainDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={i18n.t('label.documentation')}
+          name={t('label.documentation')}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -400,7 +400,7 @@ export const getDomainDetailTabs = ({
                 count={subDomains.length ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={i18n.t('label.sub-domain-plural')}
+                name={t('label.sub-domain-plural')}
               />
             ),
             key: EntityTabs.SUBDOMAINS,
@@ -419,7 +419,7 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={i18n.t('label.data-product-plural')}
+                name={t('label.data-product-plural')}
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -437,7 +437,7 @@ export const getDomainDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={i18n.t('label.asset-plural')}
+                name={t('label.asset-plural')}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -465,7 +465,7 @@ export const getDomainDetailTabs = ({
                   flex: 0.87,
                 }}
                 hideSecondPanel={!previewAsset}
-                pageTitle={i18n.t('label.domain')}
+                pageTitle={t('label.domain')}
                 secondPanel={{
                   wrapInCard: false,
                   children: previewAsset && (
@@ -486,7 +486,7 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={i18n.t('label.custom-property-plural')}
+                name={t('label.custom-property-plural')}
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,

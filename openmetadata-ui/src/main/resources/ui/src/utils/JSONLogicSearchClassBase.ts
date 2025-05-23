@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   AntdConfig,
   Config,
@@ -19,7 +18,6 @@ import {
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
-import { t } from 'i18next';
 import { get, sortBy } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
@@ -30,6 +28,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { t } from './i18next/LocalUtil';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {

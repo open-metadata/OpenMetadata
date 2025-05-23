@@ -26,7 +26,6 @@ import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-
 import { compact, startCase, toString } from 'lodash';
 import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
@@ -58,7 +57,7 @@ import {
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
-import i18n, { t } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {
@@ -93,7 +92,7 @@ export const getField = (field: FieldProp) => {
       ...fieldRules,
       {
         required,
-        message: i18n.t('label.field-required', {
+        message: t('label.field-required', {
           field: startCase(toString(name)),
         }),
       },
@@ -304,12 +303,12 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
       const errorMessages = {
         required: () => ({
-          message: i18n.t('message.field-text-is-required', {
+          message: t('message.field-text-is-required', {
             fieldText: startCase(params?.missingProperty),
           }),
         }),
         minimum: () => ({
-          message: i18n.t('message.value-must-be-greater-than', {
+          message: t('message.value-must-be-greater-than', {
             field: fieldName,
             minimum: params?.limit,
           }),

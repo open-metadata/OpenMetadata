@@ -14,7 +14,6 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddDataQualityTestPage from './AddDataQualityTestPage';
 
@@ -68,9 +67,7 @@ jest.mock(
 );
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-entity', {
-    entity: i18n.t('label.data-quality-test-plural'),
-  }),
+  pageTitle: 'add-data-quality-tests',
 };
 
 describe('AddDataQualityTestPage', () => {

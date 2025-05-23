@@ -18,6 +18,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   formatContent,
   formatValueBasedOnContent,
+  setEditorContent,
 } from '../../../utils/BlockEditorUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
@@ -54,10 +55,12 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
         return formatValueBasedOnContent(backendFormat);
       },
       clearEditorContent() {
-        // editorRef.current?.editor?.setContent('');
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, '');
       },
       setEditorContent(_content: string) {
-        // editorRef.current?.editor?.setContent(content);
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, _content);
       },
     }));
 

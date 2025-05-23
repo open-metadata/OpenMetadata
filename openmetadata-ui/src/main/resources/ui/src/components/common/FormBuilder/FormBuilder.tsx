@@ -13,7 +13,6 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
@@ -45,8 +44,7 @@ export interface Props extends FormProps {
   useSelectWidget?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const FormBuilder = forwardRef<Form<any, RJSFSchema, any>, Props>(
+const FormBuilder = forwardRef<Form, Props>(
   (
     {
       formData,

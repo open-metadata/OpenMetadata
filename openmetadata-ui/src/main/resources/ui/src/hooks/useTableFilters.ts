@@ -69,11 +69,16 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
         mergedQueryParams[key] = value.join(',');
       }
     });
-    navigate({
-      search: qs.stringify(mergedQueryParams, {
-        addQueryPrefix: true,
-      }),
-    });
+    navigate(
+      {
+        search: qs.stringify(mergedQueryParams, {
+          addQueryPrefix: true,
+        }),
+      },
+      {
+        replace: true,
+      }
+    );
   };
 
   const filters = useMemo(

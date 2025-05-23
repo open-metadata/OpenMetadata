@@ -45,11 +45,7 @@ const EntityImportRouter = () => {
   }, [entityType, fqn]);
 
   useEffect(() => {
-    if (
-      fqn &&
-      entityType &&
-      SUPPORTED_BULK_IMPORT_EDIT_ENTITY.includes(entityType)
-    ) {
+    if (fqn && SUPPORTED_BULK_IMPORT_EDIT_ENTITY.includes(entityType)) {
       fetchResourcePermission();
     } else {
       navigate(ROUTES.NOT_FOUND);

@@ -13,7 +13,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { PersonaPage } from './PersonaPage';
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
@@ -98,7 +97,7 @@ jest.mock('../../../rest/PersonaAPI', () => {
 });
 
 const mockProps = {
-  pageTitle: i18n.t('label.persona-plural'),
+  pageTitle: 'personas',
 };
 
 describe('PersonaPage', () => {

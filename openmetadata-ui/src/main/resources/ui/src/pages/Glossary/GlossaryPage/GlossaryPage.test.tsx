@@ -15,7 +15,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
-import i18n from '../../../utils/i18next/LocalUtil';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -136,7 +135,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 );
 
 const mockProps = {
-  pageTitle: i18n.t('label.glossary'),
+  pageTitle: 'glossary',
 };
 
 describe('Test GlossaryComponent page', () => {

@@ -52,7 +52,6 @@ const PlatformLineage = () => {
   const queryParams = new URLSearchParams(location.search);
   const platformView =
     queryParams.get('platformView') ?? LineagePlatformView.Service;
-
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [loading, setLoading] = useState(false);

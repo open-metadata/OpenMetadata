@@ -14,7 +14,6 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import i18n from '../../utils/i18next/LocalUtil';
 import EditKPIPage from './EditKPIPage';
 import { KPI_DATA } from './KPIMock.mock';
 
@@ -78,9 +77,7 @@ jest.mock('../../constants/DataInsight.constants', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.edit-entity', {
-    entity: i18n.t('label.kpi-uppercase'),
-  }),
+  pageTitle: 'edit-kpi',
 };
 
 describe('Edit KPI page', () => {

@@ -13,7 +13,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import i18n from '../../utils/i18next/LocalUtil';
 import AddObservabilityPage from './AddObservabilityPage';
 
 const MOCK_DATA = [
@@ -97,9 +96,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-entity', {
-    entity: i18n.t('label.observability'),
-  }),
+  pageTitle: 'add-observability',
 };
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {

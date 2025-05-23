@@ -19,7 +19,6 @@ import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowSta
 import { ServiceCategory } from '../../enums/service.enum';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
@@ -203,7 +202,7 @@ const baseAirflowMock = {
 };
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-new-entity'),
+  pageTitle: 'add-service',
 };
 
 describe('AddServicePage', () => {

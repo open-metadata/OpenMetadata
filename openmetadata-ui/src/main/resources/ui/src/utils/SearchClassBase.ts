@@ -75,7 +75,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from './EntityUtils';
-import i18n, { t } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -357,28 +357,28 @@ class SearchClassBase {
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
       [SearchIndex.DATABASE]: {
-        label: i18n.t('label.database-plural'),
+        label: t('label.database-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE,
         icon: DatabaseIcon,
       },
       [SearchIndex.DATABASE_SCHEMA]: {
-        label: i18n.t('label.database-schema-plural'),
+        label: t('label.database-schema-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: SchemaIcon,
       },
       [SearchIndex.TABLE]: {
-        label: i18n.t('label.table-plural'),
+        label: t('label.table-plural'),
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TABLES,
         icon: TableIcon,
       },
       [SearchIndex.STORED_PROCEDURE]: {
-        label: i18n.t('label.stored-procedure-plural'),
+        label: t('label.stored-procedure-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.STORED_PROCEDURE,

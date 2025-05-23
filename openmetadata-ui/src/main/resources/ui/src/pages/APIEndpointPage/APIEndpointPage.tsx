@@ -17,7 +17,6 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -149,7 +148,7 @@ const APIEndpointPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,

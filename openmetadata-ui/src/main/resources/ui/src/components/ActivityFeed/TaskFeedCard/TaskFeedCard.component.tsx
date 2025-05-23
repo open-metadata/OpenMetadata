@@ -22,6 +22,7 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import {
   Post,
   Thread,
@@ -34,8 +35,6 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-
-import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';

@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';

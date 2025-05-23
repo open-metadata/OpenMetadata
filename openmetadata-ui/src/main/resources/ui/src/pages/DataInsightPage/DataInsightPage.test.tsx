@@ -15,7 +15,6 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightPage from './DataInsightPage.component';
 
 const activeTab = DataInsightTabs.DATA_ASSETS;
@@ -98,7 +97,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.data-insight'),
+  pageTitle: 'data-insight',
 };
 
 describe('Test DataInsightPage Component', () => {

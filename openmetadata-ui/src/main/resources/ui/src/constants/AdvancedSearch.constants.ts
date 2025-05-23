@@ -13,7 +13,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { t } from '../utils/i18n';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {

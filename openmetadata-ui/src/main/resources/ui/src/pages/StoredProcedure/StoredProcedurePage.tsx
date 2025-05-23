@@ -179,7 +179,7 @@ const StoredProcedurePage = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);

@@ -137,10 +137,10 @@ export const AdvanceSearchProvider = ({
     }
 
     try {
-      const filter = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(filter as OldJsonTree);
+      const filter: OldJsonTree = JSON.parse(parsedSearch.queryFilter);
+      const immutableTree = QbUtils.loadTree(filter);
       if (QbUtils.isValidTree(immutableTree, config)) {
-        return filter as OldJsonTree;
+        return filter;
       }
     } catch {
       return undefined;

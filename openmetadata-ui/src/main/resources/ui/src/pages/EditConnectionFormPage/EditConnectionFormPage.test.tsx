@@ -19,7 +19,6 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
-import i18n from '../../utils/i18next/LocalUtil';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
 const mockServiceData = {
@@ -185,9 +184,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.edit-entity', {
-    entity: i18n.t('label.connection'),
-  }),
+  pageTitle: 'edit-connection',
 };
 
 describe('EditConnectionFormPage component', () => {

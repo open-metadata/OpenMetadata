@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-
 import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';

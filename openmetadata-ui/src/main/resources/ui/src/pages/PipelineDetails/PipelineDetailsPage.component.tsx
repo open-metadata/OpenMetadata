@@ -137,7 +137,7 @@ const PipelineDetailsPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,

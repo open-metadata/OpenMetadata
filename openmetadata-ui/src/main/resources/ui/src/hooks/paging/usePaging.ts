@@ -92,6 +92,7 @@ export const usePaging = (
           state: {
             pageSize: page,
           },
+          replace: true,
         }
       );
     },
@@ -123,6 +124,7 @@ export const usePaging = (
               currentPage: page,
               pageSize,
             },
+            replace: true,
           }
         );
       }

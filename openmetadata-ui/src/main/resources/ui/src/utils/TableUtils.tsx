@@ -15,7 +15,6 @@ import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-
 import {
   get,
   isEmpty,
@@ -29,6 +28,7 @@ import {
 } from 'lodash';
 import { EntityTags } from 'Models';
 import { CSSProperties, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -111,7 +111,7 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric-colored-new.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
@@ -1138,6 +1138,7 @@ export const ExtraTableDropdownOptions = (
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { ViewAll, EditAll } = permission;
 

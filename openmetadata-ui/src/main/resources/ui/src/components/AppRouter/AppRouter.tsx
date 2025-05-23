@@ -30,20 +30,22 @@ import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
 const AppRouter = () => {
   const location = useCustomLocation();
-  // web analytic instance
+
+  // web analytics instance
   const analytics = useAnalytics();
   const { currentUser, isAuthenticated, isApplicationLoading } =
     useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
+
     /**
      * Ignore the slash path because we are treating my data as
      * default path.
      * And check if analytics instance is available
      */
     if (pathname !== '/' && !isNil(analytics)) {
-      // track the page view on route change
+      // track page view on route change
       analytics.page();
     }
   }, [location.pathname]);

@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { FC, useEffect, useMemo, useState } from 'react';
-
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import {

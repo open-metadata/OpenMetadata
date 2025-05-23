@@ -13,7 +13,6 @@
 
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
-import i18n from '../../utils/i18next/LocalUtil';
 import AddGlossaryPage from './AddGlossaryPage.component';
 
 jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
@@ -42,9 +41,7 @@ jest.mock('../../hoc/withPageLayout', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-entity', {
-    entity: i18n.t('label.glossary-plural'),
-  }),
+  pageTitle: 'add-glossary',
 };
 
 describe('Test AddGlossary component page', () => {

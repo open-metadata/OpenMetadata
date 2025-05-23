@@ -13,7 +13,6 @@
 
 import { Form } from 'antd';
 import Select, { DefaultOptionType } from 'antd/lib/select';
-
 import { toString } from 'lodash';
 import { ReactNode } from 'react';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';

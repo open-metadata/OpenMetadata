@@ -19,7 +19,6 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-
 import {
   cloneDeep,
   get,

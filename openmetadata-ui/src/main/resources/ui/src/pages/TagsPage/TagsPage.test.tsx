@@ -26,7 +26,6 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
-import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
@@ -56,7 +55,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.tag-plural'),
+  pageTitle: 'tags',
 };
 
 const mockCategory = [

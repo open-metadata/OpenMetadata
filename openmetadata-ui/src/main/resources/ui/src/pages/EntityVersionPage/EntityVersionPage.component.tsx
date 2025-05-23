@@ -163,32 +163,16 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(
-    () =>
-      navigate(
-        getEntityDetailsPath(entityType as EntityType, decodedEntityFQN, tab)
-      ),
+    () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
     [entityType, decodedEntityFQN, tab]
   );
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
-        navigate(
-          getVersionPath(
-            entityType as EntityType,
-            decodedEntityFQN,
-            newVersion ?? '',
-            tab
-          )
-        );
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion, tab));
       } else {
-        navigate(
-          getVersionPath(
-            entityType as EntityType,
-            decodedEntityFQN,
-            newVersion ?? ''
-          )
-        );
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
     [entityType, decodedEntityFQN, tab]
@@ -217,7 +201,7 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       await fetchResourcePermission(
         entityUtilClassBase.getResourceEntityFromEntityType(
-          entityType as EntityType
+          entityType
         ) as ResourceEntity
       );
     } finally {
@@ -746,9 +730,7 @@ const EntityVersionPage: FunctionComponent = () => {
       }
 
       default:
-        VersionPage = entityUtilClassBase.getEntityDetailComponent(
-          entityType as EntityType
-        );
+        VersionPage = entityUtilClassBase.getEntityDetailComponent(entityType);
 
         return VersionPage && <VersionPage />;
     }

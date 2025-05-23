@@ -13,7 +13,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import i18n from '../../utils/i18next/LocalUtil';
 import AddNotificationPage from './AddNotificationPage';
 
 const mockNavigate = jest.fn();
@@ -75,9 +74,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-entity', {
-    entity: i18n.t('label.notification-plural'),
-  }),
+  pageTitle: 'add-notifications',
 };
 
 describe('AddNotificationPage', () => {

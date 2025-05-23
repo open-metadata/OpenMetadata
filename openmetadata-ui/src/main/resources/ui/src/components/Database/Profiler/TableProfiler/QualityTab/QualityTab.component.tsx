@@ -294,7 +294,7 @@ export const QualityTab = () => {
         pathname: location.pathname,
         search: location.search,
       },
-      { state: undefined }
+      { state: undefined, replace: true }
     );
   };
 

@@ -15,7 +15,6 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-
 import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';

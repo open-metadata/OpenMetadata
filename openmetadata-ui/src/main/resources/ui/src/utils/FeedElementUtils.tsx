@@ -12,7 +12,6 @@
  */
 
 import { Tooltip } from 'antd';
-
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';

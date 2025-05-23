@@ -14,7 +14,6 @@
 import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
@@ -24,7 +23,7 @@ import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import i18n, { t } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 
@@ -42,19 +41,19 @@ export const commonUserDetailColumns = (
   isLoading?: boolean
 ): ColumnsType<User> => [
   {
-    title: t('label.username').toString(),
+    title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
     render: (_, record) => userCellRenderer(record),
   },
   {
-    title: t('label.name').toString(),
+    title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
     render: (_, record) => getEntityName(record),
   },
   {
-    title: t('label.team-plural').toString(),
+    title: t('label.team-plural'),
     dataIndex: 'teams',
     key: 'teams',
 
@@ -106,7 +105,7 @@ export const commonUserDetailColumns = (
     },
   },
   {
-    title: i18n.t('label.role-plural').toString(),
+    title: t('label.role-plural'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_, record) => {

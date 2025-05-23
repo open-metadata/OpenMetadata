@@ -274,7 +274,9 @@ const GlossaryPage = () => {
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
-          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName));
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+            replace: true,
+          });
         setIsRightPanelLoading(false);
       }
     }

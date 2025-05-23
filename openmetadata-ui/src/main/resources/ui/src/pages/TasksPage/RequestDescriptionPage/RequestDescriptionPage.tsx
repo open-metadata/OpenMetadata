@@ -82,7 +82,7 @@ const RequestDescription = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType as EntityType, fqn),
+    () => getTaskEntityFQN(entityType, fqn),
     [fqn, entityType]
   );
 
@@ -90,7 +90,7 @@ const RequestDescription = () => {
     () =>
       getTaskMessage({
         value,
-        entityType: entityType as EntityType,
+        entityType,
         entityData,
         field,
         startMessage: 'Request description',
@@ -151,7 +151,7 @@ const RequestDescription = () => {
           );
           navigate(
             entityUtilClassBase.getEntityLink(
-              entityType as EntityType,
+              entityType,
               entityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
@@ -166,7 +166,7 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType as EntityType, entityFQN, setEntityData);
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -199,7 +199,7 @@ const RequestDescription = () => {
           <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -309,7 +309,7 @@ const RequestDescription = () => {
             source={
               {
                 ...entityData,
-                entityType: entityType as EntityType,
+                entityType,
               } as SearchedDataProps['data'][number]['_source']
             }
           />

@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import i18n from '../../utils/i18next/LocalUtil';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -114,11 +113,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.edit-entity', {
-    entity: i18n.t('label.entity-configuration', {
-      entity: i18n.t('label.email'),
-    }),
-  }),
+  pageTitle: 'edit-email-config',
 };
 
 describe('EditEmailConfigPage', () => {

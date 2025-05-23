@@ -19,7 +19,6 @@ import React from 'react';
 import { MemoryRouter, Route } from 'react-router-dom';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
-import i18n from '../../utils/i18next/LocalUtil';
 import AddIngestionPage from './AddIngestionPage.component';
 const mockShowErrorToast = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -120,9 +119,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-entity', {
-    entity: i18n.t('label.ingestion-plural'),
-  }),
+  pageTitle: 'add-ingestion',
 };
 
 describe('Test AddIngestionPage component', () => {

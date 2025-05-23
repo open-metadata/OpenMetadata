@@ -209,7 +209,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsSchemaDetailsLoading(false);
@@ -310,6 +310,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         cursorData: null,
         pageSize: null,
         currentPage: INITIAL_PAGING_VALUE,
+        replace: true,
       },
     });
     setDatabaseSchema((prev) => {

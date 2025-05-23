@@ -748,7 +748,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -900,7 +900,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const jsonPatch = compare(serviceDetails, updatedData);
       try {
         const res = await patchService(
-          serviceCategory as ServiceCategory,
+          serviceCategory,
           serviceDetails?.id ?? '',
           jsonPatch
         );

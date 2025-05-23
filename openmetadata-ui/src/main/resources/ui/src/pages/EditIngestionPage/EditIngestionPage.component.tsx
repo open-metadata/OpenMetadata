@@ -65,7 +65,7 @@ const EditIngestionPage = () => {
   const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useRequiredParams<{
     ingestionType: string;
-    serviceCategory: string;
+    serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN, ingestionFQN } = useFqn();
   const navigate = useNavigate();
@@ -97,7 +97,7 @@ const EditIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getServiceByFQN(serviceCategory as ServiceCategory, serviceFQN)
+      getServiceByFQN(serviceCategory, serviceFQN)
         .then((resService) => {
           if (resService) {
             setServiceData(resService as ServicesUpdateRequest);
@@ -112,12 +112,7 @@ const EditIngestionPage = () => {
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
-            setErrorMsg(
-              getEntityMissingError(
-                serviceCategory as ServiceCategory,
-                serviceFQN
-              )
-            );
+            setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
             const errTextService = t('server.entity-fetch-error', {
               entity: t('label.service-detail-lowercase-plural'),
@@ -227,7 +222,7 @@ const EditIngestionPage = () => {
     navigate(
       getServiceDetailsPath(
         serviceFQN,
-        serviceCategory as ServiceCategory,
+        serviceCategory,
         EntityTabs.AGENTS,
         ServiceAgentSubTabs.METADATA
       )
@@ -249,7 +244,7 @@ const EditIngestionPage = () => {
     const breadCrumbsArray = getBreadCrumbsArray(
       isSettingsPipeline,
       ingestionType as PipelineType,
-      serviceCategory as ServiceCategory,
+      serviceCategory,
       serviceFQN,
       INGESTION_ACTION_TYPE.EDIT,
       serviceData

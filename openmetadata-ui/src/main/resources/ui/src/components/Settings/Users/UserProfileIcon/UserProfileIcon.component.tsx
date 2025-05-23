@@ -14,16 +14,15 @@ import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
-
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
   LIGHT_GREEN_COLOR,
   TERM_ADMIN,

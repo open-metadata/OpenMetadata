@@ -24,6 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -44,8 +45,6 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,

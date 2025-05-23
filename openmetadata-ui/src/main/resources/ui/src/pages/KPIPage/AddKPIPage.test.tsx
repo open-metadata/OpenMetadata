@@ -14,7 +14,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import i18n from '../../utils/i18next/LocalUtil';
 import AddKPIPage from './AddKPIPage';
 import { KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
@@ -78,9 +77,7 @@ jest.mock('../../constants/DataInsight.constants', () => ({
 }));
 
 const mockProps = {
-  pageTitle: i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.kpi-uppercase'),
-  }),
+  pageTitle: 'add-kpi',
 };
 
 describe('Add KPI page', () => {

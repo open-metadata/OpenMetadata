@@ -29,6 +29,7 @@ const EntityRouter = () => {
 
   return (
     <Routes>
+      {/* Handle Entity Import and Edit pages */}
       <Route element={<EntityImportRouter />} path={ROUTES.ENTITY_IMPORT} />
       <Route
         element={<EntityImportRouter />}

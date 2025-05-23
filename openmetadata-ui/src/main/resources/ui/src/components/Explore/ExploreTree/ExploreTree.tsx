@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 import { Tooltip, Tree, TreeProps, Typography } from 'antd';
+import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -34,11 +38,6 @@ import {
   updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-
-import { DataNode } from 'antd/es/tree';
-import { useTranslation } from 'react-i18next';
-import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

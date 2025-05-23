@@ -18,12 +18,11 @@ import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 

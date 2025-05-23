@@ -49,7 +49,6 @@ import {
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityCount } from '../rest/miscAPI';
-import { t } from '../utils/i18next/LocalUtil';
 import {
   getEntityDeleteMessage,
   pluralize,
@@ -57,6 +56,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
@@ -198,7 +198,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural')}:</label>
+          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -212,7 +212,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -226,7 +226,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">

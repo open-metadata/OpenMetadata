@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
-
 import { toLower } from 'lodash';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';

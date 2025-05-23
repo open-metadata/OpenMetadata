@@ -89,7 +89,7 @@ const UpdateTag = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType as EntityType, fqn),
+    () => getTaskEntityFQN(entityType, fqn),
     [fqn, entityType]
   );
 
@@ -102,7 +102,7 @@ const UpdateTag = () => {
     () =>
       getTaskMessage({
         value,
-        entityType: entityType as EntityType,
+        entityType,
         entityData,
         field,
         startMessage: 'Update tags',
@@ -117,8 +117,8 @@ const UpdateTag = () => {
 
     return getColumnObject(
       column[0],
-      getEntityColumnsDetails(entityType as EntityType, entityData),
-      entityType as EntityType,
+      getEntityColumnsDetails(entityType, entityData),
+      entityType,
       chartData
     );
   }, [field, entityData, chartData, entityType]);
@@ -173,7 +173,7 @@ const UpdateTag = () => {
         );
         navigate(
           entityUtilClassBase.getEntityLink(
-            entityType as EntityType,
+            entityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
@@ -186,7 +186,7 @@ const UpdateTag = () => {
 
   useEffect(() => {
     fetchEntityDetail(
-      entityType as EntityType,
+      entityType,
       entityFQN as string,
       setEntityData,
       setChartData
@@ -229,7 +229,7 @@ const UpdateTag = () => {
           <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -343,7 +343,7 @@ const UpdateTag = () => {
             source={
               {
                 ...entityData,
-                entityType: entityType as EntityType,
+                entityType,
               } as SearchedDataProps['data'][number]['_source']
             }
           />

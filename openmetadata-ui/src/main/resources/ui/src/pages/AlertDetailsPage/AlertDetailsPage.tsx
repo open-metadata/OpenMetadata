@@ -298,7 +298,8 @@ function AlertDetailsPage({
       navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : getObservabilityAlertDetailsPath(fqn, activeKey)
+          : getObservabilityAlertDetailsPath(fqn, activeKey),
+        { replace: true }
       );
     },
     [history, fqn]

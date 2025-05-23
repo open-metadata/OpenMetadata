@@ -76,10 +76,6 @@ export const UserTab = ({
 
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
-  const handleRemoveClick = (id: string) => {
-    const user = usersList?.find((u) => u.id === id);
-    setDeletingUser(user);
-  };
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -98,6 +94,11 @@ export const UserTab = ({
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
+
+  const handleRemoveClick = (id: string) => {
+    const user = usersList?.find((u) => u.id === id);
+    setDeletingUser(user);
+  };
 
   const isGroupType = useMemo(
     () => currentTeam.teamType === TeamType.Group,

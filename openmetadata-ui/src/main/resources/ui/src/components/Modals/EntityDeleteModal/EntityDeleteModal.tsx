@@ -12,7 +12,6 @@
  */
 
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
-
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/CommonUtils';

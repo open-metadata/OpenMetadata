@@ -168,7 +168,7 @@ const APICollectionPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsAPICollectionLoading(false);
