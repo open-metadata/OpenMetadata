@@ -38,9 +38,12 @@ jobs:
             image-ref: openmetadata-server:trivy
             hide-progress: false
             ignore-unfixed: true
-            severity: "HIGH,CRITICAL,MEDIUM"
+            severity: "HIGH,CRITICAL,MEDIUM,LOW"
             scan-ref: .
             format: 'table'
-            output: $GITHUB_STEP_SUMMARY
+            output: trivy-summary.md
         env:
             TRIVY_DISABLE_VEX_NOTICE: "true"
+
+      - name: Write Trivy Results to Summary
+        run: cat trivy-summary.md >> $GITHUB_STEP_SUMMARY
