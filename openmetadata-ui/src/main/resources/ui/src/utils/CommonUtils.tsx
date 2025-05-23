@@ -179,6 +179,11 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
+export const preloadImage = (src: string) => {
+  const img = new Image();
+  img.src = src;
+};
+
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {

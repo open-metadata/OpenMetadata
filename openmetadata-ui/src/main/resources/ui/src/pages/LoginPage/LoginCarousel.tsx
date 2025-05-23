@@ -14,12 +14,21 @@
 import { Carousel, Typography } from 'antd';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import loginClassBase from '../../constants/LoginClassBase';
+import { preloadImage } from '../../utils/CommonUtils';
 
 const LoginCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselContent = loginClassBase.getLoginCarouselContent();
+
+  useEffect(() => {
+    carouselContent.forEach((data) => {
+      [data.image, data.image1?.image, data.image2?.image, data.image3?.image]
+        .filter(Boolean)
+        .forEach(preloadImage);
+    });
+  }, []);
 
   return (
     <div className="carousal-container" data-testid="carousel-container">
