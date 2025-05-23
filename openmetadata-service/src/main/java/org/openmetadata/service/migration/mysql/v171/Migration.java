@@ -1,6 +1,5 @@
 package org.openmetadata.service.migration.mysql.v171;
 
-import static org.openmetadata.service.migration.utils.v171.MigrationUtil.removeOldDataInsightsObjects;
 import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateServiceCharts;
 
 import lombok.SneakyThrows;

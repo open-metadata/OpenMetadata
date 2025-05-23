@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.postgres.v171;
+package org.openmetadata.service.migration.mysql.v172;
 
-import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateServiceCharts;
+import static org.openmetadata.service.migration.utils.v172.MigrationUtil.removeOldDataInsightsObjects;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -15,6 +15,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    updateServiceCharts();
+    // Data Insights
+    removeOldDataInsightsObjects();
   }
 }
