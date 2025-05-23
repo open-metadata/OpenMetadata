@@ -17,5 +17,6 @@
 {% connectorInfoCard name="Spline" stage="PROD" href="/connectors/pipeline/spline" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Stitch" stage="PROD" href="/connectors/pipeline/stitch" platform="Collate" / %}
 {% connectorInfoCard name="Wherescape" stage="BETA" href="/connectors/pipeline/wherescape" platform="Collate" / %}
+{% connectorInfoCard name="SSIS" stage="BETA" href="/connectors/pipeline/ssis" platform="Collate" / %}
 
 {% /connectorsListContainer %}
