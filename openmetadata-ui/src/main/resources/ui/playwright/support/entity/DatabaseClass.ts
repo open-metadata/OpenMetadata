@@ -249,7 +249,9 @@ export class DatabaseClass extends EntityClass {
     await expect(
       page
         .getByTestId(`table-data-card_${searchTerm}`)
-        .getByRole('link', { name: owner })
+        .getByTestId('owner-label')
+        .getByTestId('owner-link')
+        .getByTestId(owner)
     ).toBeVisible();
   }
 
