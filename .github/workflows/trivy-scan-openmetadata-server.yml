@@ -33,7 +33,6 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t openmetadata-server:trivy -f docker/development/Dockerfile .
-
       - name: Run Trivy Image Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -41,9 +40,9 @@ jobs:
           image-ref: openmetadata-server:trivy
           hide-progress: true
           ignore-unfixed: true
-          severity: "HIGH,CRITICAL,MEDIUM"
+          severity: "HIGH,CRITICAL,MEDIUM,LOW"
           format: "table"
-          output: openmetadata-server-trivy.txt
+          output: trivy.txt
         env:
           TRIVY_DISABLE_VEX_NOTICE: "true"
 
@@ -51,11 +50,11 @@ jobs:
         run: |
           if [[ -s trivy.txt ]]; then
             {
-              echo "### 🛡️ Trivy Security Scan Results"
+              echo "###  Trivy Security Scan Results"
               echo "<details><summary>Click to expand</summary>"
               echo ""
               echo '```text'
-              cat openmetadata-server-trivy.txt
+              cat trivy.txt
               echo '```'
               echo "</details>"
             } >> $GITHUB_STEP_SUMMARY
