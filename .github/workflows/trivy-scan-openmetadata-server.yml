@@ -38,7 +38,7 @@ jobs:
             image-ref: openmetadata-server:trivy
             hide-progress: false
             ignore-unfixed: true
-            severity: "HIGH,CRITICAL,MEDIUM"
+            severity: "HIGH,CRITICAL,MEDIUM,LOW"
             scan-ref: .
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"
