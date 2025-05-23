@@ -209,6 +209,7 @@ jest.mock('react-router-dom', () => ({
     pathname: mockLocationPathname,
   })),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useNavigate: jest.fn(),
 }));
 
 describe('Tests for DatabaseSchemaPage', () => {

@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
@@ -28,6 +27,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
@@ -46,16 +46,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
 });
 
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../../components/Glossary/GlossaryV1.component', () => {

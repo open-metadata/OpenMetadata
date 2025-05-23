@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
@@ -106,7 +106,9 @@ jest.mock('../../rest/testAPI', () => {
       .mockImplementation(() => Promise.resolve()),
     getListTestCaseBySearch: jest
       .fn()
-      .mockImplementation(() => Promise.resolve({ data: [] })),
+      .mockImplementation(() =>
+        Promise.resolve({ data: [], paging: { total: 0 } })
+      ),
     ListTestCaseParamsBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
@@ -308,6 +310,7 @@ describe('TestSuiteDetailsPage component', () => {
       Promise.resolve({
         data: [],
         paging: { total: 5 },
+        total: 5,
       })
     );
 
@@ -319,17 +322,17 @@ describe('TestSuiteDetailsPage component', () => {
       })
     );
 
-    await act(async () => {
-      render(<TestSuiteDetailsPage />);
-    });
+    render(<TestSuiteDetailsPage />);
 
-    expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
-      expect.objectContaining({
-        testSuite: 'testSuiteFQN',
-        pipelineType: ['TestSuite'],
-        arrQueryFields: [],
-        limit: 0,
-      })
+    await waitFor(() =>
+      expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
+        expect.objectContaining({
+          testSuite: 'testSuiteFQN',
+          pipelineType: ['TestSuite'],
+          arrQueryFields: [],
+          limit: 0,
+        })
+      )
     );
   });
 });

@@ -155,6 +155,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock(

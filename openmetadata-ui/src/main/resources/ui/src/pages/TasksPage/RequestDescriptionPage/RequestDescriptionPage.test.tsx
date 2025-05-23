@@ -26,16 +26,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -133,7 +124,7 @@ describe('RequestDescriptionPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(-1);
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('should submit form when submit button is clicked', async () => {

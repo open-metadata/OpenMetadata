@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useFqn } from '../../hooks/useFqn';
@@ -83,16 +81,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock(
@@ -192,33 +181,24 @@ describe('AlertDetailsPage', () => {
   });
 
   it('should redirect to notification alert edit path on click of edit button if isNotificationAlert is true', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByTestId('edit-button');
-
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    const editButton = await screen.findByTestId('edit-button');
+    fireEvent.click(editButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('notification-alert-edit-path');
   });
 
   it('should redirect to observability alert edit path on click of edit button if isNotificationAlert is false', async () => {
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert={false} />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert={false} />, {
+      wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByTestId('edit-button');
+    const editButton = await screen.findByTestId('edit-button');
 
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    fireEvent.click(editButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('observability-alert-edit-path');
   });
@@ -228,17 +208,13 @@ describe('AlertDetailsPage', () => {
       .spyOn(AlertsAPIs, 'updateNotificationAlert')
       .mockImplementation(mockUpdateNotificationAlert);
 
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
-    const ownerLabel = screen.getByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('OwnerLabel');
 
-    await act(async () => {
-      userEvent.click(ownerLabel);
-    });
+    fireEvent.click(ownerLabel);
 
     expect(mockUpdateNotificationAlert).toHaveBeenCalledTimes(1);
   });
@@ -248,17 +224,13 @@ describe('AlertDetailsPage', () => {
       .spyOn(ObservabilityAPIs, 'updateObservabilityAlert')
       .mockImplementation(mockUpdateObservabilityAlert);
 
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert={false} />, {
-        wrapper: MemoryRouter,
-      });
+    render(<AlertDetailsPage isNotificationAlert={false} />, {
+      wrapper: MemoryRouter,
     });
 
-    const ownerLabel = screen.getByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('OwnerLabel');
 
-    await act(async () => {
-      userEvent.click(ownerLabel);
-    });
+    fireEvent.click(ownerLabel);
 
     expect(mockUpdateObservabilityAlert).toHaveBeenCalledTimes(1);
   });
@@ -273,10 +245,9 @@ describe('AlertDetailsPage', () => {
         })
       ),
     }));
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
+
+    render(<AlertDetailsPage isNotificationAlert />, {
+      wrapper: MemoryRouter,
     });
 
     expect(screen.queryByTestId('edit-button')).toBeNull();

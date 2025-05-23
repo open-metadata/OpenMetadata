@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import ProfilerConfigurationPage from './ProfilerConfigurationPage';
@@ -55,9 +55,7 @@ jest.mock('../../constants/profiler.constant', () => ({
 
 describe('ProfilerConfigurationPage', () => {
   beforeEach(() => {
-    act(() => {
-      render(<ProfilerConfigurationPage />);
-    });
+    render(<ProfilerConfigurationPage />);
   });
 
   it('renders the page correctly', async () => {
@@ -89,12 +87,11 @@ describe('ProfilerConfigurationPage', () => {
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalledTimes(1);
   });
 
-  it('onCancel should call navigate', () => {
-    const cancelButton = screen.getByTestId('cancel-button');
-    act(() => {
-      cancelButton.click();
-    });
+  it('onCancel should call navigate', async () => {
+    const cancelButton = await screen.findByTestId('cancel-button');
 
-    expect(mockNavigate).toHaveBeenCalledTimes(-1);
+    cancelButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

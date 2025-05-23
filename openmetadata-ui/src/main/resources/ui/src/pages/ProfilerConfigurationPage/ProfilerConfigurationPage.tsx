@@ -23,7 +23,6 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +56,7 @@ const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useTranslation();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -66,7 +66,6 @@ const ProfilerConfigurationPage = () => {
       ),
     []
   );
-  const { t } = useTranslation();
 
   // Watchers
   const selectedMetricConfiguration = Form.useWatch<

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddNotificationPage from './AddNotificationPage';
 
@@ -43,16 +42,7 @@ jest.mock('../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>

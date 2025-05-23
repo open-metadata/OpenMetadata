@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import DataQualityPage from './DataQualityPage';
@@ -62,26 +61,12 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
 });
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    Route: jest
-      .fn()
-      .mockImplementation(({ component }) => (
-        <div data-testid="route">{component}</div>
-      )),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });

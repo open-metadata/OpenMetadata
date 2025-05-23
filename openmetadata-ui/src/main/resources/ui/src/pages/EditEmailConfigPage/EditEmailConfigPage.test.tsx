@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -31,16 +30,7 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -143,7 +133,7 @@ describe('EditEmailConfigPage', () => {
       );
     });
 
-    expect(screen.getByText(ACTIVE_FIELD)).toBeInTheDocument();
+    expect(await screen.findByText(ACTIVE_FIELD)).toBeInTheDocument();
 
     // Cancel EmailConfigForm
     userEvent.click(
@@ -161,8 +151,10 @@ describe('EditEmailConfigPage', () => {
       );
     });
 
-    expect(mockUpdateSettingsConfig).toHaveBeenCalled();
-    expect(mockShowSuccessToast).toHaveBeenCalledWith(UPDATE_ENTITY_SUCCESS);
+    await waitFor(() => {
+      expect(mockUpdateSettingsConfig).toHaveBeenCalled();
+      expect(mockShowSuccessToast).toHaveBeenCalledWith(UPDATE_ENTITY_SUCCESS);
+    });
 
     // called in cancel and submit both actions
     expect(mockNavigate).toHaveBeenCalledTimes(2);
@@ -172,24 +164,28 @@ describe('EditEmailConfigPage', () => {
     mockGetSettingsConfigFromConfigType.mockRejectedValueOnce(ERROR);
     mockUpdateSettingsConfig.mockRejectedValueOnce(ERROR);
 
-    await act(async () => {
-      render(<EditEmailConfigPage {...mockProps} />);
-    });
+    render(<EditEmailConfigPage {...mockProps} />);
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR, ENTITY_FETCH_ERROR);
-
-    // Submit EmailConfigForm
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: 'Submit EmailConfigForm',
-        })
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        ERROR,
+        ENTITY_FETCH_ERROR
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(
-      ERROR,
-      ENTITY_UPDATING_ERROR
+    // Submit EmailConfigForm
+
+    userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Submit EmailConfigForm',
+      })
     );
+
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        ERROR,
+        ENTITY_UPDATING_ERROR
+      );
+    });
   });
 });

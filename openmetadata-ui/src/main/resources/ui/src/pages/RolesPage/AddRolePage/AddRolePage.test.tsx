@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicies } from '../../../rest/rolesAPIV1';
@@ -20,16 +19,7 @@ import i18n from '../../../utils/i18next/LocalUtil';
 import AddRolePage from './AddRolePage';
 
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({

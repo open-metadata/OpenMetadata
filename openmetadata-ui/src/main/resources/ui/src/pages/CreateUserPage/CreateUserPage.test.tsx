@@ -45,6 +45,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     bot: undefined,
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../rest/rolesAPIV1', () => ({

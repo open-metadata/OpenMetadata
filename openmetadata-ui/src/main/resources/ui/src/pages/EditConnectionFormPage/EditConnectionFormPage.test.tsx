@@ -17,7 +17,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -52,16 +51,7 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>

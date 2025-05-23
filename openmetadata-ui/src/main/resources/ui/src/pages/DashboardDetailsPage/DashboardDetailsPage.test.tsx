@@ -19,10 +19,7 @@ import DashboardDetailsPage from './DashboardDetailsPage.component';
 // Mock the required dependencies
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'test-dashboard' }),
-}));
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider');

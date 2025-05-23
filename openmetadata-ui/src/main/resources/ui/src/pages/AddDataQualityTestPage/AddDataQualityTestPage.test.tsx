@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,16 +41,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock(

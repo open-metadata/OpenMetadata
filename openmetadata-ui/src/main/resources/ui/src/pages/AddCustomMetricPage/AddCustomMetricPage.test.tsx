@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import AddCustomMetricPage from './AddCustomMetricPage';
 const mockUseParams = {
   fqn: 'sample_data.ecommerce_db.shopify.dim_address',
@@ -61,16 +62,7 @@ jest.mock('../../rest/customMetricAPI', () => ({
   putCustomMetric: jest.fn(),
 }));
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -87,7 +79,11 @@ const mockProps = {
 
 describe('AddCustomMetricPage', () => {
   it('should render component', async () => {
-    render(<AddCustomMetricPage {...mockProps} />);
+    render(<AddCustomMetricPage {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(getTableDetailsByFQN).toHaveBeenCalled();
 
     expect(
       await screen.findByTestId('add-custom-metric-page-container')
@@ -102,7 +98,9 @@ describe('AddCustomMetricPage', () => {
 
   it("should render column profiler if dashboardType is 'column'", async () => {
     mockUseParams.dashboardType = 'column';
-    render(<AddCustomMetricPage {...mockProps} />);
+    render(<AddCustomMetricPage {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(await screen.findByText('SingleColumnProfile')).toBeInTheDocument();
   });

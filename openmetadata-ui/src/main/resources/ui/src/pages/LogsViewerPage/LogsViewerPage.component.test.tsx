@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import {
   mockDataInsightApplication,
@@ -32,6 +32,7 @@ jest.mock('react-router-dom', () => ({
     logEntityType: 'TestSuite',
     ingestionName: 'ingestion_123456',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../utils/LogsClassBase', () => ({
@@ -86,13 +87,11 @@ jest.mock('../../rest/applicationAPI', () => ({
 
 describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
-    await act(async () => {
-      render(<LogsViewerPage />);
+    render(<LogsViewerPage />);
 
-      expect(
-        await screen.findByText('TitleBreadcrumb.component')
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
@@ -109,13 +108,13 @@ describe('LogsViewerPage.component', () => {
       fqn: 'DataInsightsApplication',
     });
 
-    await act(async () => {
-      render(<LogsViewerPage />);
-    });
+    render(<LogsViewerPage />);
 
-    expect(getApplicationByName).toHaveBeenCalled();
-    expect(getExternalApplicationRuns).toHaveBeenCalled();
-    expect(getLatestApplicationRuns).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getApplicationByName).toHaveBeenCalled();
+      expect(getExternalApplicationRuns).toHaveBeenCalled();
+      expect(getLatestApplicationRuns).toHaveBeenCalled();
+    });
   });
 
   it('should show basic configuration for application in right panel', async () => {

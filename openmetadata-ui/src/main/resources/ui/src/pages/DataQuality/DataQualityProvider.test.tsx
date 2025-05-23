@@ -42,12 +42,19 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 jest.mock('react-router-dom', () => {
   return {
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
+    // useParams: jest.fn().mockImplementation(() => mockUseParam),
+    useNavigate: jest.fn(),
   };
 });
+
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => mockLocation);
 });
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => mockUseParam),
+}));
+
 jest.mock('../../rest/dataQualityDashboardAPI', () => ({
   fetchTestCaseSummary: jest.fn().mockImplementation(() => {
     return new Promise((resolve) => {
