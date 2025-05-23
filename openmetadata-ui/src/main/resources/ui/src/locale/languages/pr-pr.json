@@ -1850,7 +1850,7 @@
     "need-help-message": "آیا نیاز به کمک دارید؟ <0>{{doc}}</0>.",
     "new-conversation": "شما در حال شروع یک مکالمه جدید هستید.",
     "new-to-the-platform": "جدید در این پلتفرم هستید؟",
-    "no-access-placeholder": "شما دسترسی ندارید، لطفاً با مدیر تماس بگیرید تا مجوز دریافت کنید.",
+    "no-access-placeholder": "شما دسترسی‌های لازم را ندارید. لطفاً برای دریافت دسترسی <0>{{entity}}</0> با مدیر سیستم تماس بگیرید.",
     "no-activity-feed": "در حال حاضر هیچ به‌روزرسانی‌ای در دارایی‌های داده‌ای که شما مالک یا دنبال کرده‌اید وجود ندارد. <0>{{explored}}</0> به داده‌ها سر بزنید و مالکیت یا دنبال کردن دارایی‌های داده‌ای که شما را علاقه‌مند می‌کند را برعهده بگیرید تا از آخرین فعالیت‌های آنها مطلع شوید!",
     "no-activity-feed-description": "¡Aún no hay actividad! Una vez que todo comience, verás actualizaciones aquí.",
     "no-activity-feed-title": "Tu feed está vacío",

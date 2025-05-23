@@ -1850,7 +1850,7 @@
     "need-help-message": "Precisa de ajuda? <0>{{doc}}</0>.",
     "new-conversation": "Você está iniciando uma nova conversa",
     "new-to-the-platform": "Novo na plataforma?",
-    "no-access-placeholder": "Você não tem acesso, por favor, verifique com o administrador para obter permissões",
+    "no-access-placeholder": "Você não tem as permissões necessárias. Verifique com o administrador para obter a permissão de <0>{{entity}}</0>.",
     "no-activity-feed": "Não encontramos nenhuma atividade nos ativos de dados que você possui ou nos que está seguindo atualmente.",
     "no-activity-feed-description": "Ainda sem atividade! Assim que começar, você verá atualizações aqui.",
     "no-activity-feed-title": "Seu feed está vazio",

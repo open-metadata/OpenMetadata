@@ -1850,7 +1850,7 @@
     "need-help-message": "需要帮助吗？<0>{{doc}}</0>.",
     "new-conversation": "您正在开始一次新的对话",
     "new-to-the-platform": "您是平台新用户？",
-    "no-access-placeholder": "您还没有权限访问, 请联系系统管理员",
+    "no-access-placeholder": "您没有所需的权限。请联系管理员以获取<0>{{entity}}</0>的权限.",
     "no-activity-feed": "您拥有或者跟进的数据集近期没有活动信息",
     "no-activity-feed-description": "暂无活动！一旦有更新，您将在这里看到。",
     "no-activity-feed-title": "您的动态为空",
