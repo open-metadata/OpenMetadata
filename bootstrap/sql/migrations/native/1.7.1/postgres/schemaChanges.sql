@@ -33,12 +33,24 @@ WHERE serviceType = 'Tableau';
 
 -- Add runtime: enabled for AutoPilot
 UPDATE apps_marketplace
-SET json = jsonb_set(
-	json::jsonb,
-	'{runtime,enabled}',
-	'true'
-)
-where name = 'AutoPilotApplication';
+SET json =
+  CASE
+    WHEN json::jsonb -> 'runtime' IS NULL THEN
+      jsonb_set(
+        json::jsonb,
+        '{runtime}',
+        jsonb_build_object('enabled', true),
+        true
+      )
+    ELSE
+      jsonb_set(
+        json::jsonb,
+        '{runtime,enabled}',
+        'true',
+        true
+      )
+  END
+WHERE name = 'AutoPilotApplication';
 
 -- Update workflow settings with default values if present
 UPDATE openmetadata_settings
