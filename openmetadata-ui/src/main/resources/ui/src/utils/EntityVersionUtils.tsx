@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Divider, Space, Typography } from 'antd';
 import {
   ArrayChange,
   Change,
@@ -54,6 +54,7 @@ import {
 } from '../generated/entity/services/databaseService';
 import { MetadataService } from '../generated/entity/services/metadataService';
 import { EntityReference } from '../generated/entity/type';
+import { TestCaseParameterValue } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   EntityDiffProps,
@@ -1030,6 +1031,142 @@ export const getOwnerDiff = (
       getOwnerLabelName(item, operation)
     ),
   };
+};
+
+export const getParameterValuesDiff = (
+  changeDescription: ChangeDescription
+): {
+  name: string;
+  oldValue: string;
+  newValue: string;
+  status: 'added' | 'removed' | 'updated' | 'unchanged';
+}[] => {
+  const fieldDiff = getDiffByFieldName(
+    EntityField.PARAMETER_VALUES,
+    changeDescription,
+    true
+  );
+
+  const oldValues: TestCaseParameterValue[] =
+    getChangedEntityOldValue(fieldDiff) ?? [];
+  const newValues: TestCaseParameterValue[] =
+    getChangedEntityNewValue(fieldDiff) ?? [];
+
+  const result: {
+    name: string;
+    oldValue: string;
+    newValue: string;
+    status: 'added' | 'removed' | 'updated' | 'unchanged';
+  }[] = [];
+
+  // Find all unique parameter names
+  const allNames = Array.from(
+    new Set([...oldValues.map((p) => p.name), ...newValues.map((p) => p.name)])
+  );
+
+  allNames.forEach((name) => {
+    const oldParam = oldValues.find((p) => p.name === name);
+    const newParam = newValues.find((p) => p.name === name);
+
+    if (oldParam && newParam) {
+      if (oldParam.value !== newParam.value) {
+        result.push({
+          name: String(name),
+          oldValue: String(oldParam.value),
+          newValue: String(newParam.value),
+          status: 'updated',
+        });
+      } else {
+        result.push({
+          name: String(name),
+          oldValue: String(oldParam.value),
+          newValue: String(newParam.value),
+          status: 'unchanged',
+        });
+      }
+    } else if (!oldParam && newParam) {
+      result.push({
+        name: String(name),
+        oldValue: '',
+        newValue: String(newParam.value),
+        status: 'added',
+      });
+    } else if (oldParam && !newParam) {
+      result.push({
+        name: String(name),
+        oldValue: String(oldParam.value),
+        newValue: '',
+        status: 'removed',
+      });
+    }
+  });
+
+  return result;
+};
+
+// New function for React element diff (for parameter value diff only)
+export const getTextDiffElements = (
+  oldText: string,
+  newText: string
+): React.ReactNode[] => {
+  const diffArr = diffWords(toString(oldText), toString(newText));
+
+  return diffArr.map((diff) => {
+    if (diff.added) {
+      return getAddedDiffElement(diff.value);
+    }
+    if (diff.removed) {
+      return getRemovedDiffElement(diff.value);
+    }
+
+    return getNormalDiffElement(diff.value);
+  });
+};
+
+export const getParameterValueDiffDisplay = (
+  changeDescription: ChangeDescription
+): React.ReactNode => {
+  const diffs = getParameterValuesDiff(changeDescription);
+
+  if (isEmpty(diffs)) {
+    return (
+      <Typography.Text type="secondary">
+        {t('label.no-parameter-available')}
+      </Typography.Text>
+    );
+  }
+
+  return (
+    <Space wrap className="parameter-value-container parameter-value" size={6}>
+      {diffs.map((diff, index) => (
+        <Space key={diff.name} size={4}>
+          <Typography.Text className="text-grey-muted">
+            {`${diff.name}:`}
+          </Typography.Text>
+          {diff.status === 'updated' ? (
+            <Typography.Text>
+              {getTextDiffElements(diff.oldValue, diff.newValue).map(
+                (el, idx) => (
+                  <React.Fragment key={idx}>{el}</React.Fragment>
+                )
+              )}
+            </Typography.Text>
+          ) : diff.status === 'added' ? (
+            <Typography.Text>
+              {getAddedDiffElement(diff.newValue)}
+            </Typography.Text>
+          ) : diff.status === 'removed' ? (
+            <Typography.Text>
+              {getRemovedDiffElement(diff.oldValue)}
+            </Typography.Text>
+          ) : (
+            <Typography.Text>{diff.oldValue}</Typography.Text>
+          )}
+          {diffs.length - 1 !== index && <Divider type="vertical" />}
+        </Space>
+      ))}
+    </Space>
+  );
 };
 
 export const getOwnerVersionLabel = (

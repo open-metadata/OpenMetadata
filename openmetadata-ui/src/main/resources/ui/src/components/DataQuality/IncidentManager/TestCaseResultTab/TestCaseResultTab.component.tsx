@@ -35,7 +35,10 @@ import {
 } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
-import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import {
+  getEntityVersionByField,
+  getParameterValueDiffDisplay,
+} from '../../../../utils/EntityVersionUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -146,6 +149,12 @@ const TestCaseResultTab = () => {
     isVersionPage,
   ]);
 
+  const parameterValues = useMemo(() => {
+    return getParameterValueDiffDisplay(
+      testCaseData?.changeDescription as ChangeDescription
+    );
+  }, [testCaseData?.changeDescription]);
+
   const testCaseParams = useMemo(() => {
     if (testCaseData?.useDynamicAssertion) {
       return (
@@ -224,6 +233,7 @@ const TestCaseResultTab = () => {
           </Space>
 
           {testCaseParams}
+          {parameterValues}
         </Space>
       </Col>
 
