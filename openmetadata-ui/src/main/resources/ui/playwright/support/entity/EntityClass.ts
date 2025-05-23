@@ -232,12 +232,14 @@ export class EntityClass {
     const responsePromise = page.waitForResponse(
       '/api/v1/feed/count?entityLink=*'
     );
-
+    await page.getByTestId('activity_feed').click();
     const response = await responsePromise;
     const data = await response.json();
 
-    const totalCount =
-      data.data[0].conversationCount + data.data[0].totalTaskCount;
+    let totalCount = 0;
+    if (data.data.length > 0) {
+      totalCount = data.data[0].conversationCount + data.data[0].totalTaskCount;
+    }
     const displayedCount = await page
       .getByTestId('activity_feed')
       .getByTestId('count')
