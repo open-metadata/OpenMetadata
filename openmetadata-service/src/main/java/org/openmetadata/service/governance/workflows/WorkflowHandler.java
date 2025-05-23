@@ -216,6 +216,7 @@ public class WorkflowHandler {
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    LOG.debug("[GovernanceWorkflows] '{}' triggered with '{}'", processDefinitionKey, variables);
     return runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
   }
 
