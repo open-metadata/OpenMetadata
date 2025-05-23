@@ -22,6 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import loginClassBase from './constants/LoginClassBase';
 import AirflowStatusProvider from './context/AirflowStatusProvider/AirflowStatusProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -70,6 +71,21 @@ const App: FC = () => {
       });
     }
   }, [applicationConfig]);
+
+  useEffect(() => {
+    const content = loginClassBase.getLoginCarouselContent();
+    const preloadImage = (src: string) => {
+      const img = new Image();
+      img.src = src;
+    };
+
+    content.forEach((data) => {
+      preloadImage(data.image);
+      data.image1?.image && preloadImage(data.image1.image);
+      data.image2?.image && preloadImage(data.image2.image);
+      data.image3?.image && preloadImage(data.image3.image);
+    });
+  }, []);
 
   return (
     <div className="main-container">
