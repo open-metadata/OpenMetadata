@@ -96,7 +96,7 @@ SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
-FROM `{schema_name}`.INFORMATION_SCHEMA.ROUTINES
+FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
@@ -164,7 +164,7 @@ BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
 select
 table_name as table_name,
 creation_time as created_at
-from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
 """
@@ -180,6 +180,14 @@ AND (
 AND resource.labels.project_id = "{project}"
 AND resource.labels.dataset_id = "{dataset}"
 AND timestamp >= "{start_date}"
+"""
+
+BIGQUERY_GET_SCHEMA_NAMES = """
+SELECT schema_name FROM `{project}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA;
+"""
+
+BIGQUERY_GET_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.VIEWS;
 """
 
 
