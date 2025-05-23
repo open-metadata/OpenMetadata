@@ -15,8 +15,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    // Data Insights
-    removeOldDataInsightsObjects();
     updateServiceCharts();
   }
 }
