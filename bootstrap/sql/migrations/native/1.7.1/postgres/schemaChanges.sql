@@ -26,8 +26,8 @@ SET json = jsonb_set(
     (json->'connection'->'config') - 'siteUrl' - 'apiVersion' - 'env'
 )
 WHERE serviceType = 'Tableau'
-  AND json ? 'connection'
-  AND json->'connection' ? 'config';
+  AND json ?? 'connection'
+  AND json->'connection' ?? 'config';
 
 -- Add runtime: enabled for AutoPilot
 UPDATE apps_marketplace
