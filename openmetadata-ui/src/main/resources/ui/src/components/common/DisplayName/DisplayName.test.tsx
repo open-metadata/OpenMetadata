@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
@@ -46,56 +46,50 @@ const mockProps: DisplayNameProps = {
 
 describe('Test DisplayName Component', () => {
   it('Should render the component with the display name', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
 
-      const displayNameField = await screen.getByTestId('column-display-name');
+    const displayNameField = await screen.getByTestId('column-display-name');
 
-      expect(displayNameField).toBeInTheDocument();
-      expect(displayNameField).toHaveTextContent('Sample Display Name');
+    expect(displayNameField).toBeInTheDocument();
+    expect(displayNameField).toHaveTextContent('Sample Display Name');
 
-      const editButton = screen.queryByTestId('edit-displayName-button');
+    const editButton = screen.queryByTestId('edit-displayName-button');
 
-      expect(editButton).toBeInTheDocument();
-    });
+    expect(editButton).toBeInTheDocument();
   });
 
   it('Should render the component with name when display name is empty', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} displayName={undefined} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} displayName={undefined} />
+      </MemoryRouter>
+    );
 
-      const nameField = screen.getByTestId('column-name');
+    const nameField = screen.getByTestId('column-name');
 
-      expect(nameField).toBeInTheDocument();
-      expect(nameField).toHaveTextContent('Sample Entity');
-    });
+    expect(nameField).toBeInTheDocument();
+    expect(nameField).toHaveTextContent('Sample Entity');
   });
 
   it('Should open the edit modal on edit button click', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} />
-        </MemoryRouter>
-      );
-      const editButton = screen.getByTestId('edit-displayName-button');
-      fireEvent.click(editButton);
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
+    const editButton = screen.getByTestId('edit-displayName-button');
+    fireEvent.click(editButton);
 
-      const nameField = await screen.findByTestId('column-name');
+    const nameField = await screen.findByTestId('column-name');
 
-      expect(nameField).toBeInTheDocument();
+    expect(nameField).toBeInTheDocument();
 
-      const displayNameField = await screen.findByTestId('column-display-name');
+    const displayNameField = await screen.findByTestId('column-display-name');
 
-      expect(displayNameField).toBeInTheDocument();
-    });
+    expect(displayNameField).toBeInTheDocument();
   });
 });

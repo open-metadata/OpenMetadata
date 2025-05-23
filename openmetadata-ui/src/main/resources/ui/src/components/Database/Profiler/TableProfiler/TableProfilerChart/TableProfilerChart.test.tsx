@@ -21,8 +21,13 @@ import TableProfilerChart from './TableProfilerChart';
 const mockFQN = 'testFQN';
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
+
+jest.mock('../../../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({ fqn: mockFQN }),
+}));
+
 jest.mock('../../../../../rest/tableAPI');
 jest.mock('../../ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
@@ -112,9 +117,7 @@ describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
-    act(() => {
-      render(<TableProfilerChart />);
-    });
+    render(<TableProfilerChart />);
 
     expect(
       await screen.findByTestId('table-profiler-chart-container')

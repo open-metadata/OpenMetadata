@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { TourSteps } from '@deuex-solutions/react-tour';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import Tour from './Tour';
 
@@ -64,24 +63,24 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('AppTour component', () => {
-  it('element render and actions check', () => {
+  it('element render and actions check', async () => {
     render(<Tour {...mockProps} />);
 
     expect(screen.getByText('ReactTour')).toBeInTheDocument();
     expect(screen.getByText('TourEndModal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'Close Request' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Request' }));
 
     expect(mockUpdateIsTourOpen).toHaveBeenCalledWith(false);
 
-    userEvent.click(screen.getByRole('button', { name: 'Skip Request' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip Request' }));
 
     expect(mockUpdateTourPage).toHaveBeenCalledWith(
       CurrentTourPageType.MY_DATA_PAGE
     );
     expect(mockNavigate).toHaveBeenCalledWith('/');
 
-    userEvent.click(screen.getByTestId('last-step-button'));
+    fireEvent.click(screen.getByTestId('last-step-button'));
 
     expect(screen.getByText('TourEndModal is open')).toBeInTheDocument();
   });

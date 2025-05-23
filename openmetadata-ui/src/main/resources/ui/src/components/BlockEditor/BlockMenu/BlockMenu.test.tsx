@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Editor } from '@tiptap/react';
 import BlockMenu from './BlockMenu';
 
@@ -121,9 +120,7 @@ describe('BlockMenu', () => {
 
     const deleteBtn = screen.getByTestId('delete-btn');
 
-    await act(async () => {
-      userEvent.click(deleteBtn);
-    });
+    fireEvent.click(deleteBtn);
 
     expect(mockDeleteSelection).toHaveBeenCalled();
   });
@@ -133,9 +130,7 @@ describe('BlockMenu', () => {
 
     const duplicateBtn = screen.getByTestId('duplicate-btn');
 
-    await act(async () => {
-      userEvent.click(duplicateBtn);
-    });
+    fireEvent.click(duplicateBtn);
 
     expect(mockChain).toHaveBeenCalled();
   });

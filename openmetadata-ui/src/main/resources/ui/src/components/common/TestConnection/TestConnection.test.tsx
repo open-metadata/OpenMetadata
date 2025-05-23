@@ -140,7 +140,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
   });
@@ -171,7 +173,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     expect(addWorkflow).toHaveBeenCalledWith(
       CREATE_WORKFLOW_PAYLOAD,
@@ -199,7 +203,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(2000);
 
@@ -227,7 +233,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(2000);
 
@@ -250,7 +258,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(2000);
 
@@ -273,7 +283,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(2000);
 
@@ -306,7 +318,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(120000);
 
@@ -426,7 +440,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     jest.advanceTimersByTime(2000);
 
@@ -484,7 +500,9 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    fireEvent.click(testConnectionButton);
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
 
     expect(addWorkflow).toHaveBeenCalledWith(
       CREATE_WORKFLOW_PAYLOAD,

@@ -53,19 +53,17 @@ describe('Test ActivityThreadPanel Component', () => {
   });
 
   it('Check if it has all child elements', async () => {
-    await act(async () => {
-      const { container } = render(
-        <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-        { wrapper: MemoryRouter }
-      );
+    const { container } = render(
+      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      { wrapper: MemoryRouter }
+    );
 
-      const panelThreadList = await findAllByText(
-        container,
-        /ActivityThreadList/i
-      );
+    const panelThreadList = await findAllByText(
+      container,
+      /ActivityThreadList/i
+    );
 
-      expect(panelThreadList).toHaveLength(1);
-    });
+    expect(panelThreadList).toHaveLength(1);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

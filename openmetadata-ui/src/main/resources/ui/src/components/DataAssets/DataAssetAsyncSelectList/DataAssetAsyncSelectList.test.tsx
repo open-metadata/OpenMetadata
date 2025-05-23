@@ -35,6 +35,15 @@ jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
     .mockReturnValue(<p data-testid="profile-pic">ProfilePicture</p>);
 });
 
+const mockLocationPathname = '/mock-path';
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
+  useNavigate: () => jest.fn(),
+}));
+
 const mockUserData = {
   data: {
     hits: {
@@ -98,13 +107,6 @@ const mockSearchAPIResponse = {
     },
   },
 };
-const mockLocationPathname = '/mock-path';
-
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: mockLocationPathname,
-  })),
-}));
 
 describe('DataAssetAsyncSelectList', () => {
   it('should render without crashing', async () => {
@@ -147,10 +149,10 @@ describe('DataAssetAsyncSelectList', () => {
       />
     );
 
-    await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
-      inputBox && userEvent.click(inputBox);
-    });
+    // await act(async () => {
+    const inputBox = container.querySelector('.ant-select-selector');
+    inputBox && fireEvent.click(inputBox);
+    // });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
     expect(screen.getAllByTestId('profile-pic')).toHaveLength(2);
@@ -201,9 +203,7 @@ describe('DataAssetAsyncSelectList', () => {
 
     const option = screen.getByTestId('option-test-1');
 
-    await act(async () => {
-      userEvent.click(option);
-    });
+    fireEvent.click(option);
 
     expect(mockOnChange).toHaveBeenCalledWith(mockOptions);
   });

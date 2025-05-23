@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import React from 'react';
@@ -171,9 +171,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).toHaveBeenCalledWith(
       mockFile,
@@ -224,9 +222,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).toHaveBeenCalledWith(
       mockFile,
@@ -275,9 +271,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(showErrorToast).toHaveBeenCalledWith(
       'message.only-image-files-supported'
@@ -306,9 +300,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(screen.getByTestId('error-message')).toHaveTextContent(errorMessage);
   });
@@ -325,9 +317,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(showErrorToast).toHaveBeenCalledWith(
       mockError,
@@ -351,9 +341,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });
@@ -375,9 +363,7 @@ describe('EntityAttachmentProvider', () => {
     );
 
     // Wait for upload to complete
-    await act(async () => {
-      await screen.findByText('done');
-    });
+    await screen.findByText('done');
 
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });
