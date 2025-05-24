@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -5236,6 +5237,13 @@ public interface CollectionDAO {
             UUID service);
 
     @SqlQuery(
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND runId = :run_id")
+    int listExtensionByRunId(
+        @Bind("appId") String appId,
+        @Bind("extension") String extension,
+        @Bind("run_id") String runId);
+
+    @SqlQuery(
         "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime AND <service_filter>")
     int listAppExtensionCountAfterTime(
         @Bind("appId") String appId,
@@ -5276,6 +5284,15 @@ public interface CollectionDAO {
                 property = "id",
                 ifNull = "TRUE")
             UUID service);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND runId = :runId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionsByRunId(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("extension") String extension,
+        @Bind("runId") String runId);
 
     // Prepare methods to get extension by name instead of ID
     // For example, for limits we need to fetch by app name to ensure if we reinstall the app,
@@ -5320,6 +5337,34 @@ public interface CollectionDAO {
 
     default List<String> listAppExtension(String appName, int limit, int offset, String extension) {
       return listAppExtension(appName, limit, offset, extension, null);
+    }
+
+    // We use CTE because postgres does not support LIMIT with GROUP BY.
+    // This query works with both MySQL and Postgres.
+    @SqlQuery(
+        """
+                    WITH limited_data AS (
+                        SELECT timestamp
+                        FROM apps_extension_time_series
+                        WHERE timestamp < :to
+                        ORDER BY timestamp ASC
+                        LIMIT :limit
+                    )
+                    SELECT
+                        MIN(timestamp) AS min_timestamp,
+                        MAX(timestamp) AS max_timestamp
+                    FROM limited_data;""")
+    @RegisterRowMapper(RangeMapper.class)
+    Pair<Long, Long> getBatchToDelete(@Bind("limit") int limit, @Bind("to") long to);
+
+    @SqlUpdate("DELETE FROM apps_extension_time_series WHERE timestamp BETWEEN :from AND :to")
+    int cleanTimeseriesBatch(@Bind("from") long from, @Bind("to") long to);
+  }
+
+  class RangeMapper implements RowMapper<Pair<Long, Long>> {
+    @Override
+    public Pair<Long, Long> map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ImmutablePair<>(rs.getLong(1), rs.getLong(2));
     }
   }
 

@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/appLogRecord.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppRunRecord",
+  "javaType": "org.openmetadata.schema.entity.app.AppLogRecord",
+  "description": "App Run Record.",
+  "type": "object",
+  "properties": {
+    "appId": {
+      "description": "Unique identifier of this application for which the job is ran.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "appName": {
+      "description": "Name of the application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "runId": {
+      "description": "An identifier of the app run. Depends on the context of the application.",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "Update time of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "extension": {
+      "description": "Extension type.",
+      "type": "string",
+      "default": "status"
+    },
+    "level": {
+      "description": "Level of the log.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.app.AppLogLevel",
+      "enum": [
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR"
+      ]
+    },
+    "message": {
+      "description": "Message of the log.",
+      "type": "string"
+    },
+    "exception": {
+      "description": "An exception associated with the log.",
+      "javaType": "org.openmetadata.schema.entity.app.AppLogException",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "stackTrace": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["appId", "appName", "timestamp", "extension", "level", "message"],
+  "additionalProperties": false
+}
