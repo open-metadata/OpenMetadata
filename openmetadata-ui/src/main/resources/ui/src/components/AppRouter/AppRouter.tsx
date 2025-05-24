@@ -24,13 +24,15 @@ import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
-import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
 import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
 import SamlCallback from '../../pages/SamlCallback';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 
 const AppRouter = () => {
   const location = useCustomLocation();
+  const UnAuthenticatedAppRouter =
+    applicationRoutesClass.getUnAuthenticatedRouteElements();
 
   // web analytics instance
   const analytics = useAnalytics();

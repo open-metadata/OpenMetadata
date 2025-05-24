@@ -11,37 +11,33 @@
  *  limitations under the License.
  */
 /**
- * This schema defines Email Verification Token Schema.
+ * This schema defines an access token used for support purposes. It is used only in Collate.
  */
-export interface EmailVerificationToken {
+export interface SupporToken {
     /**
      * Expiry Date-Time of the token
      */
     expiryDate: number;
     /**
+     * JWT Auth Token.
+     */
+    jwtToken?: string;
+    /**
      * Unique Refresh Token for user
      */
     token: string;
     /**
-     * Refresh Count
+     * Name of the token
      */
-    tokenStatus: TokenStatus;
+    tokenName?: string;
     /**
      * Token Type
      */
-    tokenType: TokenType;
+    tokenType?: TokenType;
     /**
-     * User this email Verification token is given to
+     * User Id of the User this refresh token is given to
      */
     userId: string;
-}
-
-/**
- * Refresh Count
- */
-export enum TokenStatus {
-    StatusConfirmed = "STATUS_CONFIRMED",
-    StatusPending = "STATUS_PENDING",
 }
 
 /**
