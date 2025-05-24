@@ -14,27 +14,71 @@
  * SCIM-compliant User object
  */
 export interface ScimUser {
-    active?:      boolean;
-    displayName?: string;
-    emails?:      Email[];
-    externalId?:  string;
-    id?:          string;
-    name?:        Name;
-    /**
-     * The list of schema URNs used to indicate the namespaces of the SCIM object.
-     */
-    schemas:  string[];
-    userName: string;
+    active?:                                                       boolean;
+    addresses?:                                                    Address[];
+    displayName?:                                                  string;
+    emails?:                                                       Email[];
+    externalId?:                                                   string;
+    id?:                                                           string;
+    meta?:                                                         Meta;
+    name?:                                                         Name;
+    phoneNumbers?:                                                 PhoneNumber[];
+    preferredLanguage?:                                            string;
+    schemas?:                                                      string[];
+    title?:                                                        string;
+    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"?: UrnIETFParamsScimSchemasExtensionEnterprise20User;
+    userName?:                                                     string;
+    [property: string]: any;
+}
+
+export interface Address {
+    country?:       string;
+    formatted?:     string;
+    locality?:      string;
+    postalCode?:    string;
+    region?:        string;
+    streetAddress?: string;
+    type?:          string;
+    [property: string]: any;
 }
 
 export interface Email {
     primary?: boolean;
+    type?:    string;
     value?:   string;
+    [property: string]: any;
+}
+
+export interface Meta {
+    created?:      Date;
+    lastModified?: Date;
+    location?:     string;
+    resourceType?: string;
     [property: string]: any;
 }
 
 export interface Name {
     familyName?: string;
+    formatted?:  string;
     givenName?:  string;
+    [property: string]: any;
+}
+
+export interface PhoneNumber {
+    type?:  string;
+    value?: string;
+    [property: string]: any;
+}
+
+export interface UrnIETFParamsScimSchemasExtensionEnterprise20User {
+    department?: string;
+    employeeId?: string;
+    manager?:    Manager;
+    [property: string]: any;
+}
+
+export interface Manager {
+    displayName?: string;
+    value?:       string;
     [property: string]: any;
 }
