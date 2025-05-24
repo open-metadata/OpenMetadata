@@ -1851,7 +1851,7 @@
     "need-help-message": "Yardıma mı ihtiyacınız var? <0>{{doc}}</0>.",
     "new-conversation": "Yeni bir konuşma başlatıyorsunuz",
     "new-to-the-platform": "Platformda yeni misiniz?",
-    "no-access-placeholder": "Erişiminiz yok, izin almak için lütfen yöneticiyle görüşün",
+    "no-access-placeholder": "Gerekli izinlere sahip değilsiniz. Lütfen <0>{{entity}}</0> iznini almak için yöneticiyle iletişime geçin.",
     "no-activity-feed": "Şu anda sahip olduğunuz veya takip ettiğiniz veri varlıklarında herhangi bir güncelleme yok. <0>{{explored}}</0> Dalın ve en son etkinlikleri hakkında bilgi sahibi olmak için ilginizi çeken veri varlıklarının sahipliğini üstlenin veya takip edin!",
     "no-activity-feed-description": "Henüz aktivite yok! İşler yoluna girdiğinde güncellemeleri burada göreceksiniz.",
     "no-activity-feed-title": "Akışınız boş",
