@@ -280,11 +280,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerScimResource(catalogConfig, environment);
   }
 
-  private void registerScimResource(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+  private void registerScimResource(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     ScimProvisioningService scimService = new DefaultScimProvisioningService(); // Stub for now
     environment.jersey().register(new ScimResource(scimService));
   }
-
 
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
