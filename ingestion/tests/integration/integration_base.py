@@ -377,7 +377,6 @@ def get_create_test_suite(
 
 def get_create_test_case(
     entity_link: str,
-    test_suite: FullyQualifiedEntityName,
     test_definition: FullyQualifiedEntityName,
     parameter_values: List[TestCaseParameterValue],
     name: Optional[EntityName] = None,
@@ -387,7 +386,6 @@ def get_create_test_case(
     return CreateTestCaseRequest(
         name=TestCaseEntityName(name),
         entityLink=EntityLink(entity_link),
-        testSuite=test_suite,
         testDefinition=test_definition,
         parameterValues=parameter_values,
     )

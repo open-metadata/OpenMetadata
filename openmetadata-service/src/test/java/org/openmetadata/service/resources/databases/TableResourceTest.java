@@ -2395,7 +2395,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.assertOwnerInheritance(createTestCase, USER1_REF);
 
@@ -2450,7 +2449,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
@@ -2503,7 +2501,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
     TestCase testCase =
         testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());

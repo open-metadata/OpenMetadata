@@ -324,7 +324,6 @@ export class TableClass extends EntityClass {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
-          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },

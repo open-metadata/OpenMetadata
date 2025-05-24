@@ -142,7 +142,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
                 entityLink=f"<#E::table::{cls.table_with_suite.fullyQualifiedName.root}>",
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition="tableRowCountToEqual",
                 parameterValues=[TestCaseParameterValue(name="value", value="10")],
             )
