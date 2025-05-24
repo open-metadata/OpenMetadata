@@ -99,8 +99,7 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
           "v1/users/login",
-          "v1/users/refresh",
-              "v1/scim/Users");
+          "v1/users/refresh");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -153,6 +152,11 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
+    String path = uriInfo.getPath();
+    if (path.startsWith("api/v1/scim/")) {
+      // Let ScimAuthFilter handle this
+      return;
+    }
     if (EXCLUDED_ENDPOINTS.stream()
         .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
       return;
