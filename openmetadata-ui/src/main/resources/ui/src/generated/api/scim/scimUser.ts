@@ -20,7 +20,11 @@ export interface ScimUser {
     externalId?:  string;
     id?:          string;
     name?:        Name;
-    userName?:    string;
+    /**
+     * The list of schema URNs used to indicate the namespaces of the SCIM object.
+     */
+    schemas:  string[];
+    userName: string;
 }
 
 export interface Email {

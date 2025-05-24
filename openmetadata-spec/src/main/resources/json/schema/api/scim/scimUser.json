@@ -6,6 +6,11 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.scim.ScimUser",
   "properties": {
+    "schemas": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The list of schema URNs used to indicate the namespaces of the SCIM object."
+    },
     "id": { "type": "string" },
     "userName": { "type": "string" },
     "displayName": { "type": "string" },
@@ -29,5 +34,6 @@
     },
     "externalId": { "type": "string" }
   },
+  "required": ["schemas", "userName"],
   "additionalProperties": false
 }
