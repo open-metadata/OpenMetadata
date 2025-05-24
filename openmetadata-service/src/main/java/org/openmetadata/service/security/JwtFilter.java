@@ -152,11 +152,6 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    String path = uriInfo.getPath();
-    if (path.startsWith("api/v1/scim/")) {
-      // Let ScimAuthFilter handle this
-      return;
-    }
     if (EXCLUDED_ENDPOINTS.stream()
         .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
       return;
