@@ -316,9 +316,7 @@ describe('ServiceVersionPage tests', () => {
     expect(
       await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('ServiceVersionMainTabContent')
-    ).toBeInTheDocument();
+    expect(screen.queryByText('ServiceVersionMainTabContent')).toBeNull();
     expect(
       await screen.findByText('EntityVersionTimeLine')
     ).toBeInTheDocument();

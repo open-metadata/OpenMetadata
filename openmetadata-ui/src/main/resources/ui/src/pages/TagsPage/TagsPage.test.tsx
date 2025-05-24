@@ -24,6 +24,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getClassifications } from '../../utils/TagsUtils';
@@ -36,8 +37,6 @@ import {
   MOCK_TAGS_CATEGORY,
 } from './TagsPage.mock';
 
-jest.useRealTimers();
-
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     pathname: '/my-data',
@@ -45,10 +44,11 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
   Link: jest
     .fn()
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
@@ -216,7 +216,7 @@ jest.mock('../../rest/tagAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_DELETE_TAG)),
   getAllClassifications: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ALL_CLASSIFICATIONS)),
+    .mockImplementation(() => MOCK_ALL_CLASSIFICATIONS),
 
   getTags: jest.fn().mockImplementation(() => Promise.resolve(MOCK_TAGS)),
 }));
@@ -271,7 +271,9 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
 
 describe('Test TagsPage page', () => {
   it('Component should render', async () => {
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(getAllClassifications).toHaveBeenCalled();
 
     const tagsComponent = await screen.findByTestId('tags-container');
     const leftPanelContent = await screen.findByTestId('tags-left-panel');

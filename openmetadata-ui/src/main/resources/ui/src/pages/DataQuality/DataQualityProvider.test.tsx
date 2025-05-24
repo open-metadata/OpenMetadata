@@ -56,41 +56,27 @@ jest.mock('../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../rest/dataQualityDashboardAPI', () => ({
-  fetchTestCaseSummary: jest.fn().mockImplementation(() => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: [
-            {
-              document_count: '4',
-              'testCaseResult.testCaseStatus': 'success',
-            },
-            {
-              document_count: '3',
-              'testCaseResult.testCaseStatus': 'failed',
-            },
-            {
-              document_count: '1',
-              'testCaseResult.testCaseStatus': 'aborted',
-            },
-          ],
-        });
-      }, 2000); // Simulate a delay
-    });
+  fetchTestCaseSummary: jest.fn().mockResolvedValue({
+    data: [
+      {
+        document_count: '4',
+        'testCaseResult.testCaseStatus': 'success',
+      },
+      {
+        document_count: '3',
+        'testCaseResult.testCaseStatus': 'failed',
+      },
+      {
+        document_count: '1',
+        'testCaseResult.testCaseStatus': 'aborted',
+      },
+    ],
   }),
-  fetchEntityCoveredWithDQ: jest.fn().mockImplementation(() => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ data: [{ originEntityFQN: '1' }] });
-      }, 2000); // Simulate a delay
-    });
+  fetchEntityCoveredWithDQ: jest.fn().mockResolvedValue({
+    data: [{ originEntityFQN: '1' }],
   }),
-  fetchTotalEntityCount: jest.fn().mockImplementation(() => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ data: [{ fullyQualifiedName: '29' }] });
-      }, 2000); // Simulate a delay
-    });
+  fetchTotalEntityCount: jest.fn().mockResolvedValue({
+    data: [{ fullyQualifiedName: '29' }],
   }),
 }));
 jest.mock('../../utils/DataQuality/DataQualityUtils', () => ({
@@ -117,6 +103,7 @@ describe('DataQualityProvider', () => {
   });
 
   it('renders children without crashing', async () => {
+    expect(await screen.findByText('Loader.component')).toBeInTheDocument();
     expect(await screen.findByText('tables component')).toBeInTheDocument();
   });
 

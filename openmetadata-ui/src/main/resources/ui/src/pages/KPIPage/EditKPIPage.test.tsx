@@ -67,6 +67,10 @@ jest.mock('../../constants/DataInsight.constants', () => ({
   KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
+jest.mock('../../components/common/DatePicker/DatePicker', () =>
+  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
+);
+
 const mockProps = {
   pageTitle: 'edit-kpi',
 };

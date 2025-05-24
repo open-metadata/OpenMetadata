@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import { useEffect } from 'react';
 import { Edge } from 'reactflow';
@@ -157,18 +157,12 @@ jest.mock('../../rest/lineageAPI', () => ({
 }));
 
 describe('LineageProvider', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('renders Lineage component and fetches data', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     expect(getLineageDataByFQN).toHaveBeenCalled();
     expect(getDataQualityLineage).not.toHaveBeenCalled();
@@ -185,13 +179,12 @@ describe('LineageProvider', () => {
         edges: [],
       })
     );
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     expect(getLineageDataByFQN).toHaveBeenCalledWith({
       entityType: 'table',
@@ -214,13 +207,11 @@ describe('LineageProvider', () => {
   });
 
   it('should call loadChildNodesHandler', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const loadButton = screen.getByTestId('load-nodes');
     fireEvent.click(loadButton);
@@ -229,13 +220,11 @@ describe('LineageProvider', () => {
   });
 
   it('should show sidebar when edit is clicked', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const loadButton = screen.getByTestId('editLineage');
     fireEvent.click(loadButton);
@@ -246,13 +235,11 @@ describe('LineageProvider', () => {
   });
 
   it('should show delete modal', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const edgeClick = screen.getByTestId('edge-click');
     fireEvent.click(edgeClick);
@@ -263,13 +250,11 @@ describe('LineageProvider', () => {
   });
 
   it('should close the drawer if open, on column click', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const edgeClick = screen.getByTestId('edge-click');
     fireEvent.click(edgeClick);
