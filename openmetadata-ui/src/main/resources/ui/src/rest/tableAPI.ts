@@ -52,7 +52,7 @@ export const getTableVersions = async (id: string) => {
   return response.data;
 };
 
-export const getTableVersion = async (id: string, version: string) => {
+export const getTableVersion = async (id: string, version?: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);

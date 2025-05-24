@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import {
   MOCK_TEST_CASE,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
@@ -50,7 +50,9 @@ jest.mock('../../../rest/testAPI', () => {
       .mockImplementation(() =>
         Promise.resolve(MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX)
       ),
-    updateTestCaseById: jest.fn().mockImplementation(() => Promise.resolve()),
+    // updateTestCaseById: jest
+    //   .fn()
+    //   .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
   };
 });
 

@@ -21,7 +21,7 @@ import {
   toString,
   uniqueId,
 } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -58,7 +58,10 @@ import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWid
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 
-const ReactGridLayout = WidthProvider(RGL);
+// Create a properly typed ReactGridLayout component
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 

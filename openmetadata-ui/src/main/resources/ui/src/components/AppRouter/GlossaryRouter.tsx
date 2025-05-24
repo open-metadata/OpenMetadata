@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -23,7 +24,7 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 
 const GlossaryRouter = () => {
   const { permissions } = usePermissionProvider();
-
+  const { t } = useTranslation();
   const glossaryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(ResourceEntity.GLOSSARY, permissions),
@@ -31,43 +32,71 @@ const GlossaryRouter = () => {
   );
 
   return (
-    <Switch>
-      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+    <Routes>
       <Route
-        exact
-        component={() => <GlossaryVersion isGlossary />}
+        element={
+          <AddGlossaryPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.glossary'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_GLOSSARY}
+      />
+      <Route
+        element={<GlossaryVersion isGlossary />}
         path={ROUTES.GLOSSARY_VERSION}
       />
       <Route
-        exact
-        component={GlossaryVersion}
-        path={[
-          ROUTES.GLOSSARY_TERMS_VERSION_TAB,
-          ROUTES.GLOSSARY_TERMS_VERSION,
-        ]}
+        element={<GlossaryVersion />}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route
+        element={<GlossaryVersion />}
+        path={ROUTES.GLOSSARY_TERMS_VERSION}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={[
-          ROUTES.GLOSSARY,
-          ROUTES.GLOSSARY_DETAILS,
-          ROUTES.GLOSSARY_DETAILS_WITH_ACTION,
-        ]}
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={glossaryPermission}>
+            <GlossaryPage pageTitle={t('label.glossary')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.GLOSSARY}
       />
-
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={[
-          ROUTES.GLOSSARY_DETAILS_WITH_TAB,
-          ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB,
-        ]}
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={glossaryPermission}>
+            <GlossaryPage pageTitle={t('label.glossary')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.GLOSSARY_DETAILS}
       />
-    </Switch>
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={glossaryPermission}>
+            <GlossaryPage pageTitle={t('label.glossary')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={glossaryPermission}>
+            <GlossaryPage pageTitle={t('label.glossary')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={glossaryPermission}>
+            <GlossaryPage pageTitle={t('label.glossary')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
+      />
+    </Routes>
   );
 };
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { VersionButton } from './EntityVersionTimeLine';
 

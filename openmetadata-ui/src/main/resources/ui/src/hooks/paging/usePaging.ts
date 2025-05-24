@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -57,7 +57,7 @@ export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
 ): UsePagingInterface => {
   // Extract initial values from history state if present
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const historyState = location.state as any;
   const initialPageSize = historyState?.pageSize ?? defaultPageSize;
@@ -84,12 +84,17 @@ export const usePaging = (
         { addQueryPrefix: true }
       );
       // Update location state to persist pageSize for navigation
-      history.replace({
-        state: {
-          pageSize: page,
+      navigate(
+        {
+          search: searchParams,
         },
-        search: searchParams,
-      });
+        {
+          state: {
+            pageSize: page,
+          },
+          replace: true,
+        }
+      );
     },
     [setPageSize, setCurrentPage, history, location]
   );
@@ -109,14 +114,19 @@ export const usePaging = (
       );
       setCurrentPage(page);
       if (cursorData) {
-        history.replace({
-          state: {
-            cursorData,
-            currentPage: page,
-            pageSize,
+        navigate(
+          {
+            search: searchParams,
           },
-          search: searchParams,
-        });
+          {
+            state: {
+              cursorData,
+              currentPage: page,
+              pageSize,
+            },
+            replace: true,
+          }
+        );
       }
     },
     [setCurrentPage, history, location]

@@ -12,7 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';

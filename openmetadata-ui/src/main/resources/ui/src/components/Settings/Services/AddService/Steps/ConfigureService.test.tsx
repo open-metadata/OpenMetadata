@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
@@ -46,7 +44,7 @@ describe('Test ConfigureService component', () => {
     render(<ConfigureService {...mockConfigureServiceProps} />);
     const backButton = screen.getByTestId('back-button');
 
-    userEvent.click(backButton);
+    fireEvent.click(backButton);
 
     expect(mockConfigureServiceProps.onBack).toHaveBeenCalled();
   });
@@ -56,11 +54,10 @@ describe('Test ConfigureService component', () => {
       render(<ConfigureService {...mockConfigureServiceProps} />);
     });
 
-    userEvent.clear(await screen.findByTestId('service-name'));
-    await act(async () => {
-      userEvent.type(await screen.findByTestId('service-name'), 'newName');
+    fireEvent.change(await screen.findByTestId('service-name'), {
+      target: { value: 'newName' },
     });
-    userEvent.click(await screen.findByTestId('next-button'));
+    fireEvent.click(await screen.findByTestId('next-button'));
 
     expect(await screen.findByTestId('service-name')).toHaveValue('newName');
 

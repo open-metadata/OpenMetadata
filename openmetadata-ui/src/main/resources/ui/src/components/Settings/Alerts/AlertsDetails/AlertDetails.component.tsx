@@ -13,7 +13,7 @@
 
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isArray } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';

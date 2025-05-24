@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import AddQueryPage from './AddQueryPage.component';
 
@@ -28,19 +27,11 @@ jest.mock('../../rest/miscAPI', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
@@ -75,9 +66,13 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockProps = {
+  pageTitle: 'add-query',
+};
+
 describe('AddQueryPage test', () => {
   it('Component should render', async () => {
-    render(<AddQueryPage />);
+    render(<AddQueryPage {...mockProps} />);
 
     expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();

@@ -12,12 +12,7 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 

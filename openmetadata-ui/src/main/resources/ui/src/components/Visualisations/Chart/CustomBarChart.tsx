@@ -12,7 +12,7 @@
  */
 
 import { Col, Row } from 'antd';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Bar,
   BarChart,

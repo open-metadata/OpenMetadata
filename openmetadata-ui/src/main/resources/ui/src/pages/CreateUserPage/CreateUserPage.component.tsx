@@ -14,9 +14,9 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
@@ -39,6 +39,7 @@ import {
   getUsersPagePath,
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
@@ -47,7 +48,7 @@ const CreateUserPage = () => {
   }: {
     state?: { isAdminPage: boolean };
   } = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const isAdminPage = Boolean(state?.isAdminPage);
   const { setInlineAlertDetails } = useApplicationStore();
@@ -55,13 +56,13 @@ const CreateUserPage = () => {
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { bot } = useParams<{ bot: string }>();
+  const { bot } = useRequiredParams<{ bot: string }>();
 
   const goToUserListPage = () => {
     if (bot) {
-      history.push(getSettingPath(GlobalSettingOptions.BOTS));
+      navigate(getSettingPath(GlobalSettingOptions.BOTS));
     } else {
-      history.goBack();
+      navigate(-1);
     }
   };
 

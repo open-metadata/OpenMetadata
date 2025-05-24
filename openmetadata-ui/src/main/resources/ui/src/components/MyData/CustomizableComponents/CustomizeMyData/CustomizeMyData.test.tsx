@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -24,8 +23,6 @@ import {
 } from '../../../../mocks/MyDataPage.mock';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
-const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData.data.pages[0],
@@ -111,9 +108,6 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: mockPersonaName,
     pageFqn: PageType.LandingPage,

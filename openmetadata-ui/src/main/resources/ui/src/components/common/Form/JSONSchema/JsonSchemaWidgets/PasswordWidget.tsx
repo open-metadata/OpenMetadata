@@ -12,7 +12,7 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Input } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import FileUploadWidget from './FileUploadWidget';
 

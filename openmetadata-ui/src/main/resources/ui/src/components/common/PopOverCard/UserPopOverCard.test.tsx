@@ -13,8 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { noop } from 'lodash';
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
@@ -65,9 +64,7 @@ jest.mock('../../../rest/userAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
+  useNavigate: jest.fn(),
   Link: jest.fn().mockImplementation(({ children }) => children),
 }));
 
@@ -130,11 +127,9 @@ describe('Test UserPopOverCard components', () => {
         () => new Promise(noop)
       );
 
-      await act(async () => {
-        render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
+      render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
 
-        expect(await screen.findByText('Loader')).toBeInTheDocument();
-      });
+      expect(screen.getByText('Loader')).toBeInTheDocument();
     });
 
     it('should show no data message when user data is empty', async () => {
@@ -196,10 +191,8 @@ describe('Test UserPopOverCard components', () => {
     });
 
     it('should handle click on user name', () => {
-      const mockPush = jest.fn();
-      (useHistory as jest.Mock).mockImplementationOnce(() => ({
-        push: mockPush,
-      }));
+      const mockNavigate = jest.fn();
+      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
 
       render(
         <PopoverTitle
@@ -212,7 +205,7 @@ describe('Test UserPopOverCard components', () => {
       const userNameButton = screen.getByText('Test User');
       userNameButton.click();
 
-      expect(mockPush).toHaveBeenCalledWith('/users/testUser');
+      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
     });
 
     it('should show only userName when displayName is not available', () => {

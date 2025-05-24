@@ -12,7 +12,6 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -23,10 +22,6 @@ import UserListPageV1 from './UserListPageV1';
 
 const mockParam = {
   tab: GlobalSettingOptions.USERS,
-};
-
-const mockHistory = {
-  replace: jest.fn(),
 };
 
 const mockLocation = {
@@ -42,8 +37,11 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => mockParam),
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
 jest.mock('../../hooks/useTableFilters', () => ({

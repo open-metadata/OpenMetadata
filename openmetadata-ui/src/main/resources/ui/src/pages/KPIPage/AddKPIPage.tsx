@@ -14,7 +14,6 @@
 import {
   Button,
   Col,
-  DatePicker,
   Form,
   FormProps,
   Input,
@@ -29,9 +28,10 @@ import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import DatePicker from '../../components/common/DatePicker/DatePicker';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_KPI_BREADCRUMB } from '../../constants/Breadcrumb.constants';
@@ -48,7 +48,6 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -59,7 +58,7 @@ import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
 
 const AddKPIPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = useForm<KPIFormValues>();
 
@@ -83,7 +82,7 @@ const AddKPIPage = () => {
     }
   };
 
-  const handleCancel = () => history.goBack();
+  const handleCancel = () => navigate(-1);
 
   const handleFormValuesChange = (
     changedValues: Partial<KPIFormValues>,
@@ -134,7 +133,7 @@ const AddKPIPage = () => {
     setIsCreatingKPI(true);
     try {
       await postKPI(formData);
-      history.push(ROUTES.KPI_LIST);
+      navigate(ROUTES.KPI_LIST);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -406,8 +405,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.kpi-uppercase'),
-  })
-)(AddKPIPage);
+export default withPageLayout(AddKPIPage);

@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
@@ -60,6 +59,28 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   calculateInterval: jest.fn().mockReturnValue('4 Days, 0 Hours'),
 }));
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
+  getEntityLink: jest.fn().mockReturnValue('Entity Link'),
+}));
+
+jest.mock('../../../utils/CustomProperty.utils', () => ({
+  getCustomPropertyMomentFormat: jest.fn().mockReturnValue('DD-MM-YYYY'),
+}));
+
+jest.mock('../../../utils/SearchClassBase', () => ({
+  getEntityIcon: jest.fn().mockReturnValue('Icon'),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../DatePicker/DatePicker', () =>
+  jest
+    .fn()
+    .mockReturnValue(<div data-testid="date-time-picker">DatePicker</div>)
+);
 
 const mockUpdate = jest.fn();
 

@@ -13,7 +13,7 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Popover } from 'antd';
 import { startCase } from 'lodash';
-import React, { FC, useState } from 'react';
+import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';
 
 const PopoverContent = ({

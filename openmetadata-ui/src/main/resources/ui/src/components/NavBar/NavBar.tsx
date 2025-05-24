@@ -27,15 +27,9 @@ import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -69,7 +63,6 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -107,7 +100,7 @@ const NavBar = () => {
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const { t } = useTranslation();
@@ -285,12 +278,12 @@ const NavBar = () => {
       if (isChrome > -1) {
         window.open(path);
       } else {
-        history.push(path);
+        navigate(path);
       }
     };
   };
 
-  const handleKeyPress = useCallback((event) => {
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
       event.preventDefault();
@@ -403,14 +396,14 @@ const NavBar = () => {
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      refreshPage();
+      navigate(0);
     },
     []
   );
 
-  const handleLanguageChange = useCallback(({ key }) => {
+  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
-    refreshPage();
+    navigate(0);
   }, []);
 
   const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
@@ -567,7 +560,7 @@ const NavBar = () => {
               size="small"
               type="link"
               onClick={() => {
-                history.go(0);
+                navigate(0);
               }}>
               {t('label.refresh')}
             </Button>
