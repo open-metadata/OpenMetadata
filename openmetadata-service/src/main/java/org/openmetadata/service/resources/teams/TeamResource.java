@@ -223,8 +223,16 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("parentTeam", parentTeam)
+            .addQueryParam("domain", domain);
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
     }
