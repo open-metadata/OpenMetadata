@@ -19,6 +19,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,7 +30,9 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDataContract;
@@ -44,8 +47,8 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
+@Slf4j
 public class DataContractResourceTest extends EntityResourceTest<DataContract, CreateDataContract> {
-  // Column names used in tests
   private static final String C1 = "id";
   private static final String C2 = "name";
   private static final String C3 = "description";
@@ -60,12 +63,36 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         DataContractResource.FIELDS);
   }
 
+  private final List<DataContract> createdContracts = new ArrayList<>();
+
+  @Override
+  public DataContract createAndCheckEntity(
+      CreateDataContract create, Map<String, String> authHeaders) throws IOException {
+    DataContract contract = super.createAndCheckEntity(create, authHeaders);
+    createdContracts.add(contract);
+    return contract;
+  }
+
+  @AfterEach
+  public void cleanupDataContracts() throws IOException {
+    for (DataContract contract : createdContracts) {
+      deleteAndCheckEntity(contract, ADMIN_AUTH_HEADERS);
+    }
+    createdContracts.clear();
+  }
+
   /**
    * Creates a unique table for the test to avoid data contract uniqueness constraint violations
    */
   private Table createTestTable(String name) throws IOException {
     String uniqueId = UUID.randomUUID().toString();
-    String tableName = "dc_test_" + name + "_" + uniqueId;
+    String truncatedName = name;
+    int maxTableNameLength = 256;
+    int overhead = "dc_test_".length() + 1 + uniqueId.length();
+    if (truncatedName.length() + overhead > maxTableNameLength) {
+      truncatedName = truncatedName.substring(0, maxTableNameLength - overhead);
+    }
+    String tableName = "dc_test_" + truncatedName + "_" + uniqueId;
 
     org.openmetadata.service.resources.databases.TableResourceTest tableResourceTest =
         new org.openmetadata.service.resources.databases.TableResourceTest();
@@ -101,19 +128,35 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   @Override
   public CreateDataContract createRequest(String name) {
     try {
-      // Create a unique table for each test
-      Table testTable = createTestTable(name);
+      // Create a new table for each test to avoid uniqueness violations
+      Table table = createTestTable(name);
       return new CreateDataContract()
           .withName(name)
-          .withEntity(testTable.getEntityReference())
+          .withEntity(table.getEntityReference())
           .withStatus(ContractStatus.Draft);
     } catch (IOException e) {
-      // Fallback to TEST_TABLE1 if table creation fails
-      System.err.println("Failed to create test table: " + e.getMessage());
+      throw new RuntimeException("Failed to create test table for data contract", e);
+    }
+  }
+
+  /**
+   * Creates a data contract request with specific description, displayName, and owners
+   */
+  @Override
+  public CreateDataContract createRequest(
+      String name, String description, String displayName, List<EntityReference> owners) {
+    try {
+      // Create a new table for each test to avoid uniqueness violations
+      Table table = createTestTable(name);
       return new CreateDataContract()
           .withName(name)
-          .withEntity(TEST_TABLE1.getEntityReference())
+          .withDescription(description)
+          .withDisplayName(displayName)
+          .withOwners(owners)
+          .withEntity(table.getEntityReference())
           .withStatus(ContractStatus.Draft);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create test table for data contract", e);
     }
   }
 
@@ -197,10 +240,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     }
   }
 
+  // No need to override test methods since createRequest now ensures unique tables per test
+
   @Test
   void testDataContractFields(TestInfo test) throws IOException {
-    // Create Data Contract for TEST_TABLE1
-    CreateDataContract create = createRequest(getEntityName(test), TEST_TABLE1);
+    // Create a unique table for this test
+    Table table = createTestTable(getEntityName(test));
+    CreateDataContract create = createRequest(getEntityName(test), table);
     DataContract dataContract = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add schema fields that match the table's columns
@@ -232,14 +278,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   void testDataContractWithYAML(TestInfo test) throws IOException {
-    // Test creating a data contract using YAML format
+    // Create a unique table and test creating a data contract using YAML format
+    Table table = createTestTable(getEntityName(test));
     String yamlContent =
         "name: "
             + getEntityName(test)
             + "\n"
             + "entity:\n"
             + "  id: "
-            + TEST_TABLE2.getId()
+            + table.getId()
             + "\n"
             + "  type: table\n"
             + "status: Active\n"
@@ -268,15 +315,16 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   @Test
-  void testDataContractWithInvalidYAML(TestInfo test) {
-    // Test creating a data contract with invalid YAML format
+  void testDataContractWithInvalidYAML(TestInfo test) throws IOException {
+    // Create a unique table and test creating a data contract with invalid YAML format
+    Table table = createTestTable(getEntityName(test));
     String invalidYamlContent =
         "name: "
             + getEntityName(test)
             + "\n"
             + "entity:\n"
             + "  id: "
-            + TEST_TABLE1.getId()
+            + table.getId()
             + "\n"
             + "  type: table\n"
             + "status: Active\n"
@@ -317,7 +365,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Set content type to YAML when posting
     Entity<String> entity = Entity.entity(yamlData, "application/yaml");
     Response response = SecurityUtil.addHeaders(target, authHeaders).post(entity);
-    return TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
+    DataContract dataContract =
+        TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
+    createdContracts.add(dataContract);
+    return dataContract;
   }
 
   @Test
@@ -329,7 +380,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateDataContract create = createRequest(getEntityName(test)).withEntity(invalidRef);
 
     // Use TestUtils.assertResponse instead of assertThatThrownBy for consistent error handling
-    TestUtils.assertResponse(
+    assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         Response.Status.NOT_FOUND,
         "table instance for " + invalidId.toString() + " not found");
@@ -337,9 +388,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   void testDataContractStatus(TestInfo test) throws IOException {
-    // Create a Draft data contract
+    // Create a Draft data contract for a unique table
+    Table table = createTestTable(getEntityName(test));
     CreateDataContract create =
-        createRequest(getEntityName(test), TEST_TABLE2).withStatus(ContractStatus.Draft);
+        createRequest(getEntityName(test), table).withStatus(ContractStatus.Draft);
     DataContract dataContract = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertEquals(ContractStatus.Draft, dataContract.getStatus());
 
@@ -375,11 +427,12 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     schemaFields.add(
         new Field().withName("non_existent_field").withDescription("This field doesn't exist"));
 
-    CreateDataContract create =
-        createRequest(getEntityName(test), TEST_TABLE1).withSchema(schemaFields);
+    // Create a unique table for this test
+    Table table = createTestTable(getEntityName(test));
+    CreateDataContract create = createRequest(getEntityName(test), table).withSchema(schemaFields);
 
     // Should throw IllegalArgumentException with specific message
-    TestUtils.assertResponse(
+    assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
         "Field 'non_existent_field' specified in the data contract does not exist in table");
@@ -387,24 +440,27 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   void testEnforceUniqueDataContractPerEntity(TestInfo test) throws IOException {
-    // Create first data contract for this entity
-    CreateDataContract create1 = createRequest(getEntityName(test), TEST_TABLE1);
+    // Create first data contract for a unique table per this test
+    Table table = createTestTable(getEntityName(test));
+    CreateDataContract create1 = createRequest(getEntityName(test), table);
     DataContract contract1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
-    // Try to create another data contract for the same entity
-    CreateDataContract create2 = createRequest(getEntityName(test) + "_duplicate", TEST_TABLE1);
+    // Try to create another data contract for the same table entity
+    CreateDataContract create2 = createRequest(getEntityName(test) + "_duplicate", table);
 
     // Should enforce uniqueness - one contract per entity
-    TestUtils.assertResponse(
+    assertResponse(
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
-        "A data contract already exists for entity");
+        String.format(
+            "A data contract already exists for entity 'table' with ID %s", table.getId()));
   }
 
   @Test
   void testVersionTracking(TestInfo test) throws IOException {
-    // Create initial data contract
-    CreateDataContract create = createRequest(getEntityName(test), TEST_TABLE2);
+    // Create initial data contract for a unique table
+    Table table = createTestTable(getEntityName(test));
+    CreateDataContract create = createRequest(getEntityName(test), table);
     DataContract dataContract = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // First update - add schema fields

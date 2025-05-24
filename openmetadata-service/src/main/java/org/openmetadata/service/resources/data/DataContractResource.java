@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.data;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -287,6 +289,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   @POST
+  @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "createDataContract",
       summary = "Create a data contract",
@@ -308,6 +311,35 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract =
         getDataContract(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataContract);
+  }
+
+  @POST
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "createDataContractFromYaml",
+      summary = "Create a data contract from YAML",
+      description = "Create a new data contract from YAML content.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createFromYaml(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      DataContract dataContract =
+          getDataContract(create, securityContext.getUserPrincipal().getName());
+      return create(uriInfo, securityContext, dataContract);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
+    }
   }
 
   @PATCH
@@ -339,6 +371,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   @PUT
+  @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "createOrUpdateDataContract",
       summary = "Create or update a data contract",
@@ -360,6 +393,35 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract =
         getDataContract(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataContract);
+  }
+
+  @PUT
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "createOrUpdateDataContractFromYaml",
+      summary = "Create or update a data contract from YAML",
+      description =
+          "Create a new data contract from YAML, if it does not exist or update an existing data contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class)))
+      })
+  public Response createOrUpdateFromYaml(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      DataContract dataContract =
+          getDataContract(create, securityContext.getUserPrincipal().getName());
+      return createOrUpdate(uriInfo, securityContext, dataContract);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
+    }
   }
 
   @DELETE

@@ -241,7 +241,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static final Map<
           String, EntityResourceTest<? extends EntityInterface, ? extends CreateEntity>>
       ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
-  private final String entityType;
+  protected final String entityType;
   protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
@@ -574,7 +574,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
   }
 
-  public final K createRequest(
+  public K createRequest(
       String name, String description, String displayName, List<EntityReference> owners) {
     if (!supportsEmptyDescription && description == null) {
       throw new IllegalArgumentException(
