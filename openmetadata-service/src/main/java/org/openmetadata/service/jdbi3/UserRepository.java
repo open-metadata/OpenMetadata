@@ -180,6 +180,21 @@ public class UserRepository extends EntityRepository<User> {
     return withHref(uriInfo, entityClone);
   }
 
+  public User getByExternalId(UriInfo uriInfo, String externalId, Fields fields) {
+    String userString = daoCollection.userDAO().findUserByExternalId(externalId);
+    if (userString == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(USER, externalId));
+    }
+    User user = JsonUtils.readValue(userString, User.class);
+    setFieldsInternal(user, fields);
+    setInheritedFields(user, fields);
+    // Clone the entity
+    User entityClone = JsonUtils.deepCopy(user, User.class);
+    clearFieldsInternal(entityClone, fields);
+    return withHref(uriInfo, entityClone);
+  }
+
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user, boolean update) {

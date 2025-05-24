@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -48,11 +49,22 @@ public final class SecurityUtil {
 
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    if (principal == null) {
+      return null;
+    }
+    String name = principal.getName();
+    if (getScimConfiguration() != null && getScimConfiguration().getEnabled()) {
+      return name;
+    }
+    return name.split("[/@]")[0];
   }
 
   public static LoginConfiguration getLoginConfiguration() {
     return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
+  }
+
+  public static ScimConfiguration getScimConfiguration() {
+    return SettingsCache.getSetting(SettingsType.SCIM_CONFIGURATION, ScimConfiguration.class);
   }
 
   public static Map<String, String> authHeaders(String username) {
@@ -100,7 +112,14 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, ?> claims) {
     String userName;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    boolean isBot = false;
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    if (isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean())) {
+      isBot = true;
+    }
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
@@ -122,7 +141,13 @@ public final class SecurityUtil {
       Map<String, ?> claims,
       String defaulPrincipalClaim) {
     String email;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+    boolean isBot = false;
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    if (isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean())) {
+      isBot = true;
+    }
+
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
@@ -192,7 +217,13 @@ public final class SecurityUtil {
       Set<String> allowedDomains,
       boolean enforcePrincipalDomain) {
     String domain = StringUtils.EMPTY;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    boolean isBot = false;
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    if (isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean())) {
+      isBot = true;
+    }
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));

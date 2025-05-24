@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.MCPConfiguration;
@@ -151,6 +152,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("objectStorage")
   @Valid
   private ObjectStorageConfiguration objectStorage;
+
+  @JsonProperty("scimConfiguration")
+  private ScimConfiguration scimConfiguration;
 
   @Override
   public String toString() {

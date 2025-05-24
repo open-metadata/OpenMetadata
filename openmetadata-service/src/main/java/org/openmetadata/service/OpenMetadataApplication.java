@@ -101,7 +101,10 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.scim.ScimResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.scim.ScimProvisioningService;
+import org.openmetadata.service.scim.impl.DefaultScimProvisioningService;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -273,6 +276,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+
+    registerScimResource(catalogConfig, environment);
+  }
+
+  private void registerScimResource(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    ScimProvisioningService scimService = new DefaultScimProvisioningService(); // Stub for now
+    environment.jersey().register(new ScimResource(scimService));
   }
 
   protected void registerMCPServer(

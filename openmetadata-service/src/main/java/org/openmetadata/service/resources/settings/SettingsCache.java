@@ -143,6 +143,15 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+    Settings scimSettings =
+        Entity.getSystemRepository().getConfigWithKey(SettingsType.SCIM_CONFIGURATION.toString());
+    if (scimSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(SettingsType.SCIM_CONFIGURATION)
+              .withConfigValue(applicationConfig.getScimConfiguration());
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
 
     // Initialise Search Settings
     Settings storedSearchSettings =
