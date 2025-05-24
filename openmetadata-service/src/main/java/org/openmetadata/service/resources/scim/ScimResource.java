@@ -9,8 +9,8 @@ import org.openmetadata.service.scim.ScimProvisioningService;
 
 @Path("/v1/scim")
 @Tag(name = "SCIM")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
+@Produces({ "application/json", "application/scim+json" })
+@Consumes({ "application/json", "application/scim+json" })
 public class ScimResource {
 
   private final ScimProvisioningService provisioningService;
