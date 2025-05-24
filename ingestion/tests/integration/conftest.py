@@ -43,11 +43,18 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
-@pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
-def config_testcontatiners():
-    from testcontainers.core.config import testcontainers_config
-
-    testcontainers_config.max_tries = 10
+# Setting the max tries for testcontainers to 10 here is
+# causes has pitfalls, the main one being that it cannot be changed
+# through the recommended way using env-vars. The main problem is
+# that waiting_utils.py uses testcontainers_config.timeout as a
+# default value for the timeout, therefore, if we want to effectively change
+# this value, we have to be sure that we do so before the module is imported
+# which is a source of potential issues.
+# @pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
+# def config_testcontatiners():
+#     from testcontainers.core.config import testcontainers_config
+#
+#     testcontainers_config.max_tries = 10
 
 
 @pytest.fixture(scope="session")
