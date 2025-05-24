@@ -9,7 +9,7 @@ public interface ScimProvisioningService {
 
   Response listUsers(UriInfo uriInfo);
 
-  Response createUser(ScimUser user);
+  Response createUser(ScimUser user, UriInfo uriInfo);
 
   Response updateUser(String id, ScimUser user);
 

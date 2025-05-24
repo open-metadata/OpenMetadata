@@ -18,7 +18,7 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
-  public Response createUser(ScimUser user) {
+  public Response createUser(ScimUser user, UriInfo uriInfo) {
     return notImplemented();
   }
 

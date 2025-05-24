@@ -27,8 +27,8 @@ public class ScimResource {
 
   @POST
   @Path("/Users")
-  public Response createUser(ScimUser user) {
-    return provisioningService.createUser(user);
+  public Response createUser(ScimUser user, @Context UriInfo uriInfo) {
+    return provisioningService.createUser(user, uriInfo);
   }
 
   @PUT
