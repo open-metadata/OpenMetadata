@@ -101,7 +101,7 @@
     <flyway.version>9.22.3</flyway.version>
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
-    <mysql.connector.version>9.1.0</mysql.connector.version>
+    <mysql.connector.version>9.3.0</mysql.connector.version>
     <postgres.connector.version>42.7.4</postgres.connector.version>
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
@@ -111,7 +111,6 @@
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
-
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.1.14</spring.version>
     <log4j.version>2.21.0</log4j.version>
@@ -155,6 +154,7 @@
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
     <jetty-server.version>9.4.57.v20241219</jetty-server.version>
+    <mcp-sdk.version>0.8.1</mcp-sdk.version>
   </properties>
 
   <dependencyManagement>
@@ -213,6 +213,18 @@
             <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <!-- https://mvnrepository.com/artifact/io.modelcontextprotocol.sdk/mcp-bom -->
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp-bom</artifactId>
+        <version>${mcp-sdk.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp</artifactId>
+        <version>${mcp-sdk.version}</version>
       </dependency>
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
@@ -641,7 +653,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.112.Final</version>
+        <version>4.1.118.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

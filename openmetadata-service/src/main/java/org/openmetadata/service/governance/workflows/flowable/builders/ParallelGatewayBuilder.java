@@ -5,7 +5,7 @@ import org.flowable.bpmn.model.ParallelGateway;
 public class ParallelGatewayBuilder extends FlowableElementBuilder<ParallelGatewayBuilder> {
 
   private boolean async = true;
-  private boolean exclusive = true;
+  private boolean exclusive = false;
 
   public ParallelGatewayBuilder setAsync(boolean async) {
     this.async = async;

@@ -40,7 +40,6 @@ class PIITag(enum.Enum):
     PHONE_NUMBER = "PHONE_NUMBER"
     MEDICAL_LICENSE = "MEDICAL_LICENSE"
     URL = "URL"
-    ORGANIZATION = "ORGANIZATION"  # Organization Name, not listed in Presidio website but used in the code
 
     # USA
     US_BANK_NUMBER = "US_BANK_NUMBER"
