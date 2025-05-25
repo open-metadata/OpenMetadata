@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -25,6 +26,7 @@ import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.ws.rs.client.Entity;
@@ -294,6 +296,18 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
     WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
+  }
+
+  // ===================== Permission Helper Methods =====================
+
+  private DataContract createDataContractWithAuth(
+      CreateDataContract create, Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getCollection();
+    Response response = SecurityUtil.addHeaders(target, authHeaders).post(Entity.json(create));
+    DataContract dataContract =
+        TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
+    createdContracts.add(dataContract);
+    return dataContract;
   }
 
   private WebTarget getCollection() {
@@ -698,5 +712,209 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
         TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
     createdContracts.add(dataContract);
     return dataContract;
+  }
+
+  // ===================== Permission Tests =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testTableOwnerCanCreateDataContract(TestInfo test) throws IOException {
+    // Create a table owned by admin (who has Create permissions)
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // Admin should be able to create data contract for their table
+    DataContract dataContract = createDataContractWithAuth(create, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(dataContract);
+    assertEquals(create.getName(), dataContract.getName());
+    assertEquals(table.getId(), dataContract.getEntity().getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testRegularUserCannotCreateDataContractForOthersTable(TestInfo test) throws IOException {
+    // Create a table owned by admin
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // Regular user should not be able to create data contract for admin's table
+    assertResponse(
+        () -> createDataContractWithAuth(create, TEST_AUTH_HEADERS),
+        Status.FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [Create] not allowed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUserWithCreateDataContractPermissionCanCreate(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // Admin users have all permissions and should be able to create data contracts
+    DataContract dataContract = createDataContractWithAuth(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataContract);
+    assertEquals(create.getName(), dataContract.getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testTableOwnerCanUpdateTheirDataContract(TestInfo test) throws IOException {
+    // Create a table and data contract as admin
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    createDataContract(create);
+
+    // Update as admin should work
+    create.withStatus(ContractStatus.Active);
+    WebTarget target = getCollection();
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).put(Entity.json(create));
+    DataContract updated =
+        TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+
+    assertEquals(ContractStatus.Active, updated.getStatus());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testRegularUserCannotUpdateOthersDataContract(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    createDataContract(create);
+
+    // Regular user should not be able to update admin's data contract
+    create.withStatus(ContractStatus.Active);
+    WebTarget target = getCollection();
+
+    assertResponse(
+        () -> {
+          Response response =
+              SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).put(Entity.json(create));
+          TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+        },
+        Status.FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testTableOwnerCanPatchTheirDataContract(TestInfo test) throws IOException {
+    // Create a table and data contract as admin
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Patch as admin should work
+    String originalJson = JsonUtils.pojoToJson(created);
+    created.setStatus(ContractStatus.Active);
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      String updatedJson = JsonUtils.pojoToJson(created);
+      com.fasterxml.jackson.databind.JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+      WebTarget target = getResource(created.getId());
+      DataContract patched = TestUtils.patch(target, patch, DataContract.class, ADMIN_AUTH_HEADERS);
+
+      assertEquals(ContractStatus.Active, patched.getStatus());
+    } catch (Exception e) {
+      throw new IOException("Failed to patch data contract", e);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testRegularUserCannotPatchOthersDataContract(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Regular user should not be able to patch admin's data contract
+    String originalJson = JsonUtils.pojoToJson(created);
+    created.setStatus(ContractStatus.Active);
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      String updatedJson = JsonUtils.pojoToJson(created);
+      com.fasterxml.jackson.databind.JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+      WebTarget target = getResource(created.getId());
+
+      assertResponse(
+          () -> TestUtils.patch(target, patch, DataContract.class, TEST_AUTH_HEADERS),
+          Status.FORBIDDEN,
+          "Principal: CatalogPrincipal{name='test'} operations [EditAll] not allowed");
+    } catch (Exception e) {
+      throw new IOException("Failed to create patch", e);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testTableOwnerCanDeleteTheirDataContract(TestInfo test) throws IOException {
+    // Create a table and data contract as admin
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Delete as admin should work
+    WebTarget target = getResource(created.getId());
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
+    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+
+    // Verify deletion
+    assertThrows(HttpResponseException.class, () -> getDataContract(created.getId(), null));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testRegularUserCannotDeleteOthersDataContract(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Regular user should not be able to delete admin's data contract
+    WebTarget target = getResource(created.getId());
+
+    assertResponse(
+        () -> {
+          Response response = SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).delete();
+          TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+        },
+        Status.FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [Delete] not allowed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testAllUsersCanReadDataContracts(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Regular users should be able to read data contracts (assuming default read permissions)
+    WebTarget target = getResource(created.getId());
+    Response response = SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).get();
+    DataContract retrieved =
+        TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+
+    assertEquals(created.getId(), retrieved.getId());
+    assertEquals(created.getName(), retrieved.getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUserWithoutPermissionsCannotCreateDataContract(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // User without any permissions should not be able to create data contracts
+    assertResponse(
+        () -> createDataContractWithAuth(create, TEST_AUTH_HEADERS),
+        Status.FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [Create] not allowed");
   }
 }
