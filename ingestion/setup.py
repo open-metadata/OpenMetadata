@@ -382,6 +382,7 @@ test_unit = {
     "pytest-order",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    "testcontainers",
 }
 
 test = {
@@ -504,8 +505,8 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         # FIXME: all-dev-env is a temporary solution to install all dependencies except
-        # those that might conflict with each other or cause issues in the dev environment
-        # This covers all development cases where none of the plugins are used
+        #   those that might conflict with each other or cause issues in the dev environment
+        #   This covers all development cases where none of the plugins are used
         "all-dev-env": filter_requirements(
             {"airflow", "db2", "great-expectations", "pymssql"}
         ),
