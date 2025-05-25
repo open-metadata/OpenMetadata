@@ -34,6 +34,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -45,6 +46,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -69,6 +71,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const { fqn: decodedMlModelFqn } = useFqn();
 
@@ -94,7 +97,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         mlModelDetail.id
       );
       setMlModelPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.ml-model'),
@@ -136,7 +139,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
       );
     }
@@ -257,7 +260,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           getEmptyPlaceholder()
         ) : (
           <Table
-            bordered
             columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
             dataSource={mlModelDetail.mlHyperParameters}
@@ -276,7 +278,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
         {mlModelDetail.mlStore ? (
           <Table
-            bordered
             columns={mlModelStoreColumn}
             data-testid="model-store-table"
             dataSource={[mlModelDetail.mlStore]}
@@ -293,8 +294,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -361,18 +361,25 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     customizedPage?.tabs,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.MlModel),
+    [tabs[0], activeTab]
+  );
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.ml-model'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -392,16 +399,29 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         </Col>
         <GenericProvider<Mlmodel>
+          customizedPage={customizedPage}
           data={mlModelDetail}
+          isTabExpanded={isTabExpanded}
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

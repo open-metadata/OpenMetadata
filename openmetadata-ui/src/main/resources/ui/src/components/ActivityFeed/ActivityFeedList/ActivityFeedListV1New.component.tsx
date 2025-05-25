@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
@@ -18,6 +19,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
 interface ActivityFeedListV1Props {
@@ -110,8 +112,11 @@ const ActivityFeedListV1New = ({
       isFullWidth,
     ]
   );
+  if (isLoading) {
+    return <Loader />;
+  }
 
-  if (isEmpty(entityThread) && !isLoading) {
+  if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container"
@@ -131,7 +136,12 @@ const ActivityFeedListV1New = ({
   }
 
   return (
-    <div className="p-b-md" id="feedData">
+    <div
+      className={classNames({
+        'feed-widget-padding': isForFeedTab,
+        'activity-feed-tab-padding': !isForFeedTab,
+      })}
+      id="feedData">
       {feeds}
     </div>
   );

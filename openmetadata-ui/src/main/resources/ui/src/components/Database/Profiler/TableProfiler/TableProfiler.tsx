@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Menu, MenuProps, Row, Space } from 'antd';
+import { Menu, MenuProps, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
@@ -74,35 +74,30 @@ const TableProfiler = (props: TableProfilerProps) => {
   }, [activeTab]);
 
   const handleTabChange: MenuProps['onClick'] = (value) => {
-    history.push({ search: Qs.stringify({ activeTab: value.key }) });
+    history.replace({ search: Qs.stringify({ activeTab: value.key }) });
   };
 
   return (
     <TableProfilerProvider {...props}>
-      <Row
-        className="table-profiler-container h-full flex-grow"
+      <div
+        className="table-profiler-container"
         data-testid="table-profiler-container"
-        gutter={[16, 16]}
         id="profilerDetails">
-        <Col className="p-t-sm data-quality-left-panel" span={4}>
-          <Menu
-            className="h-full p-x-0 custom-menu"
-            data-testid="profiler-tab-left-panel"
-            items={tabOptions}
-            mode="inline"
-            selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
-            onClick={handleTabChange}
-          />
-        </Col>
-        <Col className="data-quality-content-panel" span={20}>
-          <Space
-            className="w-full h-min-full p-sm"
-            direction="vertical"
-            size={16}>
-            {activeTabComponent}
-          </Space>
-        </Col>
-      </Row>
+        <Menu
+          className="data-quality-left-panel custom-menu"
+          data-testid="profiler-tab-left-panel"
+          items={tabOptions}
+          mode="inline"
+          selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
+          onClick={handleTabChange}
+        />
+        <Space
+          className="data-quality-content-panel"
+          direction="vertical"
+          size={16}>
+          {activeTabComponent}
+        </Space>
+      </div>
     </TableProfilerProvider>
   );
 };

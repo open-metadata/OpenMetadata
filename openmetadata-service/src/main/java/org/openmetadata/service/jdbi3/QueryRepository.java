@@ -52,6 +52,13 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
+  protected void entitySpecificCleanup(Query entityInterface) {
+    daoCollection
+        .queryCostRecordTimeSeriesDAO()
+        .deleteWithEntityFqnHash(entityInterface.getFullyQualifiedName());
+  }
+
+  @Override
   public void setFields(Query entity, EntityUtil.Fields fields) {
     entity.setQueryUsedIn(
         fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
@@ -166,7 +173,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldQuery.getUsedBy(),
             query.getUsers(),
             withHref(uriInfo, query));
-    update(uriInfo, oldQuery, query);
+    update(uriInfo, oldQuery, query, updatedBy);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 

@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { DataAssetsHeaderProps } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
   importEntityInCSVFormat,
+  importGlossaryInCSVFormat,
   importServiceInCSVFormat,
 } from '../../rest/importExportAPI';
-import entityUtilClassBase from '../EntityUtilClassBase';
-import Fqn from '../Fqn';
+import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
+import i18n from '../i18next/LocalUtil';
+import { getGlossaryPath } from '../RouterUtils';
 
 type ParsedDataType<T> = Array<T>;
 
@@ -61,36 +63,60 @@ export const getImportedEntityType = (entityType: EntityType) => {
   }
 };
 
-export const getBulkEntityImportBreadcrumbList = (
+export const getBulkEntityBreadcrumbList = (
   entityType: EntityType,
-  fqn: string
-): TitleBreadcrumbProps['titleLinks'] => [
-  {
-    name: Fqn.split(fqn).pop(),
-    url: entityUtilClassBase.getEntityLink(entityType, fqn),
-  },
-  {
-    name: i18next.t('label.import'),
-    url: '',
-    activeTitle: true,
-  },
-];
+  entity: DataAssetsHeaderProps['dataAsset'],
+  isBulkEdit: boolean
+): TitleBreadcrumbProps['titleLinks'] => {
+  return [
+    ...(entityType === EntityType.GLOSSARY_TERM
+      ? [
+          {
+            name: i18n.t('label.glossary-plural'),
+            url: getGlossaryPath(),
+            activeTitle: false,
+          },
+          {
+            name: getEntityName(entity),
+            url: getGlossaryPath(entity.fullyQualifiedName),
+          },
+        ]
+      : getEntityBreadcrumbs(entity, entityType, true)),
+    {
+      name: i18n.t(`label.${isBulkEdit ? 'bulk-edit' : 'import'}`),
+      url: '',
+      activeTitle: true,
+    },
+  ];
+};
+
+export const getImportValidateAPIEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.DATABASE_SERVICE:
+      return importServiceInCSVFormat;
+
+    case EntityType.GLOSSARY_TERM:
+      return importGlossaryInCSVFormat;
+
+    default:
+      return importEntityInCSVFormat;
+  }
+};
 
 export const validateCsvString = async (
   csvData: string,
   entityType: EntityType,
-  fqn: string
+  fqn: string,
+  isBulkEdit: boolean
 ) => {
-  const api =
-    entityType === EntityType.DATABASE_SERVICE
-      ? importServiceInCSVFormat
-      : importEntityInCSVFormat;
+  const api = getImportValidateAPIEntityType(entityType);
 
   const response = await api({
     entityType,
     name: fqn,
     data: csvData,
     dryRun: true,
+    recursive: !isBulkEdit,
   });
 
   return response;

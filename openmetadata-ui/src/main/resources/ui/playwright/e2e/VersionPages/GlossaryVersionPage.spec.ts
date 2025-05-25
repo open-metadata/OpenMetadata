@@ -204,7 +204,7 @@ test('GlossaryTerm', async ({ page }) => {
     const glossaryTermsRes = page.waitForResponse(
       '/api/v1/glossaryTerms/name/**'
     );
-    await page.click('[data-testid="version-button"]');
+    await page.getByRole('dialog').getByRole('img').click();
 
     await page.waitForLoadState('networkidle');
     await glossaryTermsRes;
@@ -222,11 +222,15 @@ test('GlossaryTerm', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
 
-    await expect(
-      page.locator(
-        '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
-      )
-    ).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    const diffLocator = page.locator(
+      '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
+    );
+
+    await diffLocator.waitFor({ state: 'attached' });
+
+    await expect(diffLocator).toBeVisible();
   });
 
   await cleanup();

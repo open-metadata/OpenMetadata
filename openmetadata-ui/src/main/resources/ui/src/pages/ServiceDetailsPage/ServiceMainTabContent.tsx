@@ -23,14 +23,15 @@ import { useHistory, useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
@@ -38,6 +39,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -51,7 +53,7 @@ import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ServicePageData } from './ServiceDetailsPage';
+import { ServicePageData } from './ServiceDetailsPage.interface';
 
 interface ServiceMainTabContentProps {
   serviceName: string;
@@ -68,6 +70,7 @@ interface ServiceMainTabContentProps {
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
+  onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 function ServiceMainTabContent({
@@ -85,6 +88,7 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
   pagingInfo,
   isVersionPage = false,
+  onDataProductUpdate,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
@@ -132,7 +136,7 @@ function ServiceMainTabContent({
   const handleDescriptionUpdate = useCallback(async (updatedHTML: string) => {
     try {
       await onDescriptionUpdate(updatedHTML);
-    } catch (e) {
+    } catch {
       // Error
     }
   }, []);
@@ -146,7 +150,7 @@ function ServiceMainTabContent({
         }
         const updatedData = {
           ...pageDataDetails,
-          displayName: entityData.displayName || undefined,
+          displayName: entityData.displayName ?? undefined,
         };
         const jsonPatch = compare(pageDataDetails, updatedData);
         const response = await callServicePatchAPI(
@@ -216,6 +220,7 @@ function ServiceMainTabContent({
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    editDataProductPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -227,6 +232,8 @@ function ServiceMainTabContent({
       editDescriptionPermission:
         (servicePermission.EditDescription || servicePermission.EditAll) &&
         !serviceDetails.deleted,
+      editDataProductPermission:
+        servicePermission.EditAll && !serviceDetails.deleted,
     }),
     [servicePermission, serviceDetails]
   );
@@ -236,88 +243,88 @@ function ServiceMainTabContent({
   }, [data]);
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
       <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
             children: (
-              <div className="p-t-sm m-x-lg">
-                <Row gutter={[16, 16]}>
-                  <Col data-testid="description-container" span={24}>
-                    <DescriptionV1
-                      description={serviceDetails.description}
-                      entityName={serviceName}
-                      entityType={entityType}
-                      hasEditAccess={editDescriptionPermission}
-                      showActions={!serviceDetails.deleted}
-                      showCommentsIcon={false}
-                      onDescriptionUpdate={handleDescriptionUpdate}
-                    />
-                  </Col>
-                  <Col data-testid="table-container" span={24}>
-                    <Space
-                      className="w-full m-b-md"
-                      direction="vertical"
-                      size="large">
-                      {isServiceLoading ? (
-                        <Loader />
-                      ) : (
-                        <Table
-                          bordered
-                          columns={tableColumn}
-                          data-testid="service-children-table"
-                          dataSource={pageData}
-                          defaultVisibleColumns={
-                            DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
-                          }
-                          extraTableFilters={
-                            <>
-                              <span>
-                                <Switch
-                                  checked={showDeleted}
-                                  data-testid="show-deleted"
-                                  onClick={onShowDeletedChange}
-                                />
-                                <Typography.Text className="m-l-xs">
-                                  {t('label.deleted')}
-                                </Typography.Text>
-                              </span>
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={serviceDetails.description}
+                    entityName={serviceName}
+                    entityType={entityType}
+                    hasEditAccess={editDescriptionPermission}
+                    showActions={!serviceDetails.deleted}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={handleDescriptionUpdate}
+                  />
+                </Col>
+                <Col data-testid="table-container" span={24}>
+                  <Space
+                    className="w-full m-b-md"
+                    direction="vertical"
+                    size="large">
+                    {isServiceLoading ? (
+                      <Loader />
+                    ) : (
+                      <Table
+                        columns={tableColumn}
+                        customPaginationProps={{
+                          currentPage,
+                          isLoading: isServiceLoading,
+                          showPagination:
+                            !isUndefined(pagingInfo) &&
+                            pagingInfo.showPagination,
+                          pageSize: pagingInfo.pageSize,
+                          paging,
 
-                              {entityType === EntityType.DATABASE_SERVICE &&
-                                getBulkEditButton(
-                                  servicePermission.EditAll &&
-                                    !serviceDetails.deleted,
-                                  handleEditTable
-                                )}
-                            </>
-                          }
-                          locale={{
-                            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-                          }}
-                          pagination={false}
-                          rowKey="id"
-                          size="small"
-                          staticVisibleColumns={
-                            COMMON_STATIC_TABLE_VISIBLE_COLUMNS
-                          }
-                        />
-                      )}
-                      {!isUndefined(pagingInfo) &&
-                        pagingInfo.showPagination && (
-                          <NextPrevious
-                            currentPage={currentPage}
-                            isLoading={isServiceLoading}
-                            pageSize={pagingInfo.pageSize}
-                            paging={paging}
-                            pagingHandler={pagingHandler}
-                            onShowSizeChange={pagingInfo.handlePageSizeChange}
-                          />
-                        )}
-                    </Space>
-                  </Col>
-                </Row>
-              </div>
+                          pagingHandler: pagingHandler,
+                          onShowSizeChange: pagingInfo.handlePageSizeChange,
+                        }}
+                        data-testid="service-children-table"
+                        dataSource={pageData}
+                        defaultVisibleColumns={
+                          DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
+                        }
+                        entityType={serviceCategory}
+                        extraTableFilters={
+                          <>
+                            <span>
+                              <Switch
+                                checked={showDeleted}
+                                data-testid="show-deleted"
+                                onClick={onShowDeletedChange}
+                              />
+                              <Typography.Text className="m-l-xs">
+                                {t('label.deleted')}
+                              </Typography.Text>
+                            </span>
+
+                            {entityType === EntityType.DATABASE_SERVICE &&
+                              getBulkEditButton(
+                                servicePermission.EditAll &&
+                                  !serviceDetails.deleted,
+                                handleEditTable
+                              )}
+                          </>
+                        }
+                        locale={{
+                          emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                        }}
+                        pagination={false}
+                        rowKey="id"
+                        scroll={TABLE_SCROLL_VALUE}
+                        size="small"
+                        staticVisibleColumns={
+                          COMMON_STATIC_TABLE_VISIBLE_COLUMNS
+                        }
+                      />
+                    )}
+                  </Space>
+                </Col>
+              </Row>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
@@ -326,10 +333,11 @@ function ServiceMainTabContent({
               <GenericProvider
                 data={serviceDetails}
                 permissions={servicePermission}
-                type={entityType}
+                type={entityType as CustomizeEntityType}
                 onUpdate={saveUpdatedServiceData}>
                 <div data-testid="entity-right-panel">
                   <EntityRightPanel
+                    editDataProductPermission={editDataProductPermission}
                     editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityType={entityType}
@@ -338,6 +346,7 @@ function ServiceMainTabContent({
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
+                    onDataProductUpdate={onDataProductUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />
                 </div>

@@ -115,7 +115,7 @@ public class ApplicationHandler {
   public void installApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).install();
+      runAppInit(app, daoCollection, searchRepository).install(installedBy);
       installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException

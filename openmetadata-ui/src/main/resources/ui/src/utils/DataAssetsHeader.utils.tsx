@@ -12,21 +12,23 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
+import Icon from '@ant-design/icons';
+import { Divider, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import { isObject, isUndefined } from 'lodash';
-import React from 'react';
-import {
-  ExtraInfoLabel,
-  ExtraInfoLink,
-} from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
+import React, { ReactNode } from 'react';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
   DataAssetsType,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -59,11 +61,93 @@ import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
-  getEntityName,
 } from './EntityUtils';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
+
+export const ExtraInfoLabel = ({
+  label,
+  value,
+  dataTestId,
+  inlineLayout = false,
+}: {
+  label: string;
+  value: string | number | React.ReactNode;
+  dataTestId?: string;
+  inlineLayout?: boolean;
+}) => {
+  if (inlineLayout) {
+    return (
+      <>
+        <Divider className="self-center" type="vertical" />
+        <Typography.Text
+          className="self-center text-xs whitespace-nowrap"
+          data-testid={dataTestId}>
+          {!isEmpty(label) && (
+            <span className="text-grey-muted">{`${label}: `}</span>
+          )}
+          <span className="font-medium">{value}</span>
+        </Typography.Text>
+      </>
+    );
+  }
+
+  return (
+    <div className="d-flex align-start extra-info-container">
+      <Typography.Text
+        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+        data-testid={dataTestId}>
+        {!isEmpty(label) && (
+          <span className="extra-info-label-heading">{label}</span>
+        )}
+        <div className={classNames('font-medium extra-info-value')}>
+          {value}
+        </div>
+      </Typography.Text>
+    </div>
+  );
+};
+
+export const ExtraInfoLink = ({
+  label,
+  value,
+  href,
+  newTab = false,
+  ellipsis = false,
+}: {
+  label: string;
+  value: string | number;
+  href: string;
+  newTab?: boolean;
+  ellipsis?: boolean;
+}) => (
+  <div
+    className={classNames('d-flex  text-sm  flex-col gap-2', {
+      'w-48': ellipsis,
+    })}>
+    {!isEmpty(label) && (
+      <span className="extra-info-label-heading  m-r-xss">{label}</span>
+    )}
+    <div className="d-flex items-center gap-1">
+      <Tooltip title={value}>
+        <Typography.Link
+          ellipsis
+          className="extra-info-link"
+          href={href}
+          rel={newTab ? 'noopener noreferrer' : undefined}
+          target={newTab ? '_blank' : undefined}>
+          {value}
+        </Typography.Link>
+      </Tooltip>
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
+    </div>
+  </div>
+);
 
 export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
@@ -176,7 +260,6 @@ export const getDataAssetsHeaderInfo = (
                 type="vertical"
               />
               <ExtraInfoLabel
-                showAsATag
                 label={t('label.state')}
                 value={pipelineDetails.state}
               />
@@ -614,7 +697,6 @@ export const getDataAssetsHeaderInfo = (
                 type="vertical"
               />
               <ExtraInfoLabel
-                showAsATag
                 label={t('label.type')}
                 value={tableDetails.tableType}
               />
@@ -667,22 +749,6 @@ export const getDataAssetsHeaderInfo = (
       break;
   }
 
-  if ('sourceUrl' in dataAsset && dataAsset.sourceUrl) {
-    returnData.extraInfo = (
-      <>
-        {returnData.extraInfo}
-        <Divider className="self-center vertical-divider" type="vertical" />
-        <ExtraInfoLink
-          ellipsis
-          newTab
-          href={dataAsset.sourceUrl}
-          label={t('label.source-url')}
-          value={getEntityName(dataAsset)}
-        />
-      </>
-    );
-  }
-
   return returnData;
 };
 
@@ -690,4 +756,15 @@ export const isDataAssetsWithServiceField = (
   asset: DataAssetsType
 ): asset is DataAssetsWithServiceField => {
   return (asset as DataAssetsWithServiceField).service !== undefined;
+};
+
+export const getEntityExtraInfoLength = (element: ReactNode): number => {
+  if (React.isValidElement(element)) {
+    if (isArray(element.props.children)) {
+      return element.props.children?.filter((child?: ReactNode) => child)
+        .length;
+    }
+  }
+
+  return 0;
 };

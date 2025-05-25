@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Typography } from 'antd';
+import { Button, Modal, Popover, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/ic-edit-profile.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
 import { isMaskedEmail } from '../../utils/Users.util';
 
+import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -35,7 +36,8 @@ import { changePassword } from '../../rest/auth-API';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
-import ProfilePictureNew from '../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
 import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
 import './profile-details.less';
@@ -44,7 +46,7 @@ interface ProfileSectionUserDetailsCardProps {
   userData: User;
   afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
-  handleRestoreUser: () => void;
+  handleRestoreUser: () => Promise<void>;
 }
 
 const ProfileSectionUserDetailsCard = ({
@@ -62,6 +64,8 @@ const ProfileSectionUserDetailsCard = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [editProfile, setEditProfile] = useState<boolean>(false);
   const [isPopoverVisible, setisPopoverVisible] = useState<boolean>(false);
+  const [showRestoreModal, setShowRestoreModal] = useState<boolean>(false);
+  const [isRestoring, setIsRestoring] = useState<boolean>(false);
   const isAuthProviderBasic = useMemo(
     () =>
       authConfig?.provider === AuthProvider.Basic ||
@@ -114,22 +118,30 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <>
-          <Typography.Paragraph
-            className="m-b-0 profile-details-email"
-            data-testid="user-email-value">
-            {userData.email}
-          </Typography.Paragraph>
-        </>
+        <Typography.Paragraph
+          className="m-b-0 profile-details-email"
+          data-testid="user-email-value">
+          {userData.email}
+        </Typography.Paragraph>
       ),
     [userData.email]
   );
 
+  const handleRestore = async () => {
+    try {
+      setIsRestoring(true);
+      await handleRestoreUser();
+    } finally {
+      setIsRestoring(false);
+      setShowRestoreModal(false);
+    }
+  };
+
   const manageProfileOptions = (
     <div style={{ width: '180px' }}>
       {isLoggedInUser && (
-        <div
-          className="profile-manage-item d-flex item-center"
+        <Button
+          className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
           data-testid="edit-displayname"
           onClick={() => {
             setEditProfile(!editProfile);
@@ -141,13 +153,13 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-profile')}
+            {t('label.edit-name')}
           </Typography.Text>
-        </div>
+        </Button>
       )}
       {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
-        <div
-          className="profile-manage-item d-flex item-center"
+        <Button
+          className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
           data-testid="change-password-button"
           onClick={() => {
             setIsChangePassword(true);
@@ -163,13 +175,14 @@ const ProfileSectionUserDetailsCard = ({
               entity: t('label.password-lowercase'),
             })}
           </Typography.Text>
-        </div>
+        </Button>
       )}
       {userData?.deleted ? (
-        <div
-          className="profile-manage-item d-flex item-center"
+        <Button
+          className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
           onClick={() => {
-            handleRestoreUser();
+            setShowRestoreModal(true);
+            setisPopoverVisible(false);
           }}>
           <DeleteIcon
             className="m-r-xss"
@@ -179,11 +192,11 @@ const ProfileSectionUserDetailsCard = ({
           <Typography.Text className="profile-manage-label">
             {t('label.restore')}
           </Typography.Text>
-        </div>
+        </Button>
       ) : (
         isAdminUser && (
-          <div
-            className="profile-manage-item d-flex item-center"
+          <Button
+            className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
             onClick={() => {
               setIsDelete(true);
               setisPopoverVisible(false);
@@ -196,7 +209,7 @@ const ProfileSectionUserDetailsCard = ({
             <Typography.Text className="profile-manage-label">
               {t('label.delete-profile')}
             </Typography.Text>
-          </div>
+          </Button>
         )
       )}
     </div>
@@ -226,12 +239,15 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <ProfilePictureNew
-          avatarType="outlined"
-          data-testid="replied-user"
-          name={getEntityName(userData)}
-          width="80"
-        />
+        <UserPopOverCard userName={getEntityName(userData)}>
+          <div className="d-flex items-center">
+            <ProfilePicture
+              data-testid="replied-user"
+              name={getEntityName(userData)}
+              width="80"
+            />
+          </div>
+        </UserPopOverCard>
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">
@@ -251,10 +267,11 @@ const ProfileSectionUserDetailsCard = ({
 
       {isDelete && (
         <DeleteWidgetModal
+          isRecursiveDelete
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={!userData.deleted}
           entityId={userData.id}
-          entityName={userData.fullyQualifiedName ?? userData.name}
+          entityName={getEntityName(userData)}
           entityType={EntityType.USER}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
@@ -262,7 +279,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-profile')}
+          header={t('label.edit-name')}
           placeholder={t('label.enter-entity', {
             entity: t('label.description'),
           })}
@@ -273,6 +290,52 @@ const ProfileSectionUserDetailsCard = ({
           onCancel={() => setEditProfile(false)}
           onSave={handleModalClose}
         />
+      )}
+      {userData.deleted && (
+        <span
+          className="user-profile-deleted-badge"
+          data-testid="deleted-badge">
+          <Icon
+            className="m-r-xss font-medium text-md ant-icon"
+            component={DeleteIcon}
+          />
+
+          {t('label.deleted')}
+        </span>
+      )}
+
+      {showRestoreModal && (
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Modal
+            centered
+            cancelButtonProps={{
+              type: 'link',
+              disabled: isRestoring,
+            }}
+            className="reactive-modal"
+            closable={false}
+            confirmLoading={isRestoring}
+            data-testid="restore-user-modal"
+            maskClosable={false}
+            okButtonProps={{
+              loading: isRestoring,
+            }}
+            okText={t('label.restore')}
+            open={showRestoreModal}
+            title={t('label.restore-entity', {
+              entity: EntityType.USER,
+            })}
+            onCancel={() => setShowRestoreModal(false)}
+            onOk={handleRestore}>
+            <Typography.Text data-testid="restore-modal-body">
+              {t('message.are-you-want-to-restore', {
+                entity: getEntityName(userData),
+              })}
+            </Typography.Text>
+          </Modal>
+        </Button>
       )}
     </div>
   );

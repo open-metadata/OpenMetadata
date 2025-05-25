@@ -13,24 +13,45 @@
 
 @import (reference) '../../styles/variables.less';
 
+@nlp-border-color: #b9e6fe;
+
 .search-container {
   border: 1px solid #eaecf5;
   border-radius: 12px;
   background: #fdfdfd;
   padding: 6px 20px;
 
-  .nlp-button {
-    border: 0.5px solid @border-color !important;
-    border-radius: 8px;
+  .global-search-select {
+    .ant-select-arrow {
+      color: @text-color;
+    }
+  }
+
+  .nav-search-button {
+    border: 0.5px solid @nlp-border-color !important;
+    border-radius: @border-radius-xs;
+    padding: 0 4px;
+    transition: none;
+    background-color: @primary-button-background !important;
 
     svg {
       width: 14px;
       height: 14px;
+      fill: transparent;
     }
 
     &.active {
-      background-color: @blue-11 !important;
-      border: 0.5px solid #b9e6fe !important;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none !important;
+
+      svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+      }
     }
   }
 }

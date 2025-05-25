@@ -162,7 +162,8 @@ jest.mock('../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
-  getServiceTypeLogo: jest.fn().mockReturnValue(''),
+  getEditConfigData: jest.fn().mockReturnValue({}),
+  setEditServiceDetails: jest.fn(),
 }));
 
 const mockGetServiceType = jest.fn().mockReturnValue('database');

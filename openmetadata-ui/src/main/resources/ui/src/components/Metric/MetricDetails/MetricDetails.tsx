@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -30,6 +31,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -38,11 +40,13 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import './metric.less';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
 const MetricDetails: React.FC<MetricDetailsProps> = ({
@@ -66,13 +70,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
     deleted,
     followers = [],
   } = useMemo(() => metricDetails, [metricDetails]);
-  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
 
   const { isFollowing } = useMemo(
     () => ({
@@ -115,7 +120,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(EntityType.METRIC, decodedMetricFqn, activeKey)
       );
     }
@@ -150,8 +155,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push(ROUTES.METRICS),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push(ROUTES.METRICS),
     []
   );
 
@@ -216,18 +220,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Metric),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.metric'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -248,16 +260,29 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Metric>
+          customizedPage={customizedPage}
           data={metricDetails}
+          isTabExpanded={isTabExpanded}
           permissions={metricPermissions}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col span={24}>
+          <Col className="metric-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

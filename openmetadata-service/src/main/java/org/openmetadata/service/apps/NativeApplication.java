@@ -8,7 +8,7 @@ import org.quartz.JobExecutionContext;
 public interface NativeApplication extends InterruptableJob {
   void init(App app);
 
-  void install();
+  void install(String installedBy);
 
   void uninstall();
 

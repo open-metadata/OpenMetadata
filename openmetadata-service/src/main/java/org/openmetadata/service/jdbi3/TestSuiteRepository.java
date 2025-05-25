@@ -565,6 +565,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected boolean consolidateChanges(
+        TestSuite original, TestSuite updated, Operation operation) {
+      return false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {

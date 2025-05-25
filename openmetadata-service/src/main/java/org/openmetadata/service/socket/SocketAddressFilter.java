@@ -48,9 +48,6 @@ public class SocketAddressFilter implements Filter {
   }
 
   @Override
-  public void destroy() {}
-
-  @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException {
     try {
@@ -75,9 +72,6 @@ public class SocketAddressFilter implements Filter {
           .println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
     }
   }
-
-  @Override
-  public void init(FilterConfig filterConfig) {}
 
   public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);

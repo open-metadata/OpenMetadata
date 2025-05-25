@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
@@ -38,8 +39,11 @@ import java.util.TimeZone;
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
@@ -66,8 +70,15 @@ public final class RestUtil {
 
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
     collectionPath = removeSlashes(collectionPath);
-    String uriPath = uriInfo.getBaseUri() + collectionPath;
-    return URI.create(uriPath);
+    OpenMetadataBaseUrlConfiguration urlConfiguration =
+        SettingsCache.getSetting(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+            OpenMetadataBaseUrlConfiguration.class);
+    String url =
+        nullOrEmpty(urlConfiguration.getOpenMetadataUrl())
+            ? uriInfo.getBaseUri().toString()
+            : urlConfiguration.getOpenMetadataUrl();
+    return URI.create(url + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {

@@ -29,13 +29,38 @@ export type CSVExportJob = {
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 
+export interface PDFLayoutConfig {
+  imagesPerPage: number;
+  layoutType: 'grid' | 'vertical' | 'horizontal';
+  imageSpacing: number;
+  pageOrientation: 'portrait' | 'landscape';
+  customPageSize?: { width: number; height: number };
+}
+
+export interface PDFDimensions {
+  pageWidth: number;
+  pageHeight: number;
+  availableWidth: number;
+  availableHeight: number;
+  imageWidth: number;
+  imageHeight: number;
+  gridColumns: number;
+  gridRows: number;
+}
+
 export type ExportData = {
   name: string;
   title?: string;
   documentSelector?: string;
   exportTypes: ExportTypes[];
   viewport?: ExportViewport;
-  onExport: (name: string) => Promise<CSVExportResponse | string>;
+  exportConfig?: Partial<PDFLayoutConfig>;
+  onExport: (
+    name: string,
+    params?: {
+      recursive?: boolean;
+    }
+  ) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;

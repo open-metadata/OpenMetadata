@@ -107,7 +107,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source?.owners as EntityReference[]) ?? []} />
+            <OwnerLabel
+              avatarSize={18}
+              isCompactView={false}
+              owners={(source?.owners as EntityReference[]) ?? []}
+              showLabel={false}
+            />
           ),
         },
 
@@ -207,7 +212,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
-                {serviceIcon}
+                {breadcrumbs.length > 0 && serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
                     className={classNameForBreadcrumb}

@@ -18,7 +18,6 @@ import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
@@ -55,7 +54,9 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -63,8 +64,10 @@ interface TaskFeedCardProps {
   feed: Thread;
   className?: string;
   isActive?: boolean;
-  onAfterClose: any;
-  onUpdateEntityDetails: any;
+  onAfterClose?: () => void;
+  onUpdateEntityDetails?: () => void;
+  isForFeedTab?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -73,6 +76,8 @@ const TaskFeedCard = ({
   isActive,
   onAfterClose,
   onUpdateEntityDetails,
+  isForFeedTab = false,
+  isOpenInDrawer = false,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -80,9 +85,13 @@ const TaskFeedCard = ({
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
   const { threadTs: timeStamp, task: taskDetails } = feed;
-
+  const { showDrawer } = useActivityFeedProvider();
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.createdBy ?? '',
+  });
 
   const { entityType, entityFQN } = useMemo(
     () => ({
@@ -141,7 +150,7 @@ const TaskFeedCard = ({
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss text-sm">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -234,11 +243,16 @@ const TaskFeedCard = ({
     (!taskDetails?.suggestion &&
       taskDetails?.type === TaskType.RequestDescription);
 
+  const showReplies = useCallback(() => {
+    showDrawer?.(feed);
+  }, [showDrawer, feed]);
+
   return (
     <Button block className="remove-button-default-styling" type="text">
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
+          'no-bg-border': isOpenInDrawer,
         })}
         data-testid="task-feed-card">
         <Row
@@ -272,7 +286,7 @@ const TaskFeedCard = ({
                   <span
                     className="task-created-by-text p-r-xss"
                     data-testid="task-created-by">
-                    {feed.createdBy}
+                    {getEntityName(user)}
                   </span>
                 </UserPopOverCard>
                 <span className="task-timestamp-text">
@@ -310,64 +324,75 @@ const TaskFeedCard = ({
               taskThread={feed}
             />
           )}
-          <Col
-            className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
-            span={24}>
-            <Col className="d-flex">
-              <Col className="d-flex flex-center">
-                <ReplyIcon className="m-r-xs" height={20} width={20} />
-                {feed.posts && feed.posts?.length > 0 && (
-                  <span className="posts-length m-r-xss">
-                    {t(
-                      feed.posts.length === 1
-                        ? 'label.one-reply'
-                        : 'label.number-reply-plural',
-                      { number: feed.posts.length }
-                    )}
-                  </span>
-                )}
+          {!isOpenInDrawer && (
+            <Col
+              className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
+              span={24}>
+              <Col className="d-flex">
+                <Col className="d-flex flex-center">
+                  <ReplyIcon
+                    className="m-r-xs"
+                    height={20}
+                    width={20}
+                    onClick={isForFeedTab ? showReplies : undefined}
+                  />
+                  {feed.posts && feed.posts?.length > 0 && (
+                    <Button
+                      className="posts-length m-r-xss p-0 remove-button-default-styling"
+                      data-testid="replies-count"
+                      type="link"
+                      onClick={isForFeedTab ? showReplies : undefined}>
+                      {t(
+                        feed.posts.length === 1
+                          ? 'label.one-reply'
+                          : 'label.number-reply-plural',
+                        { number: feed.posts.length }
+                      )}
+                    </Button>
+                  )}
+                </Col>
+
+                <Col
+                  className={`flex items-center gap-2 text-grey-muted ${
+                    feed?.posts && feed?.posts?.length > 0
+                      ? 'task-card-assignee'
+                      : ''
+                  }`}>
+                  <OwnerLabel
+                    isAssignee
+                    avatarSize={24}
+                    isCompactView={false}
+                    owners={feed?.task?.assignees}
+                    showLabel={false}
+                  />
+                </Col>
               </Col>
 
-              <Col
-                className={`flex items-center gap-2 text-grey-muted ${
-                  feed?.posts && feed?.posts?.length > 0
-                    ? 'task-card-assignee'
-                    : ''
-                }`}>
-                <AssigneesIcon height={20} width={20} />
-                <UserAvatarGroup
-                  avatarSize={24}
-                  className="p-t-05"
-                  owners={feed?.task?.assignees}
-                />
-              </Col>
+              {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
+                <Col className="d-flex gap-2">
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="task-card-approve-btn d-flex items-center"
+                      data-testid="approve-button"
+                      icon={<CheckCircleFilled />}
+                      onClick={onTaskResolve}>
+                      {t('label.approve')}
+                    </Button>
+                  )}
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="task-card-reject-btn d-flex items-center"
+                      data-testid="reject-button"
+                      icon={<CloseCircleFilled />}
+                      type="default"
+                      onClick={onTaskReject}>
+                      {t('label.reject')}
+                    </Button>
+                  )}
+                </Col>
+              )}
             </Col>
-
-            {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-              <Col className="d-flex gap-2">
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="approve-btn d-flex items-center"
-                    data-testid="approve-button"
-                    icon={<CheckCircleFilled />}
-                    type="primary"
-                    onClick={onTaskResolve}>
-                    {t('label.approve')}
-                  </Button>
-                )}
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="reject-btn  d-flex items-center"
-                    data-testid="reject-button"
-                    icon={<CloseCircleFilled />}
-                    type="default"
-                    onClick={onTaskReject}>
-                    {t('label.reject')}
-                  </Button>
-                )}
-              </Col>
-            )}
-          </Col>
+          )}
         </Row>
       </div>
     </Button>

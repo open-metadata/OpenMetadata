@@ -19,7 +19,7 @@ import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-bad
 import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import {
   TeamCSVRecord,
@@ -47,7 +47,7 @@ export const TeamImportResult = ({
               align="start"
               data-testid="status-container"
               // Added max width because in case of full success we don't want to occupied full width
-              style={{ maxWidth: 200 }}>
+              style={{ maxWidth: 200, minWidth: 100 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"
@@ -103,7 +103,7 @@ export const TeamImportResult = ({
         width: 300,
         render: (description: TeamCSVRecord['description']) => {
           return (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               className="w-80"
               enableSeeMoreVariant={false}
               markdown={description}
@@ -165,7 +165,11 @@ export const TeamImportResult = ({
         dataIndex: 'defaultRoles',
         key: 'defaultRoles',
         render: (role: TeamCSVRecord['defaultRoles']) => {
-          return <Typography.Paragraph>{role || '--'}</Typography.Paragraph>;
+          return (
+            <Typography.Paragraph style={{ width: 200 }}>
+              {role || '--'}
+            </Typography.Paragraph>
+          );
         },
       },
       {
@@ -173,7 +177,11 @@ export const TeamImportResult = ({
         dataIndex: 'policies',
         key: 'policies',
         render: (policy: TeamCSVRecord['policies']) => {
-          return <Typography.Paragraph>{policy || '--'}</Typography.Paragraph>;
+          return (
+            <Typography.Paragraph style={{ width: 200 }}>
+              {policy || '--'}
+            </Typography.Paragraph>
+          );
         },
       },
     ];
@@ -210,7 +218,6 @@ export const TeamImportResult = ({
 
   return (
     <Table
-      bordered
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}

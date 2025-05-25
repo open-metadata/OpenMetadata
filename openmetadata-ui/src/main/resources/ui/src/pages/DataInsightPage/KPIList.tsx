@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,9 +22,8 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
@@ -79,7 +78,7 @@ const KPIList = () => {
       });
       setKpiList(response.data);
       setKpiPaging(response.paging);
-    } catch (err) {
+    } catch {
       setKpiList([]);
       setKpiPaging(pagingObject);
     } finally {
@@ -104,7 +103,7 @@ const KPIList = () => {
         width: 300,
         render: (description: string | undefined) =>
           description ? (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {
@@ -224,40 +223,37 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ),
     [viewKPIPermission]
   );
 
   return (
     <>
-      <Col span={24}>
-        <Table
-          bordered
-          className="kpi-table"
-          columns={columns}
-          data-testid="kpi-table"
-          dataSource={kpiList}
-          loading={isLoading}
-          locale={{
-            emptyText: noDataPlaceHolder,
-          }}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
-      </Col>
-      {kpiList.length > PAGE_SIZE_MEDIUM && (
-        <Col span={24}>
-          <NextPrevious
-            currentPage={kpiPage}
-            isLoading={isLoading}
-            pageSize={PAGE_SIZE_MEDIUM}
-            paging={kpiPaging}
-            pagingHandler={kpiPagingHandler}
-          />
-        </Col>
-      )}
+      <Table
+        columns={columns}
+        containerClassName="kpi-table"
+        customPaginationProps={{
+          currentPage: kpiPage,
+          isLoading,
+          showPagination: kpiList.length > PAGE_SIZE_MEDIUM,
+          pageSize: PAGE_SIZE_MEDIUM,
+          paging: kpiPaging,
+          pagingHandler: kpiPagingHandler,
+        }}
+        data-testid="kpi-table"
+        dataSource={kpiList}
+        loading={isLoading}
+        locale={{
+          emptyText: noDataPlaceHolder,
+        }}
+        pagination={false}
+        rowKey="name"
+        size="small"
+      />
 
       {selectedKpi && (
         <DeleteWidgetModal

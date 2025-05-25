@@ -186,16 +186,12 @@ const QueryPage = () => {
   }
 
   if (isUndefined(query)) {
-    return (
-      <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder />
-      </div>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.query')}>
-      <Row className="p-x-lg" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
         </Col>

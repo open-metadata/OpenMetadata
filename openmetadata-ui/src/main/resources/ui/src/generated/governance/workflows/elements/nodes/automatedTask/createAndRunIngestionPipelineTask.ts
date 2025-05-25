@@ -41,6 +41,10 @@ export interface Config {
      */
     pipelineType: PipelineType;
     /**
+     * If True, it will be created and run. Otherwise it will just be created.
+     */
+    shouldRun?: boolean;
+    /**
      * Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.
      */
     timeoutSeconds: number;

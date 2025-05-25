@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -97,6 +97,16 @@ def get_request_dag_id() -> Optional[str]:
         raise MissingArgException("Missing dag_id from request JSON")
 
     return clean_dag_id(raw_dag_id)
+
+
+def get_request_conf() -> Optional[dict]:
+    """
+    Try to fetch the conf from the JSON request. Return None if no conf is provided.
+    """
+    try:
+        return request.get_json().get("conf")
+    except Exception:
+        return None
 
 
 def get_dagbag():

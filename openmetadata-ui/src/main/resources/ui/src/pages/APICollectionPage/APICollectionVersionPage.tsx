@@ -280,7 +280,7 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" span={24}>
               <DescriptionV1
                 description={description}
@@ -298,12 +298,14 @@ const APICollectionVersionPage = () => {
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     displayType={DisplayType.READ_MORE}
                     entityType={EntityType.API_COLLECTION}
                     key={tagType}
@@ -329,14 +331,12 @@ const APICollectionVersionPage = () => {
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.API_COLLECTION}
-              hasEditAccess={false}
-              hasPermission={viewVersionPermission}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_COLLECTION}
+            hasEditAccess={false}
+            hasPermission={viewVersionPermission}
+          />
         ),
       },
     ],
@@ -391,9 +391,9 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col span={24}>
+                <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
-                    className="entity-details-page-tabs"
+                    className="tabs-new"
                     data-testid="tabs"
                     defaultActiveKey={tab}
                     items={tabs}

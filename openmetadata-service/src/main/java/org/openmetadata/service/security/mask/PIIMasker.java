@@ -185,7 +185,7 @@ public class PIIMasker {
                             Entity.TABLE,
                             testCaseLink.getEntityFQN(),
                             "owners,tags,columns",
-                            Include.NON_DELETED);
+                            Include.ALL);
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
                   }
 

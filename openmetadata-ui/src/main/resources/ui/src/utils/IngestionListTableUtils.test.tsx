@@ -70,7 +70,7 @@ describe('renderTypeField', () => {
     const pipelineTypeElement = getByTestId('pipeline-type');
 
     expect(pipelineTypeElement.innerHTML).toBe(
-      '&lt;span data-highlight="true" class="text-highlighter"&gt;metadata&lt;/span&gt;'
+      '&lt;span data-highlight="true" class="text-highlighter"&gt;Metadata&lt;/span&gt;'
     );
   });
 
@@ -79,6 +79,6 @@ describe('renderTypeField', () => {
 
     const pipelineTypeElement = getByTestId('pipeline-type');
 
-    expect(pipelineTypeElement.innerHTML).toBe('metadata');
+    expect(pipelineTypeElement.innerHTML).toBe('Metadata');
   });
 });

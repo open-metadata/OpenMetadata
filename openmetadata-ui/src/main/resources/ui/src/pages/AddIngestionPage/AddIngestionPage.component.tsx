@@ -29,6 +29,7 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
@@ -36,7 +37,6 @@ import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -239,7 +239,7 @@ const AddIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -298,12 +298,14 @@ const AddIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.ingestion'),

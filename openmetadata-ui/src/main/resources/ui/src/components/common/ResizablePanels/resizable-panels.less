@@ -13,6 +13,8 @@
 
 @import url('../../../styles/variables.less');
 
+@reflex-card-gap: 20px;
+
 body.reflex-col-resize {
   cursor: col-resize;
 }
@@ -65,14 +67,7 @@ body.reflex-row-resize {
 }
 
 .reflex-container > .reflex-splitter {
-  background-color: #eeeeee;
   z-index: 100;
-}
-
-.reflex-container > .reflex-splitter.active,
-.reflex-container > .reflex-splitter:hover {
-  background-color: #c6c6c6;
-  transition: all 1s ease;
 }
 
 .horizontal > .reflex-splitter {
@@ -108,21 +103,6 @@ body.reflex-row-resize {
   user-select: none;
 }
 
-.reflex-container.vertical > .reflex-splitter:hover,
-.reflex-container.vertical > .reflex-splitter.active {
-  border-right: 1px solid #eeeeee;
-  border-left: 1px solid #eeeeee;
-}
-
-.reflex-container > .reflex-splitter.reflex-thin {
-  box-sizing: border-box;
-  -moz-background-clip: padding;
-  -webkit-background-clip: padding;
-  background-clip: padding-box;
-  opacity: 0.2;
-  z-index: 100;
-}
-
 .reflex-container
   > .reflex-splitter.reflex-thin.active
   .reflex-container
@@ -155,30 +135,6 @@ body.reflex-row-resize {
   height: 100%;
 }
 
-.reflex-container.vertical > .reflex-splitter.reflex-thin.active,
-.reflex-container.vertical > .reflex-splitter.reflex-thin:hover {
-  border-right: 8px solid #e4e4e4;
-  border-left: 8px solid #e4e4e4;
-}
-
-// CUSTOM CSS STARTS HERE
-.panel-container {
-  overflow: auto;
-  height: 100%;
-}
-
-.reflex-container {
-  .reflex-element {
-    .panel-container {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-      &::-webkit-scrollbar {
-        display: none;
-      }
-    }
-  }
-}
-
 .light-overlay {
   position: absolute;
   top: 0;
@@ -208,7 +164,7 @@ h2.rotated-header {
 }
 
 .panel-grabber-vertical {
-  height: calc(100vh - @om-navbar-height);
+  height: 100%;
   width: 10px;
   display: flex;
   flex-direction: row;
@@ -233,12 +189,31 @@ h2.rotated-header {
 }
 
 .left-panel-splitter {
+  margin-right: @reflex-card-gap;
+
   .panel-grabber-vertical {
     margin-left: -10px;
 
     .handle-icon-vertical {
       margin-left: 0px;
     }
+  }
+}
+
+.right-panel-splitter {
+  margin-left: @reflex-card-gap;
+
+  .panel-grabber-vertical {
+    margin-left: 10px;
+
+    .handle-icon-vertical {
+      margin-left: 0px;
+    }
+  }
+}
+.no-right-panel-splitter {
+  .right-panel-splitter {
+    margin-left: 0;
   }
 }
 
@@ -252,14 +227,6 @@ h2.rotated-header {
   flex-grow: 1 !important;
 }
 
-.splitter {
-  background-color: transparent !important;
-  border-left: 1px solid @border-color;
-}
-.splitter.collapsed {
-  border-left: none;
-}
-
 .hidden {
   display: none;
 }
@@ -271,22 +238,26 @@ h2.rotated-header {
   padding: 4px 8px;
   z-index: 10;
   background: white !important;
+
   .collapse-icon {
     vertical-align: middle;
     width: 16px;
   }
 }
+
 .collapse-button.collapsed {
   position: absolute;
   top: 8px;
   left: auto;
   right: -16px;
   padding: 4px 12px;
+
   .collapse-icon {
     margin-left: 4px;
     width: 20px;
   }
 }
+
 .right-panel-collapsed {
   flex: 0 !important;
   padding: 0 !important;
@@ -295,4 +266,47 @@ h2.rotated-header {
 .left-panel-collapse-button.collapsed {
   right: initial;
   left: -16px;
+}
+
+.reflex-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  & > .ant-card-head {
+    padding: 0px 16px;
+    border-bottom: none;
+  }
+
+  .ant-card-body {
+    flex: 1;
+    overflow: auto;
+  }
+}
+
+.card-header-splitter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.ant-btn.header-collapse-button,
+.ant-btn.expand-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.collapse-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s;
 }

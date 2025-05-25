@@ -1,9 +1,9 @@
 #  pylint: disable=too-many-lines
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -150,29 +150,37 @@ class DbtSource(DbtServiceSource):
         Returns dbt owner
         """
         try:
-            owner = None
+            owner_ref = None
             dbt_owner = None
             if catalog_node:
                 dbt_owner = catalog_node.metadata.owner
             if manifest_node:
                 dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
-            if dbt_owner:
-                owner = self.metadata.get_reference_by_name(
+            if dbt_owner and isinstance(dbt_owner, str):
+                owner_ref = self.metadata.get_reference_by_name(
                     name=dbt_owner, is_owner=True
+                ) or self.metadata.get_reference_by_email(email=dbt_owner)
+                if owner_ref:
+                    return owner_ref
+                logger.warning(
+                    "Unable to ingest owner from DBT since no user or"
+                    f" team was found with name {dbt_owner}"
                 )
-
-                if owner:
-                    return owner
-
-                # If owner is not found, try to find the owner in OMD using email
-                owner = self.metadata.get_reference_by_email(email=dbt_owner)
-
-                if not owner:
-                    logger.warning(
-                        "Unable to ingest owner from DBT since no user or"
-                        f" team was found with name {dbt_owner}"
-                    )
-            return owner
+            elif dbt_owner and isinstance(dbt_owner, list):
+                owner_list = EntityReferenceList(root=[])
+                for owner_name in dbt_owner:
+                    owner_ref = self.metadata.get_reference_by_name(
+                        name=owner_name, is_owner=True
+                    ) or self.metadata.get_reference_by_email(email=owner_name)
+                    if owner_ref:
+                        owner_list.root.extend(owner_ref.root)
+                    else:
+                        logger.warning(
+                            "Unable to ingest owner from DBT since no user or"
+                            f" team was found with name {owner_name}"
+                        )
+                if owner_list.root:
+                    return owner_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
@@ -741,7 +749,12 @@ class DbtSource(DbtServiceSource):
                                     type="table",
                                 ),
                                 lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage
+                                    source=LineageSource.DbtLineage,
+                                    sqlQuery=SqlQuery(
+                                        data_model_link.datamodel.sql.root
+                                    )
+                                    if data_model_link.datamodel.sql
+                                    else None,
                                 ),
                             )
                         )

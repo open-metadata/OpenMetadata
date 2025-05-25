@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -36,6 +37,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -53,18 +55,22 @@ import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  addFollowers,
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
+  removeFollowers,
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -94,30 +100,29 @@ const DatabaseDetails: FunctionComponent = () => {
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database
   );
-
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
-
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
-
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
-
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => database,
-    [database]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: databaseId,
+  } = useMemo(() => database, [database]);
 
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
   const tier = getTierTags(database?.tags ?? []);
 
   const [databasePermission, setDatabasePermission] =
@@ -129,9 +134,9 @@ const DatabaseDetails: FunctionComponent = () => {
         EntityType.DATABASE,
         decodedDatabaseFQN,
         databasePermission,
-        database?.deleted ?? false
+        database
       ),
-    [decodedDatabaseFQN, databasePermission, database?.deleted]
+    [decodedDatabaseFQN, databasePermission, database]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -141,7 +146,7 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN
       );
       setDatabasePermission(response);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -179,7 +184,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.DOMAIN,
+        TabSpecificField.VOTES,
+        TabSpecificField.EXTENSION,
+        TabSpecificField.DATA_PRODUCTS,
+        TabSpecificField.FOLLOWERS,
+      ].join(','),
       include: Include.All,
     })
       .then((res) => {
@@ -214,7 +227,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -257,7 +270,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {
-      history.push(
+      history.replace(
         getExplorePath({
           search: withinPageSearch,
           isPersistFilters: false,
@@ -327,6 +340,15 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const { isFollowing, followers = [] } = useMemo(
+    () => ({
+      isFollowing: database?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: database?.followers ?? [],
+    }),
+    [database, currentUser]
+  );
   const handleRestoreDatabase = useCallback(async () => {
     try {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
@@ -370,8 +392,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -379,7 +400,7 @@ const DatabaseDetails: FunctionComponent = () => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -434,6 +455,73 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+  const followDatabase = useCallback(async () => {
+    try {
+      const res = await addFollowers(
+        databaseId,
+        USERId ?? '',
+        GlobalSettingOptions.DATABASES
+      );
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setDatabase((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, databaseId]);
+  const unfollowDatabase = useCallback(async () => {
+    try {
+      const res = await removeFollowers(
+        databaseId,
+        USERId,
+        GlobalSettingOptions.DATABASES
+      );
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setDatabase((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, database]);
+
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unfollowDatabase() : await followDatabase();
+  }, [isFollowing, unfollowDatabase, followDatabase]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
+    [tabs[0], activeTab]
+  );
 
   if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
@@ -445,7 +533,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
       })}>
@@ -455,7 +542,7 @@ const DatabaseDetails: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -466,6 +553,7 @@ const DatabaseDetails: FunctionComponent = () => {
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
@@ -475,16 +563,29 @@ const DatabaseDetails: FunctionComponent = () => {
             />
           </Col>
           <GenericProvider<Database>
+            customizedPage={customizedPage}
             data={database}
+            isTabExpanded={isTabExpanded}
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
-                className="entity-details-page-tabs"
+                className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={activeTabHandler}
               />
             </Col>

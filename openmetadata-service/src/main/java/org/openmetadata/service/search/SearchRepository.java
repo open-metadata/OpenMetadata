@@ -47,6 +47,7 @@ import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -84,6 +85,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
@@ -422,10 +424,7 @@ public class SearchRepository {
         ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
         ChangeDescription changeDescription;
 
-        if (incrementalChangeDescription != null
-            && (!incrementalChangeDescription.getFieldsAdded().isEmpty()
-                || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
-                || !incrementalChangeDescription.getFieldsDeleted().isEmpty())) {
+        if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
           changeDescription = incrementalChangeDescription;
         } else {
           changeDescription = entity.getChangeDescription();
@@ -583,11 +582,19 @@ public class SearchRepository {
         if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Remove the parent field from the entity in search
+          String parentFieldPath = "parent";
+          Map<String, Object> params = new HashMap<>();
+          params.put("field", parentFieldPath);
+          searchClient.updateEntity(
+              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
+
           // Propagate FQN updates to all subchildren
           String originalFqn =
               FullyQualifiedName.add(
                   entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
-          searchClient.updateByFqnPrefix(indexName, originalFqn, "", FIELD_FULLY_QUALIFIED_NAME);
+          searchClient.updateByFqnPrefix(
+              indexName, originalFqn, entity.getName(), FIELD_FULLY_QUALIFIED_NAME);
         }
       }
     } else if (changeDescription != null
@@ -948,10 +955,15 @@ public class SearchRepository {
             scriptTxt,
             List.of(new ImmutablePair<>("dashboards.id", docId)));
       }
-      default -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      default -> {
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.softDeleteOrRestoreChildren(
+              indexMapping.getChildAliases(clusterAlias),
+              scriptTxt,
+              List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
+      }
     }
   }
 
@@ -1148,14 +1160,13 @@ public class SearchRepository {
             .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
-  public Response searchByField(String fieldName, String fieldValue, String index)
+  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index);
+    return searchClient.searchByField(fieldName, fieldValue, index, deleted);
   }
 
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
-    return searchClient.aggregate(index, fieldName, value, query);
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return searchClient.aggregate(request);
   }
 
   public JsonObject aggregate(

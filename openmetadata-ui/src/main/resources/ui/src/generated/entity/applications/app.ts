@@ -26,7 +26,7 @@ export interface App {
     /**
      * Application Configuration object.
      */
-    appConfiguration?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application Logo Url.
      */
@@ -34,7 +34,7 @@ export interface App {
     /**
      * In case the app supports scheduling, list of different app schedules
      */
-    appSchedule: any[] | boolean | AppScheduleClass | number | number | null | string;
+    appSchedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
     /**
      * Application Screenshots.
      */
@@ -200,7 +200,7 @@ export enum AgentType {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Day One Experience Flow.
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -297,7 +297,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -309,6 +309,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -606,6 +607,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -866,12 +868,12 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum Type {
+    AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -1262,19 +1264,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**

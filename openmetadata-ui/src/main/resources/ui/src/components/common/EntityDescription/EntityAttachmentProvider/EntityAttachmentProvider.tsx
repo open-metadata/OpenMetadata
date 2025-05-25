@@ -12,7 +12,7 @@
  */
 import { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
-import { isString, noop } from 'lodash';
+import { isString, isUndefined, noop } from 'lodash';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -90,33 +90,104 @@ export const EntityAttachmentProvider = ({
     }
 
     try {
+      // Get the current state
+      const { state } = view;
+      const { tr } = state;
+
+      // Create the temporary node
+      const tempNode = state.schema.nodes.fileAttachment.create({
+        url: '',
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        isUploading: true,
+        uploadProgress: 0,
+        tempFile: file,
+        isImage,
+        alt: file.name,
+      });
+
+      // Create and dispatch the transaction for the temporary node
+      const tempTr = tr.insert(pos, tempNode);
+      view.dispatch(tempTr);
+
+      // Start the upload using the existing onImageUpload function
       const url = await onImageUpload(file, entityType, entityFqn);
 
-      if (isImage) {
-        const imageNode = view.state.schema.nodes.image.create({
-          src: url,
-          alt: file.name,
-        });
-        const tr = view.state.tr.insert(pos, imageNode);
-        view.dispatch(tr);
-      } else {
-        const { state } = view;
-        const { tr } = state;
+      // Get the current state after upload
+      const currentState = view.state;
+      const currentTr = currentState.tr;
 
-        const fileNode = state.schema.nodes.fileAttachment.create({
+      // Find the position of the temporary node
+      let tempNodePos = -1;
+      currentState.doc.descendants((node, pos) => {
+        if (node.attrs.isUploading && node.attrs.tempFile === file) {
+          tempNodePos = pos;
+        }
+      });
+
+      // If we can't find the temporary node, it might have been removed
+      // In this case, we'll insert the final node at the original position
+      if (tempNodePos === -1) {
+        const finalNode = currentState.schema.nodes.fileAttachment.create({
           url,
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
+          isUploading: false,
+          uploadProgress: 100,
+          isImage,
+          alt: file.name,
         });
 
-        tr.insert(pos, fileNode);
-        view.dispatch(tr);
+        currentTr.insert(pos, finalNode);
+        view.dispatch(currentTr);
+
+        return;
       }
+
+      // Create the final node
+      const finalNode = currentState.schema.nodes.fileAttachment.create({
+        url,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        isUploading: false,
+        uploadProgress: 100,
+        isImage,
+        alt: file.name,
+      });
+
+      // Replace the temporary node with the final node at the correct position
+      currentTr.replaceWith(tempNodePos, tempNodePos + 1, finalNode);
+      view.dispatch(currentTr);
     } catch (error) {
+      const errorMessage = (error as AxiosError<{ message: string }>).response
+        ?.data?.message;
+
+      // Get the current state for error handling
+      const currentState = view.state;
+      const currentTr = currentState.tr;
+
+      // Find the position of the temporary node
+      let tempNodePos = -1;
+      currentState.doc.descendants((node, pos) => {
+        if (node.attrs.isUploading && node.attrs.tempFile === file) {
+          tempNodePos = pos;
+        }
+      });
+
+      if (tempNodePos !== -1) {
+        // Remove the temporary node on error
+        currentTr.delete(tempNodePos, tempNodePos + 1);
+        view.dispatch(currentTr);
+      }
+
       showInlineAlert
         ? setErrorMessage(
-            isString(error) ? error : t('label.failed-to-upload-file')
+            !isUndefined(errorMessage) && isString(errorMessage)
+              ? errorMessage
+              : t('label.failed-to-upload-file')
           )
         : showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
     }

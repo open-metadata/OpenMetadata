@@ -10,8 +10,6 @@ import org.openmetadata.service.util.JsonUtils;
 public interface DataInsightsSearchInterface {
   String DATA_INSIGHTS_SEARCH_CONFIG_PATH = "/dataInsights/config.json";
 
-  void createLifecyclePolicy(String name, String policy) throws IOException;
-
   void createComponentTemplate(String name, String template) throws IOException;
 
   void createIndexTemplate(String name, String template) throws IOException;
@@ -90,8 +88,6 @@ public interface DataInsightsSearchInterface {
       throws IOException;
 
   void deleteDataAssetDataStream(String name) throws IOException;
-
-  void updateLifecyclePolicy(int retentionDays) throws IOException;
 
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 

@@ -41,7 +41,14 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -91,7 +98,6 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh");
 
@@ -293,7 +299,7 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw AuthenticationException.getExpiredTokenException();
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
   }
@@ -301,9 +307,15 @@ public class JwtFilter implements ContainerRequestFilter {
   private void setSecurityContext(
       ContainerRequestContext requestContext, CatalogPrincipal catalogPrincipal) {
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
             catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
+    // TODO: check if we need to set the scheme and auth type
     requestContext.setSecurityContext(catalogSecurityContext);
+        catalogPrincipal,
+        "https",
+        SecurityContext.DIGEST_AUTH,
+        getUserRolesFromClaims(claims, isBot(claims)));
   }
 }

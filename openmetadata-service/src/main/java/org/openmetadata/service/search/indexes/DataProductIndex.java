@@ -28,6 +28,7 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DATA_PRODUCT, dataProduct));
     doc.put("tags", parseTags.getTags());
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(dataProduct.getEntityReference()));
     return doc;
   }
 

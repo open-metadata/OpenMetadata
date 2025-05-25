@@ -59,10 +59,8 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const {
-    tab: activeTab = UserPageTabs.ACTIVITY,
-    subTab = ActivityFeedTabs.TASKS,
-  } = useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
+    useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
@@ -88,7 +86,7 @@ const Users = ({
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
 
       setAssetCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
+    } catch {
       setAssetCount(0);
     }
   };
@@ -165,7 +163,10 @@ const Users = ({
     [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
-    if (subTab === ActivityFeedTabs.MENTIONS) {
+    if (
+      subTab === ActivityFeedTabs.MENTIONS ||
+      subTab === ActivityFeedTabs.TASKS
+    ) {
       setCurrentTab(UserPageTabs.TASK);
     }
   }, [subTab]);
@@ -303,7 +304,7 @@ const Users = ({
   }, [userData.id]);
 
   return (
-    <div className="p-t-xs bg-grey p-x-box" data-testid="user-profile">
+    <div data-testid="user-profile">
       <Row gutter={[20, 0]} wrap={false}>
         <Col flex="250px">
           <div className="profile-section">
@@ -342,27 +343,21 @@ const Users = ({
           </div>
         </Col>
         <Col flex="auto">
-          <Row className="mb-sm w-full">
-            <div className="tabs-container d-flex justify-center">
-              <Tabs
-                activeKey={currentTab}
-                className="user-page-tabs-new"
-                data-testid="tabs"
-                items={tabs.map((tab) => ({
-                  key: tab.key,
-                  label: tab.label,
-                  disabled: tab.disabled,
-                }))}
-                renderTabBar={(props, DefaultTabBar) => (
-                  <div>
-                    <DefaultTabBar {...props} />
-                  </div>
-                )}
-                onChange={activeTabHandler}
-              />
-            </div>
-          </Row>
-          <Row gutter={[16, 16]}>
+          <Tabs
+            activeKey={currentTab}
+            className="tabs-new m-b-xs"
+            data-testid="tabs"
+            items={tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              disabled: tab.disabled,
+            }))}
+            renderTabBar={(props, DefaultTabBar) => (
+              <DefaultTabBar {...props} />
+            )}
+            onChange={activeTabHandler}
+          />
+          <Row className="users-tabs-container" gutter={[16, 16]}>
             <Col span={24}>
               {tabs.find((tab) => tab.key === currentTab)?.children}
             </Col>

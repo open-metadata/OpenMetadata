@@ -19,8 +19,11 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useEffect,
   useMemo,
+  useState,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -38,7 +41,6 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  padding: 0,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -58,7 +60,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert } = useAlertStore();
+  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
+  const location = useLocation();
+  const [prevPath, setPrevPath] = useState<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -72,13 +76,28 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
+  useEffect(() => {
+    if (prevPath !== location.pathname) {
+      if (isErrorTimeOut) {
+        resetAlert();
+      }
+    }
+  }, [location.pathname, resetAlert, isErrorTimeOut]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setPrevPath(location.pathname);
+    }, 3000);
+  }, [location.pathname]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={className}
+        className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}>
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}
+        wrap={false}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
@@ -89,10 +108,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll `,
+            `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
-              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -105,9 +123,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
-              {children}
-            </Col>
+            <Col span={24}>{children}</Col>
           </Row>
         </Col>
         {rightPanel && (

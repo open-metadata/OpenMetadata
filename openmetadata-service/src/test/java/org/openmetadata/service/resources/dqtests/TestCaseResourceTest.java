@@ -1525,8 +1525,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // 1. soft delete - should not delete the test case resolution status
     // 2. hard delete - should delete the test case resolution status
     deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    queryParams.clear();
+    queryParams.put("include", "all");
     storedTestCaseResolutions =
-        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+        getTestCaseFailureStatus(
+            startTs, endTs, null, TestCaseResolutionStatusTypes.Ack, queryParams);
     assertEquals(2, storedTestCaseResolutions.getData().size());
     assertTrue(
         storedTestCaseResolutions.getData().stream()
@@ -1568,6 +1571,40 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getTestCaseFailureStatus(1000000, null, false, startTs, endTs, null);
 
     paginateTestCaseFailureStatus(maxEntities, allEntities, startTs, endTs);
+  }
+
+  @Test
+  void test_listTestCaseFailureStatusDeletedTestCase(TestInfo test)
+      throws IOException, ParseException {
+    List<TestCase> testCases = new ArrayList<>();
+    Long startTs = System.currentTimeMillis() - 1000;
+    for (int i = 0; i < 2; i++) {
+      // We'll create random test cases
+      TestCase testCaseEntity =
+          createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
+      testCases.add(testCaseEntity);
+      // Adding failed test case, which will create a NEW incident
+      postTestCaseResult(
+          testCaseEntity.getFullyQualifiedName(),
+          new CreateTestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+    }
+    Long endTs = System.currentTimeMillis() + 1000;
+    ResultList<TestCaseResolutionStatus> entities =
+        getTestCaseFailureStatus(1000, null, false, startTs, endTs, null);
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
+    deleteEntityByName(testCases.get(0).getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+    entities = getTestCaseFailureStatus(1000, null, false, startTs, endTs, null);
+    assertTrue(
+        entities.getData().stream()
+            .noneMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
   }
 
   @Test
@@ -1820,7 +1857,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void unauthorizedTestCaseResolutionFlow(TestInfo test)
+  void authorizedTestCaseResolutionFlow(TestInfo test)
       throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     // Add failed test case, which will create a NEW incident
@@ -1840,13 +1877,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
     createTestCaseFailureStatus(createAssignedIncident);
 
-    assertResponseContains(
-        () ->
-            createTestCaseFailureStatus(
-                createAssignedIncident.withTestCaseResolutionStatusType(
-                    TestCaseResolutionStatusTypes.Ack)),
-        BAD_REQUEST,
-        "Incident with status [Assigned] cannot be moved to [Ack]");
+    createTestCaseFailureStatus(
+        createAssignedIncident.withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
   }
 
   @Test

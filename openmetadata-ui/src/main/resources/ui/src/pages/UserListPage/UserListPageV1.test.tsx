@@ -85,14 +85,18 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../components/common/Table/Table', () => {
-  return jest.fn().mockImplementation(({ columns }) => (
-    <div>
-      {columns.map((column: Record<string, string>) => (
-        <span key={column.key}>{column.title}</span>
-      ))}
-      <table>mockTable</table>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ columns, extraTableFilters, searchProps }) => (
+      <div>
+        {searchProps && <div data-testid="search-bar-container">searchBar</div>}
+        {extraTableFilters}
+        {columns.map((column: Record<string, string>) => (
+          <span key={column.key}>{column.title}</span>
+        ))}
+        <table>mockTable</table>
+      </div>
+    ));
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {

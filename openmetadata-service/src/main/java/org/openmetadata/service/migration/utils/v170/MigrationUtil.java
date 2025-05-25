@@ -19,12 +19,14 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -36,6 +38,7 @@ import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -63,14 +66,15 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  public static final String DOMAIN_LINEAGE =
+  public static final String DOMAIN_AND_PRODUCTS_LINEAGE =
       "select count(*) from entity_relationship where fromId in (select toId from entity_relationship where fromId = '%s' and relation = 10) AND toId in (select toId from entity_relationship where fromId = '%s' and relation = 10) and relation = 13";
 
   public static final String SERVICE_ENTITY_MIGRATION =
       "SELECT COUNT(*) FROM entity_relationship er JOIN %s f ON er.fromID = f.id JOIN %s t ON er.toID = t.id WHERE er.relation = 13 AND f.fqnHash LIKE '%s.%%' AND t.fqnHash LIKE '%s.%%'";
-  private static final String UPDATE_NULL_JSON =
+  private static final String UPDATE_NULL_JSON_MYSQL =
       "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
-
+  private static final String UPDATE_NULL_JSON_POSTGRESQL =
+      "UPDATE entity_relationship SET json = :json::jsonb WHERE json IS NULL AND relation = 13";
   private static final String UPDATE_NON_NULL_MYSQL_JSON =
       "UPDATE entity_relationship SET json = JSON_SET(json, '$.createdAt', IFNULL(CAST(json->>'$.createdAt' AS UNSIGNED), :currTime), '$.createdBy', IFNULL(JSON_UNQUOTE(json->>'$.createdBy'), 'admin'), '$.updatedAt', IFNULL(CAST(json->>'$.updatedAt' AS UNSIGNED), :currTime), '$.updatedBy', IFNULL(JSON_UNQUOTE(json->>'$.updatedBy'), 'admin')) WHERE "
           + "relation = 13 AND json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
@@ -88,9 +92,13 @@ public class MigrationUtil {
               .withUpdatedAt(currentTime)
               .withCreatedBy(ADMIN_USER_NAME)
               .withUpdatedBy(ADMIN_USER_NAME);
+      String updateSql =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? UPDATE_NULL_JSON_MYSQL
+              : UPDATE_NULL_JSON_POSTGRESQL;
       int result =
           handle
-              .createUpdate(UPDATE_NULL_JSON)
+              .createUpdate(updateSql)
               .bind("json", JsonUtils.pojoToJson(lineageDetails))
               .execute();
       if (result <= 0) {
@@ -241,7 +249,7 @@ public class MigrationUtil {
           }
         }
         workflowDefinition.withConfig(new WorkflowConfiguration());
-        repository.createOrUpdate(null, workflowDefinition);
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       }
     } catch (Exception ex) {
       LOG.error("Error while updating workflow definitions", ex);
@@ -283,9 +291,9 @@ public class MigrationUtil {
         "assets_with_pii_bar",
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
-            .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled("pii.*")
-            .withGroupBy("tags.name.keyword"),
+            .withxAxisField("columns.tags.tagFQN")
+            .withIncludeXAxisFiled("PII.*")
+            .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -322,8 +330,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
-                                + " pii.nonsensitive OR tags.tagFQN: pii.none')/count(k='id.keyword'))*100"))));
+                            "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_tier",
@@ -383,36 +390,11 @@ public class MigrationUtil {
 
   public static void runMigrationForDomainLineage(Handle handle) {
     try {
-      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR DOMAIN LINEAGE");
       List<Domain> allDomains = getAllDomains();
       for (Domain fromDomain : allDomains) {
         for (Domain toDomain : allDomains) {
-          if (fromDomain.getId().equals(toDomain.getId())) {
-            continue;
-          }
-          String sql =
-              String.format(
-                  DOMAIN_LINEAGE, fromDomain.getId().toString(), toDomain.getId().toString());
-          int count = handle.createQuery(sql).mapTo(Integer.class).one();
-          if (count > 0) {
-            LineageDetails domainLineageDetails =
-                new LineageDetails()
-                    .withCreatedAt(System.currentTimeMillis())
-                    .withUpdatedAt(System.currentTimeMillis())
-                    .withCreatedBy(ADMIN_USER_NAME)
-                    .withUpdatedBy(ADMIN_USER_NAME)
-                    .withSource(LineageDetails.Source.CHILD_ASSETS)
-                    .withAssetEdges(count);
-            Entity.getCollectionDAO()
-                .relationshipDAO()
-                .insert(
-                    fromDomain.getId(),
-                    toDomain.getId(),
-                    fromDomain.getEntityReference().getType(),
-                    toDomain.getEntityReference().getType(),
-                    Relationship.UPSTREAM.ordinal(),
-                    JsonUtils.pojoToJson(domainLineageDetails));
-          }
+          insertDomainAndDataProductLineage(
+              handle, fromDomain.getEntityReference(), toDomain.getEntityReference());
         }
       }
 
@@ -420,6 +402,57 @@ public class MigrationUtil {
       LOG.error(
           "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
           ex);
+    }
+  }
+
+  public static void runMigrationForDataProductsLineage(Handle handle) {
+    try {
+      List<DataProduct> allDataProducts = getAllDataProducts();
+      for (DataProduct fromDataProduct : allDataProducts) {
+        for (DataProduct toDataProduct : allDataProducts) {
+          insertDomainAndDataProductLineage(
+              handle, fromDataProduct.getEntityReference(), toDataProduct.getEntityReference());
+        }
+      }
+
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
+          ex);
+    }
+  }
+
+  private static void insertDomainAndDataProductLineage(
+      Handle handle, EntityReference fromRef, EntityReference toRef) {
+    LOG.info(
+        "MIGRATION 1.7.0 - STARTING MIGRATION FOR DOMAIN/DATA_PRODUCT LINEAGE, FROM: {} TO: {}",
+        fromRef.getFullyQualifiedName(),
+        toRef.getFullyQualifiedName());
+    if (fromRef.getId().equals(toRef.getId())) {
+      return;
+    }
+    String sql =
+        String.format(
+            DOMAIN_AND_PRODUCTS_LINEAGE, fromRef.getId().toString(), toRef.getId().toString());
+    int count = handle.createQuery(sql).mapTo(Integer.class).one();
+    if (count > 0) {
+      LineageDetails domainLineageDetails =
+          new LineageDetails()
+              .withCreatedAt(System.currentTimeMillis())
+              .withUpdatedAt(System.currentTimeMillis())
+              .withCreatedBy(ADMIN_USER_NAME)
+              .withUpdatedBy(ADMIN_USER_NAME)
+              .withSource(LineageDetails.Source.CHILD_ASSETS)
+              .withAssetEdges(count);
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(domainLineageDetails));
     }
   }
 
@@ -441,7 +474,10 @@ public class MigrationUtil {
   private static void insertServiceLineageDetails(
       Handle handle, ServiceEntityInterface fromService, ServiceEntityInterface toService) {
     try {
-      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR SERVICES LINEAGE");
+      LOG.info(
+          "MIGRATION 1.7.0 - STARTING MIGRATION FOR SERVICES LINEAGE , FROM: {} TO: {}",
+          fromService.getFullyQualifiedName(),
+          toService.getFullyQualifiedName());
 
       if (fromService.getId().equals(toService.getId())
           && fromService
@@ -510,6 +546,12 @@ public class MigrationUtil {
     return repository.listAll(repository.getFields("id"), new ListFilter(Include.ALL));
   }
 
+  private static List<DataProduct> getAllDataProducts() {
+    DataProductRepository repository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+    return repository.listAll(repository.getFields("id"), new ListFilter(Include.ALL));
+  }
+
   public static void updateLineageBotPolicy() {
     PolicyRepository policyRepository =
         (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
@@ -521,7 +563,7 @@ public class MigrationUtil {
           if (rule.getName().equals("LineageBotRule-Allow")
               && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
             rule.getOperations().add(MetadataOperation.EDIT_ALL);
-            policyRepository.createOrUpdate(null, policy);
+            policyRepository.createOrUpdate(null, policy, ADMIN_USER_NAME);
           }
         }
       }

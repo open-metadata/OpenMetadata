@@ -20,6 +20,7 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-impala-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/impala/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/impala/yaml"} /%}
 
@@ -72,7 +73,5 @@ To configure SSL for secure connections between OpenMetadata and an Impala datab
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

@@ -161,7 +161,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update the user
     registeredUser.setIsEmailVerified(true);
-    userRepository.createOrUpdate(uriInfo, registeredUser);
+    userRepository.createOrUpdate(uriInfo, registeredUser, registeredUser.getName());
 
     // deleting the entry for the token from the Database
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
@@ -252,7 +252,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.setAuthenticationMechanism(
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
 
-    userRepository.createOrUpdate(uriInfo, storedUser);
+    userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
@@ -308,7 +308,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-    PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
+    PutResponse<User> response =
+        userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
     // remove login/details from cache
     LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
 
@@ -469,6 +470,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(email);
     User storedUser = lookUserInProvider(email, loginRequest.getPassword());
     validatePassword(email, loginRequest.getPassword(), storedUser);
+    Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 

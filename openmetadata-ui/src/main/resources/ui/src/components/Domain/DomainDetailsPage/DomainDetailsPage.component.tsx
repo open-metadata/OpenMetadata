@@ -27,7 +27,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -69,6 +69,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
@@ -78,6 +79,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -102,6 +104,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
@@ -125,8 +128,10 @@ const DomainDetailsPage = ({
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+    useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
+  const { currentUser } = useApplicationStore();
+
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -150,8 +155,13 @@ const DomainDetailsPage = ({
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
+
+  const isOwner = useMemo(
+    () => domain.owners?.some((owner) => isEqual(owner.id, currentUser?.id)),
+    [domain, currentUser]
+  );
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -217,7 +227,7 @@ const DomainDetailsPage = ({
           },
         ]
       : []),
-    ...(permissions.dataProduct.Create
+    ...(isOwner || permissions.dataProduct.Create
       ? [
           {
             label: t('label.data-product-plural'),
@@ -520,7 +530,7 @@ const DomainDetailsPage = ({
       subDomains,
       dataProductsCount,
       assetCount,
-      activeTab: activeTab as EntityTabs,
+      activeTab,
       onAddDataProduct,
       isSubDomainsLoading,
       queryFilter,
@@ -602,6 +612,14 @@ const DomainDetailsPage = ({
     );
   }, [domain, isSubDomain]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
+    [tabs[0], activeTab]
+  );
   if (isLoading) {
     return <Loader />;
   }
@@ -612,7 +630,7 @@ const DomainDetailsPage = ({
         className="domain-details"
         data-testid="domain-details"
         gutter={[0, 12]}>
-        <Col className="p-x-md p-l-xl" flex="auto">
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
@@ -622,11 +640,11 @@ const DomainDetailsPage = ({
             titleColor={domain.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="320px">
-          <div style={{ textAlign: 'right' }}>
+        <Col flex="320px">
+          <div className="d-flex gap-3 justify-end">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
-                className="m-l-xs"
+                className="m-l-xs h-10"
                 data-testid="domain-details-add-button-menu"
                 menu={{
                   items: addButtonContent,
@@ -642,7 +660,7 @@ const DomainDetailsPage = ({
               </Dropdown>
             )}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {domain?.version && (
                 <Tooltip
                   title={t(
@@ -703,17 +721,31 @@ const DomainDetailsPage = ({
         </Col>
 
         <GenericProvider<Domain>
+          customizedPage={customizedPage}
           data={domain}
+          isTabExpanded={isTabExpanded}
+          isVersionView={isVersionsView}
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col span={24}>
+          <Col className="domain-details-page-tabs" span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}
-              className="domain-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

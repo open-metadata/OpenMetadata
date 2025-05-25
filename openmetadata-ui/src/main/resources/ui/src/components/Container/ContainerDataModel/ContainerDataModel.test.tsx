@@ -96,6 +96,26 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    type: 'container',
+  }),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
+
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
@@ -110,7 +130,7 @@ jest.mock('../../../utils/ContainerDetailUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () =>
     jest
       .fn()

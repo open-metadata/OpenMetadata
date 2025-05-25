@@ -124,7 +124,7 @@ describe('Test PropertyValue Component', () => {
     const valueElement = await screen.findAllByTestId('RichTextPreviewer');
     const iconElement = await screen.findByTestId('edit-icon');
 
-    expect(valueElement).toHaveLength(2);
+    expect(valueElement).toHaveLength(1);
     expect(iconElement).toBeInTheDocument();
 
     await act(async () => {

@@ -24,6 +24,10 @@ export interface TestCase {
      */
     computePassedFailedRowCount?: boolean;
     /**
+     * User who made the update.
+     */
+    createdBy?: string;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -349,6 +353,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

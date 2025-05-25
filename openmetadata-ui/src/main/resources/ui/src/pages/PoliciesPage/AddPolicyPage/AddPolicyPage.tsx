@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
@@ -33,30 +34,11 @@ import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import {
-  getPath,
-  getPolicyWithFqnPath,
-  getSettingPath,
-} from '../../../utils/RouterUtils';
+import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
-
-const breadcrumb = [
-  {
-    name: i18n.t('label.setting-plural'),
-    url: getSettingPath(),
-  },
-  {
-    name: i18n.t('label.policy-plural'),
-    url: policiesPath,
-  },
-  {
-    name: i18n.t('label.add-new-entity', { entity: i18n.t('label.policy') }),
-    url: '',
-  },
-];
 
 const AddPolicyPage = () => {
   const history = useHistory();
@@ -132,14 +114,14 @@ const AddPolicyPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-policy-container">
-            <TitleBreadcrumb titleLinks={breadcrumb} />
+          <div data-testid="add-policy-container">
+            <TitleBreadcrumb titleLinks={ADD_POLICY_PAGE_BREADCRUMB} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
@@ -213,7 +195,7 @@ const AddPolicyPage = () => {
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

@@ -78,35 +78,7 @@ This is a sample config for DynamoDB:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-**awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**endPointURL**: Your DynamoDB connector will automatically determine the AWS DynamoDB endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
-
-{% /codeInfo %}
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% codeInfo srNumber=6 %}
 
@@ -149,21 +121,9 @@ source:
       type: DynamoDB
       awsConfig:
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: aws_access_key_id
-```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: aws_secret_access_key
-```
-```yaml {% srNumber=3 %}
-        awsSessionToken: AWS Session Token
-```
-```yaml {% srNumber=4 %}
-        awsRegion: aws region
-```
-```yaml {% srNumber=5 %}
-        endPointURL: https://dynamodb.<region_name>.amazonaws.com
-```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
+
 ```yaml {% srNumber=6 %}
       database: custom_database_name
 ```

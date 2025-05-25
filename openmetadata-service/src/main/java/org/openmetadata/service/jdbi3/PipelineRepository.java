@@ -221,7 +221,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     searchRepository.updateEntity(pipeline);
     searchRepository
         .getSearchClient()
-        .reindexAcrossIndices("lineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
+        .reindexAcrossIndices(
+            "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,

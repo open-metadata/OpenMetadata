@@ -41,6 +41,10 @@ export interface MlmodelService {
      */
     domain?: EntityReference;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -59,7 +63,7 @@ export interface MlmodelService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this pipeline service.
      */
@@ -290,6 +294,8 @@ export interface GCPCredentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -332,6 +338,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**
@@ -527,6 +535,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

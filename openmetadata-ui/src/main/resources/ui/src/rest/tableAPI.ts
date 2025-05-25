@@ -233,9 +233,18 @@ export const updateTablesVotes = async (id: string, data: QueryVote) => {
   return response.data;
 };
 
-export const exportTableDetailsInCSV = async (fqn: string) => {
-  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`tables/name/${fqn}/exportAsync`);
+export const exportTableDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `tables/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
 
   return res.data;
 };

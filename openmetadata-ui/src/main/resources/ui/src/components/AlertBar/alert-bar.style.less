@@ -15,28 +15,29 @@
 @keyframes resize-show-animation {
   from {
     height: 0px;
-    padding: 0 20px;
+    padding: 0 16px;
   }
   to {
     height: max-content;
-    padding: 16px 20px;
+    padding: 8px 16px;
   }
 }
 
 @keyframes resize-hide-animation {
   from {
     height: max-content;
-    padding: 16px 20px;
+    padding: 8px 16px;
   }
   to {
     height: 0px;
-    padding: 0 20px;
+    padding: 0 16px;
   }
 }
 
 .alert-container {
-  backdrop-filter: blur(500px);
   height: 0px;
+  color: @alert-text-color;
+  border: 1px solid;
 
   .alert-message {
     display: -webkit-box;
@@ -62,10 +63,18 @@
     text-decoration: underline;
   }
 
+  #alert-icon {
+    font-size: 20px;
+    border-radius: 50%;
+    padding: 8px;
+  }
+
   &.show-alert {
     animation: resize-show-animation 0.3s ease-in-out forwards;
     display: flex;
     align-items: center;
+    border-radius: 12px;
+    margin-bottom: 12px;
   }
 
   &.hide-alert {
@@ -73,41 +82,52 @@
   }
 
   &.info {
-    background-color: @info-bg-color;
-    color: @info-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-info-bg;
+    border-color: @alert-info;
+
+    #alert-icon {
+      background-color: @alert-info-icon-bg-1;
+      border: 6px solid @alert-info-icon-bg-2;
+    }
   }
 
   &.success {
-    background-color: @success-bg-color;
-    color: @success-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-success-bg;
+    border-color: @alert-success;
   }
 
   &.warning {
-    background-color: @warning-bg-color;
-    color: @warning-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-warning-bg;
+    border-color: @alert-warning;
+
+    #alert-icon {
+      background-color: @alert-warning-icon-bg-1;
+      border: 6px solid @alert-warning-icon-bg-2;
+    }
   }
 
   &.error {
-    background-color: @error-bg-color;
-    color: @error-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-error-bg;
+    border-color: @alert-error;
+
+    #alert-icon {
+      background-color: @alert-error-icon-bg-1;
+      border: 6px solid @alert-error-icon-bg-2;
+    }
   }
 
   .ant-alert-description {
     font-size: 14px;
-    line-height: 18px;
+    line-height: 20px;
     text-align: left;
+    font-weight: 600;
   }
 
   .alert-close-icon {
     display: flex;
     align-items: center;
+    width: 10px;
+    height: 10px;
+    margin-right: 13px;
   }
 }

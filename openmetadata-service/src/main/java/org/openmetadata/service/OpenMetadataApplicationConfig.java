@@ -22,16 +22,19 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -41,6 +44,13 @@ import org.openmetadata.service.util.JsonUtils;
 @Getter
 @Setter
 public class OpenMetadataApplicationConfig extends Configuration {
+
+  @Getter @JsonProperty private String basePath;
+
+  @Getter
+  @JsonProperty("assets")
+  private Map<String, String> assets;
+
   @JsonProperty("database")
   @NotNull
   @Valid
@@ -67,7 +77,15 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
+  @JsonProperty("operationalConfig")
+  private OpsConfig opsConfig;
+
+  private DefaultOperationalConfigProvider operationalApplicationConfigProvider;
+
   private static final String CERTIFICATE_PATH = "certificatePath";
+
+  @JsonProperty("mcpConfiguration")
+  private MCPConfiguration mcpConfiguration = new MCPConfiguration();
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
     if (pipelineServiceClientConfiguration != null) {
@@ -81,6 +99,20 @@ public class OpenMetadataApplicationConfig extends Configuration {
       pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     }
     return pipelineServiceClientConfiguration;
+  }
+
+  public DefaultOperationalConfigProvider getOperationalApplicationConfigProvider() {
+    if (operationalApplicationConfigProvider == null) {
+      operationalApplicationConfigProvider = new DefaultOperationalConfigProvider(getOpsConfig());
+    }
+    return operationalApplicationConfigProvider;
+  }
+
+  public OpsConfig getOpsConfig() {
+    if (opsConfig == null) {
+      opsConfig = new OpsConfig().withEnable(false);
+    }
+    return opsConfig;
   }
 
   @JsonProperty("migrationConfiguration")

@@ -78,14 +78,15 @@ export interface EventPublisherJob {
     /**
      * This schema publisher run job status.
      */
-    status:    Status;
-    timestamp: number;
+    status?:    Status;
+    timestamp?: number;
 }
 
 /**
  * Failure for the job
  *
- * This schema defines Event Publisher Job Error Schema.
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingAppError {
     errorSource?:      ErrorSource;
@@ -97,6 +98,7 @@ export interface IndexingAppError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {
@@ -126,12 +128,20 @@ export enum SearchIndexMappingLanguage {
 }
 
 export interface Stats {
-    entityStats?: StepStats;
-    jobStats?:    StepStats;
+    /**
+     * Stats for different entities. Keys should match entity types
+     */
+    entityStats?: { [key: string]: StepStats };
+    /**
+     * Stats for the job
+     */
+    jobStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
+ *
+ * Stats for the job
  */
 export interface StepStats {
     /**
@@ -146,7 +156,6 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
-    [property: string]: any;
 }
 
 /**

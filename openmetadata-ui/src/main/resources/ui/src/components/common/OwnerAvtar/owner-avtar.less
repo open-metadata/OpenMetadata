@@ -15,3 +15,52 @@
 .anticon.owner-team-icon {
   color: @grey-700;
 }
+
+.multi-team-container {
+  background-color: @grey-9;
+  border-radius: 16px;
+  padding: 4px 12px;
+}
+
+.avatar-group {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+
+  .owner-avatar-container {
+    margin-left: -4px;
+    transition: transform 0.2s;
+
+    &:not(.is-compact-view) {
+      &:hover {
+        transform: translateY(-2px);
+        z-index: 20 !important;
+      }
+    }
+  }
+}
+
+.owner-avatar-icon {
+  position: relative;
+
+  .inherited-icon-styling {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background-color: white;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    border: 1px solid @primary-heading-color;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+
+    svg {
+      color: @primary-heading-color;
+      width: 8px;
+      height: 8px;
+    }
+  }
+}

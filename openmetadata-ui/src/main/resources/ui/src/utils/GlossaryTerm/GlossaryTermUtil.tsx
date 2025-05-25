@@ -12,8 +12,17 @@
  */
 import { isUndefined } from 'lodash';
 import React from 'react';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
+import GlossaryTermReferences from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermReferences';
+import GlossaryTermSynonyms from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms';
+import RelatedTerms from '../../components/Glossary/GlossaryTerms/tabs/RelatedTerms';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 
@@ -53,7 +62,7 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey(
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetFromKey(
     widgetConfig.i
   );
 
@@ -63,6 +72,41 @@ export const getWidgetFromKey = ({
       isEditView={isEditView}
       selectedGridSize={widgetConfig.w}
       widgetKey={widgetConfig.i}
+    />
+  );
+};
+
+export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
+  if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.RELATED_TERMS)
+  ) {
+    return <RelatedTerms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
+  ) {
+    return <GlossaryTermSynonyms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
+  ) {
+    return <GlossaryTermReferences />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
+  ) {
+    return <OwnerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+  ) {
+    return <ReviewerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
+  ) {
+    return <DomainLabelV2 showDomainHeading />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.GLOSSARY_TERM}
+      widgetConfig={widgetConfig}
     />
   );
 };

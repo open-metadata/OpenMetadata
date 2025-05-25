@@ -53,6 +53,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -82,7 +83,7 @@ public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  static final String FIELDS = "pipelines,owners,tags,domain";
+  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -386,6 +387,69 @@ public class DatabaseServiceResource
     return response;
   }
 
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToDatabaseService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this database service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Database Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Database Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -446,7 +510,7 @@ public class DatabaseServiceResource
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportDatabaseServices",
@@ -464,9 +528,16 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, recursive);
   }
 
   @GET
@@ -489,13 +560,20 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name);
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive) {
+    return exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importDatabaseService",
@@ -521,14 +599,18 @@ public class DatabaseServiceResource
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -556,8 +638,12 @@ public class DatabaseServiceResource
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE

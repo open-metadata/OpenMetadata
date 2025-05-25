@@ -172,13 +172,15 @@ const RequestTag = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 700,
         flex: 0.6,
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
@@ -270,9 +272,9 @@ const RequestTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.request-tag-plural')}
       secondPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 60,
         flex: 0.4,
         children: (
@@ -293,4 +295,4 @@ const RequestTag = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(RequestTag);
+export default withPageLayout(i18n.t('label.request-tag-plural'))(RequestTag);

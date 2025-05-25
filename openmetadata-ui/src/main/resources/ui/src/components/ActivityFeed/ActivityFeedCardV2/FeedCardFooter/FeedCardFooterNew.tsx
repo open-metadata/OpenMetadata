@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Avatar, Col, Row } from 'antd';
+import { Avatar, Button, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
@@ -27,8 +28,10 @@ function FeedCardFooterNew({
   feed,
   post,
   isPost = false,
+  isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { updateReactions, fetchUpdatedThread } = useActivityFeedProvider();
+  const { showDrawer, updateReactions, fetchUpdatedThread } =
+    useActivityFeedProvider();
 
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
@@ -55,6 +58,9 @@ function FeedCardFooterNew({
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );
+  const showReplies = useCallback(() => {
+    showDrawer?.(feed);
+  }, [showDrawer, feed]);
 
   return (
     <Row align="top" className={classNames({ 'm-y-md': isPost })}>
@@ -71,24 +77,33 @@ function FeedCardFooterNew({
                   backgroundColor: '#fde3cf',
                 }}>
                 {repliedUniqueUsersList.map((user, index) => (
-                  <div
+                  <Button
+                    className="p-0"
                     key={user}
                     style={{
                       marginLeft: index === 0 ? '0px' : '-8px',
                       zIndex: repliedUniqueUsersList.length - index,
-                    }}>
-                    <ProfilePicture
-                      avatarType="outlined"
-                      name={user}
-                      size={20}
-                    />
-                  </div>
+                    }}
+                    type="text"
+                    onClick={isForFeedTab ? showReplies : undefined}>
+                    <UserPopOverCard userName={user}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture name={user} width="20" />
+                      </div>
+                    </UserPopOverCard>
+                  </Button>
                 ))}
               </Avatar.Group>
             )}
 
             {!isPost && (
-              <ThreadIcon data-testid="thread-count" height={18} width={18} />
+              <Button
+                className="p-0 flex-center"
+                data-testid="reply-button"
+                type="text"
+                onClick={isForFeedTab ? showReplies : undefined}>
+                <ThreadIcon data-testid="reply-count" height={18} width={18} />
+              </Button>
             )}
             <Reactions
               reactions={post.reactions ?? []}

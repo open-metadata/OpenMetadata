@@ -89,6 +89,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.McpServer;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -134,7 +135,7 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
-  private Authorizer authorizer;
+  protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   private Limits limits;
 
@@ -280,13 +281,25 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerSamlServlets(catalogConfig, environment);
 
     // Asset Servlet Registration
-    registerAssetServlet(catalogConfig.getWebConfiguration(), environment);
+    registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
+
+    // Register MCP
+    registerMCPServer(catalogConfig, environment);
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  protected void registerMCPServer(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getMcpConfiguration() != null
+        && catalogConfig.getMcpConfiguration().isEnabled()) {
+      McpServer mcpServer = new McpServer();
+      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
+    }
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
@@ -374,10 +387,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet(OMWebConfiguration webConfiguration, Environment environment) {
+  private void registerAssetServlet(
+      OpenMetadataApplicationConfig config,
+      OMWebConfiguration webConfiguration,
+      Environment environment) {
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet("/assets", "/", "index.html", webConfiguration);
+        new OpenMetadataAssetServlet(
+            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
   }
 
@@ -400,6 +418,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+      ServletRegistration.Dynamic samlRedirectServlet =
+          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
+      samlRedirectServlet.addMapping("/api/v1/saml/login");
+      ServletRegistration.Dynamic samlReceiverServlet =
+          environment
+              .servlets()
+              .addServlet(
+                  "saml_acs",
+                  new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
+      samlReceiverServlet.addMapping("/api/v1/saml/acs");
+      ServletRegistration.Dynamic samlMetadataServlet =
+          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
+      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
 
       // 1) SAML Login
       ServletHolder samlLoginHolder = new ServletHolder();
@@ -653,6 +684,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             pathSpec,
             (req, resp) ->
                 new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+                          WebSocketManager.getInstance().getEngineIoServer())));
       }
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());

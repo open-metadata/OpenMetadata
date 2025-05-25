@@ -45,7 +45,6 @@ import {
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -54,6 +53,10 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
+import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
+
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import './incident-manager.less';
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
@@ -73,7 +76,6 @@ const IncidentManagerPageHeader = ({
     getFeedData,
     testCaseResolutionStatus,
     updateTestCaseIncidentStatus,
-    initialAssignees,
   } = useActivityFeedProvider();
 
   const columnName = useMemo(() => {
@@ -227,10 +229,10 @@ const IncidentManagerPageHeader = ({
       return (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-            <span className="text-grey-muted">{`${t(
-              'label.incident-status'
-            )}: `}</span>
+          <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue font-medium text-sm">
+              {t('label.incident-status')}
+            </span>
 
             <span>{t('label.no-entity', { entity: t('label.incident') })}</span>
           </Typography.Text>
@@ -245,49 +247,44 @@ const IncidentManagerPageHeader = ({
         {activeTask && (
           <>
             <Divider className="self-center m-x-sm" type="vertical" />
-            <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-              <span className="text-grey-muted">{`${t(
-                'label.incident'
-              )}: `}</span>
+            <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
+              <span className="text-blue text-sm font-medium">
+                {t('label.incident')}
+              </span>
 
               <Link
-                className="font-medium"
+                className="font-medium flex items-center gap-2"
                 data-testid="table-name"
                 to={getTaskDetailPath(activeTask)}>
                 {`#${activeTask?.task?.id}`}
+                <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
             </Typography.Text>
           </>
         )}
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-          <span className="text-grey-muted">{`${t(
-            'label.incident-status'
-          )}: `}</span>
-
+        <Typography.Text className="d-flex flex-col gap-2 text-xs whitespace-nowrap">
           <TestCaseIncidentManagerStatus
+            newLook
             data={testCaseStatusData}
             hasPermission={hasEditStatusPermission}
-            usersList={initialAssignees}
+            headerName={t('label.incident-status')}
             onSubmit={onIncidentStatusUpdate}
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text
-          className="d-flex items-center gap-2 text-xs whitespace-nowrap"
+          className="d-flex flex-col gap-2 text-xs whitespace-nowrap"
           data-testid="assignee">
-          <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
-
           <OwnerLabel
             hasPermission={hasEditStatusPermission}
+            isCompactView={false}
             multiple={{
               user: false,
               team: false,
             }}
             owners={details?.assignee ? [details.assignee] : []}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.assignee'),
-            })}
+            placeHolder={t('label.assignee')}
             tooltipText={t('label.edit-entity', {
               entity: t('label.assignee'),
             })}
@@ -295,29 +292,24 @@ const IncidentManagerPageHeader = ({
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-          <span className="text-grey-muted">{`${t('label.severity')}: `}</span>
-
+        <Typography.Text className="d-flex flex-col  gap-2 whitespace-nowrap">
           <Severity
+            newLook
             hasPermission={hasEditStatusPermission}
+            headerName={t('label.severity')}
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
           />
         </Typography.Text>
       </>
     );
-  }, [
-    testCaseStatusData,
-    isLoading,
-    activeTask,
-    initialAssignees,
-    hasEditStatusPermission,
-  ]);
+  }, [testCaseStatusData, isLoading, activeTask, hasEditStatusPermission]);
 
   return (
-    <Space wrap align="center">
+    <Space wrap align="center" className="incident-manager-header w-full ">
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
+        isCompactView={false}
         owners={testCaseData?.owners}
         onUpdate={onOwnerUpdate}
       />
@@ -325,11 +317,13 @@ const IncidentManagerPageHeader = ({
       {tableFqn && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="self-center text-xs whitespace-nowrap">
-            <span className="text-grey-muted">{`${t('label.table')}: `}</span>
+          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue text-sm font-medium">
+              {t('label.table')}
+            </span>
 
             <Link
-              className="font-medium"
+              className="font-medium flex-center gap-2"
               data-testid="table-name"
               to={{
                 pathname: getEntityDetailsPath(
@@ -342,6 +336,7 @@ const IncidentManagerPageHeader = ({
                 }),
               }}>
               {getNameFromFQN(tableFqn)}
+              <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
           </Typography.Text>
         </>
@@ -349,8 +344,10 @@ const IncidentManagerPageHeader = ({
       {columnName && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="self-center text-xs whitespace-nowrap">
-            <span className="text-grey-muted">{`${t('label.column')}: `}</span>
+          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue text-sm font-medium">
+              {t('label.column')}
+            </span>
             <span className="font-medium" data-testid="test-column-name">
               {columnName}
             </span>
@@ -358,8 +355,10 @@ const IncidentManagerPageHeader = ({
         </>
       )}
       <Divider className="self-center m-x-sm" type="vertical" />
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
-        <span className="text-grey-muted">{`${t('label.test-type')}: `}</span>
+      <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
+        <span className="text-blue text-sm font-medium">
+          {t('label.test-type')}
+        </span>
         <Tooltip
           placement="bottom"
           title={testCaseData?.testDefinition.description}>

@@ -7,8 +7,8 @@ slug: /connectors/database/databricks
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data"]
-unavailableFeatures=["Owners", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Owners"]
+unavailableFeatures=["Stored Procedures"]
 / %}
 
 {% note %}
@@ -27,6 +27,7 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/databricks/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
@@ -71,7 +72,5 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

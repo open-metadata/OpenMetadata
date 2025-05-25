@@ -32,6 +32,10 @@ export interface CreateDashboardService {
      */
     domain?: string;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Name that identifies the this entity instance uniquely
      */
     name: string;
@@ -136,7 +140,7 @@ export interface Connection {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -225,19 +229,9 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
-     * Tableau API version.
-     *
-     * Sigma API version.
-     */
-    apiVersion?: string;
-    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
-    /**
-     * Tableau Environment Name.
-     */
-    env?: string;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
@@ -245,11 +239,7 @@ export interface Connection {
     /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:   string;
+    siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
     verifySSL?: VerifySSL;
     /**
@@ -342,9 +332,17 @@ export interface Connection {
      */
     projectName?: string;
     /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?: SpaceType[];
+    /**
      * token to connect to Qlik Cloud.
      */
     token?: string;
+    /**
+     * Sigma API version.
+     */
+    apiVersion?: string;
 }
 
 /**
@@ -474,9 +472,11 @@ export interface CertificatesSSLConfig {
  *
  * Regex to exclude or include projects that matches the pattern.
  *
- * Regex to only include/exclude tables that matches the pattern.
- *
  * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -543,7 +543,7 @@ export interface SupersetConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternObject;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the source service.
      *
@@ -559,7 +559,7 @@ export interface SupersetConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -592,6 +592,10 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -640,33 +644,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface DatabaseFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -755,15 +732,6 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -1022,6 +990,8 @@ export interface Credentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -1064,6 +1034,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**
@@ -1111,6 +1083,12 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+export enum SpaceType {
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
 }
 
 /**
@@ -1171,14 +1149,16 @@ export enum DashboardServiceType {
 }
 
 /**
- * Owners of this dashboard service.
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this dashboard service.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -1277,6 +1257,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

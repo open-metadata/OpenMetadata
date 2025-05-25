@@ -37,6 +37,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,13 +47,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -73,8 +79,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DatabaseServiceRepository.DatabaseServiceCsv;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -91,7 +99,7 @@ public class DatabaseServiceResourceTest
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "owners,tags");
+        DatabaseServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -348,9 +356,10 @@ public class DatabaseServiceResourceTest
 
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
     // Update database with invalid tags field
-    String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseServiceCsv.HEADERS));
+    String resultsHeader =
+        recordToString(EntityCsv.getResultHeaders(getDatabaseServiceCsvHeaders(service, false)));
     String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,";
-    String csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    String csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     CsvImportResult result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
@@ -361,7 +370,7 @@ public class DatabaseServiceResourceTest
 
     //  invalid tag it will give error.
     record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,";
-    csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
@@ -373,7 +382,7 @@ public class DatabaseServiceResourceTest
     // database will be created if it does not exist
     String databaseFqn = FullyQualifiedName.add(serviceName, "non-existing");
     record = "non-existing,dsp1,dsc1,,,,,,";
-    csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
     expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
@@ -400,7 +409,88 @@ public class DatabaseServiceResourceTest
 
     // Update created entity with changes
     importCsvAndValidate(
-        service.getFullyQualifiedName(), DatabaseServiceCsv.HEADERS, null, listOf(record));
+        service.getFullyQualifiedName(),
+        getDatabaseServiceCsvHeaders(service, false),
+        null,
+        listOf(record));
+  }
+
+  @Test
+  void testImportExportRecursive() throws IOException {
+    String serviceName = "importExportRecursiveService";
+
+    // Step 1: Create the Database Service
+    DatabaseService service = createEntity(createRequest(serviceName), ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create a Database under the Service
+    DatabaseResourceTest dbTest = new DatabaseResourceTest();
+    CreateDatabase createDatabase =
+        dbTest.createRequest("db1").withService(service.getFullyQualifiedName());
+    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Create a Schema under the Database
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema =
+        schemaTest
+            .createRequest("schema1")
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Initial schema description");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Step 4: Create a Table with a Column
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable =
+        tableTest
+            .createRequest("table1")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Initial table description");
+    createTable.getColumns().get(0).setDescription("Initial column description");
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Step 5: Export recursively
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    List<String> lines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
+    assertTrue(lines.size() > 3, "Export should include database, schema, table, and column");
+
+    String header = lines.get(0);
+    List<String> modified = new ArrayList<>();
+    modified.add(header);
+
+    for (String line : lines.subList(1, lines.size())) {
+      if (line.contains("schema1") && line.contains("databaseSchema")) {
+        line = line.replace("Initial schema description", "Updated schema description");
+      } else if (line.contains("table1") && line.contains("table") && !line.contains("column")) {
+        line = line.replace("Initial table description", "Updated table description");
+      } else if (line.contains("column")) {
+        line = line.replace("Initial column description", "Updated column description");
+      }
+      modified.add(line);
+    }
+
+    String modifiedCsv = String.join(CsvUtil.LINE_SEPARATOR, modified) + CsvUtil.LINE_SEPARATOR;
+
+    // Step 6: Import updated CSV
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 7: Validate all updated descriptions
+    DatabaseSchema updatedSchema =
+        schemaTest.getEntityByName(
+            schema.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+    assertEquals("Updated schema description", updatedSchema.getDescription());
+
+    Table updatedTable =
+        tableTest.getEntityByName(table.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+    assertEquals("Updated table description", updatedTable.getDescription());
+
+    assertNotNull(updatedTable.getColumns());
+    assertTrue(
+        updatedTable.getColumns().stream()
+            .anyMatch(c -> "Updated column description".equals(c.getDescription())),
+        "At least one column should have updated description");
   }
 
   public DatabaseService putTestConnectionResult(
@@ -448,7 +538,7 @@ public class DatabaseServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -121,13 +121,18 @@ const ProfilePictureNew = ({
 
   return profileURL ? (
     <Tooltip placement="top" title={displayName ?? name}>
-      <Avatar
-        className={className}
-        data-testid="profile-image"
-        shape={type}
-        size={size ?? parseInt(width)}
-        src={profileURL}
-      />
+      <Link
+        className="d-flex no-underline"
+        data-testid="owner-link"
+        to={getUserPath(name ?? '')}>
+        <Avatar
+          className={className}
+          data-testid="profile-image"
+          shape={type}
+          size={size ?? parseInt(width)}
+          src={profileURL}
+        />
+      </Link>
     </Tooltip>
   ) : (
     getAvatarElement()

@@ -26,6 +26,7 @@ import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
 import java.io.File;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -199,12 +200,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
               required = true)
           String openMetadataUrl) {
     try {
+      URI uri = URI.create(openMetadataUrl);
       parseConfig();
       Settings updatedSettings =
           new Settings()
               .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
               .withConfigValue(
-                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(openMetadataUrl));
+                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(uri.toString()));
 
       Entity.getSystemRepository().createOrUpdate(updatedSettings);
       LOG.info("Updated OpenMetadata URL to: {}", openMetadataUrl);
@@ -507,7 +509,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
     appRepository.prepareInternal(entity, true);
-    appRepository.createOrUpdate(null, entity);
+    appRepository.createOrUpdate(null, entity, ADMIN_USER_NAME);
   }
 
   @Command(
@@ -639,6 +641,68 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to fetch db change log due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "dbServiceCleanup",
+      description = "Cleans Up broken relationship hierarchy for database service.")
+  public Integer cleanupOrphanedEntities() {
+    try {
+      LOG.info("Running a Database Service Hierarchy Cleanup");
+      parseConfig();
+
+      // Check Broken Tables
+      List<String> brokenTables = Entity.getCollectionDAO().tableDAO().getBrokenTables();
+      LOG.info("Following Tables seems to be Broken.");
+      List<String> tableColumns = List.of(String.format("Tables(%d)", brokenTables.size()));
+      List<List<String>> allRowsForTables = new ArrayList<>();
+      for (String name : brokenTables) {
+        List<String> row = new ArrayList<>();
+        row.add(name);
+        allRowsForTables.add(row);
+      }
+      printToAsciiTable(tableColumns.stream().toList(), allRowsForTables, "No Broken Tables.");
+      LOG.info("Cleaning up the broken tables.");
+      if (!brokenTables.isEmpty()) {
+        Entity.getCollectionDAO().tableDAO().removeBrokenTables();
+      }
+
+      List<String> brokenSchemas =
+          Entity.getCollectionDAO().databaseSchemaDAO().getBrokenDatabaseSchemas();
+      LOG.info("Following DatabaseSchemas seems to be Broken.");
+      List<String> dbSchemaColumns =
+          List.of(String.format("DatabaseSchemas(%d)", brokenSchemas.size()));
+      List<List<String>> allRowsForSchemas = new ArrayList<>();
+      for (String name : brokenSchemas) {
+        List<String> row = new ArrayList<>();
+        row.add(name);
+        allRowsForSchemas.add(row);
+      }
+      printToAsciiTable(dbSchemaColumns.stream().toList(), allRowsForSchemas, "No Broken Schemas.");
+      if (!brokenSchemas.isEmpty()) {
+        Entity.getCollectionDAO().databaseSchemaDAO().removeBrokenDatabaseSchemas();
+      }
+
+      List<String> brokenDatabases = Entity.getCollectionDAO().databaseDAO().getBrokenDatabase();
+      LOG.info("Following Database seems to be Broken.");
+      List<String> databaseColumns = List.of(String.format("Database(%d)", brokenSchemas.size()));
+      List<List<String>> allRowsForDatabases = new ArrayList<>();
+      for (String name : brokenDatabases) {
+        List<String> row = new ArrayList<>();
+        row.add(name);
+        allRowsForDatabases.add(row);
+      }
+      printToAsciiTable(
+          databaseColumns.stream().toList(), allRowsForDatabases, "No Broken Databases.");
+      if (!brokenDatabases.isEmpty()) {
+        Entity.getCollectionDAO().databaseDAO().removeDatabase();
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to Entity Cleanup due to ", e);
       return 1;
     }
   }

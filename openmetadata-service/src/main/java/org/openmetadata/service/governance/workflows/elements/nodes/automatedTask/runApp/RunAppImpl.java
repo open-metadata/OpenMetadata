@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -49,6 +50,7 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long timeoutSeconds,
       MessageParser.EntityLink entityLink) {
+    boolean wasSuccessful = true;
     ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
 
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
@@ -58,25 +60,36 @@ public class RunAppImpl {
           appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
     } catch (EntityNotFoundException ex) {
       LOG.warn(String.format("App: '%s' is not Installed. Skipping", appName));
-      return true;
+      return wasSuccessful;
     }
 
     if (!validateAppShouldRun(app, service)) {
-      return true;
+      return wasSuccessful;
     }
 
     long startTime = System.currentTimeMillis();
     long timeoutMillis = timeoutSeconds * 1000;
 
     Map<String, Object> config = getConfig(app, service);
+
+    LOG.info(
+        "[GovernanceWorkflows] '{}' running for '{}'", app.getDisplayName(), service.getName());
     if (app.getAppType().equals(AppType.Internal)) {
-      return runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
+      wasSuccessful =
+          runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
-      updateApp(appRepository, app, app);
-      return runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
+      wasSuccessful =
+          runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
+      deployIngestionPipeline(pipelineServiceClient, app);
     }
+
+    if (!wasSuccessful) {
+      LOG.warn(
+          "[GovernanceWorkflows] '{}' failed for '{}'", app.getDisplayName(), service.getName());
+    }
+    return wasSuccessful;
   }
 
   private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
@@ -99,20 +112,22 @@ public class RunAppImpl {
           (JsonUtils.convertValue(config, CollateAIAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName()))
+              .withPatchIfEmpty(true);
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
                       service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
               .withFilter(
                   String.format(
                       "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+                      service.getName()))
+              .withPatchIfEmpty(true);
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =
             (JsonUtils.convertValue(config, DataInsightsAppConfig.class));
@@ -144,11 +159,6 @@ public class RunAppImpl {
     return JsonUtils.getMap(config);
   }
 
-  private void updateApp(AppRepository repository, App originalApp, App updatedApp) {
-    JsonPatch patch = JsonUtils.getJsonPatch(originalApp, updatedApp);
-    repository.patch(null, originalApp.getId(), "admin", patch);
-  }
-
   // Internal App Logic
   @SneakyThrows
   private boolean runApp(
@@ -158,9 +168,44 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    ApplicationHandler.getInstance()
-        .triggerApplicationOnDemand(
-            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
+    int maxRetries = 5;
+    int attempt = 0;
+    long initialBackoffMillis = 10000; // 10 second
+    long maxBackoffMillis = 60000; // 60 seconds
+
+    while (attempt < maxRetries) {
+      try {
+        ApplicationHandler.getInstance()
+            .triggerApplicationOnDemand(
+                app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
+        break;
+      } catch (UnhandledServerException e) {
+        if (e.getMessage().contains("Job is already running")) {
+          attempt++;
+          if (attempt >= maxRetries) {
+            LOG.error("Failed to run app after {} retries: {}", maxRetries, e.getMessage());
+            return false;
+          }
+
+          long backoffMillis =
+              Math.min(initialBackoffMillis * (long) Math.pow(2, attempt - 1), maxBackoffMillis);
+          LOG.warn(
+              "App is already running. Retrying in {} ms (attempt {}/{})",
+              backoffMillis,
+              attempt,
+              maxRetries);
+
+          try {
+            Thread.sleep(backoffMillis);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Retry interrupted", ie);
+          }
+        } else {
+          throw e;
+        }
+      }
+    }
 
     if (waitForCompletion) {
       return waitForCompletion(repository, app, startTime, timeoutMillis);
@@ -194,6 +239,51 @@ public class RunAppImpl {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
+  private IngestionPipeline deployIngestionPipeline(
+      PipelineServiceClientInterface pipelineServiceClient, App app) {
+    IngestionPipelineRepository repository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    EntityReference pipelineRef = app.getPipelines().get(0);
+
+    OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
+
+    IngestionPipeline ingestionPipeline = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+    ingestionPipeline.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(config).build());
+
+    Map<String, Object> ingestionPipelineConfig =
+        JsonUtils.readOrConvertValue(ingestionPipeline.getSourceConfig().getConfig(), Map.class);
+    ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
+    ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
+
+    pipelineServiceClient.deployPipeline(
+        ingestionPipeline,
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
+
+    return ingestionPipeline;
+  }
+
+  private boolean runIngestionPipeline(
+      PipelineServiceClientInterface pipelineServiceClient,
+      IngestionPipeline ingestionPipeline,
+      boolean waitForCompletion,
+      long startTime,
+      long timeoutMillis) {
+    IngestionPipelineRepository repository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    pipelineServiceClient.runPipeline(
+        ingestionPipeline,
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
+
+    if (waitForCompletion) {
+      return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
+    } else {
+      return true;
+    }
+  }
+
   // External App Logic
   private boolean runApp(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -201,27 +291,9 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    EntityReference pipelineRef = app.getPipelines().get(0);
-
-    IngestionPipelineRepository repository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-    OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
-
-    IngestionPipeline ingestionPipeline = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(config).build());
-
-    ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-
-    pipelineServiceClient.deployPipeline(ingestionPipeline, service);
-    pipelineServiceClient.runPipeline(ingestionPipeline, service);
-
-    if (waitForCompletion) {
-      return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
-    } else {
-      return true;
-    }
+    IngestionPipeline ingestionPipeline = deployIngestionPipeline(pipelineServiceClient, app);
+    return runIngestionPipeline(
+        pipelineServiceClient, ingestionPipeline, waitForCompletion, startTime, timeoutMillis);
   }
 
   private boolean waitForCompletion(

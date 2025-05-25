@@ -36,7 +36,6 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
-  LineageEdge,
   performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
@@ -204,6 +203,8 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
@@ -214,8 +215,6 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
     table,
     'entityResponseData.service.fullyQualifiedName'
   );
-
-  const tableServiceName = get(table, 'entityResponseData.service.name');
 
   const topicServiceFqn = get(
     topic,
@@ -244,30 +243,28 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await visitLineageTab(page);
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
-  await test.step('Verify relation in platform lineage', async () => {
-    await sidebarClick(page, SidebarItem.LINEAGE);
-    const searchRes = page.waitForResponse('/api/v1/search/query?*');
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+  const searchRes = page.waitForResponse('/api/v1/search/query?*');
 
-    await page.click('[data-testid="search-entity-select"]');
-    await page.keyboard.type(tableServiceFqn);
-    await searchRes;
+  await page.click('[data-testid="search-entity-select"]');
+  await page.keyboard.type(tableServiceFqn);
+  await searchRes;
 
-    await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
+  await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
 
-    await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle');
 
-    const tableServiceNode = page.locator(
-      `[data-testid="lineage-node-${tableServiceFqn}"]`
-    );
-    const topicServiceNode = page.locator(
-      `[data-testid="lineage-node-${topicServiceFqn}"]`
-    );
+  const tableServiceNode = page.locator(
+    `[data-testid="lineage-node-${tableServiceFqn}"]`
+  );
+  const topicServiceNode = page.locator(
+    `[data-testid="lineage-node-${topicServiceFqn}"]`
+  );
 
-    await expect(tableServiceNode).toBeVisible();
-    await expect(topicServiceNode).toBeVisible();
-  });
+  await expect(tableServiceNode).toBeVisible();
+  await expect(topicServiceNode).toBeVisible();
 
-  await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.click('[data-testid="edit-lineage"]');
@@ -355,6 +352,8 @@ test('Verify column lineage between table and api endpoint', async ({
 });
 
 test('Verify function data in edge drawer', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -380,39 +379,33 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
-    const lineageRes = await lineageReq;
-    const jsonRes = await lineageRes.json();
-    const edge: LineageEdge = [...Object.values(jsonRes.downstreamEdges)][0];
-    const columnData = edge.columns[0];
+    await lineageReq;
 
-    const newEdge = {
-      edge: {
-        fromEntity: {
-          id: edge.fromEntity.id,
-          type: edge.fromEntity.type,
-        },
-        toEntity: {
-          id: edge.toEntity.id,
-          type: edge.toEntity.type,
-        },
-        lineageDetails: {
-          columnsLineage: [
-            {
-              fromColumns: [columnData.fromColumns[0]],
-              function: 'count',
-              toColumn: columnData.toColumn,
-            },
-          ],
-          description: 'test',
-        },
-      },
-    };
-    await apiContext.put(`/api/v1/lineage`, {
-      data: newEdge,
-    });
+    await page
+      .locator(
+        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
+          targetColName
+        )}"]`
+      )
+      .dispatchEvent('click');
+
+    await page.getByTestId('edit-function').click();
+
+    // wait for the modal to be visible
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await page.getByTestId('sql-function-input').fill('count');
+    const saveRes = page.waitForResponse('/api/v1/lineage');
+    await page.getByTestId('save').click();
+    await saveRes;
+
+    await expect(page.getByTestId('sql-function')).toContainText('count');
+
     const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq1;
+
+    await page.waitForLoadState('networkidle');
 
     await activateColumnLayer(page);
     await page
@@ -425,7 +418,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     await page.locator('.edge-info-drawer').isVisible();
 
-    await expect(page.locator('[data-testid="Function"]')).toContainText(
+    await expect(page.locator('[data-testid="sql-function"]')).toContainText(
       'count'
     );
   } finally {

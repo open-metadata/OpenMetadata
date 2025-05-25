@@ -38,7 +38,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -476,12 +476,8 @@ function ServiceVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  items={tabs}
-                />
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
               </Col>
             </Row>
           </div>

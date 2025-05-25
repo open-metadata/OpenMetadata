@@ -101,7 +101,10 @@ import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -267,6 +270,10 @@ export const servicesDisplayName: { [key: string]: string } = {
 };
 
 export const DEF_UI_SCHEMA = {
+  supportsIncrementalMetadataExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -313,10 +320,13 @@ export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
 
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
-  connection: {
+  [ServiceNestedConnectionFields.CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  metastoreConnection: {
+  [ServiceNestedConnectionFields.METASTORE_CONNECTION]: {
+    ...DEF_UI_SCHEMA,
+  },
+  [ServiceNestedConnectionFields.DATABASE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
 };
@@ -411,17 +421,10 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
+  PipelineServiceType.Wherescape,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
 ];

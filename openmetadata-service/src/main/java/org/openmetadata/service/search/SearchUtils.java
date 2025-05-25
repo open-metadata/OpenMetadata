@@ -170,4 +170,14 @@ public final class SearchUtils {
     }
     return null;
   }
+
+  public static List<String> sourceFields(String sourceFields) {
+    if (!nullOrEmpty(sourceFields)) {
+      return Arrays.stream(sourceFields.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.toList());
+    }
+    return Collections.emptyList();
+  }
 }

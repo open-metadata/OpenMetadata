@@ -48,7 +48,7 @@ export const updateUnitOfMeasurement = async (
   page: Page,
   unitOfMeasurement: string
 ) => {
-  await page.click(`[data-testid="edit-unit-of-measurement-button"]`);
+  await page.click(`[data-testid="edit-measurement-unit-button"]`);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
@@ -60,21 +60,21 @@ export const updateUnitOfMeasurement = async (
 
   // verify the unit of measurement is updated
   await expect(
-    page.getByText(`Unit of Measurement${unitOfMeasurement.toUpperCase()}`)
+    page.getByText(`Measurement Unit${unitOfMeasurement.toUpperCase()}`)
   ).toBeVisible();
 };
 
 export const removeUnitOfMeasurement = async (page: Page) => {
-  await page.click(`[data-testid="edit-unit-of-measurement-button"]`);
+  await page.click(`[data-testid="edit-measurement-unit-button"]`);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
-  await page.getByTestId('remove-unit-of-measurement-button').click();
+  await page.getByTestId('remove-measurement-unit-button').click();
 
   await patchPromise;
 
   // verify the unit of measurement is updated
-  await expect(page.getByText('Unit of Measurement--')).toBeVisible();
+  await expect(page.getByText('Measurement Unit--')).toBeVisible();
 };
 
 export const updateGranularity = async (page: Page, granularity: string) => {
@@ -175,6 +175,7 @@ export const updateRelatedMetric = async (
       hasText: dataAsset.entity.name,
     })
     .click();
+
   await page.locator('[data-testid="saveRelatedMetrics"]').click();
 
   await patchPromise;
@@ -267,7 +268,7 @@ export const addMetric = async (page: Page) => {
 
   await expect(
     page.getByText(
-      `Unit of Measurement${metricData.unitOfMeasurement.toUpperCase()}`
+      `Measurement Unit${metricData.unitOfMeasurement.toUpperCase()}`
     )
   ).toBeVisible();
 

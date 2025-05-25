@@ -76,7 +76,9 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -194,6 +196,7 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -478,15 +481,6 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(fieldSortBuilder);
     }
 
-    if (request
-        .getIndex()
-        .equalsIgnoreCase(
-            Entity.getSearchRepository()
-                .getIndexMapping(GLOSSARY_TERM)
-                .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    }
-
     buildHierarchyQuery(request, searchSourceBuilder, client);
 
     /* for performance reasons OpenSearch doesn't provide accurate hits
@@ -507,9 +501,7 @@ public class OpenSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    if (Boolean.TRUE.equals(request.getExplain())) {
-      searchSourceBuilder.explain(true);
-    }
+
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
@@ -545,6 +537,8 @@ public class OpenSearchClient implements SearchClient {
           LOG.debug("Transformed NLQ query: {}", transformedQuery);
           XContentParser parser = createXContentParser(transformedQuery);
           SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+          searchSourceBuilder.from(request.getFrom());
+          searchSourceBuilder.size(request.getSize());
           OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
           sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
           os.org.opensearch.action.search.SearchRequest searchRequest =
@@ -552,15 +546,15 @@ public class OpenSearchClient implements SearchClient {
           searchRequest.source(searchSourceBuilder);
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-          if (response.getHits().getTotalHits().value > 0) {
+          if (response.getHits() != null
+              && response.getHits().getTotalHits() != null
+              && response.getHits().getTotalHits().value > 0) {
             nlqService.cacheQuery(request.getQuery(), transformedQuery);
           }
           return Response.status(Response.Status.OK).entity(response.toString()).build();
         }
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
-
-        // Try using the built-in OpenSearch NLQ feature as a first fallback
         return fallbackToBasicSearch(request, subjectContext);
       }
     } else {
@@ -1077,7 +1071,7 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
@@ -1138,7 +1132,7 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
@@ -1186,6 +1180,7 @@ public class OpenSearchClient implements SearchClient {
     return responseMap;
   }
 
+  @Override
   public Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
@@ -1288,7 +1283,7 @@ public class OpenSearchClient implements SearchClient {
       Map<String, Object> node = allNodes.get(nodeFailureId);
       if (node != null) {
         node.keySet().removeAll(FIELDS_TO_REMOVE);
-        node.remove("lineage");
+        node.remove("upstreamLineage");
         nodes.add(node);
       }
     }
@@ -1318,9 +1313,7 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
-            .must(
-                QueryBuilders.termQuery(
-                    "lineage.fromEntity.fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
+            .must(QueryBuilders.termQuery("fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
             .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
@@ -1388,40 +1381,67 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index)
+  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
+    BoolQueryBuilder query =
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
+            .filter(QueryBuilders.termQuery("deleted", deleted));
+    searchSourceBuilder.query(query);
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
   }
 
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
+  @Override
+  public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(query, searchSourceBuilder);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
-                .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
-                .order(BucketOrder.key(true)))
-        .size(0);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client
-            .search(
-                new os.org.opensearch.action.search.SearchRequest(
-                        Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT)
-            .toString();
-    return Response.status(OK).entity(response).build();
+
+    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    String aggregationField = request.getFieldName();
+    if (aggregationField == null || aggregationField.isBlank()) {
+      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
+    }
+
+    int bucketSize = request.getSize();
+    String includeValue = request.getFieldValue().toLowerCase();
+
+    TermsAggregationBuilder termsAgg =
+        AggregationBuilders.terms(aggregationField)
+            .field(aggregationField)
+            .size(bucketSize)
+            .includeExclude(new IncludeExclude(includeValue, null))
+            .order(BucketOrder.key(true));
+
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
+
+      List<String> topHitFields = request.getSourceFields();
+
+      TopHitsAggregationBuilder topHitsAgg =
+          AggregationBuilders.topHits("top")
+              .size(request.getTopHits().getSize())
+              .fetchSource(topHitFields.toArray(new String[0]), null)
+              .trackScores(false);
+
+      termsAgg.subAggregation(topHitsAgg);
+    }
+
+    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchResponse searchResponse =
+        client.search(
+            new os.org.opensearch.action.search.SearchRequest(
+                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
+                .source(searchSourceBuilder),
+            RequestOptions.DEFAULT);
+
+    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
   }
 
   @Override
@@ -2377,6 +2397,12 @@ public class OpenSearchClient implements SearchClient {
                 if (sslContext != null) {
                   httpAsyncClientBuilder.setSSLContext(sslContext);
                 }
+                // Enable TCP keep alive strategy
+                if (esConfig.getKeepAliveTimeoutSecs() != null
+                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                  httpAsyncClientBuilder.setKeepAliveStrategy(
+                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+                }
                 return httpAsyncClientBuilder;
               });
         }
@@ -2457,8 +2483,12 @@ public class OpenSearchClient implements SearchClient {
                 .createParser(
                     OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        BoolQueryBuilder newQuery;
+        if (!nullOrEmpty(searchSourceBuilder.query())) {
+          newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        } else {
+          newQuery = QueryBuilders.boolQuery().filter(filter);
+        }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);

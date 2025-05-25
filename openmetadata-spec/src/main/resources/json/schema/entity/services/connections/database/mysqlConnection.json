@@ -88,22 +88,10 @@
     "schemaFilterPattern":{
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "type": "object",
-      "properties": {
-        "includes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
-        },
-        "excludes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["^information_schema$","^performance_schema$"]
-        }
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$", "^performance_schema$"]
       }
     },
     "tableFilterPattern": {
@@ -144,6 +132,12 @@
     },
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "useSlowLogs": {
+      "title": "Use Slow Logs for Lineage",
+      "description": "Use slow logs to extract lineage.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

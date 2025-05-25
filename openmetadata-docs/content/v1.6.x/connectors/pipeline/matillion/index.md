@@ -21,7 +21,7 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
     - [Matillion Versions](#matillion-versions)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Connection Details](#connection-details)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/matillion/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
@@ -77,5 +77,3 @@ By successfully completing these steps, the lineage information for the service 
 {% image
   src="/images/v1.6/connectors/matillion/lineage.webp"
   alt="Matillion Lineage" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

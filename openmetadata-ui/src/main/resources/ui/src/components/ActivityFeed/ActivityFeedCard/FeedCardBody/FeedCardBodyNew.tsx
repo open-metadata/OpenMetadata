@@ -24,6 +24,7 @@ import {
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
+import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
@@ -37,6 +38,7 @@ const FeedCardBodyNew = ({
   onUpdate,
   onEditCancel,
   showThread,
+  isForFeedTab,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -65,6 +67,16 @@ const FeedCardBodyNew = ({
 
       if (cardStyle === CardStyle.Tags) {
         return <TagsFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.Owner) {
+        return (
+          <OwnersFeed
+            feed={feed}
+            isForFeedTab={isForFeedTab}
+            showThread={showThread}
+          />
+        );
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {

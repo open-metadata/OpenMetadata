@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { isNil, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
@@ -25,7 +26,6 @@ import {
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
@@ -75,6 +75,7 @@ export const IngestionPipelineList = ({
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
         filterIcon: columnFilterIcon,
+        width: 150,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,

@@ -86,14 +86,10 @@
       border-radius: 0;
 
       .ant-collapse-header {
-        padding: 0;
+        padding: 4px;
         font-size: 12px;
 
         .custom-node-column-container {
-          background-color: @lineage-collapse-header;
-        }
-
-        .lineage-column-node-handle {
           background-color: @lineage-collapse-header;
         }
       }
@@ -276,6 +272,7 @@
   height: 25px;
   transform: none;
   border: none;
+  z-index: 1; // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
     left: 0;
