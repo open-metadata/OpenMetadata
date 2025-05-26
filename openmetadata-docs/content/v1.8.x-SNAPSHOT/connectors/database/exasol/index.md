@@ -7,8 +7,8 @@ slug: /connectors/database/exasol
 name="Exasol"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+availableFeatures=["Metadata", "Lineage", "Column-level Lineage"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data"]
 / %}
 
 
@@ -18,6 +18,7 @@ Configure and schedule Exasol metadata from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](/connectors/ingestion/lineage)
 - [Troubleshooting](/connectors/database/exasol/troubleshooting)
 
 {% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/exasol/yaml"} /%}
@@ -31,6 +32,13 @@ To deploy OpenMetadata, check the Deployment guides.
 ## Requirements
 
 The connector requires **Exasol version 7.1 or higher** to function correctly. Ensure your Exasol instance meets this minimum version requirement before proceeding.
+
+To ingest basic metadata, an Exasol user must have the following privileges:
+  - `USAGE` privilege on Schema
+  - `SELECT` privilege on Tables
+
+Openmetadata fetches the query logs for the lineage workflow by querying `EXA_STATISTICS.EXA_DBA_AUDIT_SQL` table.
+For this, an Exasol user should be granted the `SELECT ANY DICTIONARY` system privilege.
 
 ## Metadata Ingestion
 
