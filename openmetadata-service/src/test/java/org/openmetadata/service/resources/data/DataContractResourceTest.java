@@ -226,7 +226,7 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
   }
 
   /**
-   * Creates a unique data contract request for testing
+   * Creates a unique data contract request for testing with Table
    */
   private CreateDataContract createDataContractRequest(String name, Table table) {
     String uniqueSuffix =
@@ -699,6 +699,63 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertResponseContains(
         () -> postYaml(invalidYamlContent), Status.BAD_REQUEST, "Invalid YAML content");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractWithNullEntityReference(TestInfo test) {
+    String uniqueSuffix =
+        UUID.randomUUID().toString().replace("-", "")
+            + "_"
+            + System.nanoTime()
+            + "_"
+            + Thread.currentThread().getId()
+            + "_"
+            + tableCounter.incrementAndGet();
+    String contractName = "contract_" + test.getDisplayName() + "_" + uniqueSuffix;
+
+    CreateDataContract create =
+        new CreateDataContract()
+            .withName(contractName)
+            .withEntity(null) // Null entity reference
+            .withStatus(ContractStatus.Draft);
+
+    // Bean validation will catch this as "entity must not be null"
+    assertResponseContains(
+        () -> createDataContract(create), Status.BAD_REQUEST, "entity must not be null");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractWithMultipleInvalidFields(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create schema with multiple fields that don't exist in the table
+    List<Field> schemaFields = new ArrayList<>();
+    schemaFields.add(
+        new Field()
+            .withName("invalid_field_1")
+            .withDescription("First invalid field")
+            .withDataType(FieldDataType.STRING));
+    schemaFields.add(
+        new Field()
+            .withName("invalid_field_2")
+            .withDescription("Second invalid field")
+            .withDataType(FieldDataType.INT));
+    schemaFields.add(
+        new Field()
+            .withName(C1) // This one is valid
+            .withDescription("Valid field")
+            .withDataType(FieldDataType.INT));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSchema(schemaFields);
+
+    // Should fail on the first invalid field encountered
+    assertResponseContains(
+        () -> createDataContract(create),
+        Status.BAD_REQUEST,
+        "Field 'invalid_field_1' specified in the data contract does not exist in table");
   }
 
   /**

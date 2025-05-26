@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -106,7 +107,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     for (org.openmetadata.schema.type.Field field : dataContract.getSchema()) {
       if (!tableColumnNames.contains(field.getName())) {
-        throw new IllegalArgumentException(
+        throw BadRequestException.of(
             String.format(
                 "Field '%s' specified in the data contract does not exist in table '%s'",
                 field.getName(), table.getName()));
@@ -128,7 +129,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     for (org.openmetadata.schema.type.Field field : dataContract.getSchema()) {
       if (!topicFieldNames.contains(field.getName())) {
-        throw new IllegalArgumentException(
+        throw BadRequestException.of(
             String.format(
                 "Field '%s' specified in the data contract does not exist in topic '%s'",
                 field.getName(), topic.getName()));
@@ -180,7 +181,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void validateEntityLink(EntityReference entity) {
     if (entity == null) {
-      throw new IllegalArgumentException("Entity reference is required for data contract");
+      throw BadRequestException.of("Entity reference is required for data contract");
     }
 
     Entity.getEntityReferenceById(entity.getType(), entity.getId(), Include.NON_DELETED);
@@ -190,7 +191,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<DataContract> existingContracts = listAll(new Fields(Set.of("id")), filter);
 
     if (!existingContracts.isEmpty()) {
-      throw new IllegalArgumentException(
+      throw BadRequestException.of(
           String.format(
               "A data contract already exists for entity '%s' with ID %s",
               entity.getType(), entity.getId()));
