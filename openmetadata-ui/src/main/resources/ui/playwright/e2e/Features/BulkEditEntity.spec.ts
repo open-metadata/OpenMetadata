@@ -683,6 +683,10 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await toastNotification(
         page,
         `Glossaryterm ${glossary.responseData.fullyQualifiedName} details updated successfully`
