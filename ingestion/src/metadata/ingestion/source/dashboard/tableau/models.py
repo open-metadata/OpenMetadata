@@ -15,7 +15,7 @@ Tableau Source Model module
 
 from typing import Dict, List, Optional, Set, Union
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Table
@@ -135,7 +135,7 @@ class UpstreamTable(BaseModel):
     database: Optional[TableauDatabase] = None
     referencedByQueries: Optional[List[CustomSQLTable]] = None
 
-    @validator("referencedByQueries", pre=True)
+    @field_validator("referencedByQueries", mode="before")
     @classmethod
     def filter_none_queries(cls, v):
         """Filter out CustomSQLTable items where query==None."""
