@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -100,7 +102,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     Set<String> tableColumnNames =
-        table.getColumns().stream().map(column -> column.getName()).collect(Collectors.toSet());
+        table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
 
     for (org.openmetadata.schema.type.Field field : dataContract.getSchema()) {
       if (!tableColumnNames.contains(field.getName())) {
@@ -113,7 +115,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private void validateFieldsAgainstTopic(DataContract dataContract, EntityReference topicRef) {
-    org.openmetadata.schema.entity.data.Topic topic =
+    Topic topic =
         Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
 
     if (topic.getMessageSchema() == null
