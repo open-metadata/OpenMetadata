@@ -382,6 +382,7 @@ test_unit = {
     "pytest-order",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
 }
 
