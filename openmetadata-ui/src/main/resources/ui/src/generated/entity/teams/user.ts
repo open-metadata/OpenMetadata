@@ -46,6 +46,10 @@ export interface User {
      */
     email: string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * List of entities followed by the user.
      */
     follows?: EntityReference[];
