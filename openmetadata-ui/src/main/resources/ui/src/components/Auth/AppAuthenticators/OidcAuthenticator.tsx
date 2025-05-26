@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 
-import { OidcConfiguration, OidcProvider, useOidc } from '@axa-fr/react-oidc';
-import { isEmpty } from 'lodash';
+import { User, UserManager, WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
   forwardRef,
   Fragment,
   ReactNode,
   useImperativeHandle,
+  useMemo,
 } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
@@ -34,74 +37,173 @@ import {
 interface Props {
   childComponentType: ComponentType;
   children: ReactNode;
-  userConfig: OidcConfiguration;
+  userConfig: Record<string, string | boolean | WebStorageStateStore>;
   onLoginFailure: () => void;
   onLoginSuccess: (user: OidcUser) => void;
   onLogoutSuccess: () => void;
 }
 
+const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
+  return makeAuthenticator({
+    userManager: userManager,
+    signinArgs: {
+      app: 'openmetadata',
+    },
+  })(type);
+};
+
 const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, userConfig, onLogoutSuccess }: Props, ref) => {
+  (
+    {
+      childComponentType,
+      children,
+      userConfig,
+      onLoginSuccess,
+      onLoginFailure,
+      onLogoutSuccess,
+    }: Props,
+    ref
+  ) => {
     const {
+      isAuthenticated,
       isSigningUp,
       setIsSigningUp,
-      currentUser,
-      newUser,
+      updateAxiosInterceptors,
+      //   currentUser,
+      //   newUser,
       isApplicationLoading,
     } = useApplicationStore();
-    const location = useCustomLocation();
-    const { login, logout, isAuthenticated: oidcIsAuthenticated } = useOidc();
+    const navigate = useNavigate();
+    // const location = useCustomLocation();
+    const userManager = useMemo(
+      () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
+      [userConfig]
+    );
 
-    const handleLogin = async () => {
+    const login = () => {
+      // Clear any stale state in the user manager before starting the sign in flow
+      // Remove the existing user configuration for the user who is different from the user trying to log in
+      userManager.clearStaleState();
+      // Remove the existing user configuration for the same user who is trying to log
+      userManager.removeUser();
       setIsSigningUp(true);
-      await login();
     };
 
-    const handleLogout = async () => {
-      await logout();
+    const logout = () => {
+      userManager.removeUser();
       onLogoutSuccess();
     };
 
+    // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      // @axa-fr/react-oidc handles silent refresh automatically
-      return;
+      // For OIDC token will be coming as silent-callback as an IFram hence not returning new token here
+      await userManager.signinSilent();
+    };
+
+    const handleSilentSignInSuccess = (user: User) => {
+      // On success update token in store and update axios interceptors
+      setOidcToken(user.id_token);
+      updateAxiosInterceptors();
+      // Clear the refresh token in progress flag
+      // Since refresh token request completes with a callback
+      TokenService.getInstance().clearRefreshInProgress();
+    };
+
+    const handleSilentSignInFailure = (error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(error);
+
+      // Clear the refresh token in progress flag
+      // Since refresh token request completes with a callback
+      TokenService.getInstance().clearRefreshInProgress();
+      onLogoutSuccess();
+      navigate(ROUTES.SIGNIN);
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin: handleLogin,
-      invokeLogout: handleLogout,
+      invokeLogin: login,
+      invokeLogout: logout,
       renewIdToken: signInSilently,
     }));
 
+    const AppWithAuth = getAuthenticator(
+      childComponentType,
+      userManager
+    ) as unknown as ComponentType;
+
     return (
-      <OidcProvider configuration={userConfig}>
+      <>
         <Routes>
-          <Route path={ROUTES.HOME}>
-            {!oidcIsAuthenticated && !isSigningUp ? (
-              <Navigate to={ROUTES.SIGNIN} />
-            ) : (
-              <Navigate to={ROUTES.MY_DATA} />
-            )}
-          </Route>
-
-          {!isSigningUp ? (
-            <Route element={<SignInPage />} path={ROUTES.SIGNIN} />
-          ) : null}
-
-          {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
-            (oidcIsAuthenticated ? (
-              !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
-                <Fragment>{children}</Fragment>
+          {/* render sign in page if user is not authenticated and not signing up
+           * else redirect to my data page as user is authenticated and not signing up
+           */}
+          <Route
+            element={
+              !isAuthenticated && !isSigningUp ? (
+                <Navigate to={ROUTES.SIGNIN} />
+              ) : (
+                <Navigate to={ROUTES.MY_DATA} />
               )
-            ) : !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
-              <Navigate to={ROUTES.SIGNIN} />
-            ) : (
-              <Fragment>{children}</Fragment>
-            ))}
+            }
+            path={ROUTES.HOME}
+          />
+          {/* render the sign in route only if user is not signing up */}
+          <Route
+            element={isSigningUp ? <AppWithAuth /> : <SignInPage />}
+            path={ROUTES.SIGNIN}
+          />
+          {/* callback route to handle the auth flow after user has successfully provided their consent */}
+          <Route
+            element={
+              <Callback
+                userManager={userManager}
+                onError={(error) => {
+                  showErrorToast(error?.message);
+                  onLoginFailure();
+                }}
+                onSuccess={(user) => {
+                  setOidcToken(user.id_token);
+                  onLoginSuccess(user as OidcUser);
+                }}
+              />
+            }
+            path={ROUTES.CALLBACK}
+          />
+          {/* silent callback route to handle the silent auth flow */}
+          <Route
+            element={
+              <Callback
+                userManager={userManager}
+                onError={handleSilentSignInFailure}
+                onSuccess={handleSilentSignInSuccess}
+              />
+            }
+            path={ROUTES.SILENT_CALLBACK}
+          />
+
+          <Route
+            element={
+              !location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+              // render the children only if user is authenticated
+              (isAuthenticated ? (
+                !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+                  <Fragment>{children}</Fragment>
+                )
+              ) : (
+                <Navigate to={ROUTES.SIGNIN} />
+              ))
+            }
+            path="*"
+          />
         </Routes>
 
-        {isApplicationLoading && isSigningUp && <Loader fullScreen />}
-      </OidcProvider>
+        {/* show loader when application is loading and user is signing up*/}
+        {isApplicationLoading && isSigningUp && (
+          <Fragment>
+            <Loader fullScreen />
+          </Fragment>
+        )}
+      </>
     );
   }
 );

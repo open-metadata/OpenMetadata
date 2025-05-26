@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { OidcConfiguration } from '@axa-fr/react-oidc';
 import {
   AuthenticationResult,
   BrowserCacheLocation,
@@ -21,6 +20,7 @@ import {
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
+import { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -60,7 +60,7 @@ export const getSilentRedirectUri = () => {
 
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
-): OidcConfiguration => {
+): Record<string, string | boolean | WebStorageStateStore> => {
   const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
@@ -69,7 +69,6 @@ export const getUserManagerConfig = (
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
-    storage: localStorage,
   };
 };
 

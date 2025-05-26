@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { OidcUserInfo } from '@axa-fr/react-oidc';
+import { Profile } from 'oidc-client';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
@@ -22,7 +22,7 @@ export type UserProfile = {
   name: string;
   picture: string;
   locale?: string;
-} & Pick<OidcUserInfo, 'preferred_username' | 'sub'>;
+} & Pick<Profile, 'preferred_username' | 'sub'>;
 
 export type OidcUser = {
   id_token: string;

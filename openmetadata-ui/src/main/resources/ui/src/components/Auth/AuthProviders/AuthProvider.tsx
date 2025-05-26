@@ -13,7 +13,7 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
-import { OidcConfiguration } from '@axa-fr/react-oidc';
+
 import {
   Configuration,
   IPublicClientApplication,
@@ -27,6 +27,7 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil, isNumber } from 'lodash';
+import { WebStorageStateStore } from 'oidc-client';
 import Qs from 'qs';
 import {
   ComponentType,
@@ -156,7 +157,9 @@ export const AuthProvider = ({
 
   const userConfig = useMemo(
     () =>
-      authConfig ? getUserManagerConfig(authConfig) : ({} as OidcConfiguration),
+      authConfig
+        ? getUserManagerConfig(authConfig)
+        : ({} as Record<string, string | boolean | WebStorageStateStore>),
     [authConfig]
   );
 
