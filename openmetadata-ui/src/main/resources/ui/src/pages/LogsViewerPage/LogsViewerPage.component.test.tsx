@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import { TextDecoder, TextEncoder } from 'util';
+global.TextEncoder = TextEncoder as unknown as typeof TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import {
@@ -97,7 +101,7 @@ describe('LogsViewerPage.component', () => {
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
     ).toBeInTheDocument();
 
-    const logElement = await screen.findByTestId('logs');
+    const logElement = await screen.findByText(mockLogsData.ingestion_task);
 
     expect(logElement).toBeInTheDocument();
   });

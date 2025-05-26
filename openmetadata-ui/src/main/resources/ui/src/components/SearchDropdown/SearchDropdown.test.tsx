@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
@@ -96,9 +102,7 @@ describe('Search DropDown Component', () => {
 
     expect(container).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(container);
-    });
+    userEvent.click(container);
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
@@ -113,9 +117,7 @@ describe('Search DropDown Component', () => {
 
     expect(container).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(container);
-    });
+    userEvent.click(container);
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
@@ -148,7 +150,10 @@ describe('Search DropDown Component', () => {
     let option2Checkbox = await screen.findByTestId('User 2-checkbox');
 
     expect(option1Checkbox).toBeChecked();
-    expect(option2Checkbox).toBeChecked();
+
+    await waitFor(() => {
+      expect(option2Checkbox).toBeChecked();
+    });
 
     const clearButton = await screen.findByTestId('clear-button');
 
@@ -214,13 +219,15 @@ describe('Search DropDown Component', () => {
     });
 
     // onChange should be called with previous selected keys and current selected keys
-    expect(mockOnChange).toHaveBeenCalledWith(
-      [
-        { key: 'User 1', label: 'User 1' },
-        { key: 'User 2', label: 'User 2' },
-      ],
-      'owner.displayName'
-    );
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [
+          { key: 'User 1', label: 'User 1' },
+          { key: 'User 2', label: 'User 2' },
+        ],
+        'owner.displayName'
+      );
+    });
   });
 
   it('Selected option should unselect on next click', async () => {

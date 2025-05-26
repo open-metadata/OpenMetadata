@@ -47,6 +47,10 @@ const mockProps = {
   onConfirm,
 };
 
+jest.mock('../../common/DatePicker/DatePicker', () =>
+  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
+);
+
 describe('Test Edit Announcement modal', () => {
   it('Should render the component', async () => {
     render(<EditAnnouncementModal {...mockProps} />);

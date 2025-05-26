@@ -30,7 +30,8 @@ import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
@@ -60,13 +61,11 @@ import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
+import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useRequiredParams<{
-    logEntityType: EntityType;
-    fqn: string;
-  }>();
+  const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -80,7 +79,7 @@ const LogsViewerPage = () => {
   const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const isApplicationType = useMemo(
-    () => logEntityType === EntityType.APPLICATION,
+    () => logEntityType === GlobalSettingOptions.APPLICATIONS,
     [logEntityType]
   );
 
