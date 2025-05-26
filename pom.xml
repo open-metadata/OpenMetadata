@@ -230,7 +230,7 @@
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-server</artifactId>
-        <version>${jetty-server.version}</version>
+        <version>${jetty.version}</version>
         <exclusions>
           <exclusion>
             <groupId>javax.servlet</groupId>

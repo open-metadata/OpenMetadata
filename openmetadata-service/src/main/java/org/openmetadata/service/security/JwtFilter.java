@@ -170,8 +170,17 @@ public class JwtFilter implements ContainerRequestFilter {
     checkValidationsForToken(claims, tokenFromHeader, userName);
 
     // Setting Security Context
+    // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
-    setSecurityContext(requestContext, catalogPrincipal);
+    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(
+            catalogPrincipal,
+            scheme,
+            SecurityContext.DIGEST_AUTH,
+            getUserRolesFromClaims(claims, isBot(claims)));
+    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    requestContext.setSecurityContext(catalogSecurityContext);
   }
 
   public void checkValidationsForToken(
@@ -304,15 +313,13 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
-  private void setSecurityContext(
-      ContainerRequestContext requestContext, CatalogPrincipal catalogPrincipal) {
-    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+  public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    Map<String, Claim> claims = validateJwtAndGetClaims(token);
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(
-            catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
-    // TODO: check if we need to set the scheme and auth type
-    requestContext.setSecurityContext(catalogSecurityContext);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,

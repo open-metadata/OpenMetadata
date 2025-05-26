@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.Entity;
@@ -191,7 +193,7 @@ public class SearchUtil {
               .withFetchSource(true)
               .withDeleted(includeDeleted);
 
-      javax.ws.rs.core.Response response = Entity.getSearchRepository().search(searchRequest, null);
+      Response response = Entity.getSearchRepository().search(searchRequest, null);
 
       Map<String, Object> searchResponse;
       if (response.getEntity() instanceof String responseStr) {

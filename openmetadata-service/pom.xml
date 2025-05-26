@@ -296,22 +296,6 @@
     </dependency>
     <dependency>
       <groupId>io.prometheus</groupId>
-      <artifactId>dropwizard-micrometer-jdbi</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-classic</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-access</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
       <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
     </dependency>
     <dependency>
@@ -713,6 +697,11 @@
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
       <version>4.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.socket</groupId>
+      <artifactId>engine.io-server-jetty</artifactId>
+      <version>6.2.1</version>
     </dependency>
     <dependency>
       <groupId>io.modelcontextprotocol.sdk</groupId>
@@ -1142,10 +1131,15 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>io.openapitools.swagger</groupId>
-        <artifactId>swagger-maven-plugin</artifactId>
-        <version>2.1.6</version>
+        <groupId>io.swagger.core.v3</groupId>
+        <artifactId>swagger-maven-plugin-jakarta</artifactId>
+        <version>2.2.30</version>
         <dependencies>
+          <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>${jakarta.servlet-api.version}</version>
+          </dependency>
           <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
@@ -1153,12 +1147,28 @@
           </dependency>
         </dependencies>
         <configuration>
-          <inputSpec>${basedir}/src/main/resources/openapi.yaml</inputSpec>
-          <outputDirectory>${basedir}/target/classes/assets/</outputDirectory>
-          <outputFilename>swagger</outputFilename>
-          <outputFormats>JSON,YAML</outputFormats>
+          <outputFileName>swagger</outputFileName>
+          <outputPath>${basedir}/target/classes/assets</outputPath>
+          <outputFormat>JSONANDYAML</outputFormat>
+          <resourcePackages>
+            <package>org.openmetadata.service.resources</package>
+          </resourcePackages>
           <prettyPrint>true</prettyPrint>
-          <swaggerConfig>
+          <openAPI>
+            <info>
+              <title>OpenMetadata APIs</title>
+              <version>${project.version}</version>
+              <description>Common types and API definition for OpenMetadata</description>
+              <contact>
+                <name>OpenMetadata</name>
+                <url>https://open-metadata.org/</url>
+                <email>dev@open-metadata.org</email>
+              </contact>
+              <license>
+                <name>Apache 2.0</name>
+                <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+              </license>
+            </info>
             <servers>
               <server>
                 <url>/api</url>
@@ -1169,45 +1179,29 @@
                 <description>Endpoint URL</description>
               </server>
             </servers>
-            <securityRequirements>
-              <securityRequirement>
-                <entries>
-                  <entry>
-                    <name>BearerAuth</name>
-                  </entry>
-                </entries>
-              </securityRequirement>
-            </securityRequirements>
             <components>
               <securitySchemes>
-                <BearerAuth>
-                  <type>http</type>
-                  <description>Provide Token from Bots settings section in OMD or your Authorization Provider</description>
-                  <scheme>bearer</scheme>
-                </BearerAuth>
+                <securityScheme>
+                  <key>BearerAuth</key>
+                  <securityScheme>
+                    <type>http</type>
+                    <scheme>bearer</scheme>
+                  </securityScheme>
+                </securityScheme>
               </securitySchemes>
             </components>
-            <info>
-              <title>OpenMetadata Apis</title>
-              <version>${project.parent.version}</version>
-              <contact>
-                <email>openmetadata-dev@googlegroups.com</email>
-                <name>OpenMetadata</name>
-                <url>https://open-metadata.org</url>
-              </contact>
-              <license>
-                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
-                <name>Apache 2.0</name>
-              </license>
-            </info>
-            <descriptionFile>../openmetadata-docs/content/v1.7.x/main-concepts/metadata-standard/apis.md</descriptionFile>
-          </swaggerConfig>
+            <security>
+              <securityRequirement>
+                <name>BearerAuth</name>
+              </securityRequirement>
+            </security>
+          </openAPI>
         </configuration>
         <executions>
           <execution>
             <phase>compile</phase>
             <goals>
-              <goal>generate</goal>
+              <goal>resolve</goal>
             </goals>
           </execution>
         </executions>

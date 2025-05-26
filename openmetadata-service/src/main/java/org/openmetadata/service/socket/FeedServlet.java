@@ -19,8 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.felix.http.servlet.HttpServletRequestWrapper;
-import org.apache.felix.http.servlet.HttpServletResponseWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
+
 
 @Slf4j
 @WebServlet("/api/v1/push/feed/*")

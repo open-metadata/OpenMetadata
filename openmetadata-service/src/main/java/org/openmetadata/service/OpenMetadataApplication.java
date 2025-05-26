@@ -32,6 +32,7 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
+import jakarta.servlet.ServletRegistration;
 import jakarta.validation.MessageInterpolator;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
@@ -684,7 +685,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             pathSpec,
             (req, resp) ->
                 new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-                          WebSocketManager.getInstance().getEngineIoServer())));
       }
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
