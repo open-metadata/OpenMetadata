@@ -356,6 +356,9 @@ const NotificationListPage = () => {
                   className="p-y-md"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.alert'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
                     history.push(

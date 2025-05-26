@@ -878,7 +878,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children:
         !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <SampleDataTableComponent
             isTableDeleted={deleted}
@@ -903,7 +909,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.TABLE_QUERIES,
       children: !viewQueriesPermission ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.query-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ) : (
         <TableQueries
           isTableDeleted={deleted}
@@ -925,7 +937,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.PROFILER,
       children:
         !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.profiler'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <TableProfiler
             permissions={tablePermissions}

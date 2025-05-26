@@ -491,6 +491,9 @@ const TableQueries: FC<TableQueriesProp> = ({
         doc={USAGE_DOCS}
         heading={t('label.query-lowercase-plural')}
         permission={permissions?.query.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.query'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddQueryClick}
       />
