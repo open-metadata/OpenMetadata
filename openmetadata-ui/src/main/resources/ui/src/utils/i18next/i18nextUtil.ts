@@ -28,8 +28,8 @@ import ptBR from '../../locale/languages/pt-br.json';
 import ptPT from '../../locale/languages/pt-pt.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
-import zhCN from '../../locale/languages/zh-cn.json';
 import trTR from '../../locale/languages/tr-tr.json';
+import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
   English = 'en-US',

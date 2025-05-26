@@ -1324,6 +1324,7 @@ export interface ExecutionContext {
 export enum ScheduleType {
     Live = "Live",
     NoSchedule = "NoSchedule",
+    OnlyManual = "OnlyManual",
     Scheduled = "Scheduled",
     ScheduledOrManual = "ScheduledOrManual",
 }

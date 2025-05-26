@@ -12,7 +12,7 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN"],
       "description": "Type of the job."
     },
     "methodName": {
@@ -23,9 +23,17 @@
       "oneOf": [
         {
           "$ref": "./enumCleanupArgs.json"
+        },
+        {
+         "type": "object",
+         "additionalProperties": true
         }
       ],
       "description": "Object containing job arguments."
+    },
+    "runAt": {
+      "description": "Timestamp when the job was run in Unix epoch time milliseconds (default: as soon as possible).",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "status": {
       "type": "string",
