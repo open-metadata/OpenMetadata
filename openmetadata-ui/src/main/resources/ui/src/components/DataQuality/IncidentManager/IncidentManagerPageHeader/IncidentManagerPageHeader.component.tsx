@@ -326,7 +326,7 @@ const IncidentManagerPageHeader = ({
     <Space wrap align="center" className="incident-manager-header w-full ">
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
-        isCompactView={isVersionPage}
+        isCompactView={false}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
         onUpdate={onOwnerUpdate}

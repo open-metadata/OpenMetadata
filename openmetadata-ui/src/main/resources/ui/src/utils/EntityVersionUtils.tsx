@@ -27,6 +27,7 @@ import {
   isEqual,
   isObject,
   isUndefined,
+  startCase,
   toString,
   uniqBy,
   uniqueId,
@@ -1034,7 +1035,8 @@ export const getOwnerDiff = (
 };
 
 export const getParameterValuesDiff = (
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
+  defaultValues?: TestCaseParameterValue[]
 ): {
   name: string;
   oldValue: string;
@@ -1051,6 +1053,21 @@ export const getParameterValuesDiff = (
     getChangedEntityOldValue(fieldDiff) ?? [];
   const newValues: TestCaseParameterValue[] =
     getChangedEntityNewValue(fieldDiff) ?? [];
+
+  // If no diffs exist and we have default values, return them as unchanged
+  if (
+    isEmpty(oldValues) &&
+    isEmpty(newValues) &&
+    defaultValues &&
+    !isEmpty(defaultValues)
+  ) {
+    return defaultValues.map((param) => ({
+      name: String(param.name),
+      oldValue: String(param.value),
+      newValue: String(param.value),
+      status: 'unchanged',
+    }));
+  }
 
   const result: {
     name: string;
@@ -1124,48 +1141,78 @@ export const getTextDiffElements = (
 };
 
 export const getParameterValueDiffDisplay = (
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
+  defaultValues?: TestCaseParameterValue[]
 ): React.ReactNode => {
-  const diffs = getParameterValuesDiff(changeDescription);
+  const diffs = getParameterValuesDiff(changeDescription, defaultValues);
 
-  if (isEmpty(diffs)) {
-    return (
-      <Typography.Text type="secondary">
-        {t('label.no-parameter-available')}
-      </Typography.Text>
-    );
-  }
+  // Separate sqlExpression from other params
+  const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
+  const otherParamDiffs = diffs.filter((diff) => diff.name !== 'sqlExpression');
 
   return (
-    <Space wrap className="parameter-value-container parameter-value" size={6}>
-      {diffs.map((diff, index) => (
-        <Space key={diff.name} size={4}>
-          <Typography.Text className="text-grey-muted">
-            {`${diff.name}:`}
+    <>
+      {/* Render non-sqlExpression parameters as before */}
+      <Space
+        wrap
+        className="parameter-value-container parameter-value"
+        size={6}>
+        {otherParamDiffs.length === 0 ? (
+          <Typography.Text type="secondary">
+            {t('label.no-parameter-available')}
           </Typography.Text>
-          {diff.status === 'updated' ? (
-            <Typography.Text>
-              {getTextDiffElements(diff.oldValue, diff.newValue).map(
-                (el, idx) => (
-                  <React.Fragment key={idx}>{el}</React.Fragment>
-                )
+        ) : (
+          otherParamDiffs.map((diff, index) => (
+            <Space key={diff.name} size={4}>
+              <Typography.Text className="text-grey-muted">
+                {`${diff.name}:`}
+              </Typography.Text>
+              {diff.status === 'updated' ? (
+                <Typography.Text>
+                  {getTextDiffElements(diff.oldValue, diff.newValue).map(
+                    (el, idx) => (
+                      <React.Fragment key={idx}>{el}</React.Fragment>
+                    )
+                  )}
+                </Typography.Text>
+              ) : diff.status === 'added' ? (
+                <Typography.Text>
+                  {getAddedDiffElement(diff.newValue)}
+                </Typography.Text>
+              ) : diff.status === 'removed' ? (
+                <Typography.Text>
+                  {getRemovedDiffElement(diff.oldValue)}
+                </Typography.Text>
+              ) : (
+                <Typography.Text>{diff.oldValue}</Typography.Text>
               )}
-            </Typography.Text>
-          ) : diff.status === 'added' ? (
-            <Typography.Text>
-              {getAddedDiffElement(diff.newValue)}
-            </Typography.Text>
-          ) : diff.status === 'removed' ? (
-            <Typography.Text>
-              {getRemovedDiffElement(diff.oldValue)}
-            </Typography.Text>
-          ) : (
-            <Typography.Text>{diff.oldValue}</Typography.Text>
-          )}
-          {diffs.length - 1 !== index && <Divider type="vertical" />}
-        </Space>
-      ))}
-    </Space>
+              {otherParamDiffs.length - 1 !== index && (
+                <Divider type="vertical" />
+              )}
+            </Space>
+          ))
+        )}
+      </Space>
+      {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
+      {sqlParamDiff && (
+        <div className="m-t-md">
+          <Typography.Text className="right-panel-label">
+            {startCase(sqlParamDiff.name)}
+          </Typography.Text>
+
+          <div className="m-t-sm version-sql-expression-container">
+            {sqlParamDiff.status === 'updated'
+              ? getTextDiffElements(
+                  sqlParamDiff.oldValue,
+                  sqlParamDiff.newValue
+                ).map((el, idx) => (
+                  <React.Fragment key={idx}>{el}</React.Fragment>
+                ))
+              : sqlParamDiff.oldValue || sqlParamDiff.newValue || ''}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

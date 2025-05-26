@@ -149,13 +149,14 @@ const TestCaseResultTab = () => {
     isVersionPage,
   ]);
 
-  const parameterValues = useMemo(() => {
-    return getParameterValueDiffDisplay(
-      testCaseData?.changeDescription as ChangeDescription
-    );
-  }, [testCaseData?.changeDescription]);
-
   const testCaseParams = useMemo(() => {
+    if (isVersionPage) {
+      return getParameterValueDiffDisplay(
+        testCaseData?.changeDescription as ChangeDescription,
+        testCaseData?.parameterValues
+      );
+    }
+
     if (testCaseData?.useDynamicAssertion) {
       return (
         <label
@@ -233,11 +234,10 @@ const TestCaseResultTab = () => {
           </Space>
 
           {testCaseParams}
-          {parameterValues}
         </Space>
       </Col>
 
-      {!isUndefined(withSqlParams) ? (
+      {!isUndefined(withSqlParams) && !isVersionPage ? (
         <Col>
           {withSqlParams.map((param) => (
             <Row
