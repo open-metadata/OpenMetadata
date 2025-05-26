@@ -28,7 +28,6 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;

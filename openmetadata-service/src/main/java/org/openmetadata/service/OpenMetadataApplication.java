@@ -53,7 +53,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.server.JettyWebSocketServerContainer;
 import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -676,17 +675,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Upgrade connection to websocket from Http
     try {
       JettyWebSocketServletContainerInitializer.configure(
-          environment.getApplicationContext(), null);
-      JettyWebSocketServerContainer container =
-          JettyWebSocketServerContainer.getContainer(
-              environment.getApplicationContext().getServletContext());
+          environment.getApplicationContext(),
+          (servletContext, wsContainer) -> {
+            wsContainer.setMaxTextMessageSize(65535);
+            wsContainer.setMaxBinaryMessageSize(65535);
 
-      if (container != null) {
-        container.addMapping(
-            pathSpec,
-            (req, resp) ->
-                new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-      }
+            // Register endpoint using Jetty WebSocket API
+            wsContainer.addMapping(
+                pathSpec,
+                (req, resp) ->
+                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+          });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
