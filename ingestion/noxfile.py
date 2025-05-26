@@ -12,6 +12,7 @@
 Nox sessions for testing and formatting checks.
 """
 import ast
+import os
 from pathlib import Path
 
 # NOTE: This is still a work in progress! We still need to:
@@ -21,7 +22,19 @@ from pathlib import Path
 import nox
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
-PYTHON_VERSIONS = ["3.10", "3.11"]
+
+SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11"]
+# Function to determine the Python versions to run tests against
+
+
+def get_python_versions():
+    # Check if we are in GitHub Actions (i.e., if the 'PYTHON_VERSIONS' environment variable is set)
+    if "PYTHON_VERSIONS" in os.environ:
+        # Return the list of Python versions passed from GitHub Actions matrix
+        python_versions = os.environ["PYTHON_VERSIONS"].split(",")
+        # if some versions are not supported, they will be ignored by nox
+        return python_versions
+    return SUPPORTED_PYTHON_VERSIONS
 
 
 @nox.session(name="format-check", reuse_venv=False, venv_backend="uv|venv")
@@ -39,7 +52,7 @@ def format_check(session):
 
 
 @nox.session(
-    name="unit", reuse_venv=False, venv_backend="uv|venv", python=PYTHON_VERSIONS
+    name="unit", reuse_venv=False, venv_backend="uv|venv", python=get_python_versions()
 )
 def unit(session):
     session.install(".[all-dev-env, test-unit]")
