@@ -33,7 +33,6 @@ import io.socket.engineio.server.JettyWebSocketHandler;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
 import jakarta.servlet.ServletRegistration;
-import jakarta.validation.MessageInterpolator;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -44,7 +43,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
-import java.util.Locale;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -56,6 +54,8 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
+import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
+import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -210,18 +210,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         Validation.byDefaultProvider()
             .configure()
             .messageInterpolator(
-                new MessageInterpolator() {
-                  @Override
-                  public String interpolate(String messageTemplate, Context context) {
-                    return messageTemplate;
-                  }
-
-                  @Override
-                  public String interpolate(
-                      String messageTemplate, Context context, Locale locale) {
-                    return messageTemplate;
-                  }
-                })
+                new ResourceBundleMessageInterpolator(
+                    new PlatformResourceBundleLocator("jakarta.validation.ValidationMessages")))
             .buildValidatorFactory()
             .getValidator());
 

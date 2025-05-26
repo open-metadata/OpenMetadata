@@ -103,7 +103,7 @@
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
     <postgres.connector.version>42.7.4</postgres.connector.version>
-    <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
+    <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
