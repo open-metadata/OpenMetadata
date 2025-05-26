@@ -289,26 +289,6 @@ export const getNameFromUserData = (
   return { name: userName, email: email, picture: user.picture };
 };
 
-export const isProtectedRoute = (pathname: string) => {
-  return (
-    [
-      ROUTES.SIGNUP,
-      ROUTES.SIGNIN,
-      ROUTES.FORGOT_PASSWORD,
-      ROUTES.CALLBACK,
-      ROUTES.SILENT_CALLBACK,
-      ROUTES.SAML_CALLBACK,
-      ROUTES.REGISTER,
-      ROUTES.RESET_PASSWORD,
-      ROUTES.ACCOUNT_ACTIVATION,
-      ROUTES.HOME,
-      ROUTES.AUTH_CALLBACK,
-      ROUTES.NOT_FOUND,
-      ROUTES.LOGOUT,
-    ].indexOf(pathname) === -1
-  );
-};
-
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
 };

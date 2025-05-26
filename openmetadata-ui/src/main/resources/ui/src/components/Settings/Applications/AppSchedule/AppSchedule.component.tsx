@@ -48,11 +48,9 @@ const AppSchedule = ({
   const { config } = useLimitStore();
 
   const showRunNowButton = useMemo(() => {
-    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
-      return true;
-    }
-
-    return false;
+    return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
+      appData?.scheduleType
+    );
   }, [appData]);
 
   const { pipelineSchedules } =

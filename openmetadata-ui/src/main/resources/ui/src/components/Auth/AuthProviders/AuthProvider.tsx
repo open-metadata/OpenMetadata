@@ -66,13 +66,13 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
+import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
-  isProtectedRoute,
   prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
 import {
@@ -214,7 +214,7 @@ export const AuthProvider = ({
   }, []);
 
   const handledVerifiedUser = () => {
-    if (!isProtectedRoute(location.pathname)) {
+    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
       navigate(ROUTES.HOME);
     }
   };
@@ -409,7 +409,7 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login
    */
   const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (isProtectedRoute(location.pathname)) {
+    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
       storeRedirectPath(location.pathname);
     }
   }, [location.pathname, storeRedirectPath]);
