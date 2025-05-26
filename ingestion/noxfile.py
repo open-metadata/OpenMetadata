@@ -1,21 +1,23 @@
-import time
-
 import nox
+
+
+@nox.session(name="format-check", reuse_venv=True, venv_backend="uv|venv")
+def format_check(session):
+    session.install(".[dev]")
+    session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
+    session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
+    session.run("pycln", "--check", ".", "../openmetadata-airflow-apis/")
 
 
 @nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv")
 def unit(session):
-    # Install package with test extras
-    start = time.time()
-
     session.install(".[all-dev-env, test-unit]")
-    # FIXME: we need to install pip so that spaCy can install its dependencies
-    #        we should find a way to avoid this
+    # TODO: we need to install pip so that spaCy can install its dependencies
+    #       we should find a way to avoid this
     session.install("pip")
-    duration = time.time() - start
-    session.log(f"Virtual env set in {duration:.2f} seconds")
+
     # Run unit tests
-    tests_to_skip = [
+    ignored_tests = [
         "test_ometa_endpoints.py",
         "test_ometa_mlmodel.py",
         "test_dbt.py",
@@ -27,29 +29,20 @@ def unit(session):
         "workflow",
         "topology",
     ]
-    ignore = [f"--ignore=tests/unit/{test}" for test in tests_to_skip]
-    session.run(
-        "pytest",
-        "tests/unit/",
-        *ignore,
-    )
+    ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
+
+    session.run("pytest", "tests/unit/", *ignore_args)
 
 
-@nox.session(name="unit-ge", reuse_venv=True, venv_backend="uv|venv")
-def unit_ge(session):
-    # Install package with test extras
-    start = time.time()
+PLUGINS = ["great_expectations"]
 
+
+@nox.session(name="unit-plugins", reuse_venv=True, venv_backend="uv|venv")
+@nox.parametrize("plugin", PLUGINS)
+def unit_plugins(session, plugin):
     session.install(".[test-unit]")
-    # Install Great Expectations with the specific version
     session.install("great_expectations~=0.18.0")
-    duration = time.time() - start
-    session.log(f"Virtual env set in {duration:.2f} seconds")
-    # Run unit tests
-    session.run(
-        "pytest",
-        "tests/unit/great_expectations",
-    )
+    session.run("pytest", "tests/unit/great_expectations")
 
 
 @nox.session(name="integration", venv_backend="uv|venv")
