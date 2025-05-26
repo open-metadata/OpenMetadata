@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
@@ -332,13 +333,15 @@ public final class JsonUtils {
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonNode source = readTree(v1);
     JsonNode dest = readTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
