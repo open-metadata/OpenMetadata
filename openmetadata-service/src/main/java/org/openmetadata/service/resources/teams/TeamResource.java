@@ -151,8 +151,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Limit the number of teams returned. (1 to 1000000, default = 10)")
           @DefaultValue("10000")
-          @Min(1000)
-          @Max(1000000)
+          @Min(value = 1000, message = "must be greater than or equal to 1000")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -193,8 +193,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           String fieldsParam,
       @Parameter(description = "Limit the number of teams returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(

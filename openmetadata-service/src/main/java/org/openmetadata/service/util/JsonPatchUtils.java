@@ -17,7 +17,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.io.IOException;
 import java.util.Collections;
@@ -149,8 +151,23 @@ public class JsonPatchUtils {
   }
 
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
-    Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
-    String path = jsonPatchMap.get("path").toString(); // Get "path" node - "/defaultRoles/0"
+    String path;
+
+    // Handle jakarta JSON patch objects efficiently
+    if (jsonPatchObject instanceof JsonObject) {
+      JsonObject jsonPatchObj = (JsonObject) jsonPatchObject;
+      JsonValue pathValue = jsonPatchObj.get("path");
+      if (pathValue instanceof JsonString) {
+        path = ((JsonString) pathValue).getString();
+      } else {
+        path = pathValue.toString();
+      }
+    } else {
+      // Fallback for other object types
+      Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
+      path = jsonPatchMap.get("path").toString();
+    }
+
     return getMetadataOperation(path);
   }
 

@@ -95,9 +95,9 @@ public class StoredProcedureResource
           String databaseSchemaParam,
       @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
           int limitParam,
       @Parameter(
               description = "Returns list of schemas before this cursor",

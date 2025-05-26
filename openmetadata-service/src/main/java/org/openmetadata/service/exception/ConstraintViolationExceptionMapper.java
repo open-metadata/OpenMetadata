@@ -39,7 +39,9 @@ public class ConstraintViolationExceptionMapper
                 constraintViolation -> {
                   String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
                   // Map common parameter names to more descriptive names for query parameters
-                  if ("arg6".equals(name)) {
+                  if ("arg4".equals(name)) {
+                    name = "query param limit";
+                  } else if ("arg6".equals(name)) {
                     name = "query param limit";
                   } else if ("arg7".equals(name)) {
                     name = "query param before";
