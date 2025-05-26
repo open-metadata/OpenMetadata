@@ -1271,7 +1271,6 @@ export const softDeleteEntity = async (
   );
 
   await page.reload();
-  ``;
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const deletedBadge = page.locator('[data-testid="deleted-badge"]');
