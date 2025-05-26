@@ -27,8 +27,17 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           pip install nox
 
-      - name: Run Format Check
-        run: nox -s format-check
+      - name: Run Code Quality Checks
+        # We only want to check the format for a single Python version,
+        # no need to run it for all versions
+        if: ${{ matrix.python-version == '3.10' }}
+        run: |
+          nox -s lint
 
       - name: Run Unit Tests
-        run: nox -s unit
+        run: |
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit
+
+      - name: Run Unit Tests (specific plugins)
+        run: |
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit-plugins

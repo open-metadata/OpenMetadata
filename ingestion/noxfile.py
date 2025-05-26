@@ -24,7 +24,6 @@ import nox
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
 SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11"]
-# Function to determine the Python versions to run tests against
 
 
 def get_python_versions():
@@ -37,8 +36,14 @@ def get_python_versions():
     return SUPPORTED_PYTHON_VERSIONS
 
 
-@nox.session(name="format-check", reuse_venv=False, venv_backend="uv|venv")
-def format_check(session):
+@nox.session(
+    name="lint",
+    reuse_venv=False,
+    venv_backend="uv|venv",
+)
+def lint(session):
+    # Usually, we want just one Python version for linting and type check,
+    # so no need to specify them here
     session.install(".[dev]")
     # Configuration from pyproject.toml is taken into account out of the box
     session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
@@ -88,7 +93,12 @@ PLUGINS_TESTS = {
 PLUGINS = list(PLUGINS_TESTS.keys())
 
 
-@nox.session(name="unit-plugins", reuse_venv=True, venv_backend="uv|venv")
+@nox.session(
+    name="unit-plugins",
+    reuse_venv=True,
+    venv_backend="uv|venv",
+    python=get_python_versions(),
+)
 @nox.parametrize("plugin", PLUGINS)
 def unit_plugins(session, plugin):
     versions = extract_attribute_from_setup("VERSIONS", "setup.py")
