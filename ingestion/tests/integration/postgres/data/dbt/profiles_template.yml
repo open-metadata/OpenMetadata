@@ -1,0 +1,15 @@
+default:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{host}"
+      user: "{user}"
+      password: "{password}"
+      port: {port}
+      dbname: dvdrental
+      schema: jaffle_shop
+      threads: 6
+
+config:
+  send_anonymous_usage_stats: False
