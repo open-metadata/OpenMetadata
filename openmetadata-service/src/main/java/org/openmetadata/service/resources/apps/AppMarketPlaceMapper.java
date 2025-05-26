@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.apps;
 
-import java.util.Objects;
 import jakarta.ws.rs.BadRequestException;
+import java.util.Objects;
 import javax.validation.ConstraintViolationException;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;

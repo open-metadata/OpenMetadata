@@ -112,7 +112,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
       @Parameter(
               description = "Returns list of metrics before this cursor",
               schema = @Schema(type = "string"))

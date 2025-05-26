@@ -19,9 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
-
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 
 @Slf4j
 @WebServlet("/api/v1/push/feed/*")
@@ -30,15 +29,10 @@ public class FeedServlet extends HttpServlet {
   protected void service(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     try {
-      // Create a wrapper that supports async operations
-      HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request) {
-        @Override
-        public boolean isAsyncSupported() {
-          return true;
-        }
-      };
+      // EngineIO server expects javax servlet types, so we need to use wrappers
+      HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
       HttpServletResponseWrapper wrappedResponse = new HttpServletResponseWrapper(response);
-      
+
       WebSocketManager.getInstance()
           .getEngineIoServer()
           .handleRequest(wrappedRequest, wrappedResponse);

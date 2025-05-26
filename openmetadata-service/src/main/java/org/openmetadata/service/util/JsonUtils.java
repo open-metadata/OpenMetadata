@@ -148,7 +148,16 @@ public final class JsonUtils {
   }
 
   public static JsonStructure getJsonStructure(Object o) {
-    return OBJECT_MAPPER.convertValue(o, JsonStructure.class);
+    try {
+      // Convert object to JSON string using Jackson
+      String jsonString = OBJECT_MAPPER.writeValueAsString(o);
+      // Parse the JSON string using Jakarta JSON API to get a JsonStructure
+      try (JsonReader reader = Json.createReader(new java.io.StringReader(jsonString))) {
+        return reader.read();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert object to JsonStructure", e);
+    }
   }
 
   public static Map<String, Object> getMap(Object o) {
@@ -310,7 +319,14 @@ public final class JsonUtils {
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
-    return OBJECT_MAPPER.convertValue(value, clz);
+    // Convert Jakarta JSON JsonValue to Jackson JsonNode
+    try {
+      String jsonString = value.toString();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
+      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+    }
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {

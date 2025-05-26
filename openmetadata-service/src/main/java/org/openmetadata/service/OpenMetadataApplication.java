@@ -644,6 +644,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CollectionRegistry.getInstance()
         .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
+    environment.jersey().register(new JsonPatchMessageBodyReader());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);

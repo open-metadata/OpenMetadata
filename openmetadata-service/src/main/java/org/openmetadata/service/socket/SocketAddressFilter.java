@@ -17,7 +17,6 @@ import com.auth0.jwt.interfaces.Claim;
 import io.socket.engineio.server.utils.ParseQS;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;

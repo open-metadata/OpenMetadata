@@ -2,13 +2,13 @@ package org.openmetadata.service.mcp;
 
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
-import java.io.IOException;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import org.openmetadata.service.security.JwtFilter;
 
 public class McpAuthFilter implements Filter {

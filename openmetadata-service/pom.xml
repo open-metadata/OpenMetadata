@@ -522,14 +522,6 @@
       <artifactId>lombok</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
@@ -725,11 +717,6 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-jetty-api</artifactId>
-      <version>${jetty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-server</artifactId>
       <version>${jetty.version}</version>
     </dependency>
     <dependency>

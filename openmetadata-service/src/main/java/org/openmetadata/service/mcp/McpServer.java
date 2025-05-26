@@ -8,13 +8,12 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.servlet.DispatcherType;
-import jakarta.servlet.Filter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
