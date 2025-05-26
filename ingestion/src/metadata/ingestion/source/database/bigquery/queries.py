@@ -63,7 +63,7 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')
     """
 )
 
@@ -188,6 +188,10 @@ SELECT schema_name FROM `{project}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMAT
 
 BIGQUERY_GET_VIEW_NAMES = """
 SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.VIEWS;
+"""
+
+BIGQUERY_GET_MATERIALIZED_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.MATERIALIZED_VIEWS;
 """
 
 

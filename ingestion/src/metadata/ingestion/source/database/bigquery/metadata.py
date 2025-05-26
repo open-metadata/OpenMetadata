@@ -83,6 +83,7 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
     BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_VIEW_NAMES,
@@ -439,27 +440,48 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         logic on how to handle table types, e.g., material views,...
         """
 
-        view_names = (
-            self.engine.execute(
-                BIGQUERY_GET_VIEW_NAMES.format(
-                    project=self.context.get().database, dataset=schema_name
-                )
-            )
-            or []
-        )
-
         if self.incremental.enabled:
             view_names = [
-                view_name[0]
+                view_name
                 for view_name in view_names
-                if view_name[0]
+                if view_name
                 in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
-        return [
-            TableNameAndType(name=view_name[0], type_=TableType.View)
-            for view_name in view_names
-        ]
+        table_name_and_types = []
+        for table_type, query in {
+            TableType.View: BIGQUERY_GET_VIEW_NAMES,
+            TableType.MaterializedView: BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
+        }.items():
+            view_names = list(
+                map(
+                    lambda x: x[0],
+                    (
+                        self.engine.execute(
+                            query.format(
+                                project=self.context.get().database, dataset=schema_name
+                            )
+                        )
+                        or []
+                    ),
+                )
+            )
+            if self.incremental.enabled:
+                view_names = [
+                    view_name
+                    for view_name in view_names
+                    if view_name
+                    in self.incremental_table_processor.get_not_deleted(schema_name)
+                ]
+
+            table_name_and_types.extend(
+                [
+                    TableNameAndType(name=view_name, type_=table_type)
+                    for view_name in view_names
+                ]
+            )
+
+        return table_name_and_types
 
     # pylint: disable=arguments-differ
     @calculate_execution_time()
