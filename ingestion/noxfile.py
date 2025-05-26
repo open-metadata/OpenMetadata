@@ -99,18 +99,6 @@ def unit_plugins(session, plugin):
 def extract_attribute_from_setup(attr_name: str, setup_path: str = "setup.py"):
     # TODO: We should consider using a more robust method to extract attributes
     # such as moving out the attributes to a separate file.
-    # Implementation by ChatGPT
-    """
-    Safely extract a top-level variable from setup.py using AST parsing.
-    (By ChatGPT)
-
-    Args:
-        attr_name (str): Name of the variable to extract (e.g., 'foo')
-        setup_path (str): Path to the setup.py file
-
-    Returns:
-        The value of the variable if found, else None.
-    """
     setup_file = Path(setup_path)
     if not setup_file.exists():
         raise FileNotFoundError(f"{setup_path} not found")
