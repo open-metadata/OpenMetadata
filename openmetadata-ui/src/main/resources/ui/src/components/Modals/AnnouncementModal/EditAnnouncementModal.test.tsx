@@ -28,6 +28,10 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
+jest.mock('../../common/DatePicker/DatePicker', () => {
+  return jest.fn().mockReturnValue(<div>DatePicker</div>);
+});
+
 const onCancel = jest.fn();
 const onConfirm = jest.fn();
 

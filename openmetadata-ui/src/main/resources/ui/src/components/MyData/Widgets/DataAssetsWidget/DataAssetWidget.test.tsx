@@ -62,7 +62,9 @@ describe('DataAssetsWidget', () => {
   });
 
   it('should render DataAssetsWidget', async () => {
-    render(<DataAssetsWidget {...widgetProps} />);
+    await act(async () => {
+      render(<DataAssetsWidget {...widgetProps} />);
+    });
 
     expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
@@ -73,13 +75,10 @@ describe('DataAssetsWidget', () => {
   it('should handle close click when in edit view', async () => {
     await act(async () => {
       render(<DataAssetsWidget {...widgetProps} />);
-
-      fireEvent.click(screen.getByTestId('remove-widget-button'));
-
-      expect(mockHandleRemoveWidget).toHaveBeenCalledWith(
-        widgetProps.widgetKey
-      );
     });
+    fireEvent.click(screen.getByTestId('remove-widget-button'));
+
+    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(widgetProps.widgetKey);
   });
 
   it('should render ErrorPlaceholder if API is rejected', async () => {

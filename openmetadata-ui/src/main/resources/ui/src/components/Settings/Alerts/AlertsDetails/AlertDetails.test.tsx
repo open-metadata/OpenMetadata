@@ -38,7 +38,6 @@ jest.mock('../../../PageHeader/PageHeader.component', () =>
 );
 
 const mockDelete = jest.fn();
-const mockPush = jest.fn();
 
 const mockProps1 = {
   alerts: {
@@ -123,8 +122,8 @@ describe('AlertDetailsComponent', () => {
 
     expect(mockDelete).toHaveBeenCalled();
 
-    fireEvent.click(editButton);
+    const editLink = editButton.closest('a');
 
-    expect(mockPush).toHaveBeenCalledWith('Edit Alert Link/alertId');
+    expect(editLink).toHaveAttribute('href', '/Edit Alert Link/alertId');
   });
 });

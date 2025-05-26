@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   mockWidget,
   mockWidgetSizes,
@@ -66,7 +65,7 @@ describe('AddWidgetTabContent component', () => {
 
     const mediumButton = screen.getByText('Medium');
 
-    await act(async () => userEvent.click(mediumButton));
+    fireEvent.click(mediumButton);
 
     expect(mockProps.getAddWidgetHandler).toHaveBeenCalledTimes(2);
     expect(mockProps.getAddWidgetHandler).toHaveBeenCalledWith(

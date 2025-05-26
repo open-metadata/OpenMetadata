@@ -39,6 +39,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address',
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 const mockDQTabComponent = () => <div>mock Data Quality TabComponent</div>;
 const mockColumnProfilerTabComponent = () => (

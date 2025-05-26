@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -178,7 +177,7 @@ describe('CustomizeMyData component', () => {
 
     const resetButton = screen.getByTestId('reset-button');
 
-    await act(async () => userEvent.click(resetButton));
+    fireEvent.click(resetButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
@@ -192,7 +191,7 @@ describe('CustomizeMyData component', () => {
 
     const saveButton = screen.getByTestId('save-button');
 
-    await act(async () => userEvent.click(saveButton));
+    fireEvent.click(saveButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalledTimes(1);
 
@@ -214,7 +213,7 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
   });
@@ -226,13 +225,13 @@ describe('CustomizeMyData component', () => {
 
     const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
 
     const closeWidgetButton = screen.getByText('handleCloseAddWidgetModal');
 
-    await act(async () => userEvent.click(closeWidgetButton));
+    fireEvent.click(closeWidgetButton);
 
     expect(screen.queryByText('AddWidgetModal')).toBeNull();
   });

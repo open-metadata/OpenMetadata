@@ -22,10 +22,7 @@ const mockFQN = 'testFQN';
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
-}));
-
-jest.mock('../../../../../utils/useRequiredParams', () => ({
-  useRequiredParams: jest.fn().mockReturnValue({ fqn: mockFQN }),
+  useParams: jest.fn().mockReturnValue({ fqn: mockFQN }),
 }));
 
 jest.mock('../../../../../rest/tableAPI');
@@ -113,10 +110,15 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),
 }));
 
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+}));
+
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
+
     render(<TableProfilerChart />);
 
     expect(

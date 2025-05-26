@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 import {
-  act,
   fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
   within,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
@@ -164,11 +162,11 @@ const renderAppDetails = async () => {
 };
 
 const ConfirmAction = (buttonLabel: string) => {
-  userEvent.click(screen.getByRole('menuitem', { name: buttonLabel }));
+  fireEvent.click(screen.getByRole('menuitem', { name: buttonLabel }));
 
   expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
 
-  userEvent.click(
+  fireEvent.click(
     screen.getByRole('button', { name: 'Confirm Confirmation Modal' })
   );
 };
@@ -216,7 +214,7 @@ describe('AppDetails component', () => {
 
     await renderAppDetails();
 
-    userEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByTestId('manage-button'));
 
     // enable app
     ConfirmAction('label.restore');
@@ -252,17 +250,15 @@ describe('AppDetails component', () => {
   it('Schedule tab Actions check', async () => {
     await renderAppDetails();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'DemandTrigger AppSchedule' })
     );
 
     expect(mockTriggerOnDemandApp).toHaveBeenCalled();
 
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'DeployTrigger AppSchedule' })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'DeployTrigger AppSchedule' })
+    );
 
     expect(mockDeployApp).toHaveBeenCalled();
     expect(mockGetApplicationByName).toHaveBeenCalled();

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { mockWidgetsData } from '../../../../mocks/AddWidgetModal.mock';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
@@ -143,7 +142,7 @@ describe('AddWidgetModal component', () => {
 
     expect(addWidgetButton).toBeInTheDocument();
 
-    await userEvent.click(addWidgetButton);
+    fireEvent.click(addWidgetButton);
 
     expect(mockProps.handleAddWidget).toHaveBeenCalledTimes(1);
     expect(mockProps.handleAddWidget).toHaveBeenCalledWith(

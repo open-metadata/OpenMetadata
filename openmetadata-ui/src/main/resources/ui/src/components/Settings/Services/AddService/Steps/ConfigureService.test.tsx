@@ -15,10 +15,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
+const mockOnNext = jest.fn();
+
 const mockConfigureServiceProps: ConfigureServiceProps = {
   serviceName: 'testService',
   onBack: jest.fn(),
-  onNext: jest.fn(),
+  onNext: mockOnNext,
 };
 
 describe('Test ConfigureService component', () => {
@@ -50,19 +52,18 @@ describe('Test ConfigureService component', () => {
   });
 
   it('Next button should work', async () => {
-    await act(async () => {
-      render(<ConfigureService {...mockConfigureServiceProps} />);
-    });
+    render(<ConfigureService {...mockConfigureServiceProps} />);
 
-    fireEvent.change(await screen.findByTestId('service-name'), {
-      target: { value: 'newName' },
+    await act(async () => {
+      fireEvent.change(await screen.findByTestId('service-name'), {
+        target: { value: 'newName' },
+      });
+      fireEvent.click(await screen.findByTestId('next-button'));
     });
-    fireEvent.click(await screen.findByTestId('next-button'));
 
     expect(await screen.findByTestId('service-name')).toHaveValue('newName');
 
-    expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
-    expect(mockConfigureServiceProps.onNext).toHaveBeenCalledWith({
+    expect(mockOnNext).toHaveBeenCalledWith({
       description: '',
       name: 'newName',
     });
