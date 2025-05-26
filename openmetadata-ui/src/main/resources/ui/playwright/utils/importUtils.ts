@@ -18,7 +18,12 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
-import { descriptionBox, descriptionBoxReadOnly, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -39,13 +44,13 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.locator('.ant-layout-content').getByRole('textbox').fill(text);
-  await page
+  const textboxLocator = page
     .locator('.ant-layout-content')
-    .getByRole('textbox')
-    .press('Enter', { delay: 100 });
+    .getByRole('textbox');
+  await textboxLocator.fill(text);
+  await textboxLocator.press('Enter', { delay: 100 });
 };
 
 export const fillDescriptionDetails = async (
@@ -213,6 +218,8 @@ const editGlossaryCustomProperty = async (
       .locator(descriptionBox)
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
 
+    await clickOutside(page);
+
     await page.getByTestId('markdown-editor').getByTestId('save').click();
 
     await page.waitForSelector(descriptionBox, {
@@ -301,7 +308,7 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName: Record<string, string>
+  propertyListName?: Record<string, string>
 ) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -362,7 +369,9 @@ export const fillGlossaryRowDetails = async (
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, propertyListName);
+  if (propertyListName) {
+    await fillCustomPropertyDetails(page, propertyListName);
+  }
 };
 
 export const validateImportStatus = async (
@@ -705,6 +714,12 @@ export const pressKeyXTimes = async (
   key: string
 ) => {
   for (let i = 0; i < length; i++) {
+    const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+    const isActive = await activeCell.isVisible();
+
+    if (!isActive) {
+      await page.click('.InovuaReactDataGrid__cell--cell-active');
+    }
     await page
       .locator('.InovuaReactDataGrid__cell--cell-active')
       .press(key, { delay: 100 });

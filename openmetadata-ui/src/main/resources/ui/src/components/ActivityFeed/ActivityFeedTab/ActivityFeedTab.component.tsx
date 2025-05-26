@@ -158,7 +158,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     setIsFirstLoad(true);
-    history.push(
+    history.replace(
       entityUtilClassBase.getEntityLink(
         entityType,
         fqn,
@@ -558,7 +558,7 @@ export const ActivityFeedTab = ({
                     />
                     <span>{t('label.task-plural')}</span>
                   </Space>
-                  <span>
+                  <span data-testid="left-panel-task-count">
                     {getCountBadge(
                       countData?.data?.openTaskCount,
                       '',

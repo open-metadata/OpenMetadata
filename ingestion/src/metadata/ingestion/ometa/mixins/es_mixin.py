@@ -97,7 +97,7 @@ class ESMixin(Generic[T]):
 
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
-        "&size={size}&index={index}"
+        "&size={size}&index={index}&deleted=false"
     )
 
     # sort_field needs to be unique for the pagination to work, so we can use the FQN
@@ -125,14 +125,20 @@ class ESMixin(Generic[T]):
         if response:
             if fields:
                 fields = fields.split(",")
-            return [
-                self.get_by_name(
+
+            entities = []
+            for hit in response["hits"]["hits"]:
+                entity = self.get_by_name(
                     entity=entity_type,
                     fqn=hit["_source"]["fullyQualifiedName"],
                     fields=fields,
                 )
-                for hit in response["hits"]["hits"]
-            ] or None
+                if entity is None:
+                    continue
+
+                entities.append(entity)
+
+            return entities or None
 
         return None
 

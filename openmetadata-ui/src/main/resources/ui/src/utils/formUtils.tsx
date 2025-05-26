@@ -31,6 +31,7 @@ import { compact, startCase, toString } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -172,6 +173,15 @@ export const getField = (field: FieldProp) => {
 
       break;
 
+    case FieldTypes.TREE_ASYNC_SELECT_LIST:
+      fieldElement = (
+        <TreeAsyncSelectList
+          {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
+        />
+      );
+
+      break;
+
     case FieldTypes.ASYNC_SELECT_LIST:
       fieldElement = (
         <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
@@ -278,7 +288,7 @@ export const generateFormFields = (fields: FieldProp[]) => {
 
 export const transformErrors: ErrorTransformer = (errors) => {
   const errorRet = errors.map((error) => {
-    const { property } = error;
+    const { property, params, name } = error;
 
     /**
      * For nested fields we have to check if it's property start with "."
@@ -290,12 +300,25 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
     // If element is not present in DOM, ignore error
     if (document.getElementById(id)) {
-      const fieldName = error.params?.missingProperty;
-      if (fieldName) {
-        const customMessage = i18n.t('message.field-text-is-required', {
-          fieldText: startCase(fieldName),
-        });
-        error.message = customMessage;
+      const fieldName = startCase(property?.split('/').pop() ?? '');
+
+      const errorMessages = {
+        required: () => ({
+          message: i18n.t('message.field-text-is-required', {
+            fieldText: startCase(params?.missingProperty),
+          }),
+        }),
+        minimum: () => ({
+          message: i18n.t('message.value-must-be-greater-than', {
+            field: fieldName,
+            minimum: params?.limit,
+          }),
+        }),
+      };
+
+      const errorHandler = errorMessages[name as keyof typeof errorMessages];
+      if (errorHandler && params) {
+        error.message = errorHandler().message;
 
         return error;
       }

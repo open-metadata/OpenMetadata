@@ -41,6 +41,7 @@ export const visitEntityPage = async (data: {
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
+  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -393,6 +394,8 @@ export const assignTag = async (
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await expect(
     page
       .getByTestId(parentId)
@@ -481,7 +484,7 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
-    expect(
+    await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
         .getByTestId('tags-container')
@@ -572,6 +575,8 @@ export const assignGlossaryTerm = async (
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await expect(
     page
       .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -619,6 +624,8 @@ export const assignGlossaryTermToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
   await patchRequest;
 
   await expect(
@@ -661,7 +668,7 @@ export const removeGlossaryTerm = async (
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
-    expect(
+    await expect(
       page
         .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
@@ -758,6 +765,10 @@ export const unFollowEntity = async (
   const unFollowResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers/*`
   );
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.getByTestId('entity-follow-button').click();
   await unFollowResponse;
 
@@ -772,7 +783,10 @@ export const validateFollowedEntityToWidget = async (
   isFollowing: boolean
 ) => {
   await redirectToHomePage(page);
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   if (isFollowing) {
     await page.getByTestId('following-widget').isVisible();
 
@@ -838,11 +852,11 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate });
-
   await page.reload();
+  await page.waitForLoadState('networkidle');
   await page.getByTestId('announcement-card').isVisible();
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
 
   // TODO: Review redirection flow for announcement @Ashish8689
   // await redirectToHomePage(page);
@@ -1248,10 +1262,11 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
+  await page.waitForLoadState('networkidle');
 
   await toastNotification(
     page,
-    /deleted successfully!/,
+    /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
 
@@ -1301,7 +1316,8 @@ export const hardDeleteEntity = async (
   endPoint: EntityTypeEndpoint
 ) => {
   await page.click('[data-testid="manage-button"]');
-  await page.getByTestId('delete-button').click();
+  await page.waitForSelector('[data-testid="delete-button"]');
+  await page.click('[data-testid="delete-button"]');
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
@@ -1319,10 +1335,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-
+  await page.waitForLoadState('networkidle');
   await toastNotification(
     page,
-    /deleted successfully!/,
+    /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
 };

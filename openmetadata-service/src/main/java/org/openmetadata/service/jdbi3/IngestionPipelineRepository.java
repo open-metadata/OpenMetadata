@@ -188,7 +188,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private ChangeEvent getChangeEvent(
+  protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -337,6 +337,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
+      updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
     }
 
     private void updateSourceConfig() {
@@ -366,6 +367,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
       if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
         recordChange("deployed", origDeployed, updatedDeployed);
+      }
+    }
+
+    private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
+      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+        recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
 

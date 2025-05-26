@@ -233,7 +233,7 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.PIPELINE,
           pipelineFQN,
@@ -257,6 +257,10 @@ const PipelineDetails = ({
     (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -347,7 +351,7 @@ const PipelineDetails = ({
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

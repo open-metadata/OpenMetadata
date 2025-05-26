@@ -40,6 +40,10 @@ export interface DashboardService {
      */
     domain?: EntityReference;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -253,7 +257,7 @@ export interface Connection {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -342,19 +346,9 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
-     * Tableau API version.
-     *
-     * Sigma API version.
-     */
-    apiVersion?: string;
-    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
-    /**
-     * Tableau Environment Name.
-     */
-    env?: string;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
@@ -362,11 +356,7 @@ export interface Connection {
     /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:   string;
+    siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
     verifySSL?: VerifySSL;
     /**
@@ -466,6 +456,10 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      */
     token?: string;
+    /**
+     * Sigma API version.
+     */
+    apiVersion?: string;
 }
 
 /**
@@ -1380,6 +1374,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

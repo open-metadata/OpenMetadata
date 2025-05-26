@@ -88,9 +88,6 @@ class ServiceBaseClass {
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
 
-    const statusPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     const ipPromise = page.waitForRequest(
       '/api/v1/services/ingestionPipelines/ip'
     );
@@ -98,7 +95,6 @@ class ServiceBaseClass {
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
-    await statusPromise;
     await ipPromise;
 
     await page.click('[data-testid="service-requirements"]');
@@ -293,6 +289,18 @@ class ServiceBaseClass {
       .click();
 
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.click('#root\\/raiseOnError');
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`

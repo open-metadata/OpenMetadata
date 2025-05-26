@@ -235,7 +235,7 @@ const ContainerPage = () => {
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.CONTAINER,
           decodedContainerName,
@@ -571,7 +571,7 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

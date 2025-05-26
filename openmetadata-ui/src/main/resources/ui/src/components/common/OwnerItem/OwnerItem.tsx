@@ -22,20 +22,20 @@ import { OwnerAvatar } from '../OwnerAvtar/OwnerAvatar';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 interface OwnerItemProps {
   owner: EntityReference;
-  index: number;
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
+  isAssignee?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
   owner,
-  index,
   isCompactView,
   className,
   ownerDisplayName,
   avatarSize = 32,
+  isAssignee,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
@@ -71,11 +71,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   }
 
   return (
-    <div
-      className={classNames('owner-avatar-container stacked-view')}
-      style={{
-        zIndex: index + 1,
-      }}>
+    <div className={classNames('owner-avatar-container stacked-view')}>
       {isTeam ? (
         <Link
           className="d-flex no-underline"
@@ -84,6 +80,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <OwnerAvatar
             avatarSize={avatarSize}
             inheritedIcon={inheritedIcon}
+            isAssignee={isAssignee}
             isCompactView={isCompactView}
             owner={owner}
           />
@@ -97,6 +94,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             <OwnerAvatar
               avatarSize={avatarSize}
               inheritedIcon={inheritedIcon}
+              isAssignee={isAssignee}
               isCompactView={isCompactView}
               owner={owner}
             />

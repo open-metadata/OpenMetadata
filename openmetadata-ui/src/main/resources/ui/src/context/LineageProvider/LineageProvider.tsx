@@ -26,6 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -78,6 +79,7 @@ import {
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
@@ -96,6 +98,7 @@ import {
   createNewEdge,
   createNodes,
   decodeLineageHandles,
+  getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
   getConnectedNodesEdges,
@@ -135,8 +138,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
   const location = useCustomLocation();
+  const history = useHistory();
   const { isTourOpen, isTourPage } = useTourProvider();
   const { appPreferences } = useApplicationStore();
+  const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -197,6 +202,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const backspacePressed = useKeyPress('Backspace');
   const { showModal } = useEntityExportModalProvider();
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
+  const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
   const lineageLayer = useMemo(() => {
     const param = location.search;
@@ -426,12 +432,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [queryFilter, decodedFqn]
   );
 
-  const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
-    setPlatformView(view);
-    if (view !== LineagePlatformView.None) {
-      setActiveLayer([]);
-    }
-  }, []);
+  const onPlatformViewChange = useCallback(
+    (view: LineagePlatformView) => {
+      setPlatformView(view);
+      if (view !== LineagePlatformView.None) {
+        setActiveLayer([]);
+      }
+
+      if (isPlatformLineage) {
+        const searchData = QueryString.parse(
+          location.search.startsWith('?')
+            ? location.search.substring(1)
+            : location.search
+        );
+        history.push({
+          search: QueryString.stringify({
+            ...searchData,
+            platformView: view !== LineagePlatformView.None ? view : undefined,
+          }),
+        });
+      }
+    },
+    [isPlatformLineage, location.search]
+  );
 
   const exportLineageData = useCallback(
     async (_: string) => {
@@ -596,7 +619,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEntityType(entityType);
       setIsPlatformLineage(isPlatformLineage ?? false);
       if (isPlatformLineage && !entity) {
-        setPlatformView(LineagePlatformView.Service);
+        onPlatformViewChange(LineagePlatformView.Service);
       }
     },
     []
@@ -1247,11 +1270,32 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               ...pre?.data,
               edge: {
                 ...pre?.data?.edge,
+                columns: updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
                 description,
                 sqlQuery,
               },
             },
           };
+        });
+        // Update the edge in the edges array
+        setEdges((prev) => {
+          return prev.map((edge) => {
+            return edge.id === selectedEdge?.id
+              ? {
+                  ...edge,
+                  data: {
+                    ...edge.data,
+                    edge: {
+                      ...edge.data?.edge,
+                      columns:
+                        updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
+                      description,
+                      sqlQuery,
+                    },
+                  },
+                }
+              : edge;
+          });
         });
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -1527,6 +1571,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       dataQualityLineage,
       redraw,
       onPlatformViewChange,
+      dqHighlightedEdges,
     };
   }, [
     dataQualityLineage,
@@ -1575,6 +1620,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onExportClick,
     redraw,
     onPlatformViewChange,
+    dqHighlightedEdges,
   ]);
 
   useEffect(() => {
@@ -1599,11 +1645,27 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [activeLayer, decodedFqn, lineageConfig]);
 
+  useEffect(() => {
+    if (
+      dataQualityLineage?.nodes &&
+      !isUndefined(edges) &&
+      isUndefined(dqHighlightedEdges)
+    ) {
+      const edgesToHighlight = dataQualityLineage.nodes
+        .flatMap((dqNode) => getAllDownstreamEdges(dqNode.id, edges ?? []))
+        .map((edge) => edge.id);
+      const edgesToHighlightSet = new Set(edgesToHighlight);
+      setDqHighlightedEdges(edgesToHighlightSet);
+    }
+  }, [dataQualityLineage, edges, dqHighlightedEdges]);
+
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
       <div
         className={classNames('lineage-root', {
           'full-screen-lineage': isFullScreen,
+          'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
+          'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />

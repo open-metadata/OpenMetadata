@@ -260,7 +260,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             queries[0]
           : queries[0];
         setSelectedQuery(selectedQueryData);
-        history.push({
+        history.replace({
           search: stringifySearchParams({
             tableId,
             query: selectedQueryData.id,

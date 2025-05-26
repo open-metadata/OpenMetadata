@@ -222,11 +222,15 @@ test('GlossaryTerm', async ({ page }) => {
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
 
-    await expect(
-      page.locator(
-        '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
-      )
-    ).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    const diffLocator = page.locator(
+      '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
+    );
+
+    await diffLocator.waitFor({ state: 'attached' });
+
+    await expect(diffLocator).toBeVisible();
   });
 
   await cleanup();

@@ -178,6 +178,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
@@ -185,6 +186,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.CONTAINER}
                     key={tagType}
                     permission={false}

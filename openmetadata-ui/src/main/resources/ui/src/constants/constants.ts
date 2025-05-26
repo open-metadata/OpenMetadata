@@ -84,6 +84,10 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
+export const COLLATE_SAAS = 'CollateSaaS';
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -420,3 +424,6 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const ONE_HOUR_MS = 60 * 60 * 1000;

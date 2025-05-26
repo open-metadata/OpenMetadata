@@ -196,6 +196,13 @@ POSTGRES_GET_SERVER_VERSION = """
 show server_version_num
 """
 
+# pylint: disable=anomalous-backslash-in-string
+POSTGRES_GET_SCHEMA_NAMES = """
+SELECT nspname FROM pg_namespace
+    WHERE nspname NOT LIKE 'pg\_%'
+    ORDER BY nspname
+"""
+
 POSTGRES_FETCH_FK = """
     SELECT r.conname,
         pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
