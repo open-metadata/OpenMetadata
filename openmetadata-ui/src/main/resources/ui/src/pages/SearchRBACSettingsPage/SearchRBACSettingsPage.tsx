@@ -96,7 +96,7 @@ const SearchRBACSettingsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.search-rbac')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

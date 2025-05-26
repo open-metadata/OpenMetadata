@@ -35,7 +35,14 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -91,7 +98,6 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh");
 
@@ -301,8 +307,22 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw AuthenticationException.getExpiredTokenException();
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    Map<String, Claim> claims = validateJwtAndGetClaims(token);
+    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    // TODO: check if we need to set the scheme and auth type
+    return new CatalogSecurityContext(
+        catalogPrincipal,
+        "https",
+        SecurityContext.DIGEST_AUTH,
+        getUserRolesFromClaims(claims, isBot(claims)));
   }
 }

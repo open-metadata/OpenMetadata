@@ -578,6 +578,18 @@ test.describe('Activity feed', () => {
       await afterActionUser2();
     });
   });
+
+  test('Verify feed count', async ({ page }) => {
+    await redirectToHomePage(page);
+    await entity.visitEntityPage(page);
+    await page.getByTestId('request-description').click();
+    await createDescriptionTask(page, {
+      term: entity.entity.displayName,
+      assignee: user1.responseData.name,
+    });
+
+    await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
+  });
 });
 
 base.describe('Activity feed with Data Consumer User', () => {
@@ -675,6 +687,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await commentWithCloseTask;
 
       await toastNotification(page1, 'Task closed successfully.');
+      await page1.waitForLoadState('networkidle');
       await checkTaskCountInActivityFeed(page1, 1, 1);
 
       await afterActionUser1();
@@ -710,9 +723,10 @@ base.describe('Activity feed with Data Consumer User', () => {
       await tagsTask.click();
       await entityPageTaskTab;
 
+      await page2.waitForLoadState('networkidle');
       // Count for task should be 1 both open and closed
 
-      checkTaskCountInActivityFeed(page2, 1, 1);
+      await checkTaskCountInActivityFeed(page2, 1, 1);
 
       // Should not see the close button
       expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
@@ -727,7 +741,8 @@ base.describe('Activity feed with Data Consumer User', () => {
       await resolveTask;
       await toastNotification(page2, /Task resolved successfully/);
 
-      checkTaskCountInActivityFeed(page2, 0, 2);
+      await page2.waitForLoadState('networkidle');
+      await checkTaskCountInActivityFeed(page2, 0, 2);
 
       await afterActionUser2();
     });

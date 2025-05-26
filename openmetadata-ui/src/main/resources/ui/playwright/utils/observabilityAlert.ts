@@ -41,6 +41,10 @@ import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const getAlerts = page.waitForResponse(
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
@@ -225,79 +229,78 @@ export const getObservabilityCreationDetails = ({
         },
       ],
     },
-    // @aniketkatkar97 please fix and uncomment this
-    // {
-    //   source: 'testCase',
-    //   sourceDisplayName: 'Test case',
-    //   filters: [
-    //     {
-    //       name: 'Test Case Name',
-    //       inputSelector: 'fqn-list-select',
-    //       inputValue: testCaseName,
-    //       exclude: true,
-    //     },
-    //     {
-    //       name: 'Domain',
-    //       inputSelector: 'domain-select',
-    //       inputValue: domainName,
-    //       inputValueId: domainDisplayName,
-    //       exclude: false,
-    //     },
-    //     {
-    //       name: 'Owner Name',
-    //       inputSelector: 'owner-name-select',
-    //       inputValue: userName,
-    //       exclude: true,
-    //     },
-    //     {
-    //       name: 'Table Name A Test Case Belongs To',
-    //       inputSelector: 'table-name-select',
-    //       inputValue: tableName2,
-    //       exclude: false,
-    //     },
-    //   ],
-    //   actions: [
-    //     {
-    //       name: 'Get Test Case Status Updates',
-    //       inputs: [
-    //         {
-    //           inputSelector: 'test-result-select',
-    //           inputValue: 'Success',
-    //         },
-    //       ],
-    //       exclude: false,
-    //     },
-    //     {
-    //       name: 'Get Test Case Status Updates belonging to a Test Suite',
-    //       inputs: [
-    //         {
-    //           inputSelector: 'test-suite-select',
-    //           inputValue: testSuiteFQN,
-    //           waitForAPI: true,
-    //         },
-    //         {
-    //           inputSelector: 'test-status-select',
-    //           inputValue: 'Failed',
-    //         },
-    //       ],
-    //       exclude: false,
-    //     },
-    //   ],
-    //   destinations: [
-    //     {
-    //       mode: 'internal',
-    //       category: 'Users',
-    //       inputSelector: 'User-select',
-    //       inputValue: userName,
-    //       type: 'Email',
-    //     },
-    //     {
-    //       mode: 'external',
-    //       category: 'Webhook',
-    //       inputValue: 'https://webhook.com',
-    //     },
-    //   ],
-    // },
+    {
+      source: 'testCase',
+      sourceDisplayName: 'Test case',
+      filters: [
+        {
+          name: 'Test Case Name',
+          inputSelector: 'fqn-list-select',
+          inputValue: testCaseName,
+          exclude: true,
+        },
+        {
+          name: 'Domain',
+          inputSelector: 'domain-select',
+          inputValue: domainName,
+          inputValueId: domainDisplayName,
+          exclude: false,
+        },
+        {
+          name: 'Owner Name',
+          inputSelector: 'owner-name-select',
+          inputValue: userName,
+          exclude: true,
+        },
+        {
+          name: 'Table Name A Test Case Belongs To',
+          inputSelector: 'table-name-select',
+          inputValue: tableName2,
+          exclude: false,
+        },
+      ],
+      actions: [
+        {
+          name: 'Get Test Case Status Updates',
+          inputs: [
+            {
+              inputSelector: 'test-result-select',
+              inputValue: 'Success',
+            },
+          ],
+          exclude: false,
+        },
+        {
+          name: 'Get Test Case Status Updates belonging to a Test Suite',
+          inputs: [
+            {
+              inputSelector: 'test-suite-select',
+              inputValue: testSuiteFQN,
+              waitForAPI: true,
+            },
+            {
+              inputSelector: 'test-status-select',
+              inputValue: 'Failed',
+            },
+          ],
+          exclude: false,
+        },
+      ],
+      destinations: [
+        {
+          mode: 'internal',
+          category: 'Users',
+          inputSelector: 'User-select',
+          inputValue: userName,
+          type: 'Email',
+        },
+        {
+          mode: 'external',
+          category: 'Webhook',
+          inputValue: 'https://webhook.com',
+        },
+      ],
+    },
     {
       source: 'testSuite',
       sourceDisplayName: 'Test Suite',

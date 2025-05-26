@@ -113,7 +113,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -134,12 +134,14 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.API_ENDPOINT}
                     key={tagType}
                     permission={false}
@@ -161,14 +163,12 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_ENDPOINT}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -205,8 +205,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.API_ENDPOINT}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

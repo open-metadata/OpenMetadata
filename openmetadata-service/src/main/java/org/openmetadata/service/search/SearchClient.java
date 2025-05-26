@@ -19,6 +19,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -256,9 +257,10 @@ public interface SearchClient {
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
+  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+      throws IOException;
 
-  Response aggregate(String index, String fieldName, String value, String query) throws IOException;
+  Response aggregate(AggregationRequest request) throws IOException;
 
   JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filters)

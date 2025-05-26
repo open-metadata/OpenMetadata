@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isNil } from 'lodash';
+import { cloneDeep, isNil, reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { APIServiceType } from '../generated/entity/data/apiCollection';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -41,7 +44,7 @@ export const getConnectionSchemas = ({
 
   let connSch = {
     schema: {} as Record<string, any>,
-    uiSchema: {},
+    uiSchema: {} as Record<string, any>,
   };
 
   const validConfig = cloneDeep(config || {});
@@ -143,3 +146,45 @@ export const getFilteredSchema = (
       return removeDefaultFilters ? !isFiltersField : isFiltersField;
     })
   );
+
+/**
+ * Hides all the default filter fields in the UI Schema nested under all the ServiceNestedConnectionFields
+ * @param uiSchema - The UI Schema to hide the default filter fields
+ * @returns The UI Schema with all the default filter fields hidden
+ */
+export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
+  uiSchema: Record<string, any>
+) => {
+  // object with all the default filter fields hidden
+  const uiSchemaWithAllDefaultFilterFieldsHidden = reduce(
+    SERVICE_FILTER_PATTERN_FIELDS,
+    (acc, field) => {
+      acc[field] = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+
+  // object with all the default filter fields hidden nested under all the ServiceNestedConnectionFields
+  const uiSchemaWithNestedDefaultFilterFieldsHidden = reduce(
+    Object.values(ServiceNestedConnectionFields),
+    (acc, field) => {
+      acc[field] = {
+        ...uiSchema[field],
+        ...uiSchemaWithAllDefaultFilterFieldsHidden,
+      };
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+
+  return {
+    ...uiSchema,
+    ...uiSchemaWithNestedDefaultFilterFieldsHidden,
+  };
+};

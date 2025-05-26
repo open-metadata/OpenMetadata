@@ -238,7 +238,7 @@ const MetricListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <Row className="p-x-lg p-t-md p-b-md" gutter={[0, 16]}>
+      <Row className="p-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader
@@ -276,7 +276,7 @@ const MetricListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   heading={t('label.metric')}
                   permission={permission.Create}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

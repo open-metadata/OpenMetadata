@@ -69,7 +69,7 @@ class DomainClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DESCRIPTION]: 4,
       [DetailPageWidgetKeys.OWNERS]: 1.5,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -108,7 +108,7 @@ class DomainClassBase {
 
     return [
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

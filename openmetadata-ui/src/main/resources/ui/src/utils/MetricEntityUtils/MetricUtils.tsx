@@ -177,13 +177,11 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: metricDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.METRIC>
-            entityType={EntityType.METRIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.METRIC>
+          entityType={EntityType.METRIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
@@ -191,7 +189,7 @@ export const getMetricDetailsPageTabs = ({
 
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
-    return <RelatedMetrics newLook />;
+    return <RelatedMetrics />;
   }
 
   return (

@@ -12,9 +12,22 @@
  */
 
 @import (reference) url('../variables.less');
+@import (reference) url('antd/dist/antd.variable.less');
+@import (reference) url('../fonts.less');
+
+.scrollable-card-body-sm() {
+  max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
+  overflow-y: auto;
+}
+
+.scrollable-card-body() {
+  max-height: calc(100% - @card-head-height - @card-padding-base);
+  overflow-y: auto;
+}
 
 .ant-card {
   background: @background-color;
+  border-color: @border-color;
 }
 
 .card-body-full {
@@ -39,6 +52,7 @@
 
 .card-body-border-none {
   border: none;
+
   .ant-card-head {
     border: none;
   }
@@ -61,16 +75,70 @@
 }
 
 .ant-card.new-header-border-card {
+  height: auto !important;
+
   .ant-card-head {
     background: @grey-50;
-    border-bottom: none;
     border-radius: @border-radius-sm;
+
+    .text-sm();
+    font-weight: 500;
   }
 
-  height: calc(100% - 52px - 20px);
-  overflow-y: auto;
-  border-radius: @border-radius-sm;
-  border: 1px solid @blue-15;
-  background: @white;
-  box-shadow: 0px 1px 2px 0px #0a0d120d;
+  .ant-card-body {
+    height: auto !important;
+    max-height: none !important;
+    transition: all 200ms ease;
+    transition-property: height, left, top;
+  }
+
+  .expand-collapse-icon {
+    transform: rotate(180deg);
+  }
+
+  &.expanded {
+    .ant-card-head {
+      border-bottom: none;
+      margin-bottom: 0;
+
+      .expand-collapse-icon {
+        transform: rotate(0deg);
+      }
+    }
+  }
+
+  &:not(.expanded) {
+    .ant-card-body {
+      height: 0 !important;
+      overflow: hidden;
+      padding: 0;
+    }
+  }
+
+  .expand-collapse-icon {
+    & svg {
+      fill: @white;
+    }
+  }
+
+  .ant-card-extra {
+    margin-left: @size-sm;
+  }
+
+  border: 1px solid @grey-15;
+}
+
+.bot-page-roles-card-header {
+  .ant-card-head {
+    background: @grey-50;
+    border-radius: @border-radius-sm;
+    .text-sm();
+    font-weight: 500;
+    border-bottom: none;
+  }
+
+  .ant-card-body {
+    height: auto !important;
+    max-height: none !important;
+  }
 }

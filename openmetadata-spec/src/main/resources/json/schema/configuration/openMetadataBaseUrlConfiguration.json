@@ -8,7 +8,8 @@
   "properties": {
     "openMetadataUrl": {
       "description": "OpenMetadata Server Endpoint",
-      "type": "string"
+      "type": "string",
+      "default": "http://localhost:8585"
     }
   },
   "additionalProperties": false

@@ -214,12 +214,12 @@ const SampleDataTable = ({
 
   return (
     <div
-      className={classNames('m-md', {
+      className={classNames('p-md border-default border-radius-sm', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-b-md justify-end w-full">
+      <Space className="m-y-xss justify-end w-full">
         {hasPermission && (
           <Dropdown
             menu={{

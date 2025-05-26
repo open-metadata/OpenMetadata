@@ -194,6 +194,8 @@ export interface ServiceConnectionClass {
  *
  * Airflow Metadata Database Connection Config
  *
+ * Wherescape Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -258,7 +260,11 @@ export interface ConfigClass {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
-    apiCollectionFilterPattern?: APICollectionFilterPatternClass;
+    apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
     /**
      * Open API Schema URL.
      */
@@ -308,7 +314,7 @@ export interface ConfigClass {
     /**
      * Regex exclude or include charts that matches the pattern.
      */
-    chartFilterPattern?: APICollectionFilterPatternClass;
+    chartFilterPattern?: FilterPattern;
     /**
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
@@ -330,11 +336,11 @@ export interface ConfigClass {
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
-    dashboardFilterPattern?: APICollectionFilterPatternClass;
+    dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
      */
-    dataModelFilterPattern?: APICollectionFilterPatternClass;
+    dataModelFilterPattern?: FilterPattern;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -353,7 +359,7 @@ export interface ConfigClass {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -450,7 +456,7 @@ export interface ConfigClass {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?: APICollectionFilterPatternClass;
+    projectFilterPattern?: FilterPattern;
     /**
      * Password to connect to Metabase.
      *
@@ -676,16 +682,6 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
-     * Tableau API version.
-     *
-     * Sigma API version.
-     *
-     * OpenMetadata server API version to use.
-     *
-     * Airbyte API version.
-     */
-    apiVersion?: string;
-    /**
      * Types of methods used to authenticate to the tableau instance
      *
      * Choose Auth Config Type.
@@ -693,10 +689,6 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the alation instance
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
-    /**
-     * Tableau Environment Name.
-     */
-    env?: string;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      *
@@ -709,10 +701,6 @@ export interface ConfigClass {
      * Tableau Site Name.
      */
     siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?: string;
     /**
      * SSL Configuration details.
      *
@@ -820,6 +808,18 @@ export interface ConfigClass {
      */
     projectName?: string;
     /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?: SpaceType[];
+    /**
+     * Sigma API version.
+     *
+     * OpenMetadata server API version to use.
+     *
+     * Airbyte API version.
+     */
+    apiVersion?: string;
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -836,12 +836,12 @@ export interface ConfigClass {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?:   ConfigDatabaseFilterPattern;
+    databaseFilterPattern?:   FilterPattern;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: ConfigSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -868,7 +868,7 @@ export interface ConfigClass {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: APICollectionFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Taxonomy location used to fetch policy tags
      */
@@ -1118,6 +1118,10 @@ export interface ConfigClass {
      */
     creditCost?: number;
     /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
+    /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
      */
@@ -1285,7 +1289,7 @@ export interface ConfigClass {
     /**
      * Regex to only fetch topics that matches the pattern.
      */
-    topicFilterPattern?: APICollectionFilterPatternClass;
+    topicFilterPattern?: FilterPattern;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -1470,7 +1474,11 @@ export interface ConfigClass {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: APICollectionFilterPatternClass;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
     /**
      * Fivetran API Secret.
      */
@@ -1542,6 +1550,10 @@ export interface ConfigClass {
      */
     jobIds?: string[];
     /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
+    /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
     projectIds?: string[];
@@ -1564,7 +1576,7 @@ export interface ConfigClass {
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
-    mlModelFilterPattern?: APICollectionFilterPatternClass;
+    mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
      * mysql+pymysql://mlflow:password@localhost:3307/experiments
@@ -1585,7 +1597,7 @@ export interface ConfigClass {
     /**
      * Regex to only fetch containers that matches the pattern.
      */
-    containerFilterPattern?: APICollectionFilterPatternClass;
+    containerFilterPattern?: FilterPattern;
     /**
      * Connection Timeout in Seconds
      */
@@ -1593,7 +1605,7 @@ export interface ConfigClass {
     /**
      * Regex to only fetch search indexes that matches the pattern.
      */
-    searchIndexFilterPattern?: APICollectionFilterPatternClass;
+    searchIndexFilterPattern?: FilterPattern;
 }
 
 /**
@@ -1625,11 +1637,11 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include projects that matches the pattern.
  *
- * Regex to only include/exclude tables that matches the pattern.
- *
  * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
  *
@@ -1641,7 +1653,7 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch search indexes that matches the pattern.
  */
-export interface APICollectionFilterPatternClass {
+export interface FilterPattern {
     /**
      * List of strings/regex patterns to match and exclude only database entities that match.
      */
@@ -2605,7 +2617,7 @@ export interface ConfigConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: ConnectionDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the source service.
      *
@@ -2627,7 +2639,7 @@ export interface ConfigConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: ConnectionSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -2644,7 +2656,7 @@ export interface ConfigConnection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: APICollectionFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -2672,7 +2684,7 @@ export interface ConfigConnection {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: APICollectionFilterPatternClass;
+    pipelineFilterPattern?: FilterPattern;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -2696,47 +2708,6 @@ export interface AuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch api collections with names matching the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
- */
-export interface ConnectionDatabaseFilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -2825,47 +2796,6 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only fetch api collections with names matching the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
- */
-export interface ConnectionSchemaFilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -3000,44 +2930,87 @@ export interface GCPCredentials {
 }
 
 /**
- * Regex to only fetch api collections with names matching the pattern.
+ * Underlying database connection
  *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
+ * Mssql Database Connection Config
  */
-export interface ConfigDatabaseFilterPattern {
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
     /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
      */
-    excludes?: string[];
+    database: string;
     /**
-     * List of strings/regex patterns to match and include only database entities that match.
+     * Regex to only include/exclude databases that matches the pattern.
      */
-    includes?: string[];
-    [property: string]: any;
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
 }
 
 /**
@@ -3142,7 +3115,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: ConnectionDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the source service.
      *
@@ -3158,7 +3131,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -3179,7 +3152,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: APICollectionFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -3203,15 +3176,6 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -3387,47 +3351,6 @@ export enum SaslMechanismType {
 }
 
 /**
- * Regex to only fetch api collections with names matching the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
- */
-export interface ConfigSchemaFilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -3537,6 +3460,12 @@ export enum KafkaSecurityProtocol {
     SSL = "SSL",
     SaslPlaintext = "SASL_PLAINTEXT",
     SaslSSL = "SASL_SSL",
+}
+
+export enum SpaceType {
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
 }
 
 /**
@@ -3813,4 +3742,5 @@ export enum RESTType {
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
     Vertica = "Vertica",
+    Wherescape = "Wherescape",
 }

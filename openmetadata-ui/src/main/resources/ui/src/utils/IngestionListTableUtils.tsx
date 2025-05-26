@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { capitalize, isUndefined, startCase } from 'lodash';
 import React from 'react';
+import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
+import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
@@ -53,16 +56,21 @@ export const renderTypeField =
     );
   };
 
-export const renderStatusField = (_: string, record: IngestionPipeline) => (
-  <Tag
-    className={classNames(
-      'ingestion-run-badge latest pipeline-status',
-      record.enabled ? 'success' : 'paused'
-    )}
-    data-testid="pipeline-active-status">
-    {record.enabled ? t('label.active') : t('label.paused')}
-  </Tag>
-);
+export const renderStatusField = (_: string, record: IngestionPipeline) => {
+  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+
+  return (
+    <Tag
+      className={classNames(
+        'ingestion-run-badge latest pipeline-status',
+        record.enabled ? 'success' : 'paused'
+      )}
+      data-testid="pipeline-active-status">
+      <Icon component={statusIcon} />
+      {record.enabled ? t('label.active') : t('label.paused')}
+    </Tag>
+  );
+};
 
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {

@@ -74,6 +74,8 @@ const mockProps = {
   onEditGlossaryTerm: jest.fn(),
   updateVote: jest.fn(),
   onThreadLinkSelect: jest.fn(),
+  toggleTabExpanded: jest.fn(),
+  isTabExpanded: false,
 };
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => {

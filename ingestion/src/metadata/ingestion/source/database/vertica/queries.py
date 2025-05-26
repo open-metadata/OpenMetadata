@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,20 +28,6 @@ import textwrap
 # v_catalog.comments with v_catalog.columns.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        WITH column_projection as (
-          SELECT 
-            column_id,
-            proj.projection_name
-        FROM v_catalog.columns col,
-          v_catalog.projections proj
-        where lower(table_name) = '{table}' 
-            AND {schema_condition}
-            AND proj.projection_id in (
-              select 
-                min(projection_id) 
-              from v_catalog.projections sub_proj
-              where col.table_id=sub_proj.anchor_table_id
-        ))
         select
           column_name,
           data_type,
@@ -50,12 +36,11 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
           comment 
         from 
           v_catalog.columns col
-          LEFT JOIN column_projection proj ON proj.column_id = col.column_id
-          LEFT JOIN v_catalog.comments com ON com.object_type = 'COLUMN'
-          AND com.object_name = CONCAT(
-            CONCAT(proj.projection_name, '.'),
-            col.column_name
-          )
+          LEFT JOIN v_catalog.comments cm
+          ON col.table_schema = cm.object_schema
+          AND col.table_name = cm.object_name
+          AND col.column_name = cm.child_object
+          AND cm.object_type = 'COLUMN'
         WHERE 
           lower(table_name) = '{table}'
           AND {schema_condition}

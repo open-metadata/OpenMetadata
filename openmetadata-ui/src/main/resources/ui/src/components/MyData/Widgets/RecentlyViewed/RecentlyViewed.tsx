@@ -105,6 +105,7 @@ const RecentlyViewed = ({
           {isEmpty(data) ? (
             <div className="flex-center h-full">
               <ErrorPlaceHolder
+                className="border-none"
                 icon={
                   <RecentlyViewedEmptyIcon
                     height={SIZE.X_SMALL}
@@ -125,7 +126,7 @@ const RecentlyViewed = ({
               </ErrorPlaceHolder>
             </div>
           ) : (
-            <div className="entity-list-body">
+            <div className="entity-list-body no-scrollbar">
               {data.map((item) => {
                 return (
                   <div

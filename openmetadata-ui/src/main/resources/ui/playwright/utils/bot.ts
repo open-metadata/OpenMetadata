@@ -22,7 +22,7 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `pw%bot-test-${uuid()}`;
+const botName = `a-bot-pw%test-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
@@ -75,7 +75,7 @@ export const createBot = async (page: Page) => {
 
   // Verify bot is getting added in the bots listing page
   await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.botName })
+    page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
   ).toBeVisible();
 
   await expect(
@@ -127,8 +127,8 @@ export const updateBotDetails = async (page: Page) => {
 
   // Verify the display name is updated on bot details page
   await expect(
-    page.locator('[data-testid="left-panel"] .display-name')
-  ).toContainText(BOT_DETAILS.updatedBotName);
+    page.getByTestId('left-panel').getByText(BOT_DETAILS.updatedBotName)
+  ).toBeVisible();
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
@@ -222,21 +222,10 @@ export const redirectToBotPage = async (page: Page) => {
   await fetchResponse;
 };
 
-export const resetTokenFromBotPage = async (
-  page: Page,
-  bot: {
-    name: string;
-    testId: string;
-  }
-) => {
-  const settingClickResponse = page.waitForResponse('api/v1/bots?*');
-  await settingClick(page, GlobalSettingOptions.BOTS);
-  await settingClickResponse;
-
-  await page.getByTestId('searchbar').click();
-  await page.getByTestId('searchbar').fill(bot.name);
-
-  await page.getByTestId(bot.testId).click();
+export const resetTokenFromBotPage = async (page: Page, botName: string) => {
+  await page.goto(`/bots/${botName}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('revoke-button')).toBeVisible();
 

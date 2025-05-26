@@ -19,8 +19,9 @@
 .activity-feed-tab {
   display: flex;
   width: 100%;
-  width: 100%;
   overflow-x: hidden;
+  border: 1px solid @grey-15;
+  border-radius: @border-radius-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -39,11 +40,13 @@
     display: flex;
     flex-direction: column;
     border: 1px solid @grey-15;
-    .full-width {
+
+    &.full-width {
       flex: 10;
       margin-right: 0px;
     }
   }
+
   .right-container {
     flex: 1;
     min-width: 0;
@@ -53,6 +56,7 @@
     background-color: @white;
     border-radius: 12px;
     border: 1px solid @grey-15;
+
     .full-width {
       flex: 0;
     }
@@ -75,6 +79,7 @@
       color: #52525b;
       font-size: 12px;
     }
+
     .comments-input-field {
       background-color: @grey-16;
       border-radius: 20px;
@@ -82,8 +87,9 @@
       height: 36px;
       font-size: 12px;
       line-height: 14.52px;
+
       &::placeholder {
-        color: @grey-14;
+        color: @grey-400;
         font-size: 12px;
         font-style: normal;
         font-weight: 400;
@@ -95,7 +101,11 @@
   .three-panel-layout {
     border-radius: 0px;
     margin-right: 0px;
-    border: 0.5px solid #eaecf5;
+    border: 0px;
+  }
+
+  .three-panel-layout.right-container {
+    border-left: 1px solid @grey-15;
   }
 
   .hide-panel {
@@ -108,6 +118,7 @@
     flex: 0 0 @left-side-panel-width;
     border-right: @global-border !important;
   }
+
   .activity-feed-card-new {
     border-radius: 12px;
     background: @grey-9;
@@ -138,15 +149,18 @@
     width: inherit;
     margin-top: 2px;
     border: 0.5px solid #eaecf5;
+
     .ant-card-body {
       padding: 0px;
       border-radius: 8px;
     }
   }
+
   .activity-feed-card-message-right-panel {
     background: rgba(239, 244, 250, 0.25);
     margin-top: 10px;
   }
+
   .activity-feed-reply-card {
     border-radius: 8px;
 
@@ -164,14 +178,17 @@
       background: rgba(239, 244, 250, 0.25);
 
       padding-bottom: 16px;
+
       .ant-space-item {
         width: inherit;
       }
     }
+
     .activity-feed-reply-card-message {
       padding-left: 50px;
       border: none;
       background: rgba(239, 244, 250, 0.25);
+
       .ant-card-body {
         margin: 0px;
         margin-top: -8px;
@@ -180,6 +197,7 @@
         padding: 0px;
         background: rgba(239, 244, 250, 0.25);
       }
+
       .activity-feed-comment-text {
         word-wrap: break-word;
         white-space: normal;
@@ -187,6 +205,7 @@
       }
     }
   }
+
   .activity-feed-card-new-right-panel {
     background-color: @white;
     border: none;
@@ -194,28 +213,31 @@
 
   .header-link {
     word-wrap: break-word;
-    white-space: normal;
     font-weight: 600;
+
     .ant-typography,
     .ant-typography a,
     &.ant-typography,
     &.ant-typography a,
     & a.ant-typography,
     & .ant-typography a {
-      color: @blue-9;
+      color: @primary-heading-color;
+
       &:hover {
-        color: @blue-9;
+        color: @primary-heading-color;
       }
     }
   }
+
   .feed-card-header-v2-timestamp {
-    color: @grey-8;
+    color: @grey-500;
   }
+
   .seperator {
     vertical-align: middle;
     font-size: 18px;
     font-weight: 800;
-    color: @grey-8;
+    color: @grey-500;
     padding-bottom: 2px;
   }
 }
@@ -227,29 +249,33 @@
 .count-loader.ant-skeleton-element .ant-skeleton-button-sm {
   width: 72px;
 }
+
 .activity-feed-editor-container-new {
   background-color: @grey-9;
-  border: 0.5px solid @blue-15;
+  border: 0.5px solid @grey-15;
   border-radius: 10px;
   width: 100%;
+
   .ql-container {
     background-color: @grey-9;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
     width: 100%;
 
     &:focus-within {
-      border: 0.5px solid @blue-15;
+      border: 0.5px solid @grey-15;
     }
   }
+
   .ql-toolbar {
     background-color: @grey-9;
-    border: 1px solid @blue-15;
+    border: 1px solid @grey-15;
     flex-wrap: wrap;
 
     &:focus-within {
-      border: 0.5px solid @blue-15;
+      border: 0.5px solid @grey-15;
     }
   }
+
   .ql-toolbar button {
     color: #292929;
   }
@@ -257,6 +283,7 @@
 
 .activity-feed-editor-send-btn {
   color: @white;
+
   .ant-btn.send-button {
     position: absolute;
     bottom: 8px;
@@ -267,6 +294,7 @@
     border-radius: 50%;
   }
 }
+
 .activity-feed-user-name {
   font-size: 14px;
   font-weight: 600;
@@ -274,37 +302,45 @@
   letter-spacing: 0.03em;
   color: #181d27;
 }
+
 .activity-feed-user-name.ant-typography a {
   color: #181d27;
   font-weight: 600;
 }
+
 .reply-card-user-name {
   font-size: 14px;
   font-weight: 500;
   line-height: 24px;
   color: #373e44;
 }
+
 .activity-feed-reply-card-footer {
   margin-left: 45px;
 }
+
 .active-card {
   background-color: #e6f1fe !important;
 }
 
 .task-tab-custom-dropdown {
   border-radius: 6px;
+
   .task-tab-filter-item {
     color: @text-color;
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
+
     &.selected {
       color: #2e90fa;
     }
   }
+
   .ant-dropdown-menu {
     padding: 0px;
   }
+
   .task-count-container {
     background: #e9eaeb;
     border-radius: 16px;
@@ -314,6 +350,7 @@
     padding: 2px 8px;
     justify-content: center;
     align-items: center;
+
     &.active {
       background-color: #2e90fa !important;
     }
@@ -331,9 +368,11 @@
       color: @white;
     }
   }
+
   .ant-dropdown-menu .ant-dropdown-menu-item {
     box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
     padding: 0px;
+
     .active {
       box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
       background-color: #f5faff;
@@ -346,28 +385,30 @@
 }
 
 .task-toggle {
-  background: white;
-  border-radius: 8px;
+  background: @white;
+  border-radius: @size-sm;
   padding: 4px;
-  border: 1px solid #dce3ec;
+  border: 1px solid @grey-20;
 
   .ant-segmented-item {
     color: @text-color;
     transition: all 0.3s ease;
 
     &-selected {
-      background: #e6f1fe;
-      color: @blue-9;
+      background: @blue-23;
+      color: @primary-heading-color;
       text-align: center;
-
+      border-radius: @size-xs;
       .ant-segmented-item-label {
-        color: @blue-9;
+        color: @primary-heading-color;
       }
+
       svg path {
-        fill: @blue-9;
+        fill: @primary-heading-color;
       }
     }
   }
+
   &:hover {
     background: none !important;
   }
@@ -381,9 +422,11 @@
     background: none !important;
   }
 }
+
 .header-container-card {
   margin-top: -2px;
 }
+
 .toggle-item {
   display: flex;
   align-items: center;
@@ -416,6 +459,7 @@
   line-height: 20px;
   color: #414651;
 }
+
 .card-style-feed-header {
   color: #535862;
   font-size: 14px;
@@ -423,32 +467,35 @@
   font-weight: 400;
   line-height: 20px;
 }
+
 .close-tab-icon {
   position: absolute;
   top: 24px;
   right: 20px;
 }
-.full-width {
-  flex: auto !important; // Applies when .full-width is added to .center-container
-  margin-right: 0px !important;
-}
+
 .reply-feed-editor {
   .editor-container {
     margin: 0px;
   }
 }
+
 .footer-container {
   height: 24px;
 }
+
 .profile-picture {
   width: 32px;
 }
+
 .reply-card {
   padding-top: @padding-lg;
 }
+
 .reply-card-border-bottom {
   border-bottom: 0.5px solid #e4e4e4;
 }
+
 .reply-message {
   color: #4a4a4a;
   white-space: normal;
@@ -468,6 +515,7 @@
   margin-inline-end: -8px !important;
   border: 1px solid #fff;
 }
+
 .no-description-suggestion-card {
   padding: 20px;
   border: 0.5px solid #eaecf5;
@@ -475,8 +523,11 @@
   border-radius: 12px;
   margin-top: 16px;
 }
+
 .task-toggle.ant-segmented {
   background-color: @white;
+  border-radius: @size-sm;
+
   &:hover {
     .ant-segmented-item:not(.ant-segmented-item-selected) {
       background-color: @white;
@@ -485,7 +536,7 @@
 }
 
 .view-more-less-button {
-  color: @blue-9;
+  color: @primary-heading-color;
   font-size: 14px;
   font-style: normal;
   font-family: 'Inter', sans-serif;
@@ -497,7 +548,7 @@
   box-shadow: none;
 
   &.ant-btn {
-    color: @blue-9;
+    color: @primary-heading-color;
     border: none;
     background: none;
     box-shadow: none;
@@ -505,7 +556,7 @@
     &:hover,
     &:focus,
     &:active {
-      color: @blue-9;
+      color: @primary-heading-color;
       border: none;
       background: none;
       box-shadow: none;
@@ -523,6 +574,7 @@
 .task-filter-container {
   padding: 20px 20px 0px 20px;
 }
+
 .owners-label {
   font-style: normal;
   font-weight: 600;
@@ -530,12 +582,17 @@
   margin-left: @margin-xs;
   margin-right: @margin-xs;
 }
+
 .owner-chip {
   border-radius: 8px;
   background: @grey-16;
   padding: 4px 8px;
   margin-right: @margin-xs;
   border: 1px solid @grey-15;
+
+  .owner-team-icon {
+    font-size: 24px !important;
+  }
 }
 
 .owner-chip-text {
@@ -543,16 +600,44 @@
   font-style: normal;
   font-weight: 400;
   line-height: normal;
+  font-size: 14px !important;
   margin-left: @margin-xss;
 }
-.task-filter-icon {
-  stroke: @grey-8;
+
+.feed-filter-icon {
   cursor: pointer;
-  &.disabled {
-    cursor: not-allowed;
-    stroke: @grey-300;
-    path {
-      stroke: @grey-300;
+  &.ant-btn.ant-btn-default {
+    border: 1px solid @grey-15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &.disabled {
+      cursor: not-allowed;
+      stroke: border-color-2;
+      border-radius: @size-xs;
+      border: 1px solid @grey-100;
+      background: @white;
+    }
+    &:not(.disabled):hover {
+      border: 1px solid @blue-12;
+
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
+    }
+    &.selected,
+    &.ant-dropdown-open,
+    &.ant-popover-open {
+      border: 1px solid @blue-12;
+      background: @primary-button-background;
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
     }
   }
+}
+.no-data-placeholder-container-right-panel {
+  margin-top: @size-xl;
 }

@@ -32,6 +32,7 @@ import {
   servicesDisplayName,
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -40,7 +41,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -271,7 +271,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
-          className="p-lg"
+          className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
@@ -283,7 +283,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
     return (
       <ErrorPlaceHolder
-        className="mt-24"
+        className="mt-24 border-none"
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
@@ -470,7 +470,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>

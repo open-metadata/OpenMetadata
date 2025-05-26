@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -43,6 +43,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
 import {
   CustomPropertyProps,
@@ -60,7 +61,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
-  newLook = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -69,7 +69,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onUpdate,
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
-
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(true);
@@ -195,7 +194,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           showErrorToast(error as AxiosError);
         }
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -211,12 +210,16 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-lg border-default border-radius-sm">
+        <Skeleton active />
+      </div>
+    );
   }
 
   if (!hasPermission) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="flex-center">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </div>
     );
@@ -229,9 +232,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={className}
+          className={classNames(className)}
           placeholderText={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
@@ -261,17 +264,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return <ExtensionTable extension={entityDetails?.extension} />;
   }
 
-  if (isRenderedInRightPanel || newLook) {
+  if (isRenderedInRightPanel) {
     const header = (
-      <div
-        className={classNames('d-flex justify-between', {
-          'm-b-md': !newLook,
-        })}>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
+      <div className={classNames('d-flex justify-between')}>
+        <Typography.Text className={classNames('text-sm font-medium')}>
           {t('label.custom-property-plural')}
         </Typography.Text>
         {viewAllBtn}
@@ -309,24 +305,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       return null;
     }
 
-    if (newLook) {
-      return (
-        <Card className="w-full new-header-border-card" title={header}>
-          {propertyList}
-        </Card>
-      );
-    }
-
     return (
-      <>
-        {header}
+      <ExpandableCard
+        cardProps={{
+          className: 'no-scrollbar',
+          title: header,
+        }}>
         {propertyList}
-      </>
+      </ExpandableCard>
     );
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="custom-properties-card">
+    <div className="h-full custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>

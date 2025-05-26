@@ -93,6 +93,10 @@
       },
       "default": []
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -134,7 +138,7 @@
       "description": "Domain the API service belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }

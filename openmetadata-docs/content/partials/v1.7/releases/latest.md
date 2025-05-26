@@ -1,7 +1,7 @@
-# 1.6.6 Release 🎉
+# 1.7.1 Release 🎉
 
 {% note noteType="Tip" %}
-**Mar 14th, 2025**
+**May 23rd, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,48 +10,72 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.6!
+Learn how to upgrade your OpenMetadata instance to 1.7.1!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.6-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.7.1-release).
 
-- Improvements:- Added loggedInAPI to show more specific error messages instead of generic ones
-- Added support for \`/logout\` path to perform logout from API redirect
-- Added displayName field in the \`createCustomProperty\` schema
-- Improved search relevancy for plural/singular words and partial matches
-- Introduced "clear sample" option in entity config to support explicit null
-- Made domain a required field for Data Product creation
-- Enabled showdown rendering options`,
-- Added support for datatype=array without type consistency
-- Added result_maker check for query share URL in Looker
-- Fixes:- Fixed Snowflake ARRAY column ingestion issues
-- Fixed Sigma workbook ingestion
-- Fixed tomcat-jdbc dependency
-- Fixed schema URL construction
-- Fixed Redshift view logging for no schema binding
-- Fixed OpenMetadata Operations
-- Supported request schema field for OpenAPI lineage when response field is absent
-- Fixed tour page clicking issues
-- Fixed duplicate activity feed providers
-- Fixed search query for non-admin pages
-- Fixed other columns visibility when testSuite name is large
-- Fixed task description viewer for diff creation
-- Fixed inherited owner not updating in Data Product list
-- Fixed user update roles
-- Fixed table constraint error
-- Fixed manual constraints deletion
-- Fixed deletion of entities
-- Fixed entity relation live indexing
-- Fixed service creation error display
-- Fixed external app logs
-- Fixed incremental lineage processing when processedLineage is null
-- Improved memory handling in temp table lineage
-- Enhanced Column Name Scanner
-- Improved pipeline service client exception handling
-- Updated Tableau documentation in Connectors
-- Optimized pipeline service client initialization
-- Implemented Incremental Lineage Processing
-- Don't overwrite query to execute
+# What's New
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release)
+## Improvements
+
+- Login page UI.
+- DQ failure lineage tracing.
+- Add Domain selection while creating tags.
+- Added support for the Korean language.
+- Support edit display name for the dashboard Data model.
+- Configurable account usage for incremental metadata extraction.
+- Add Athena schema comment support.
+- Support dynamic height for detail page widgets.
+- Add support for the following databases, schemas and services.
+- Allow editing of SQL function at column level lineage.
+- Support chart export in cost analysis.
+- Add domain-level permissions while creating/updating dataProduct.
+- Add support to add and edit Data Product from the entity page.
+- Add bulk edit action for glossary listing page.
+
+## Fixes
+
+- Severity of incident POST creation.
+- Service insights PDF export.
+- Can't run table diffs on Snowflake when using private key authentication.
+- Self-signup login error is not showing.
+- Service connection config is not getting updated with multiple project IDs after ingestion.
+- Data assets order in the Explore left panel.
+- Added display name and description in Testcase Alert emails.
+- PostgreSQL schemas are getting filtered out.
+- Make prompt=login as optional.
+- Apps allowing submission of negative numbers for some config fields.
+- Error connecting S3 container to pipeline or tables in lineage edit mode.
+- Mentions on the task should trigger the @mention alert.
+- Postgres Duplicate table constraint error when re-ingesting.
+- Unsupported Pipeline entity for lineage error.
+- Issue with refresh for loggedInUser returns 401.
+- Render settings menu based on permissions.
+- Data products are not visible when redirecting from the assets listing to the entity page.
+- Make certification always visible.
+- Dots are misaligned/unclear in the multi-metric view of Test Case Metrics.
+- Snowflake Tags Not Reattached or Re-ingested After Initial Ingestion.
+- Remove data products associated with the old domain when an entity's domain is updated.
+- Multiple image insertion issue and ensure proper inline error messaging for the Rich Text Editor.
+- Handle UDF definition fetch exceptions.
+- Parquet endpoint null case error.
+- The deleted user page shows a spinner instead of "User not found".
+- The enum cleanup is not triggering when all enum keys are removed in the custom property.
+- Inconsistent behaviour when reassigning an asset to a different domain via the bulkAsset API.
+- Airbyte pipeline lineage extraction.
+- Add an include field for the list incident API.
+- Metadata ingestion errors from Azure Data Lake.
+- Support Ingesting Multiple Owners for dbt Models from manifest.json.
+- Error ingesting using Datalake ADLS connector.
+- PostgreSQL Sample Data Err- FATAL: too many connections for role "role_name".
+- Testcase "Column values to be unique- oracledb error (ORA-00937).
+- Alert Triggering on Both Failure and Success of the Test Case, even if configured for failure only.
+- PBI lineage when source parameters are used and the lineage needs to be created from source expression.
+- Comments are not reflected after ingestion for DB columns in Vertica.
+- Custom theme styling issues.
+- Entity right panel collapsing issue.
+- Feeds count not showing up in the PipelineDetails page.
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.7.0-release...1.7.1-release)

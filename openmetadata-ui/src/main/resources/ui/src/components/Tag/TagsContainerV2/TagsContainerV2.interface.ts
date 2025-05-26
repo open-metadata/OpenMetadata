@@ -26,7 +26,6 @@ export type TagsContainerV2Props = {
   columnData?: {
     fqn: string;
   };
-  showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
   children?: ReactElement;
@@ -35,5 +34,6 @@ export type TagsContainerV2Props = {
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   defaultState?: State;
   defaultLabelType?: LabelType;
+  sizeCap?: number;
   newLook?: boolean;
 };

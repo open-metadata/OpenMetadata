@@ -137,11 +137,9 @@ function EmailConfigSettingsPage() {
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
-          <>
-            <Row align="middle" gutter={[16, 16]}>
-              {configValues}
-            </Row>
-          </>
+          <Row align="middle" gutter={[16, 16]}>
+            {configValues}
+          </Row>
         )}
       </>
     );
@@ -155,7 +153,7 @@ function EmailConfigSettingsPage() {
     <PageLayoutV1 pageTitle={t('label.email-configuration')}>
       <Row
         align="middle"
-        className="page-container service-form-container"
+        className="p-lg bg-white border-radius-sm"
         gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />

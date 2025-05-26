@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     DataType,
     TableConstraint,
+    TableType,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -202,9 +203,30 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Get columns list
+        """
+
+        return inspector.get_columns(
+            table_name, schema_name, table_type=table_type, db_name=db_name
+        )
+
     @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
-        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:
@@ -246,7 +268,9 @@ class SqlColumnHandlerMixin:
 
         table_columns = []
 
-        columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
+        columns = self._get_columns_internal(
+            schema_name, table_name, db_name, inspector, table_type
+        )
 
         def process_column(column: dict):
             (

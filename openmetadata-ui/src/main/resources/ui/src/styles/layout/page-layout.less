@@ -24,23 +24,12 @@
   position: sticky;
   top: 0px;
   z-index: 20;
+  background-color: @background-primary;
 }
 
 .page-layout-v1-left-panel {
   border: @global-border;
   border-radius: @border-radius-base;
-}
-
-.left-panel-card {
-  .ant-card-body {
-    padding: 0;
-    overflow-x: hidden;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  height: 100%;
-  background-color: @white;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -82,4 +71,10 @@
 
 .overflow-auto-x {
   overflow-x: auto;
+}
+
+.page-layout-rightpanel {
+  border-radius: 0;
+  padding-left: 0 !important;
+  border-top: 0;
 }

@@ -112,11 +112,11 @@ const ActivityFeedListV1New = ({
       isFullWidth,
     ]
   );
-  if (isLoading && isForFeedTab) {
+  if (isLoading) {
     return <Loader />;
   }
 
-  if (isEmpty(entityThread) && !isLoading) {
+  if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container"

@@ -42,6 +42,25 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  handleUpdateTableColumnSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+}));
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
@@ -101,6 +120,10 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
     ))
 );
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 const mockOnUpdate = jest.fn();
 const mockTopicDetails = {
   columns: [],
@@ -128,6 +151,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       EditAll: true,
     },
     onUpdate: mockOnUpdate,
+    type: 'topic',
   })),
 }));
 
@@ -142,12 +166,12 @@ describe('Topic Schema', () => {
     const schemaFields = await screen.findByTestId('topic-schema-fields-table');
     const rows = await screen.findAllByRole('row');
 
-    const row1 = rows[0];
+    const row1 = rows[1];
 
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(19);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
@@ -165,7 +189,7 @@ describe('Topic Schema', () => {
 
     const rows = await screen.findAllByRole('row');
 
-    const nestedRow = rows[0];
+    const nestedRow = rows[1];
     const singleRow = rows[2];
 
     const expandIcon = await findByTestId(nestedRow, 'expand-icon');

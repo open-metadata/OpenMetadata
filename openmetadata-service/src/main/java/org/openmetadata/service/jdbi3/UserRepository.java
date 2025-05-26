@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.json.JsonPatch;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +69,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -221,6 +224,14 @@ public class UserRepository extends EntityRepository<User> {
     user.withRoles(roles).withTeams(teams);
   }
 
+  public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
+    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
+    JsonPatch patch =
+        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+  }
+
   @Override
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
@@ -318,6 +329,10 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  protected void entitySpecificCleanup(User entityInterface) {
+    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), USER);
+  }
+
   /* Validate if the user is already part of the given team */
   public void validateTeamAddition(UUID userId, UUID teamId) {
     User user = find(userId, NON_DELETED);
@@ -401,28 +416,27 @@ public class UserRepository extends EntityRepository<User> {
       boolean existByEmail = checkEmailAlreadyExists(email);
       if (existByName && !existByEmail) {
         User userByName = getByName(uriInfo, username, Fields.EMPTY_FIELDS);
-        throw BadRequestException.of(
-            String.format(
-                "User with given name exists but is not associated with the provided email. "
-                    + "Matching User Found By Name [username:email] : [%s:%s], Provided User: [%s:%s]",
-                userByName.getName().toLowerCase(),
-                userByName.getEmail().toLowerCase(),
-                username,
-                email));
+        LOG.error(
+            "User with given name exists but is not associated with the provided email. "
+                + "Matching User Found By Name [username:email] : [{}:{}], Provided User: [{}:{}]",
+            userByName.getName().toLowerCase(),
+            userByName.getEmail().toLowerCase(),
+            username,
+            email);
+        throw BadRequestException.of("Account already exists. Please contact administrator.");
       } else if (!existByName && existByEmail) {
         User userByEmail = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
-        throw BadRequestException.of(
-            String.format(
-                "User with given email exists but is not associated with provider username. "
-                    + "Matching User Found By Email [username:email] : [%s:%s], Provided User: [%s:%s]",
-                userByEmail.getName().toLowerCase(),
-                userByEmail.getEmail().toLowerCase(),
-                username,
-                email));
+        LOG.error(
+            "User with given email exists but is not associated with provider username. "
+                + "Matching User Found By Email [username:email] : [{}:{}], Provided User: [{}:{}]",
+            userByEmail.getName().toLowerCase(),
+            userByEmail.getEmail().toLowerCase(),
+            username,
+            email);
+        throw BadRequestException.of("Account already exists. Please contact administrator.");
       } else {
-        throw EntityNotFoundException.byMessage(
-            String.format(
-                "User with provider name : %s and email : %s not found", username, email));
+        LOG.error("User with provider name : {} and email : {} not found", username, email);
+        throw EntityNotFoundException.byMessage("Cannot find user with provided name and email");
       }
     }
   }
@@ -632,6 +646,13 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
+      recordChange(
+          "lastLoginTime",
+          original.getLastLoginTime(),
+          updated.getLastLoginTime(),
+          false,
+          objectMatch,
+          true);
 
       // Updates
       updateRoles(original, updated);

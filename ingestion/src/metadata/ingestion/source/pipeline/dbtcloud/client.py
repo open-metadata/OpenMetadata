@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -75,17 +75,37 @@ class DBTCloudClient:
         fetch jobs for an account in dbt cloud
         """
         job_list = []
+        # we will get 100 jobs at a time
+        query_params = {"offset": 0, "limit": 100}
         try:
             job_path = f"{job_id}/" if job_id else ""
             project_path = f"?project_id={project_id}" if project_id else ""
             result = self.client.get(
-                f"/accounts/{self.config.accountId}/jobs/{job_path}{project_path}"
+                f"/accounts/{self.config.accountId}/jobs/{job_path}{project_path}",
+                data=query_params,
             )
-            job_list = (
-                [DBTJob.model_validate(result["data"])]
-                if job_id
-                else DBTJobList.model_validate(result).Jobs
-            )
+
+            if job_id:
+                job_list = [DBTJob.model_validate(result["data"])]
+            else:
+                job_list_response = DBTJobList.model_validate(result)
+                job_list = job_list_response.Jobs
+
+                while job_list_response.extra and job_list_response.extra.pagination:
+                    total_count = job_list_response.extra.pagination.total_count
+                    current_count = job_list_response.extra.pagination.count
+
+                    if current_count >= total_count:
+                        break
+
+                    query_params["offset"] += query_params["limit"]
+                    result = self.client.get(
+                        f"/accounts/{self.config.accountId}/jobs/{job_path}{project_path}",
+                        data=query_params,
+                    )
+                    job_list_response = DBTJobList.model_validate(result)
+                    job_list.extend(job_list_response.Jobs)
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
@@ -147,13 +167,42 @@ class DBTCloudClient:
         list runs for a job in dbt cloud
         """
         try:
+            number_of_runs = self.config.numberOfRuns
+            runs = []
+            # we will get 100 runs at a time and order by created_at in descending order
+            query_params = {
+                "job_definition_id": job_id,
+                "offset": 0,
+                "limit": min(100, number_of_runs) if number_of_runs else 100,
+                "order_by": "-created_at",
+            }
+
             result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/",
-                data={"job_definition_id": job_id},
+                f"/accounts/{self.config.accountId}/runs/", data=query_params
             )
-            if result:
-                run_list = DBTRunList.model_validate(result).Runs
-                return run_list
+            run_list_response = DBTRunList.model_validate(result)
+            runs.extend(run_list_response.Runs)
+
+            while (
+                (number_of_runs is None or len(runs) < number_of_runs)
+                and run_list_response.extra
+                and run_list_response.extra.pagination
+            ):
+                total_count = run_list_response.extra.pagination.total_count
+                current_count = run_list_response.extra.pagination.count
+
+                if current_count >= total_count:
+                    break
+
+                query_params["offset"] += query_params["limit"]
+                result = self.client.get(
+                    f"/accounts/{self.config.accountId}/runs/",
+                    data=query_params,
+                )
+                run_list_response = DBTRunList.model_validate(result)
+                runs.extend(run_list_response.Runs)
+
+            return runs[:number_of_runs] if number_of_runs is not None else runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get run info :{exc}")

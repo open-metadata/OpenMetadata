@@ -32,7 +32,11 @@
           "$ref": "internal/dataRetentionConfiguration.json"
         },
         {
-          "$ref": "internal/dayOneExperienceAppConfig.json"
+          "$ref": "internal/autoPilotAppConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     },
@@ -40,6 +44,10 @@
       "oneOf": [
         {
           "$ref": "private/external/collateAIAppPrivateConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     }

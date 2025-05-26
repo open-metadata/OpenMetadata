@@ -83,7 +83,7 @@ const SubDomainsTable = ({
   if (isEmpty(subDomains) && !isLoading) {
     return (
       <ErrorPlaceHolder
-        className="m-t-xlg"
+        className="p-md p-b-lg"
         heading={t('label.sub-domain')}
         permission={permissions.Create}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -95,7 +95,7 @@ const SubDomainsTable = ({
   return (
     <Table
       columns={columns}
-      containerClassName="m-t-md"
+      containerClassName="m-md"
       dataSource={subDomains}
       pagination={false}
       rowKey="fullyQualifiedName"

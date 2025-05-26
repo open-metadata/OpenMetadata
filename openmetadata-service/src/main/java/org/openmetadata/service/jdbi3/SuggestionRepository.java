@@ -281,7 +281,7 @@ public class SuggestionRepository {
         securityContext,
         operationContext,
         new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch);
+    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
     suggestion.setStatus(SuggestionStatus.Accepted);
     update(suggestion, user);
   }

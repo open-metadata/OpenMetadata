@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -237,6 +237,7 @@ def test_databricks():
             "config": {
                 "token": "<databricks token>",
                 "hostPort": "localhost:443",
+                "httpPath": "<http path of databricks cluster>",
                 "connectionArguments": {
                     "http_path": "<http path of databricks cluster>"
                 },
@@ -460,25 +461,6 @@ def test_looker():
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
     assert isinstance(config.serviceConnection.root.config, LookerConnection)
-
-
-def test_mariadb():
-    source = {
-        "type": "mariadb",
-        "serviceName": "local_mariadb",
-        "serviceConnection": {
-            "config": {
-                "type": "MariaDB",
-                "username": "openmetadata_user",
-                "password": "openmetadata_password",
-                "hostPort": "localhost:3306",
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, MariaDBConnection)
 
 
 def test_mariadb():
@@ -845,10 +827,8 @@ def test_tableau():
             "config": {
                 "type": "Tableau",
                 "authType": {"username": "username", "password": "password"},
-                "env": "tableau_prod",
                 "hostPort": "http://localhost",
                 "siteName": "site_name",
-                "apiVersion": "api_version",
             }
         },
         "sourceConfig": {

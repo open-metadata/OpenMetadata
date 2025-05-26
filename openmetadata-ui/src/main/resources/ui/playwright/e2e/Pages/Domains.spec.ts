@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import base, { expect, Page } from '@playwright/test';
+import base, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
@@ -24,7 +24,11 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
@@ -36,15 +40,16 @@ import {
   createSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
+  selectDataProductFromTab,
   selectDomain,
   selectSubDomain,
   setupAssetsForDomain,
+  setupDomainOwnershipTest,
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
-
 const user = new UserClass();
 
 const domain = new Domain();
@@ -508,6 +513,10 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await page.reload();
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await addTagsAndGlossaryToDomain(page, {
@@ -517,6 +526,10 @@ test.describe('Domains', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await page.waitForLoadState('networkidle');
@@ -556,6 +569,32 @@ test.describe('Domains', () => {
     } finally {
       await dataProduct.delete(apiContext);
       await domain1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify clicking All Domains sets active domain to default value', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await page.reload();
+      await page.getByTestId('domain-dropdown').click();
+      await page.getByTestId('all-domains-selector').click();
+
+      await page.getByTestId('domain-dropdown').click();
+
+      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
+        /selected-node/
+      );
+    } finally {
+      await domain.delete(apiContext);
       await afterAction();
     }
   });
@@ -702,5 +741,107 @@ test.describe('Domains Rbac', () => {
     await assetCleanup1();
     await assetCleanup2();
     await afterAction();
+  });
+});
+
+test.describe('Data Consumer Domain Ownership', () => {
+  test.slow(true);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+
+  let testResources: {
+    dataConsumerUser: UserClass;
+    domainForTest: Domain;
+    dataProductForTest: DataProduct;
+    cleanup: (apiContext1: APIRequestContext) => Promise<void>;
+  };
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+
+    testResources = await setupDomainOwnershipTest(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await tag.delete(apiContext);
+    await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
+    await classification.delete(apiContext);
+    await testResources.cleanup(apiContext);
+
+    await afterAction();
+  });
+
+  test('Data consumer can manage domain as owner', async ({ browser }) => {
+    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
+      await performUserLogin(browser, testResources.dataConsumerUser);
+
+    await test.step(
+      'Check domain management permissions for data consumer owner',
+      async () => {
+        await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
+        await selectDomain(dataConsumerPage, testResources.domainForTest.data);
+
+        await dataConsumerPage.getByTestId('domain-details-add-button').click();
+
+        // check Data Products menu item is visible
+        await expect(
+          dataConsumerPage.getByRole('menuitem', {
+            name: 'Data Products',
+            exact: true,
+          })
+        ).toBeVisible();
+
+        await clickOutside(dataConsumerPage);
+
+        await selectDataProductFromTab(
+          dataConsumerPage,
+          testResources.dataProductForTest.data
+        );
+
+        // Verify the user can edit owner, tags, glossary and domain experts
+        await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('tags-container').getByTestId('add-tag')
+        ).toBeVisible();
+
+        await expect(
+          dataConsumerPage
+            .getByTestId('glossary-container')
+            .getByTestId('add-tag')
+        ).toBeVisible();
+
+        await expect(
+          dataConsumerPage.getByTestId('domain-expert-name').getByTestId('Add')
+        ).toBeVisible();
+
+        await expect(
+          dataConsumerPage.getByTestId('manage-button')
+        ).toBeVisible();
+
+        await addTagsAndGlossaryToDomain(dataConsumerPage, {
+          tagFqn: tag.responseData.fullyQualifiedName,
+          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+          isDomain: false,
+        });
+      }
+    );
+
+    await consumerAfterAction();
   });
 });

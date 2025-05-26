@@ -40,50 +40,57 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
         className
       )}
       data-testid="owner-label">
-      <div className="d-flex items-center gap-1">
-        {isCompactView && (
-          <div className="owner-avatar-icon d-flex">
-            <Icon
-              component={IconUser}
-              data-testid="no-owner-icon"
-              style={{ fontSize: '18px' }}
+      {(isCompactView || showLabel) && (
+        <div className="d-flex items-center gap-1">
+          {isCompactView && (
+            <div className="owner-avatar-icon d-flex">
+              <Icon
+                component={IconUser}
+                data-testid="no-owner-icon"
+                style={{ fontSize: '18px' }}
+              />
+            </div>
+          )}
+          {showLabel && (
+            <Typography.Text
+              className={classNames(
+                isCompactView
+                  ? 'text-xs no-owner'
+                  : ' no-owner-heading font-medium text-sm',
+                className
+              )}
+              data-testid="owner-link">
+              {placeHolder ??
+                (!isCompactView
+                  ? t('label.owner-plural')
+                  : t('label.no-entity', {
+                      entity: t('label.owner-plural'),
+                    }))}
+            </Typography.Text>
+          )}
+          {onUpdate && (
+            <UserTeamSelectableList
+              hasPermission={Boolean(hasPermission)}
+              multiple={multiple}
+              owner={owners}
+              tooltipText={tooltipText}
+              onUpdate={(updatedUsers) => {
+                if (onUpdate) {
+                  onUpdate(updatedUsers);
+                }
+              }}
             />
-          </div>
-        )}
-        {showLabel && (
-          <Typography.Text
-            className={classNames(
-              'no-owner',
-              isCompactView ? 'text-xs' : 'font-medium text-sm',
-              className
-            )}
-            data-testid="owner-link">
-            {placeHolder ??
-              (!isCompactView
-                ? t('label.owner-plural')
-                : t('label.no-entity', {
-                    entity: t('label.owner-plural'),
-                  }))}
-          </Typography.Text>
-        )}
-        {onUpdate && (
-          <UserTeamSelectableList
-            hasPermission={Boolean(hasPermission)}
-            multiple={multiple}
-            owner={owners}
-            tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              if (onUpdate) {
-                onUpdate(updatedUsers);
-              }
-            }}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
-          {t('label.no-entity', { entity: t('label.owner-plural') })}
+          {placeHolder
+            ? showLabel
+              ? t('label.no-entity', { entity: placeHolder })
+              : placeHolder
+            : t('label.no-entity', { entity: t('label.owner-plural') })}
         </div>
       )}
     </div>

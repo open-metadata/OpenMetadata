@@ -119,13 +119,13 @@ const AddRolePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-role-container">
+          <div data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={ADD_ROLE_PAGE_BREADCRUMB} />
             <div className="m-t-md">
               <Typography.Paragraph
@@ -214,7 +214,7 @@ const AddRolePage = () => {
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

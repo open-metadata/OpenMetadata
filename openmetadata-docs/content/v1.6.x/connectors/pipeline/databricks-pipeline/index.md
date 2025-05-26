@@ -16,6 +16,7 @@ In this section, we provide guides and references to use the Databricks Pipeline
 Configure and schedule Databricks Pipeline metadata workflows from the OpenMetadata UI:
 
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/pipeline/databricks-pipeline/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/databricks-pipeline/yaml"} /%}
 
@@ -49,5 +50,3 @@ Configure and schedule Databricks Pipeline metadata workflows from the OpenMetad
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

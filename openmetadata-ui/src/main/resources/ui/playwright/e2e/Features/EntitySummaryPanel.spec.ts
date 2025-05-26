@@ -32,8 +32,10 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Queries-label')).toBeVisible();
     await expect(page.getByTestId('Columns-label')).toBeVisible();
     await expect(page.getByTestId('profiler-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('schema-header')).toBeVisible();
   });
 
@@ -47,8 +49,10 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Tier-label')).toBeVisible();
     await expect(page.getByTestId('Service-label')).toBeVisible();
     await expect(page.getByTestId('Usage-label')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('schema-header')).toBeVisible();
   });
 
@@ -64,6 +68,8 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Database-label')).toBeVisible();
     await expect(page.getByTestId('Usage-label')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('Dashboard entity', async ({ page }) => {
@@ -77,7 +83,9 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Project-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('charts-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('Dashboard data model entity', async ({ page }) => {
@@ -93,7 +101,9 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Data Model Type-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('column-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('Pipeline entity', async ({ page }) => {
@@ -106,6 +116,7 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Pipeline URL-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('tasks-header')).toBeVisible();
   });
 
@@ -124,7 +135,9 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Schema Type-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('schema-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('ML Model entity', async ({ page }) => {
@@ -140,7 +153,9 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Dashboard-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('features-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('Container entity', async ({ page }) => {
@@ -155,7 +170,9 @@ test.describe('Entity Summary Panel', () => {
     await expect(page.getByTestId('Columns-label')).toBeVisible();
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('schema-header')).toBeVisible();
+    await expect(page.getByTestId('domain-header')).toBeVisible();
   });
 
   test('Search Index entity', async ({ page }) => {
@@ -167,6 +184,7 @@ test.describe('Entity Summary Panel', () => {
 
     await expect(page.getByTestId('tags-header')).toBeVisible();
     await expect(page.getByTestId('description-header')).toBeVisible();
+    await expect(page.getByTestId('data-products-header')).toBeVisible();
     await expect(page.getByTestId('fields-header')).toBeVisible();
   });
 });

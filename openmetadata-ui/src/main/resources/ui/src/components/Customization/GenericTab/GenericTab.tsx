@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../../generated/system/ui/page';
@@ -19,6 +19,7 @@ import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { useGenericContext } from '../GenericProvider/GenericProvider';
+import { DynamicHeightWidget } from './DynamicHeightWidget';
 import './generic-tab.less';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -28,17 +29,30 @@ interface GenericTabProps {
 }
 
 export const GenericTab = ({ type }: GenericTabProps) => {
-  const { layout } = useGenericContext();
+  const { layout, updateWidgetHeight } = useGenericContext();
+
+  const handleHeightChange = useCallback(
+    (widgetId: string, newHeight: number) => {
+      // Update the layout through the onUpdate function
+      updateWidgetHeight(widgetId, newHeight);
+    },
+    [updateWidgetHeight]
+  );
 
   const widgets = useMemo(() => {
     return layout?.map((widget: WidgetConfig) => {
       return (
         <div
-          className="overflow-auto-y"
           data-grid={widget}
+          data-testid={widget.i}
           id={widget.i}
           key={widget.i}>
-          {getWidgetsFromKey(type, widget)}
+          <DynamicHeightWidget
+            key={widget.i}
+            widget={widget}
+            onHeightChange={handleHeightChange}>
+            {getWidgetsFromKey(type, widget)}
+          </DynamicHeightWidget>
         </div>
       );
     });
@@ -57,6 +71,8 @@ export const GenericTab = ({ type }: GenericTabProps) => {
 
   return (
     <ReactGridLayout
+      autoSize
+      verticalCompact
       className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
       })}

@@ -18,7 +18,6 @@ import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
@@ -57,7 +56,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -359,11 +358,12 @@ const TaskFeedCard = ({
                       ? 'task-card-assignee'
                       : ''
                   }`}>
-                  <AssigneesIcon height={20} width={20} />
-                  <UserAvatarGroup
+                  <OwnerLabel
+                    isAssignee
                     avatarSize={24}
-                    className="p-t-05"
+                    isCompactView={false}
                     owners={feed?.task?.assignees}
+                    showLabel={false}
                   />
                 </Col>
               </Col>
@@ -375,7 +375,6 @@ const TaskFeedCard = ({
                       className="task-card-approve-btn d-flex items-center"
                       data-testid="approve-button"
                       icon={<CheckCircleFilled />}
-                      type="primary"
                       onClick={onTaskResolve}>
                       {t('label.approve')}
                     </Button>

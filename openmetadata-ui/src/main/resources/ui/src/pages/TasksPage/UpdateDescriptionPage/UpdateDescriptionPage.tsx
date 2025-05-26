@@ -208,13 +208,15 @@ const UpdateDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm bg-white"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         minWidth: 700,
         flex: 0.6,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),

@@ -101,7 +101,7 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.6.6-release/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.6.11-release/docker-compose-openmetadata.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
@@ -123,7 +123,6 @@ DB_USER_PASSWORD="<SQL_DATABASE_PASSWORD>"
 DB_HOST="<SQL_DATABASE_ENDPOINT>"
 DB_PORT="<SQL_DATABASE_PORT>"
 OM_DATABASE="<SQL_DATABASE_NAME>"
-...
 ```
 
 For ElasticSearch Configurations, update the below environment variables -
@@ -136,7 +135,7 @@ ELASTICSEARCH_PORT="<ELASTICSEARCH_ENDPOINT_PORT>"
 ELASTICSEARCH_SCHEME="<ELASTICSEARCH_ENDPOINT_SCHEME>"
 ELASTICSEARCH_USER="<ELASTICSEARCH_USERNAME>"
 ELASTICSEARCH_PASSWORD="<ELASTICSEARCH_PASSWORD>"
-...
+ELASTICSEARCH_CLUSTER_ALIAS="<clusterAlias>"
 ```
 
 For OpenSearch Configurations, update the below environment variables -
@@ -149,8 +148,13 @@ ELASTICSEARCH_PORT="<OPENSEARCH_ENDPOINT_PORT>"
 ELASTICSEARCH_SCHEME="<OPENSEARCH_ENDPOINT_SCHEME>"
 ELASTICSEARCH_USER="<OPENSEARCH_USERNAME>"
 ELASTICSEARCH_PASSWORD="<OPENSEARCH_PASSWORD>"
-...
+ELASTICSEARCH_CLUSTER_ALIAS="<clusterAlias>"
 ```
+{% note %}
+
+If you want to separate indexes for production and non-production environments, you can set the `clusterAlias` in the configuration file.
+
+{% /note %}
 
 For Ingestion Configurations, update the below environment variables -
 
@@ -190,7 +194,7 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:1.6.6                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+470cc8149826   openmetadata/server:1.6.11                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -273,6 +277,7 @@ ELASTICSEARCH_SCHEME='https'
 ELASTICSEARCH_BATCH_SIZE='10'
 ELASTICSEARCH_HOST='<ELASTICSEARCH_HOST_URL>'
 ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
+ELASTICSEARCH_CLUSTER_ALIAS='<clusterAlias>'
 ```
 
 Replace the environment variables values with the RDS and OpenSearch Service ones and then provide this environment variable file as part of docker compose command.

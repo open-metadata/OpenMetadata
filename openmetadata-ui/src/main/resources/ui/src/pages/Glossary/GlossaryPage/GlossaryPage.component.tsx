@@ -23,6 +23,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -39,10 +40,15 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import {
+  EntityAction,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -51,8 +57,6 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  deleteGlossary,
-  deleteGlossaryTerm,
   getGlossariesList,
   getGlossaryTermByFQN,
   patchGlossaries,
@@ -64,7 +68,7 @@ import Fqn from '../../../utils/Fqn';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -72,6 +76,7 @@ const GlossaryPage = () => {
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const { action } = useParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
 
@@ -169,6 +174,7 @@ const GlossaryPage = () => {
             TabSpecificField.REVIEWERS,
             TabSpecificField.VOTES,
             TabSpecificField.DOMAIN,
+            TabSpecificField.TERM_COUNT,
           ],
           limit: PAGE_SIZE_LARGE,
           ...(nextPage && { after: nextPage }),
@@ -327,22 +333,14 @@ const GlossaryPage = () => {
   const handleGlossaryDelete = useCallback(
     async (id: string) => {
       try {
-        await deleteGlossary(id);
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary'),
-          })
-        );
-        setIsLoading(true);
-        // check if the glossary is available
-        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
-        setGlossaries(updatedGlossaries);
-        const glossaryPath =
-          updatedGlossaries.length > 0
-            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
-            : getGlossaryPath();
-
-        history.push(glossaryPath);
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: activeGlossary?.name,
+          entityId: id,
+          entityType: EntityType.GLOSSARY,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType: true,
+          isRecursiveDelete: true,
+        });
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -350,11 +348,9 @@ const GlossaryPage = () => {
             entity: t('label.glossary'),
           })
         );
-      } finally {
-        setIsLoading(false);
       }
     },
-    [glossaries, history]
+    [glossaries, activeGlossary]
   );
 
   const handleGlossaryTermUpdate = useCallback(
@@ -392,13 +388,14 @@ const GlossaryPage = () => {
   const handleGlossaryTermDelete = useCallback(
     async (id: string) => {
       try {
-        await deleteGlossaryTerm(id);
-
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary-term'),
-          })
-        );
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: activeGlossary?.name,
+          entityId: id,
+          entityType: EntityType.GLOSSARY_TERM,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType: true,
+          isRecursiveDelete: true,
+        });
 
         let fqn;
         if (glossaryFqn) {
@@ -406,10 +403,7 @@ const GlossaryPage = () => {
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
-
-        setIsLoading(true);
         history.push(getGlossaryPath(fqn));
-        fetchGlossaryList();
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -419,7 +413,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, history, fetchGlossaryList]
+    [glossaryFqn, activeGlossary]
   );
 
   const handleAssetClick = useCallback(
@@ -436,7 +430,10 @@ const GlossaryPage = () => {
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
     return (
       <div className="d-flex justify-center items-center">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="mt-0-important border-none"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </div>
     );
   }
@@ -446,10 +443,11 @@ const GlossaryPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-glossary"
-          className="mt-0-important"
+          className="mt-0-important border-none"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}
+          size={SIZE.X_LARGE}
           type={
             createGlossaryPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
@@ -483,9 +481,11 @@ const GlossaryPage = () => {
     <ResizableLeftPanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
+        title: t('label.glossary'),
         children: (
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
@@ -516,10 +516,12 @@ const GlossaryPage = () => {
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
+        wrapInCard: false,
       }}
       hideSecondPanel={!previewAsset}
       pageTitle={t('label.glossary')}
       secondPanel={{
+        wrapInCard: false,
         children: previewAsset && (
           <EntitySummaryPanel
             entityDetails={previewAsset}
@@ -528,14 +530,14 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
     />
   );
 
-  return <div className="m--t-sm">{resizableLayout}</div>;
+  return <div>{resizableLayout}</div>;
 };
 
 export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

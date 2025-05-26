@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -96,6 +96,7 @@ class OpenMetadataValidationAction(ValidationAction):
     def __init__(
         self,
         data_context: DataContext,  # type: ignore
+        name: str = "OpenMetadataValidationAction",
         *,
         config_file_path: Optional[str] = None,
         database_service_name: Optional[str] = None,
@@ -103,7 +104,7 @@ class OpenMetadataValidationAction(ValidationAction):
         database_name: Optional[str] = None,
         table_name: Optional[str] = None,
     ):
-        super().__init__(data_context)
+        super().__init__(data_context, name=name)
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name

@@ -30,7 +30,10 @@ const SettingItemCard = ({
   className,
 }: SettingMenuItemProps) => {
   const { t } = useTranslation();
-  const handleOnClick = useCallback(() => onClick(data.key), []);
+  const handleOnClick = useCallback(
+    () => onClick(data.key),
+    [onClick, data.key]
+  );
 
   return (
     <Card
@@ -39,13 +42,13 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <div className="setting-card-icon">
         <Icon component={data.icon} />
+        {Boolean(data?.isBeta) && (
+          <Badge className="service-beta-tag" count={t('label.beta')} />
+        )}
       </div>
       <div className="setting-card-content">
         <Typography.Text className="font-semibold">
           {data.category ?? data.label}
-          {Boolean(data?.isBeta) && (
-            <Badge className="service-beta-tag" count={t('label.beta')} />
-          )}
         </Typography.Text>
         <Typography.Paragraph
           className="font-normal text-sm"

@@ -361,7 +361,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg">
+                <div className="h-full bg-white p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
@@ -392,12 +392,10 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.RECENT_RUNS,
               children: (
-                <div className="p-lg">
-                  <AppRunsHistory
-                    appData={appData}
-                    jsonSchema={jsonSchema as RJSFSchema}
-                  />
-                </div>
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
               ),
             },
           ]
@@ -430,7 +428,7 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={t('label.application-plural')}>
-      <Row className="page-container">
+      <Row>
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
@@ -476,8 +474,8 @@ const AppDetails = () => {
         </Col>
       </Row>
       <Row>
-        <Col className="page-container" span={24}>
-          <Space className="app-details-header w-full m-t-md" size={24}>
+        <Col span={24}>
+          <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -519,7 +517,7 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-lg" span={24}>
+        <Col className="app-details-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             className="tabs-new"

@@ -200,7 +200,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         width: 300,
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewerNew markdown={text || ''} />
+            <RichTextEditorPreviewerNew markdown={text ?? ''} />
           ) : (
             <Typography.Text
               className="text-grey-muted "
@@ -269,15 +269,15 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <Table
-        className="entity-custom-properties-table"
         columns={tableColumn}
+        containerClassName="entity-custom-properties-table"
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
         loading={isLoading}
         locale={{
           emptyText: (
             <ErrorPlaceHolder
-              className="mt-xs"
+              className="mt-xs border-none"
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
               permission={hasAccess}

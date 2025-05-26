@@ -3,7 +3,7 @@ title: Databricks Connector Troubleshooting
 slug: /connectors/database/databricks/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ## Databricks connection details
 

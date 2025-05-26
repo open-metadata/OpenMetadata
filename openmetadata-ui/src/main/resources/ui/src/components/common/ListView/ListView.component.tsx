@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Radio, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_VISIBLE_COLUMNS,
 } from '../../../constants/TableKeys.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
@@ -39,6 +40,17 @@ export const ListView = <T extends object = any>({
     ListViewOptions.TABLE
   );
   const { t } = useTranslation();
+
+  const listViewOptions = [
+    {
+      label: <Icon component={GridIcon} data-testid="grid" />,
+      value: ListViewOptions.CARD,
+    },
+    {
+      label: <Icon component={ListIcon} data-testid="list" />,
+      value: ListViewOptions.TABLE,
+    },
+  ];
 
   const cardRender = useMemo(() => {
     if (isEmpty(tableProps.dataSource)) {
@@ -81,16 +93,12 @@ export const ListView = <T extends object = any>({
             </span>
           )}
 
-          <Radio.Group
+          <Segmented
+            className="segment-toggle"
+            options={listViewOptions}
             value={currentView}
-            onChange={(e) => setCurrentView(e.target.value)}>
-            <Radio.Button value={ListViewOptions.CARD}>
-              <Icon component={GridIcon} data-testid="grid" />
-            </Radio.Button>
-            <Radio.Button value={ListViewOptions.TABLE}>
-              <Icon component={ListIcon} data-testid="list" />
-            </Radio.Button>
-          </Radio.Group>
+            onChange={(value) => setCurrentView(value as ListViewOptions)}
+          />
         </Space>
       </Col>
       <Col span={24}>
@@ -98,6 +106,7 @@ export const ListView = <T extends object = any>({
           <Table
             customPaginationProps={customPaginationProps}
             defaultVisibleColumns={DEFAULT_SERVICE_VISIBLE_COLUMNS}
+            entityType={EntityType.SERVICE}
             staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
             {...tableProps}
           />

@@ -14,7 +14,7 @@
 @import url('../../../../styles/variables.less');
 
 .team-list-container {
-  padding: 20px 0;
+  padding: 20px 0 10px 0;
   .ant-btn {
     border-radius: 4px;
   }
@@ -53,7 +53,7 @@
       tr {
         td {
           border-right: none;
-          background: @body-bg-color;
+          background: @background-primary;
         }
         .ant-table-cell-row-hover {
           background: @body-dark-bg-color;
@@ -80,32 +80,39 @@
 .teams-layout {
   margin: -12px 0;
 
-  .ant-card-head-title {
-    padding-top: 0;
-    padding-bottom: 12px;
-  }
-
   .teams-profile {
     background-color: @team-avatar-bg;
   }
 
   .teams-profile-container {
-    background: @user-profile-background;
-
+    .collapse-panel-container {
+      padding: 20px;
+    }
     .ant-card {
       background: none;
     }
 
-    .ant-collapse-header {
-      padding-left: 0;
+    .ant-collapse-header,
+    .ant-collapse-content {
+      padding: 0 35px 0 0;
+    }
 
-      .ant-collapse-expand-icon {
-        padding-top: 10px;
-      }
+    .ant-collapse-content-box {
+      margin-top: 12px;
+      padding: 0;
     }
 
     .ant-collapse-arrow {
-      top: 35px !important; // overriding from antd
+      top: 28px !important; // overriding from antd
+      right: 0px !important;
+      padding: 6px;
+      background-color: @background-color;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+    }
+
+    .ant-collapse-arrow.arrow-icon-non-organization {
+      top: 42px !important;
     }
 
     .domain-link {
@@ -117,9 +124,25 @@
     width: 100%;
     .teams-scroll-component {
       width: 100%;
-      height: calc(100vh - 120px);
+      max-height: calc(100vh - 120px);
+      padding: 8px 20px;
       overflow-y: scroll;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
+  }
+
+  .edit-team-name {
+    border: 1px solid @border-light;
+    background-color: @white;
+    border-radius: 4px;
+    padding: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
   }
 }
 .team-assets-right-panel {

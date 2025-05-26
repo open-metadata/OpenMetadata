@@ -15,6 +15,10 @@
  */
 export interface ReverseIngestionPipeline {
     /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
+    /**
      * List of operations to be performed on the service
      */
     operations: Operation[];
@@ -200,6 +204,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

@@ -62,7 +62,7 @@ class APIEndpointClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.API_SCHEMA]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
@@ -97,7 +97,10 @@ class APIEndpointClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.API_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -164,8 +167,8 @@ class APIEndpointClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.API_ENDPOINTS,
-        name: i18n.t('label.api-endpoint'),
+        fullyQualifiedName: DetailPageWidgetKeys.API_SCHEMA,
+        name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

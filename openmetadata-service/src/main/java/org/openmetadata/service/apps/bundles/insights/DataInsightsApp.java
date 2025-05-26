@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataAs
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
@@ -185,8 +186,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
-        } else {
-          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {
@@ -215,7 +214,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super.init(app);
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
-
+    JsonUtils.validateJsonSchema(config, DataInsightsAppConfig.class);
     // Get the configuration for the different modules
     costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
     dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());
@@ -435,10 +434,16 @@ public class DataInsightsApp extends AbstractNativeApplication {
     Stats jobDataStats = jobData.getStats();
 
     // Update Entity Level Stats
-    StepStats entityLevelStats = jobDataStats.getEntityStats();
+    EntityStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
       entityLevelStats =
-          new StepStats().withTotalRecords(null).withFailedRecords(null).withSuccessRecords(null);
+          new EntityStats()
+              .withAdditionalProperty(
+                  entityType,
+                  new StepStats()
+                      .withTotalRecords(null)
+                      .withFailedRecords(null)
+                      .withSuccessRecords(null));
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
@@ -455,18 +460,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     stats.setTotalRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getTotalRecords)
             .sum());
 
     stats.setSuccessRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getSuccessRecords)
             .sum());
     stats.setFailedRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
-            .map(s -> (StepStats) s)
             .mapToInt(StepStats::getFailedRecords)
             .sum());
 

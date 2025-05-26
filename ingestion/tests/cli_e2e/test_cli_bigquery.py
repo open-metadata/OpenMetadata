@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,16 +15,20 @@ Test Bigquery connector with CLI
 import random
 from typing import List, Tuple
 
+import pytest
+
+from ingestion.tests.cli_e2e.base.e2e_types import E2EType
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
     DmlOperationType,
     ProfileSampleType,
     SystemProfile,
+    Table,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -123,7 +127,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -131,7 +135,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 1
+        return 3
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -139,7 +143,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def delete_queries() -> List[str]:
@@ -165,7 +169,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                     SystemProfile(
                         timestamp=Timestamp(root=0),
                         operation=DmlOperationType.INSERT,
-                        rowsAffected=2,
+                        rowsAffected=1000,
                     ),
                     SystemProfile(
                         timestamp=Timestamp(root=1),
@@ -209,3 +213,21 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def get_expected_test_case_results(self):
         return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]
+
+    @pytest.mark.order(9999)
+    def test_profiler_w_partition_table(self):
+        """Test profiler sample for partitioned table"""
+        self.build_config_file(
+            E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]}
+        )
+        self.run_command()
+
+        self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})
+        self.run_command("profile")
+        table: Table = self.openmetadata.get_latest_table_profile(
+            FullyQualifiedEntityName(
+                "local_bigquery.open-metadata-beta.w_partition.w_time_partition"
+            )
+        )
+        # We ingest 1 row for each day and the profiler should default to the latest partition
+        assert table.profile.rowCount == 1

@@ -21,6 +21,7 @@ import {
   RenderSettings,
 } from 'react-awesome-query-builder';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -114,7 +115,14 @@ export const getSelectEqualsNotEqualsProperties = (
     },
   };
 };
-
+export const READONLY_SETTINGS = {
+  immutableGroupsMode: true,
+  immutableFieldsMode: true,
+  immutableOpsMode: true,
+  immutableValuesMode: true,
+  canRegroup: false,
+  canRemove: false,
+};
 export const getSelectAnyInProperties = (
   parentPath: Array<string>,
   termObjects: Array<EsTerm>
@@ -793,4 +801,55 @@ export const jsonLogicToElasticsearch = (
   }
 
   throw new Error('Unsupported JSON Logic format');
+};
+
+/**
+ * Adds entity type filter to the query filter if entity type is specified
+ * @param qFilter Query filter to add entity type to
+ * @param entityType Entity type to filter by
+ * @returns Updated query filter with entity type
+ */
+export const addEntityTypeFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (entityType === EntityType.ALL) {
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    (qFilter.query?.bool?.must as QueryFieldInterface[])?.push({
+      bool: {
+        must: [
+          {
+            term: {
+              entityType: entityType,
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  return qFilter;
+};
+
+export const getEntityTypeAggregationFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    const firstMustBlock = (
+      qFilter.query?.bool?.must as QueryFieldInterface[]
+    )[0];
+    if (firstMustBlock?.bool?.must) {
+      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
+        term: {
+          entityType: entityType,
+        },
+      });
+    }
+  }
+
+  return qFilter;
 };

@@ -51,10 +51,6 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getListTestCaseIncidentByStateId: jest.fn(),
 }));
 
-jest.mock('../../../rest/userAPI', () => ({
-  getUsers: jest.fn(),
-}));
-
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
   getEntityReferenceListFromEntities: jest.fn(),

@@ -26,7 +26,7 @@ export interface CreateAppMarketPlaceDefinitionReq {
     /**
      * Application Configuration object.
      */
-    appConfiguration?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application Logo Url.
      */
@@ -40,7 +40,8 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     appType: AppType;
     /**
-     * Full Qualified ClassName for the the application
+     * Full Qualified ClassName for the the application. Use can use
+     * 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.
      */
     className: string;
     /**
@@ -63,6 +64,10 @@ export interface CreateAppMarketPlaceDefinitionReq {
      * Fully qualified name of the domain the Table belongs to.
      */
     domain?: string;
+    /**
+     * The app will be installable only if this flag is set to true.
+     */
+    enabled?: boolean;
     /**
      * Event subscriptions that will be created when the application is installed.
      */
@@ -142,7 +147,7 @@ export enum AgentType {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Day One Experience Flow.
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -239,7 +244,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -251,6 +256,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -543,6 +549,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -803,12 +810,12 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum Type {
+    AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 

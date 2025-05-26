@@ -159,7 +159,7 @@ public class TypeRepository extends EntityRepository<Type> {
     type.setCustomProperties(updatedProperties);
     type.setUpdatedBy(updatedBy);
     type.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, type);
+    return createOrUpdate(uriInfo, type, updatedBy);
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
@@ -443,30 +443,30 @@ public class TypeRepository extends EntityRepository<Type> {
       String fieldName = getCustomField(origProperty, "customPropertyConfig");
       if (previous == null || !previous.getVersion().equals(updated.getVersion())) {
         validatePropertyConfigUpdate(entity, origProperty, updatedProperty);
-      }
-      if (recordChange(
-          fieldName,
-          origProperty.getCustomPropertyConfig(),
-          updatedProperty.getCustomPropertyConfig())) {
-        String customPropertyFQN =
-            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-        EntityReference propertyType =
-            updatedProperty.getPropertyType(); // Don't store entity reference
-        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
-        updatedProperty.withPropertyType(propertyType); // Restore entity reference
-        daoCollection
-            .fieldRelationshipDAO()
-            .upsert(
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                Entity.TYPE,
-                Entity.TYPE,
-                Relationship.HAS.ordinal(),
-                "customProperty",
-                customPropertyJson);
-        postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
+        if (recordChange(
+            fieldName,
+            origProperty.getCustomPropertyConfig(),
+            updatedProperty.getCustomPropertyConfig())) {
+          String customPropertyFQN =
+              getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+          EntityReference propertyType =
+              updatedProperty.getPropertyType(); // Don't store entity reference
+          String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+          updatedProperty.withPropertyType(propertyType); // Restore entity reference
+          daoCollection
+              .fieldRelationshipDAO()
+              .upsert(
+                  customPropertyFQN,
+                  updatedProperty.getPropertyType().getName(),
+                  customPropertyFQN,
+                  updatedProperty.getPropertyType().getName(),
+                  Entity.TYPE,
+                  Entity.TYPE,
+                  Relationship.HAS.ordinal(),
+                  "customProperty",
+                  customPropertyJson);
+          postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
+        }
       }
     }
 
@@ -505,7 +505,7 @@ public class TypeRepository extends EntityRepository<Type> {
         HashSet<String> addedKeys = new HashSet<>(updatedKeys);
         addedKeys.removeAll(origKeys);
 
-        if (!removedKeys.isEmpty() && addedKeys.isEmpty()) {
+        if (!removedKeys.isEmpty()) {
           List<String> removedEnumKeys = new ArrayList<>(removedKeys);
 
           try {

@@ -3,7 +3,9 @@ title: Troubleshooting for MSSQL
 slug: /connectors/database/mssql/troubleshooting
 ---
 
-# Resolving SQL Server Authentication Issue for Windows User  
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+## Resolving SQL Server Authentication Issue for Windows User  
 
 This guide addresses a common issue when connecting to a SQL Server instance using Windows OS. If you encounter the error below, follow the steps outlined to resolve it effectively.  
 

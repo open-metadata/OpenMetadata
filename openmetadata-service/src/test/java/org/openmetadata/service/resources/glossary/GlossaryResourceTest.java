@@ -496,8 +496,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     copyGlossaryTerm(t11, originalT1);
 
     GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, glossary, null, "parentTerm2");
-    LOG.info(" t11 == {}", t11.getTags());
-    LOG.info(" originalT1 == {}", originalT1.getTags());
     glossaryTermResourceTest.moveGlossaryTerm(
         glossary.getEntityReference(), t2.getEntityReference(), t11);
 

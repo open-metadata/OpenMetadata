@@ -56,7 +56,8 @@ public class RunAppTask implements NodeInterface {
       attachWorkflowInstanceStageListeners(subProcess);
     }
 
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 
@@ -106,6 +107,7 @@ public class RunAppTask implements NodeInterface {
         .addFieldExtension(inputNamespaceMapExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .setAsync(true)
+        .exclusive(true)
         .build();
   }
 
