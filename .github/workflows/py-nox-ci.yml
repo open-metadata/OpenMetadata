@@ -1,0 +1,29 @@
+name: Python Nox CI
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  format-and-unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv and nox
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          pip install nox
+
+      - name: Run Format Check
+        run: nox -s format-check
+
+      - name: Run Unit Tests
+        run: nox -s unit

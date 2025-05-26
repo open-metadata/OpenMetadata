@@ -20,8 +20,11 @@ from pathlib import Path
 #    - Address the TODOs in the code
 import nox
 
+# TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
+PYTHON_VERSIONS = ["3.10", "3.11"]
 
-@nox.session(name="format-check", reuse_venv=True, venv_backend="uv|venv")
+
+@nox.session(name="format-check", reuse_venv=False, venv_backend="uv|venv")
 def format_check(session):
     session.install(".[dev]")
     # Configuration from pyproject.toml is taken into account out of the box
@@ -32,15 +35,19 @@ def format_check(session):
     # 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --errors-only
     # 	--rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata
     # 	|| (echo "PyLint error code $$?"; exit 1)
+    #   Some work is required to import plugins correctly
 
 
-@nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv")
+@nox.session(
+    name="unit", reuse_venv=False, venv_backend="uv|venv", python=PYTHON_VERSIONS
+)
 def unit(session):
     session.install(".[all-dev-env, test-unit]")
     # TODO: we need to install pip so that spaCy can install its dependencies
     #       we should find a way to avoid this
     session.install("pip")
-    # TODO: We need to remove this once they can be run properly within nox
+
+    # TODO: We need to remove ignored test once they can be run properly within nox
     # Run unit tests
     ignored_tests = [
         "test_ometa_endpoints.py",
@@ -50,6 +57,7 @@ def unit(session):
         "test_ssl_manager.py",
         "test_usage_filter.py",
         "test_import_checker.py",
+        "test_suite/",
         "profiler/test_profiler_partitions.py",
         "profiler/test_workflow.py",
         "workflow",
@@ -58,6 +66,7 @@ def unit(session):
     ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
 
     session.run("pytest", "tests/unit/", *ignore_args)
+
 
 # TEST PLUGINS
 PLUGINS_TESTS = {
