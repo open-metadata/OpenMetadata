@@ -59,7 +59,7 @@ import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
-  getSettingPath,
+  getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
@@ -75,7 +75,7 @@ const SettingsRouter = () => {
 
   return (
     <Routes>
-      <Route element={<GlobalSettingPage />} path={ROUTES.SETTINGS} />
+      <Route element={<GlobalSettingPage />} path="/" />
 
       {/* keep these route above the setting route always */}
       <Route
@@ -93,7 +93,7 @@ const SettingsRouter = () => {
             />
           </AdminProtectedRoute>
         }
-        path={ROUTES.ADD_ROLE}
+        path={ROUTES.ADD_ROLE.replace(ROUTES.SETTINGS, '')}
       />
       <Route
         element={
@@ -110,38 +110,50 @@ const SettingsRouter = () => {
             />
           </AdminProtectedRoute>
         }
-        path={ROUTES.ADD_POLICY}
+        path={ROUTES.ADD_POLICY.replace(ROUTES.SETTINGS, '')}
       />
-      <AdminProtectedRoute
-        element={<AddRulePage />}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={ROUTES.ADD_POLICY_RULE}
-      />
-      <AdminProtectedRoute
+      <Route
         element={
-          <EditEmailConfigPage
-            pageTitle={t('label.edit-entity', {
-              entity: t('label.entity-configuration', {
-                entity: t('label.email'),
-              }),
-            })}
-          />
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditAll,
+              ResourceEntity.POLICY,
+              permissions
+            )}>
+            <AddRulePage />
+          </AdminProtectedRoute>
         }
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+        path={ROUTES.ADD_POLICY_RULE.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
         element={
           <AdminProtectedRoute hasPermission={false}>
-            <EditUrlConfigurationPage pageTitle={t('label.om-url-config')} />
+            <EditEmailConfigPage
+              pageTitle={t('label.edit-entity', {
+                entity: t('label.entity-configuration', {
+                  entity: t('label.email'),
+                }),
+              })}
+            />
           </AdminProtectedRoute>
         }
-        path={ROUTES.SETTINGS_OM_URL_CONFIG}
+        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG.replace(ROUTES.SETTINGS, '')}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <EditUrlConfigurationPage
+              pageTitle={t('label.edit-entity', {
+                entity: t('label.entity-configuration', {
+                  entity: t('label.url-uppercase'),
+                }),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_OM_URL_CONFIG.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
@@ -154,16 +166,23 @@ const SettingsRouter = () => {
             />
           </AdminProtectedRoute>
         }
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
-      />
-      <AdminProtectedRoute
-        element={<EditRulePage />}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.POLICY,
-          permissions
+        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG.replace(
+          ROUTES.SETTINGS,
+          ''
         )}
-        path={ROUTES.EDIT_POLICY_RULE}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditAll,
+              ResourceEntity.POLICY,
+              permissions
+            )}>
+            <EditRulePage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.EDIT_POLICY_RULE.replace(ROUTES.SETTINGS, '')}
       />
       {/*  Setting routes without any category will be places here */}
       <Route
@@ -176,7 +195,7 @@ const SettingsRouter = () => {
             <NotificationListPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        path={getSettingPathRelative(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <Route
@@ -189,7 +208,10 @@ const SettingsRouter = () => {
             <NotificationAlertDetailsPage />
           </AdminProtectedRoute>
         }
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
+          ROUTES.SETTINGS,
+          ''
+        )}
       />
       <Route
         element={
@@ -199,7 +221,7 @@ const SettingsRouter = () => {
             })}
           />
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.EDIT_NOTIFICATION,
           true
@@ -213,35 +235,47 @@ const SettingsRouter = () => {
             })}
           />
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ADD_NOTIFICATION
         )}
       />
 
-      <AdminProtectedRoute
-        element={<BotsPageV1 />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.BOT,
-          permissions
-        )}
-        path={getSettingPath(GlobalSettingOptions.BOTS)}
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.BOT,
+              permissions
+            )}>
+            <BotsPageV1 />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(GlobalSettingOptions.BOTS)}
       />
-      <AdminProtectedRoute
-        element={<ApplicationPage />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.APPLICATION,
-          permissions
-        )}
-        path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.APPLICATION,
+              permissions
+            )}>
+            <ApplicationPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(GlobalSettingOptions.APPLICATIONS)}
       />
-      <AdminProtectedRoute
-        element={<AppDetails />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.APPLICATION,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.APPLICATION,
+              permissions
+            )}>
+            <AppDetails />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingOptions.APPLICATIONS,
           undefined,
           true
@@ -256,20 +290,20 @@ const SettingsRouter = () => {
             <PersonaPage pageTitle={t('label.persona-plural')} />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(GlobalSettingOptions.PERSONA)}
+        path={getSettingPathRelative(GlobalSettingOptions.PERSONA)}
       />
 
       <Route
         element={<GlobalSettingCategoryPage />}
-        path={ROUTES.SETTINGS_WITH_CATEGORY}
+        path={ROUTES.SETTINGS_WITH_CATEGORY.replace(ROUTES.SETTINGS, '')}
       />
 
-      <Route
+      {/* <Route
         element={
           <Navigate replace to={getTeamsWithFqnPath(TeamType.Organization)} />
         }
-        path={getSettingPath()}
-      />
+        path={getSettingPathRelative()}
+      /> */}
       <Route
         element={
           <AdminProtectedRoute
@@ -280,20 +314,24 @@ const SettingsRouter = () => {
             <TeamsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
         )}
       />
-      <AdminProtectedRoute
-        element={<ImportTeamsPage />}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.TEAM,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditAll,
+              ResourceEntity.TEAM,
+              permissions
+            )}>
+            <ImportTeamsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true,
@@ -304,7 +342,7 @@ const SettingsRouter = () => {
         element={
           <Navigate replace to={getTeamsWithFqnPath(TeamType.Organization)} />
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS
         )}
@@ -315,30 +353,53 @@ const SettingsRouter = () => {
             <PersonaDetailsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
+        path={getSettingPathRelative(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route
        */}
-      <AdminProtectedRoute
-        element={<RolesListPage />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ROLE,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.ROLE,
+              permissions
+            )}>
+            <RolesListPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
         )}
       />
-
-      <AdminProtectedRoute
-        element={<RolesDetailPage />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ROLE,
-          permissions
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.ROLE,
+              permissions
+            )}>
+            <RolesDetailPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.ROLES,
+          true
         )}
-        path={getSettingPath(
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.ROLE,
+              permissions
+            )}>
+            <RolesDetailPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
           true
@@ -354,7 +415,7 @@ const SettingsRouter = () => {
             <SearchSettingsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_SETTINGS
         )}
@@ -366,7 +427,7 @@ const SettingsRouter = () => {
             <EntitySearchSettings />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_SETTINGS,
           true
@@ -379,7 +440,7 @@ const SettingsRouter = () => {
             <LineageConfigPage pageTitle={t('label.lineage-config')} />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LINEAGE_CONFIG
         )}
@@ -391,30 +452,38 @@ const SettingsRouter = () => {
             <UrlConfigurationPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_URL_CONFIG
         )}
       />
 
-      <AdminProtectedRoute
-        element={<PoliciesListPage />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.POLICY,
+              permissions
+            )}>
+            <PoliciesListPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
         )}
       />
-      <AdminProtectedRoute
-        element={<PoliciesDetailPage />}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.POLICY,
+              permissions
+            )}>
+            <PoliciesDetailPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
           true
@@ -438,7 +507,7 @@ const SettingsRouter = () => {
             <EmailConfigSettingsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         )}
@@ -449,7 +518,7 @@ const SettingsRouter = () => {
             <AppearanceConfigSettingsPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APPEARANCE
         )}
@@ -460,7 +529,7 @@ const SettingsRouter = () => {
             <ProfilerConfigurationPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.PROFILER_CONFIGURATION
         )}
@@ -471,19 +540,23 @@ const SettingsRouter = () => {
             <LoginConfigurationPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <AdminProtectedRoute
-        element={<CustomPageSettings />}
-        hasPermission={checkPermission(
-          Operation.EditAll,
-          ResourceEntity.PERSONA,
-          permissions
-        )}
-        path={getSettingPath(
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditAll,
+              ResourceEntity.PERSONA,
+              permissions
+            )}>
+            <CustomPageSettings />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
         )}
@@ -491,7 +564,9 @@ const SettingsRouter = () => {
 
       <Route
         element={<ServicesPage />}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+        path={getSettingCategoryPath(
+          GlobalSettingsMenuCategory.SERVICES
+        ).replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
@@ -510,7 +585,7 @@ const SettingsRouter = () => {
             <OmHealthPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPath(
+        path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
         )}

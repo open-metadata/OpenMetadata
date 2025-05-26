@@ -42,7 +42,7 @@ const ClassificationRouter = () => {
             <TagsPage pageTitle={t('label.tag-plural')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.TAGS}
+        path={ROUTES.TAGS.replace(ROUTES.TAGS, '')}
       />
       <Route
         element={
@@ -50,7 +50,7 @@ const ClassificationRouter = () => {
             <TagsPage pageTitle={t('label.tag-plural')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.TAG_DETAILS}
+        path={ROUTES.TAG_DETAILS.replace(ROUTES.TAGS, '')}
       />
       <Route
         element={
@@ -58,7 +58,7 @@ const ClassificationRouter = () => {
             <ClassificationVersionPage />
           </AdminProtectedRoute>
         }
-        path={ROUTES.TAG_VERSION}
+        path={ROUTES.TAG_VERSION.replace(ROUTES.TAGS, '')}
       />
     </Routes>
   );

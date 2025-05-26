@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -136,7 +135,6 @@ export const ExtraDatabaseSchemaDropdownOptions = (
   deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const navigate = useNavigate();
 
   const { ViewAll, EditAll } = permission;
 
@@ -154,9 +152,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
                   id="import-button"
                   name={t('label.import')}
                   onClick={() =>
-                    navigate(
-                      getEntityImportPath(EntityType.DATABASE_SCHEMA, fqn)
-                    )
+                    getEntityImportPath(EntityType.DATABASE_SCHEMA, fqn)
                   }
                 />
               </LimitWrapper>

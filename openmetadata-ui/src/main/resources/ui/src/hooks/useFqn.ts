@@ -23,7 +23,7 @@ export const useFqn = (): Fqn => {
   const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
 
   return {
-    fqn: fqn ? getDecodedFqn(fqn) : '',
+    fqn: fqn ? fqn : '',
     ingestionFQN: ingestionFQN ? getDecodedFqn(ingestionFQN) : '',
     ruleName: ruleName ? getDecodedFqn(ruleName) : '',
   };

@@ -28,8 +28,6 @@ import {
 } from 'lodash';
 import { EntityTags } from 'Models';
 import { CSSProperties, Fragment } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -1137,8 +1135,6 @@ export const ExtraTableDropdownOptions = (
   deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const navigate = useNavigate();
-  const { t } = useTranslation();
 
   const { ViewAll, EditAll } = permission;
 
@@ -1155,9 +1151,7 @@ export const ExtraTableDropdownOptions = (
                   icon={ImportIcon}
                   id="import-button"
                   name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
-                  }
+                  onClick={() => getEntityImportPath(EntityType.TABLE, fqn)}
                 />
               </LimitWrapper>
             ),

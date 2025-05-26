@@ -454,7 +454,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         element={
-          <RequestDescriptionPage pageTitle={t('label.request-description')} />
+          <RequestDescriptionPage
+            pageTitle={t('message.request-description')}
+          />
         }
         path={ROUTES.REQUEST_DESCRIPTION}
       />
@@ -653,13 +655,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.CUSTOMIZE_PAGE}
       />
-      <Route element={<ClassificationRouter />} path="/tags" />
+      <Route element={<ClassificationRouter />} path="/tags/*" />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
-      <Route element={<GlossaryRouter />} path="/glossary" />
-      <Route element={<GlossaryRouter />} path="/glossary-term" />
-      <Route element={<SettingsRouter />} path="/settings" />
-      <Route element={<DomainRouter />} path="/domain" />
+      <Route element={<GlossaryRouter />} path="/glossary/*" />
+      <Route element={<GlossaryRouter />} path="/glossary-term/*" />
+      <Route element={<SettingsRouter />} path="/settings/*" />
+      <Route element={<DomainRouter />} path="/domain/*" />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
         element={

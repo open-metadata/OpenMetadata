@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 
-import { Navigate, Route, RouteProps, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 
-type AdminProtectedRouteProps = RouteProps & {
+type AdminProtectedRouteProps = {
   hasPermission?: boolean;
+  children: React.ReactNode;
 };
 
 const AdminProtectedRoute = ({
   hasPermission,
-  ...routeProps
-}: AdminProtectedRouteProps) => {
+  children,
+}: AdminProtectedRouteProps): JSX.Element => {
   const { isAdminUser } = useAuth();
   const location = useLocation();
 
   if (isAdminUser || hasPermission) {
-    return <Route {...routeProps} />;
+    return <>{children}</>;
   } else if (!hasPermission) {
     return (
       <ErrorPlaceHolder

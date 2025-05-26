@@ -41,19 +41,19 @@ const GlossaryRouter = () => {
             })}
           />
         }
-        path={ROUTES.ADD_GLOSSARY}
+        path={ROUTES.ADD_GLOSSARY.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={<GlossaryVersion isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
+        path={ROUTES.GLOSSARY_VERSION.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={<GlossaryVersion />}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={<GlossaryVersion />}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
+        path={ROUTES.GLOSSARY_TERMS_VERSION.replace(ROUTES.GLOSSARY, '')}
       />
 
       <Route
@@ -62,7 +62,7 @@ const GlossaryRouter = () => {
             <GlossaryPage pageTitle={t('label.glossary')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.GLOSSARY}
+        path={ROUTES.GLOSSARY.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={
@@ -70,7 +70,7 @@ const GlossaryRouter = () => {
             <GlossaryPage pageTitle={t('label.glossary')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.GLOSSARY_DETAILS}
+        path={ROUTES.GLOSSARY_DETAILS.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={
@@ -78,7 +78,7 @@ const GlossaryRouter = () => {
             <GlossaryPage pageTitle={t('label.glossary')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={
@@ -86,7 +86,7 @@ const GlossaryRouter = () => {
             <GlossaryPage pageTitle={t('label.glossary')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
         element={
@@ -94,7 +94,7 @@ const GlossaryRouter = () => {
             <GlossaryPage pageTitle={t('label.glossary')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB.replace(ROUTES.GLOSSARY, '')}
       />
     </Routes>
   );

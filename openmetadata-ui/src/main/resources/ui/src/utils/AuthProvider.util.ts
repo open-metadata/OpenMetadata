@@ -69,6 +69,7 @@ export const getUserManagerConfig = (
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
+    userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
 

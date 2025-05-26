@@ -12,7 +12,10 @@
  */
 import { useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import {
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  ROUTES,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -38,23 +41,41 @@ const EntityRouter = () => {
 
       <Route
         element={<EntityVersionPage />}
-        path={ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB}
+        path={ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB.replace(
+          PLACEHOLDER_ROUTE_ENTITY_TYPE,
+          ''
+        )}
       />
       <Route
         element={<EntityVersionPage />}
-        path={ROUTES.ENTITY_VERSION_DETAILS}
+        path={ROUTES.ENTITY_VERSION_DETAILS.replace(
+          PLACEHOLDER_ROUTE_ENTITY_TYPE,
+          ''
+        )}
       />
 
       {Component ? (
         <>
-          <Route element={<Component />} path={ROUTES.ENTITY_DETAILS} />
           <Route
             element={<Component />}
-            path={ROUTES.ENTITY_DETAILS_WITH_TAB}
+            path={ROUTES.ENTITY_DETAILS.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
           />
           <Route
             element={<Component />}
-            path={ROUTES.ENTITY_DETAILS_WITH_SUB_TAB}
+            path={ROUTES.ENTITY_DETAILS_WITH_TAB.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
+          />
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS_WITH_SUB_TAB.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
           />
         </>
       ) : (

@@ -31,14 +31,18 @@ const DomainRouter = () => {
 
   return (
     <Routes>
-      <Route element={<AddDomain />} path={ROUTES.ADD_DOMAIN} />
       <Route
+        element={<AddDomain />}
+        path={ROUTES.ADD_DOMAIN.replace(ROUTES.DOMAIN, '')}
+      />
+      <Route
+        index
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
             <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.DOMAIN}
+        path="/"
       />
       <Route
         element={
@@ -46,7 +50,7 @@ const DomainRouter = () => {
             <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.DOMAIN_DETAILS}
+        path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
       />
       <Route
         element={
@@ -54,7 +58,7 @@ const DomainRouter = () => {
             <DomainPage pageTitle={i18n.t('label.domain')} />
           </AdminProtectedRoute>
         }
-        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
+        path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
       />
     </Routes>
   );

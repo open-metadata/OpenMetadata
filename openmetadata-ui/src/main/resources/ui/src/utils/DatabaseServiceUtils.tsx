@@ -12,7 +12,6 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -311,7 +310,6 @@ export const ExtraDatabaseServiceDropdownOptions = (
   deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const navigate = useNavigate();
 
   const { ViewAll, EditAll } = permission;
 
@@ -329,11 +327,9 @@ export const ExtraDatabaseServiceDropdownOptions = (
                 icon={ImportIcon}
                 id="import-button"
                 name={t('label.import')}
-                onClick={() =>
-                  navigate(
-                    getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
-                  )
-                }
+                onClick={() => {
+                  getEntityImportPath(EntityType.DATABASE_SERVICE, fqn);
+                }}
               />
             ),
             key: 'import-button',

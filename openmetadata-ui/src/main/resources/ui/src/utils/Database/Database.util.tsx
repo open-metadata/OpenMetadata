@@ -12,7 +12,7 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -214,7 +214,6 @@ export const ExtraDatabaseDropdownOptions = (
   deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const navigate = useNavigate();
 
   const { ViewAll, EditAll } = permission;
 
@@ -231,9 +230,7 @@ export const ExtraDatabaseDropdownOptions = (
                   icon={ImportIcon}
                   id="import-button"
                   name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.DATABASE, fqn))
-                  }
+                  onClick={() => getEntityImportPath(EntityType.DATABASE, fqn)}
                 />
               </LimitWrapper>
             ),
