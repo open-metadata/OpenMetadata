@@ -1,11 +1,9 @@
--- Add runtime: enabled for AutoPilot
-UPDATE apps_marketplace
-SET json = JSON_SET(
-    json,
-    '$.runtime.enabled',
-    true
-)
-WHERE name = 'AutoPilotApplication';
+ALTER TABLE background_jobs
+ADD COLUMN runAt BIGINT;
+
+CREATE INDEX background_jobs_run_at_index ON background_jobs(runAt);
+
+
 
 CREATE TABLE IF NOT EXISTS data_contract_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
@@ -22,3 +20,4 @@ CREATE TABLE IF NOT EXISTS data_contract_entity (
 
 -- Add index for deleted flag
 ALTER TABLE data_contract_entity ADD INDEX index_data_contract_entity_deleted(deleted);
+

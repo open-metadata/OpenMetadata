@@ -1,11 +1,8 @@
--- Add runtime: enabled for AutoPilot
-UPDATE apps_marketplace
-SET json = jsonb_set(
-	json::jsonb,
-	'{runtime,enabled}',
-	'true'
-)
-where name = 'AutoPilotApplication';
+ALTER TABLE background_jobs
+ADD COLUMN runAt BIGINT;
+
+CREATE INDEX background_jobs_run_at_index ON background_jobs(runAt);
+
 -- Create data contract table
 CREATE TABLE IF NOT EXISTS data_contract_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
@@ -15,7 +12,6 @@ CREATE TABLE IF NOT EXISTS data_contract_entity (
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
   deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED NOT NULL,
-  
   PRIMARY KEY (id),
   UNIQUE (fqnHash)
 );
