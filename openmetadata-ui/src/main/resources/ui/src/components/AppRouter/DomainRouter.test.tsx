@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import DomainRouter from './DomainRouter';
 
@@ -23,9 +23,10 @@ jest.mock('../Domain/DomainPage.component', () => {
   return jest.fn().mockReturnValue(<div>DomainPage</div>);
 });
 
-jest.mock('./AdminProtectedRoute', () => {
-  return jest.fn().mockImplementation((props) => <Route {...props} />);
-});
+jest.mock('./AdminProtectedRoute', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ children }) => children),
+}));
 
 jest.mock('../../utils/PermissionsUtils', () => {
   return {

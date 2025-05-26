@@ -93,7 +93,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      screen.getAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByText('StatusByDimensionWidget.component')
     ).toHaveLength(2);
   });
 
@@ -109,7 +109,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      screen.getAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByText('StatusByDimensionWidget.component')
     ).toHaveLength(8);
   });
 });

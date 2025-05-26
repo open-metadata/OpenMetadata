@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { forwardRef } from 'react';
 import {
   MOCK_TEST_CASE,
@@ -50,9 +57,9 @@ jest.mock('../../../rest/testAPI', () => {
       .mockImplementation(() =>
         Promise.resolve(MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX)
       ),
-    // updateTestCaseById: jest
-    //   .fn()
-    //   .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
+    updateTestCaseById: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
   };
 });
 
@@ -121,13 +128,13 @@ describe('EditTestCaseModal Component', () => {
   it('should call onUpdate function, on click of submit button', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
-    const submitBtn = await screen.findByText('label.submit');
-
     await act(async () => {
-      fireEvent.click(submitBtn);
+      userEvent.click(await screen.findByText('label.submit'));
     });
 
-    expect(mockProps.onUpdate).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockProps.onUpdate).toHaveBeenCalled();
+    });
   });
 
   it('displayName should be visible in input field', async () => {

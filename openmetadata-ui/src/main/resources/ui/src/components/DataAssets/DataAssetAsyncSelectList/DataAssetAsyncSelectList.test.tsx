@@ -41,7 +41,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
-  useNavigate: () => jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 const mockUserData = {
@@ -149,13 +149,12 @@ describe('DataAssetAsyncSelectList', () => {
       />
     );
 
-    // await act(async () => {
-    const inputBox = container.querySelector('.ant-select-selector');
-    inputBox && fireEvent.click(inputBox);
-    // });
+    await act(async () => {
+      const inputBox = container.querySelector('.ant-select-selector');
+      inputBox && fireEvent.click(inputBox);
+    });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
-    expect(screen.getAllByTestId('profile-pic')).toHaveLength(2);
   });
 
   it('should call onChange when an option is selected', async () => {

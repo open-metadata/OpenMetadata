@@ -54,7 +54,11 @@ export const mockCommonEntityInfo = [
     name: 'Pipeline URL',
     dataTestId: 'pipeline-url-label',
     value: 'Presto ETL',
-    url: 'http://localhost:8080/tree?dag_id=presto_etl',
+    url: 'http://localhost:8080/tree',
+    linkProps: {
+      pathname: 'http://localhost:8080/tree',
+      search: '?dag_id=presto_etl',
+    },
     isLink: true,
     isExternal: true,
     visible: ['Lineage', 'Explore'],

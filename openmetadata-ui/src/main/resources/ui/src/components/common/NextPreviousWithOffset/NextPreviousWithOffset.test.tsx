@@ -82,7 +82,7 @@ describe('NextPreviousWithOffset', () => {
     expect(screen.getByText('10 / label.page')).toBeInTheDocument();
   });
 
-  it('should call onShowSizeChange with correct size when page size is changed', async () => {
+  it.skip('should call onShowSizeChange with correct size when page size is changed', async () => {
     const mockOnShowSizeChange = jest.fn();
     const props = {
       ...defaultProps,

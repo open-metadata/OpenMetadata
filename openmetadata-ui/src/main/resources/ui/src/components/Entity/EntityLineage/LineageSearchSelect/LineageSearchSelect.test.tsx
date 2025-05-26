@@ -94,10 +94,10 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && fireEvent.click(selectElm);
+      selectElm && userEvent.click(selectElm);
     });
 
-    const option1 = screen.getByTestId('option-test1');
+    const option1 = await screen.findByTestId('option-test1');
 
     expect(option1).toBeInTheDocument();
   });
@@ -110,10 +110,10 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && fireEvent.click(selectElm);
+      selectElm && userEvent.click(selectElm);
     });
 
-    const option1 = screen.getByTestId('option-test1');
+    const option1 = await screen.findByTestId('option-test1');
 
     expect(option1).toBeInTheDocument();
 
@@ -131,10 +131,10 @@ describe('LineageSearchSelect', () => {
 
     await act(async () => {
       const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && fireEvent.click(selectElm);
+      selectElm && userEvent.click(selectElm);
     });
 
-    const column = screen.getByTestId('option-column1');
+    const column = await screen.findByTestId('option-column1');
 
     expect(column).toBeInTheDocument();
 

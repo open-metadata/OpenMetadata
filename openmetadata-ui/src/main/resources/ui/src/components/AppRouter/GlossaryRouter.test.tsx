@@ -34,6 +34,11 @@ jest.mock('../../utils/PermissionsUtils', () => {
   };
 });
 
+jest.mock('./AdminProtectedRoute', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ children }) => children),
+}));
+
 describe('GlossaryRouter', () => {
   it('should render AddGlossaryPage component for add glossary route', async () => {
     render(
@@ -59,8 +64,8 @@ describe('GlossaryRouter', () => {
     render(
       <MemoryRouter
         initialEntries={[
-          '/glossary/terms/versions/tab',
-          '/glossary/terms/versions',
+          '/glossary-term/terms/versions/123/tab',
+          '/glossary-term/terms/versions/123',
         ]}>
         <GlossaryRouter />
       </MemoryRouter>

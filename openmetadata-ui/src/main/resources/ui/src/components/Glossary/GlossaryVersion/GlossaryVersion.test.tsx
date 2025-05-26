@@ -78,9 +78,10 @@ describe('GlossaryVersion', () => {
       <MemoryRouter
         initialEntries={[`/glossary/${glossaryName}/versions/${version}`]}>
         <Routes>
-          <Route path="/glossary/:glossaryName/versions/:version">
-            <GlossaryVersion isGlossary />
-          </Route>
+          <Route
+            element={<GlossaryVersion isGlossary />}
+            path="/glossary/:glossaryName/versions/:version"
+          />
         </Routes>
       </MemoryRouter>
     );

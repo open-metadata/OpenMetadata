@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import ClassificationRouter from './ClassificationRouter';
 
-jest.mock('./AdminProtectedRoute', () => {
-  return jest.fn().mockImplementation((props) => <Route {...props} />);
-});
+jest.mock('./AdminProtectedRoute', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ children }) => children),
+}));
 
 jest.mock('../../utils/PermissionsUtils', () => {
   return {
@@ -41,9 +42,7 @@ describe('ClassificationRouter', () => {
   it('should render TagsPage component when route matches "/tags" or "/tags/:tagId"', async () => {
     render(
       <MemoryRouter initialEntries={['/tags']}>
-        <Routes>
-          <Route element={<ClassificationRouter />} path="/tags" />
-        </Routes>
+        <ClassificationRouter />
       </MemoryRouter>
     );
 
@@ -53,9 +52,7 @@ describe('ClassificationRouter', () => {
   it('should render ClassificationVersionPage component when route matches "/tags/version"', async () => {
     render(
       <MemoryRouter initialEntries={['/tags/testTag/versions/123']}>
-        <Routes>
-          <Route element={<ClassificationRouter />} path="/tags" />
-        </Routes>
+        <ClassificationRouter />
       </MemoryRouter>
     );
 
