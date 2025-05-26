@@ -1,12 +1,37 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Nox sessions for testing and formatting checks.
+"""
+import ast
+from pathlib import Path
+
+# NOTE: This is still a work in progress! We still need to:
+#    - Fix ignored unit tests
+#    - Add integration tests
+#    - Address the TODOs in the code
 import nox
 
 
 @nox.session(name="format-check", reuse_venv=True, venv_backend="uv|venv")
 def format_check(session):
     session.install(".[dev]")
+    # Configuration from pyproject.toml is taken into account out of the box
     session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
     session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
-    session.run("pycln", "--check", ".", "../openmetadata-airflow-apis/")
+    session.run("pycln", "--diff", ".", "../openmetadata-airflow-apis/")
+    # TODO: It remains to adapt the command from the Makefile:
+    # 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --errors-only
+    # 	--rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata
+    # 	|| (echo "PyLint error code $$?"; exit 1)
 
 
 @nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv")
@@ -15,7 +40,7 @@ def unit(session):
     # TODO: we need to install pip so that spaCy can install its dependencies
     #       we should find a way to avoid this
     session.install("pip")
-
+    # TODO: We need to remove this once they can be run properly within nox
     # Run unit tests
     ignored_tests = [
         "test_ometa_endpoints.py",
@@ -24,6 +49,7 @@ def unit(session):
         "test_sample_usage.py",
         "test_ssl_manager.py",
         "test_usage_filter.py",
+        "test_import_checker.py",
         "profiler/test_profiler_partitions.py",
         "profiler/test_workflow.py",
         "workflow",
@@ -33,137 +59,60 @@ def unit(session):
 
     session.run("pytest", "tests/unit/", *ignore_args)
 
-
-PLUGINS = ["great_expectations"]
+# TEST PLUGINS
+PLUGINS_TESTS = {
+    "great-expectations": "tests/unit/great_expectations",
+}
+PLUGINS = list(PLUGINS_TESTS.keys())
 
 
 @nox.session(name="unit-plugins", reuse_venv=True, venv_backend="uv|venv")
 @nox.parametrize("plugin", PLUGINS)
 def unit_plugins(session, plugin):
-    session.install(".[test-unit]")
-    session.install("great_expectations~=0.18.0")
-    session.run("pytest", "tests/unit/great_expectations")
+    versions = extract_attribute_from_setup("VERSIONS", "setup.py")
 
+    if not versions:
+        session.error("Not able to extract VERSIONS from setup.py")
+        session.exit(1)
 
-@nox.session(name="integration", venv_backend="uv|venv")
-def integration(session: nox.Session):
-    # Install package with integration extras
-    session.install(".[test]")
-    session.install("pytest", "pytest-xdist", "pytest-timeout")
-    tests_suites = [
-        # "airflow", # Idempotence issue, fails on second run
-        "alationsink",
-        "automations",
-        "cassandra",
-        "cockroach",
-        "connections",
-        # "datalake", requires some extra deps
-        # "data_quality", Takes too long!
-        # "great_expectations", # Issues with installing on runtime
-        "kafka",
-        "mongodb",
-        # "mysql", Flaky not idempotent tests
-        # "ometa", # Takes too long!
-        # "orm_profiler", fails
-        # "postgres",
-        "powerbi",
-        "profiler",
-        "s3",
-        "sources",
-        # "sql_server", fails with error pyodbc.Error: ('01000', "[01000] [unixODBC][Driver Manager]Can't open lib 'ODBC Driver 18 for SQL Server' : file not found (0) (SQLDriverConnect)")
-        "superset",
-        "test_suite",
-        # "trino", fails: <pandas.io.sql.SQLTable object at 0x16f05a020>, conn = <sqlalchemy.engine.base.Connection object at 0x16f0587f0>, keys = ['one', 'two', 'three', 'four', 'five']
-        # data_iter = <zip object at 0x16f078ec0>
-        "workflow",
-    ]
-    # Set environment variables for integration tests
-
-    not_parallel = [
-        "workflow",
-        "automations",
-        "cockroach",
-        "kafka",
-        "profiler",  # problem with network dropping see tests.integration.kafka.conftest.docker_network
-        "sources",
-        "superset",
-        "test_suite",
-    ]
-    for test in not_parallel:
-        session.run(
-            "pytest",
-            "-n",
-            "auto",
-            "-s",
-            f"tests/integration/{test}",
-            env={"TC_MAX_TRIES": "40", "TC_POOLING_INTERVAL": "2"},
+    if plugin not in versions:
+        session.error(
+            f"Plugin {plugin} not found in VERSIONS. Available plugins: {list(versions)}"
         )
-        exit(1)
+        session.exit(1)
 
-    parallizable = [test for test in tests_suites if test not in not_parallel]
-    test_paths = [f"tests/integration/{test}" for test in parallizable]
-    session.run(
-        "pytest",
-        "-n",
-        "auto",
-        *test_paths,
-        "--disable-warnings",
-        env={"TC_MAX_TRIES": "40", "TC_POOLING_INTERVAL": "2"},
-    )
-
-    # for test in parallizable[:5]:
-    #     session.run(
-    #         "pytest",
-    #         "-n",
-    #         "auto",
-    #         f"tests/integration/{test}",
-    #         "--disable-warnings",
-    #         env={"TC_MAX_TRIES": "20", "TC_POOLING_INTERVAL": "2"},
-    #     )
-    # tests = [f"tests/integration/{test}" for test in tests_suites]
-    # run tests in parallel
+    session.install(".[test-unit]")
+    session.install(versions[plugin])
+    # Assuming the plugin has its own tests in a specific directory
+    session.run("pytest", PLUGINS_TESTS[plugin])
 
 
-@nox.session(name="integration-parallel", venv_backend="uv|venv")
-def integration_parallel(session: nox.Session):
-    # Install package with integration extras
-    session.install(".[test]")
-    session.install("pytest", "pytest-xdist", "pytest-timeout")
-    # Tests that require Mysql container
-    tests_suites = [
-        "automations",
-        "connections",
-        # "ometa", # Takes too long!
-        # "sources",
-        "workflow",
-    ]
+def extract_attribute_from_setup(attr_name: str, setup_path: str = "setup.py"):
+    # TODO: We should consider using a more robust method to extract attributes
+    # such as moving out the attributes to a separate file.
+    # Implementation by ChatGPT
+    """
+    Safely extract a top-level variable from setup.py using AST parsing.
+    (By ChatGPT)
 
-    test_paths = [f"tests/integration/{test}" for test in tests_suites]
-    session.run(
-        "pytest",
-        "-n",
-        "auto",
-        *test_paths,
-        "--disable-warnings",
-        env={"TC_MAX_TRIES": "40", "TC_POOLING_INTERVAL": "2"},
-    )
+    Args:
+        attr_name (str): Name of the variable to extract (e.g., 'foo')
+        setup_path (str): Path to the setup.py file
 
-    # for test in parallizable[:5]:
-    #     session.run(
-    #         "pytest",
-    #         "-n",
-    #         "auto",
-    #         f"tests/integration/{test}",
-    #         "--disable-warnings",
-    #         env={"TC_MAX_TRIES": "20", "TC_POOLING_INTERVAL": "2"},
-    #     )
-    # tests = [f"tests/integration/{test}" for test in tests_suites]
-    # run tests in parallel
+    Returns:
+        The value of the variable if found, else None.
+    """
+    setup_file = Path(setup_path)
+    if not setup_file.exists():
+        raise FileNotFoundError(f"{setup_path} not found")
 
+    with setup_file.open("r") as f:
+        tree = ast.parse(f.read(), filename=setup_path)
 
-# @nox.session(name="lint")
-# def lint(session):
-#     session.install(".[dev]")
-#     session.run("black", "--check", ".")
-#     session.run("isort", "--check-only", ".")
-#     session.run("mypy", ".")
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == attr_name:
+                    return ast.literal_eval(node.value)
+
+    return None  # Not found
