@@ -58,6 +58,7 @@ import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpo
 import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -249,8 +250,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
 
-    JobHandlerRegistry registry = new JobHandlerRegistry();
-    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    JobHandlerRegistry registry = getJobHandlerRegistry();
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
@@ -290,6 +290,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       McpServer mcpServer = new McpServer();
       mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
     }
+  }
+
+  protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    return registry;
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
