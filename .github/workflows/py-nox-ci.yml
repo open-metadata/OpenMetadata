@@ -1,5 +1,10 @@
 name: Python Nox CI
 
+# This is a temporary workflow to run format and unit tests using Nox.
+# It is intended to be manually triggered and will not run on pull requests or pushes.
+# Once this is fully tested and stable, we might replace the existing Python CI workflow with this one
+# to speed it up and simplify the process.
+
 on:
   workflow_dispatch:  # Manual trigger only
 
