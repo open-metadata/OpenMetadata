@@ -77,6 +77,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           onBlur={() => props.onBlur(id, value)}
           onChange={(value) => props.onChange(value)}
           onFocus={handleFocus}
+          {...(!options && { tokenSeparators: [','] })}
         />
       </Col>
     </Row>
