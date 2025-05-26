@@ -44,7 +44,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
 
 # TODO: Will be addressed when cleaning up integration tests.
-#  Setting the max tries for testcontainers to 10 here has pitfalls,
+#  Setting the max tries for testcontainers here has pitfalls,
 #  the main one being that it cannot be changed through the recommended
 #  way of using environment variables. The main problem is that
 #  waiting_utils.py uses testcontainers_config.timeout as a default
