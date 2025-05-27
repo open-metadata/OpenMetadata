@@ -11,7 +11,7 @@ public interface ScimProvisioningService {
 
   Response createUser(ScimUser user, UriInfo uriInfo);
 
-  Response updateUser(String id, ScimUser user);
+  Response updateUser(String id, ScimUser user, UriInfo uriInfo);
 
   Response deleteUser(String id);
 

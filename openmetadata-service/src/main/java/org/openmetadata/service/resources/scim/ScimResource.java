@@ -33,8 +33,8 @@ public class ScimResource {
 
   @PUT
   @Path("/Users/{id}")
-  public Response updateUser(@PathParam("id") String id, ScimUser user) {
-    return provisioningService.updateUser(id, user);
+  public Response updateUser(@PathParam("id") String id, ScimUser user, @Context UriInfo uriInfo) {
+    return provisioningService.updateUser(id, user, uriInfo);
   }
 
   @DELETE
