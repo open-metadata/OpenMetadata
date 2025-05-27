@@ -27,6 +27,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
@@ -318,7 +319,10 @@ public class SystemRepository {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+      } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
       }
+
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
