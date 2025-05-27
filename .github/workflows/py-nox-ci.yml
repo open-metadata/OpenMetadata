@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f -s unit
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit
 
       - name: Run Unit Tests (specific plugins)
         run: |
