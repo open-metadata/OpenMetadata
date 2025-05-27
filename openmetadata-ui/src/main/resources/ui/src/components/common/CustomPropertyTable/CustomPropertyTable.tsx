@@ -223,7 +223,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.custom-property'),
+            entity: t('label.custom-property-plural'),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
