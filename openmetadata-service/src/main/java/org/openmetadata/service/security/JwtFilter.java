@@ -99,7 +99,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
           "v1/users/login",
-          "v1/users/refresh");
+          "v1/users/refresh",
+          "v1/collate/apps/support/login");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -310,5 +311,19 @@ public class JwtFilter implements ContainerRequestFilter {
         throw AuthenticationException.invalidTokenMessage();
       }
     }
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    Map<String, Claim> claims = validateJwtAndGetClaims(token);
+    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    // TODO: check if we need to set the scheme and auth type
+    return new CatalogSecurityContext(
+        catalogPrincipal,
+        "https",
+        SecurityContext.DIGEST_AUTH,
+        getUserRolesFromClaims(claims, isBot(claims)));
   }
 }
