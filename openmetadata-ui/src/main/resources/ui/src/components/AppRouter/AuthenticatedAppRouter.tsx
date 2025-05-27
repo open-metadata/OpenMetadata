@@ -476,7 +476,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           ResourceEntity.TEST_CASE,
           permissions
         )}
-        path={ROUTES.TEST_CASE_VERSION}
+        path={[
+          ROUTES.TEST_CASE_VERSION,
+          ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION,
+        ]}
       />
 
       <AdminProtectedRoute

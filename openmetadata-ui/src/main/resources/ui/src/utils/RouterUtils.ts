@@ -509,12 +509,22 @@ export const getTestCaseDetailPagePath = (
 
   return path;
 };
-export const getTestCaseVersionPath = (fqn: string, version: string) => {
-  let path = ROUTES.TEST_CASE_VERSION;
+export const getTestCaseVersionPath = (
+  fqn: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION
+    : ROUTES.TEST_CASE_VERSION;
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

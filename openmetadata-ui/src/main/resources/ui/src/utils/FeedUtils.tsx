@@ -629,6 +629,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
     [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
     [EntityField.FIELDS]: i18next.t('label.field-plural'),
+    [EntityField.PARAMETER_VALUES]: i18next.t('label.parameter-plural'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];

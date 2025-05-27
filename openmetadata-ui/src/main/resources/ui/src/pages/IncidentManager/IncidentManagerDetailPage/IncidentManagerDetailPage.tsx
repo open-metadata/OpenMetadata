@@ -189,7 +189,16 @@ const IncidentManagerDetailPage = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs)
+        isVersionPage
+          ? getTestCaseVersionPath(
+              testCaseFQN,
+              version,
+              activeKey as TestCasePageTabs
+            )
+          : getTestCaseDetailPagePath(
+              testCaseFQN,
+              activeKey as TestCasePageTabs
+            )
       );
     }
   };
@@ -245,16 +254,22 @@ const IncidentManagerDetailPage = ({
     history.push(
       isVersionPage
         ? getTestCaseDetailPagePath(testCaseFQN)
-        : getTestCaseVersionPath(testCaseFQN, toString(testCase?.version) ?? '')
+        : getTestCaseVersionPath(
+            testCaseFQN,
+            toString(testCase?.version) ?? '',
+            activeTab
+          )
     );
   };
 
   // version related methods
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(getTestCaseVersionPath(testCaseFQN, toString(newVersion)));
+      history.push(
+        getTestCaseVersionPath(testCaseFQN, toString(newVersion), activeTab)
+      );
     },
-    [testCaseFQN]
+    [testCaseFQN, activeTab]
   );
   const fetchCurrentVersion = async (id: string) => {
     // setIsVersionDataLoading(true);

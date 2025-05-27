@@ -1034,6 +1034,23 @@ export const getOwnerDiff = (
   };
 };
 
+export const getChangedEntityStatus = (
+  oldValue?: string,
+  newValue?: string
+) => {
+  if (oldValue && newValue) {
+    return oldValue !== newValue
+      ? EntityChangeOperations.UPDATED
+      : EntityChangeOperations.NORMAL;
+  } else if (oldValue && !newValue) {
+    return EntityChangeOperations.DELETED;
+  } else if (!oldValue && newValue) {
+    return EntityChangeOperations.ADDED;
+  }
+
+  return EntityChangeOperations.NORMAL;
+};
+
 export const getParameterValuesDiff = (
   changeDescription: ChangeDescription,
   defaultValues?: TestCaseParameterValue[]
@@ -1041,7 +1058,7 @@ export const getParameterValuesDiff = (
   name: string;
   oldValue: string;
   newValue: string;
-  status: 'added' | 'removed' | 'updated' | 'unchanged';
+  status: EntityChangeOperations;
 }[] => {
   const fieldDiff = getDiffByFieldName(
     EntityField.PARAMETER_VALUES,
@@ -1065,7 +1082,7 @@ export const getParameterValuesDiff = (
       name: String(param.name),
       oldValue: String(param.value),
       newValue: String(param.value),
-      status: 'unchanged',
+      status: EntityChangeOperations.NORMAL,
     }));
   }
 
@@ -1073,7 +1090,7 @@ export const getParameterValuesDiff = (
     name: string;
     oldValue: string;
     newValue: string;
-    status: 'added' | 'removed' | 'updated' | 'unchanged';
+    status: EntityChangeOperations;
   }[] = [];
 
   // Find all unique parameter names
@@ -1091,14 +1108,14 @@ export const getParameterValuesDiff = (
           name: String(name),
           oldValue: String(oldParam.value),
           newValue: String(newParam.value),
-          status: 'updated',
+          status: EntityChangeOperations.UPDATED,
         });
       } else {
         result.push({
           name: String(name),
           oldValue: String(oldParam.value),
           newValue: String(newParam.value),
-          status: 'unchanged',
+          status: EntityChangeOperations.NORMAL,
         });
       }
     } else if (!oldParam && newParam) {
@@ -1106,14 +1123,14 @@ export const getParameterValuesDiff = (
         name: String(name),
         oldValue: '',
         newValue: String(newParam.value),
-        status: 'added',
+        status: EntityChangeOperations.ADDED,
       });
     } else if (oldParam && !newParam) {
       result.push({
         name: String(name),
         oldValue: String(oldParam.value),
         newValue: '',
-        status: 'removed',
+        status: EntityChangeOperations.DELETED,
       });
     }
   });
@@ -1138,6 +1155,24 @@ export const getTextDiffElements = (
 
     return getNormalDiffElement(diff.value);
   });
+};
+
+export const getDiffDisplayValue = (diff: {
+  oldValue: string;
+  newValue: string;
+  status: EntityChangeOperations;
+}) => {
+  switch (diff.status) {
+    case EntityChangeOperations.UPDATED:
+      return getTextDiffElements(diff.oldValue, diff.newValue);
+    case EntityChangeOperations.ADDED:
+      return getAddedDiffElement(diff.newValue);
+    case EntityChangeOperations.DELETED:
+      return getRemovedDiffElement(diff.oldValue);
+    case EntityChangeOperations.NORMAL:
+    default:
+      return diff.oldValue;
+  }
 };
 
 export const getParameterValueDiffDisplay = (
@@ -1167,25 +1202,7 @@ export const getParameterValueDiffDisplay = (
               <Typography.Text className="text-grey-muted">
                 {`${diff.name}:`}
               </Typography.Text>
-              {diff.status === 'updated' ? (
-                <Typography.Text>
-                  {getTextDiffElements(diff.oldValue, diff.newValue).map(
-                    (el, idx) => (
-                      <React.Fragment key={idx}>{el}</React.Fragment>
-                    )
-                  )}
-                </Typography.Text>
-              ) : diff.status === 'added' ? (
-                <Typography.Text>
-                  {getAddedDiffElement(diff.newValue)}
-                </Typography.Text>
-              ) : diff.status === 'removed' ? (
-                <Typography.Text>
-                  {getRemovedDiffElement(diff.oldValue)}
-                </Typography.Text>
-              ) : (
-                <Typography.Text>{diff.oldValue}</Typography.Text>
-              )}
+              <Typography.Text>{getDiffDisplayValue(diff)}</Typography.Text>
               {otherParamDiffs.length - 1 !== index && (
                 <Divider type="vertical" />
               )}
@@ -1201,14 +1218,7 @@ export const getParameterValueDiffDisplay = (
           </Typography.Text>
 
           <div className="m-t-sm version-sql-expression-container">
-            {sqlParamDiff.status === 'updated'
-              ? getTextDiffElements(
-                  sqlParamDiff.oldValue,
-                  sqlParamDiff.newValue
-                ).map((el, idx) => (
-                  <React.Fragment key={idx}>{el}</React.Fragment>
-                ))
-              : sqlParamDiff.oldValue || sqlParamDiff.newValue || ''}
+            {getDiffDisplayValue(sqlParamDiff)}
           </div>
         </div>
       )}
