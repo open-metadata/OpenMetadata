@@ -80,15 +80,15 @@ class LightdashApiClient:
     def get_project_name(self, project_uuid: str) -> str:
         """GET project name"""
         try:
-            response = self.client.get(f"/api/v1/projects/{project_uuid}")
+            response = self.client.get(f"api/v1/projects/{project_uuid}")
             response_json_results = response.get("results")
             return response_json_results["name"]
-        except Exception as e:
+        except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(
                 "Failed to fetch the project data from the Lightdash Connector"
             )
-            raise e
+            return ""
 
     def get_charts_list(self) -> List[LightdashChart]:
         """
