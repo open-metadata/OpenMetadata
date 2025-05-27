@@ -205,7 +205,13 @@ public final class SecurityUtil {
       Set<String> allowedDomains,
       boolean enforcePrincipalDomain) {
     String domain = StringUtils.EMPTY;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    boolean isBot = false;
+    Claim isBotClaim = (Claim) claims.get("isBot");
+    if (isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean())) {
+      isBot = true;
+    }
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
