@@ -298,14 +298,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
-          flex: 0.13,
+          flex: 0.2,
           minWidth: 280,
           title: t('label.data-asset-plural'),
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{
           className: 'content-height-with-resizable-panel',
-          flex: 0.87,
+          flex: 0.8,
           minWidth: 800,
           children: (
             <div className="explore-main-container">

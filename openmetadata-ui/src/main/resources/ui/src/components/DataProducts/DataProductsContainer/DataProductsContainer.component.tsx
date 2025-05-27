@@ -153,7 +153,9 @@ const DataProductsContainer = ({
             <PlusIconButton
               data-testid="add-data-product"
               size="small"
-              title={t('label.add-data-product')}
+              title={t('label.add-entity', {
+                entity: t('label.data-product-plural'),
+              })}
               onClick={handleAddClick}
             />
           )}
