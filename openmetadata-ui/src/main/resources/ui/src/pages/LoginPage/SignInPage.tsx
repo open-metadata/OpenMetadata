@@ -21,7 +21,6 @@ import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
-import loginBG from '../../assets/img/login-bg.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -226,6 +225,7 @@ const SignInPage = () => {
                           {t('label.password')}
                         </Typography.Text>
                         <Typography.Link
+                          className="forgot-password-link"
                           data-testid="forgot-password"
                           onClick={onClickForgotPassword}>
                           {t('label.forgot-password')}
@@ -243,7 +243,7 @@ const SignInPage = () => {
                   </Form.Item>
 
                   <Button
-                    className="w-full p-y-lg d-flex flex-center"
+                    className="w-full p-y-lg d-flex flex-center login-btn"
                     data-testid="login"
                     disabled={loading}
                     htmlType="submit"
@@ -255,11 +255,12 @@ const SignInPage = () => {
                 {!isAuthProviderLDAP && (
                   <>
                     {authConfig?.enableSelfSignup && (
-                      <div className="mt-4 d-flex flex-center">
-                        <Typography.Text className="mr-1">
+                      <div className="mt-4 d-flex flex-center signup-text">
+                        <Typography.Text>
                           {t('message.new-to-the-platform')}
                         </Typography.Text>
                         <Button
+                          className="link-btn"
                           data-testid="signup"
                           type="link"
                           onClick={onClickSignUp}>
@@ -273,20 +274,16 @@ const SignInPage = () => {
                 )}
               </div>
             ) : (
-              <div className="">{getSignInButton()}</div>
+              <div className="m-t-md">
+                <Typography.Text className="text-xl text-grey-muted m-t-lg">
+                  {t('message.om-description')}
+                </Typography.Text>
+                <div className="sso-signup">{getSignInButton()}</div>
+              </div>
             )}
           </div>
         </Col>
         <Col className="form-carousel-container" span={14}>
-          <div className="absolute inset-0">
-            <img
-              alt="Login Background"
-              className="w-full h-max-full"
-              data-testid="bg-image"
-              src={loginBG}
-            />
-          </div>
-
           <LoginCarousel />
         </Col>
       </Row>
