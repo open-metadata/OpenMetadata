@@ -110,7 +110,7 @@ export const getTitle = (
   }
 
   return sourceUrl ? (
-    <Link target="_blank" to={{ pathname: sourceUrl }}>
+    <Link target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
         <Text
           className="entity-title text-link-color font-medium m-r-xss"

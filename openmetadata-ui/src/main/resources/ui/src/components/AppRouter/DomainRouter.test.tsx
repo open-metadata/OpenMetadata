@@ -39,7 +39,7 @@ jest.mock('../../utils/PermissionsUtils', () => {
 describe('DomainRouter', () => {
   it('should render AddDomain component for the ADD_DOMAIN route', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_DOMAIN]}>
+      <MemoryRouter initialEntries={['/add']}>
         <DomainRouter />
       </MemoryRouter>
     );

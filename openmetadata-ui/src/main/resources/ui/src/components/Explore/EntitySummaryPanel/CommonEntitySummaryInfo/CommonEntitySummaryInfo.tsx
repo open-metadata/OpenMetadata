@@ -31,7 +31,6 @@ function CommonEntitySummaryInfo({
     <Row className="text-sm" gutter={[0, 4]}>
       {entityInfo.map((info) => {
         const isDomain = isDomainVisible && info.name === t('label.domain');
-        const LinkComponent = info.isExternal ? 'a' : Link;
 
         return info.visible?.includes(componentType) || isDomain ? (
           <Col key={info.name} span={24}>
@@ -45,20 +44,26 @@ function CommonEntitySummaryInfo({
               </Col>
               <Col span={16}>
                 {info.isLink ? (
-                  <LinkComponent
-                    data-testid={`${info.name}-value`}
-                    target={info.isExternal ? '_blank' : '_self'}
-                    to={info.linkProps ?? { pathname: info.url }}>
-                    {info.value}
-                    {info.isExternal ? (
+                  info.isExternal ? (
+                    <a
+                      data-testid={`${info.name}-value`}
+                      href={info.url}
+                      target="_blank">
+                      {info.value}
                       <Icon
                         className="m-l-xs"
                         component={IconExternalLink}
                         data-testid="external-link-icon"
                         style={ICON_DIMENSION}
                       />
-                    ) : null}
-                  </LinkComponent>
+                    </a>
+                  ) : (
+                    <Link
+                      data-testid={`${info.name}-value`}
+                      to={info.linkProps ?? info.url ?? ''}>
+                      {info.value}
+                    </Link>
+                  )
                 ) : (
                   <Typography.Text
                     className={classNames('summary-item-value text-grey-body')}

@@ -41,7 +41,7 @@ jest.mock('../../pages/TagsPage/TagsPage', () => {
 describe('ClassificationRouter', () => {
   it('should render TagsPage component when route matches "/tags" or "/tags/:tagId"', async () => {
     render(
-      <MemoryRouter initialEntries={['/tags']}>
+      <MemoryRouter initialEntries={['', '/testTag']}>
         <ClassificationRouter />
       </MemoryRouter>
     );
@@ -51,7 +51,7 @@ describe('ClassificationRouter', () => {
 
   it('should render ClassificationVersionPage component when route matches "/tags/version"', async () => {
     render(
-      <MemoryRouter initialEntries={['/tags/testTag/versions/123']}>
+      <MemoryRouter initialEntries={['/testTag/versions/123']}>
         <ClassificationRouter />
       </MemoryRouter>
     );

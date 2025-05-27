@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityRouter from './EntityRouter';
 
 jest.mock('../../pages/EntityVersionPage/EntityVersionPage.component', () => {
@@ -29,9 +30,6 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
     if (entityType === 'table') {
       return () => <>EntityDetails</>;
     }
-    if (entityType === 'unknown') {
-      return null;
-    }
 
     return null;
   }),
@@ -39,7 +37,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
 
 jest.mock('../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockImplementation(() => ({
-    entityType: 'unknown',
+    entityType: 'table',
   })),
 }));
 
@@ -51,7 +49,7 @@ jest.mock('react-router-dom', () => ({
 describe('EntityRouter', () => {
   it('should render EntityVersionPage component for entity version details route', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/versions/123']}>
+      <MemoryRouter initialEntries={['/testTable/versions/123']}>
         <EntityRouter />
       </MemoryRouter>
     );
@@ -61,7 +59,7 @@ describe('EntityRouter', () => {
 
   it('should render EntityVersionPage component for entity version details route with tab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/versions/123/all']}>
+      <MemoryRouter initialEntries={['/testTable/versions/123/all']}>
         <EntityRouter />
       </MemoryRouter>
     );
@@ -71,7 +69,7 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable']}>
+      <MemoryRouter initialEntries={['/testTable']}>
         <EntityRouter />
       </MemoryRouter>
     );
@@ -81,7 +79,7 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route with tab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/schema']}>
+      <MemoryRouter initialEntries={['/testTable/schema']}>
         <EntityRouter />
       </MemoryRouter>
     );
@@ -91,7 +89,7 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route with tab & subtab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/activity_feed/tasks']}>
+      <MemoryRouter initialEntries={['/testTable/activity_feed/tasks']}>
         <EntityRouter />
       </MemoryRouter>
     );
@@ -100,6 +98,10 @@ describe('EntityRouter', () => {
   });
 
   it('should render NotFound component for unknown route', () => {
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      entityType: 'unknown',
+    });
+
     render(
       <MemoryRouter initialEntries={['/unknown']}>
         <EntityRouter />

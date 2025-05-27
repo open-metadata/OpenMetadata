@@ -107,7 +107,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
-          <Link target="_blank" to={{ pathname: text }}>
+          <Link target="_blank" to={text}>
             <Space>
               <span>{getEntityName(record)}</span>
 

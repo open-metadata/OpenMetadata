@@ -13,6 +13,7 @@
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import { EditorView } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
+import { DOMSerializer } from 'prosemirror-model';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
@@ -49,10 +50,16 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     );
 
     const slice = view.state.selection.content();
-    const { dom, text } = view.serializeForClipboard(slice);
+    const serializer = DOMSerializer.fromSchema(view.state.schema);
+    const dom = serializer.serializeFragment(slice.content);
+    const text = slice.content.textBetween(0, slice.content.size, '\n\n');
+    // Convert DocumentFragment to HTML string
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(dom);
+    const html = tempDiv.innerHTML;
 
     event.dataTransfer.clearData();
-    event.dataTransfer.setData('text/html', dom.innerHTML);
+    event.dataTransfer.setData('text/html', html);
     event.dataTransfer.setData('text/plain', text);
     event.dataTransfer.effectAllowed = 'copyMove';
 

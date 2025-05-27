@@ -237,11 +237,7 @@ const KPIWidget = ({
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={
-                <Link
-                  rel="noreferrer"
-                  target="_blank"
-                  to={{ pathname: DATA_INSIGHT_DOCS }}
-                />
+                <Link rel="noreferrer" target="_blank" to={DATA_INSIGHT_DOCS} />
               }
               values={{
                 doc: t('label.doc-plural-lowercase'),

@@ -192,7 +192,7 @@ export const PipelineTaskTab = () => {
             <Link
               className="flex items-center gap-2"
               target="_blank"
-              to={{ pathname: record.sourceUrl }}>
+              to={record.sourceUrl ?? ''}>
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 

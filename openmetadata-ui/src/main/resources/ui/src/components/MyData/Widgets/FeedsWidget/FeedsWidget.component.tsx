@@ -189,9 +189,7 @@ const FeedsWidget = ({
     () => (
       <Transi18next
         i18nKey="message.no-activity-feed"
-        renderElement={
-          <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-        }
+        renderElement={<Link rel="noreferrer" to={ROUTES.EXPLORE} />}
         values={{
           explored: t('message.have-not-explored-yet'),
         }}

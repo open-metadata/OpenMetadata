@@ -42,7 +42,7 @@ jest.mock('./AdminProtectedRoute', () => ({
 describe('GlossaryRouter', () => {
   it('should render AddGlossaryPage component for add glossary route', async () => {
     render(
-      <MemoryRouter initialEntries={['/glossary/add']}>
+      <MemoryRouter initialEntries={['/add']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
@@ -52,7 +52,7 @@ describe('GlossaryRouter', () => {
 
   it('should render GlossaryVersion component for glossary version route', async () => {
     render(
-      <MemoryRouter initialEntries={['/glossary/glossaryID/versions/123']}>
+      <MemoryRouter initialEntries={['/glossaryID/versions/123']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
@@ -63,10 +63,7 @@ describe('GlossaryRouter', () => {
   it('should render GlossaryVersion component for glossary terms version route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[
-          '/glossary-term/terms/versions/123/tab',
-          '/glossary-term/terms/versions/123',
-        ]}>
+        initialEntries={['/terms/versions/123/tab', '/terms/versions/123']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
@@ -77,11 +74,7 @@ describe('GlossaryRouter', () => {
   it('should render GlossaryPage component for glossary details route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[
-          '/glossary',
-          '/glossary/testGlossary',
-          '/glossary/testGlossary/action/import',
-        ]}>
+        initialEntries={['', '/testGlossary', '/testGlossary/action/import']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
@@ -92,10 +85,7 @@ describe('GlossaryRouter', () => {
   it('should render GlossaryPage component for glossary details with tab/subtab route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[
-          '/glossary/testGlossary/tab',
-          '/glossary/testGlossary/subtab',
-        ]}>
+        initialEntries={['/testGlossary/tab', '/testGlossary/subtab']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
