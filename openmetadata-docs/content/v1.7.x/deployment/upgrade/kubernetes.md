@@ -109,7 +109,7 @@ openmetadata:
 - global: Additional property airflow is not allowed
 ```
 
-This means the values passed to the helm charts has a section `global.airflow`. As per the breaking changes mentioned [here](/deployment/upgrade/versions/100-to-110#pipeline-service-client-configuration), Airflow configs are replaced with pipelineServiceClient for Helm Charts.
+This means the values passed to the helm charts has a section `global.airflow`. Airflow configs are replaced with pipelineServiceClient for Helm Charts.
 
 The Helm Chart Values JSON Schema helps to catch the above breaking changes and this section will help you resolve and update your configurations for the same. You can read more about JSON Schema with Helm Charts [here](https://helm.sh/docs/topics/charts/#schema-files).
 
