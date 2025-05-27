@@ -22,6 +22,10 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
+  public Response getUser(String id, UriInfo uriInfo) {
+    return notImplemented();
+  }
+
   public Response updateUser(String id, ScimUser user) {
     return notImplemented();
   }
