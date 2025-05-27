@@ -39,13 +39,23 @@ public class ConstraintViolationExceptionMapper
                 constraintViolation -> {
                   String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
                   // Map common parameter names to more descriptive names for query parameters
-                  if ("arg4".equals(name)) {
-                    name = "query param limit";
-                  } else if ("arg6".equals(name)) {
+                  if (name.matches("arg[3456]")) {
+                    // Multiple args can represent limit parameter depending on method signature
                     name = "query param limit";
                   } else if ("arg7".equals(name)) {
                     name = "query param before";
                   } else if ("arg8".equals(name)) {
+                    name = "query param after";
+                  } else if (name.startsWith("arg") && name.endsWith("Param")) {
+                    // Extract parameter name from method parameter names that end with "Param"
+                    String paramName =
+                        name.substring(0, name.length() - 5); // Remove "Param" suffix
+                    name = "query param " + paramName;
+                  } else if (name.contains("limit") || name.contains("Limit")) {
+                    name = "query param limit";
+                  } else if (name.contains("before") || name.contains("Before")) {
+                    name = "query param before";
+                  } else if (name.contains("after") || name.contains("After")) {
                     name = "query param after";
                   }
                   return name + " " + constraintViolation.getMessage();

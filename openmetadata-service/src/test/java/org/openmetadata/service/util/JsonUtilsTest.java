@@ -93,7 +93,7 @@ class JsonUtilsTest {
         assertThrows(
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder.build(), Team.class));
-    assertTrue(jsonException.getMessage().contains("contains no element for index 4"));
+    assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
 
     // Delete the two users from the team
     patchBuilder = Json.createPatchBuilder();
@@ -110,7 +110,7 @@ class JsonUtilsTest {
         assertThrows(
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
-    assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
+    assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
   }
 
   @Test
