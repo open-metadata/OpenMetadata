@@ -43,6 +43,13 @@ public class ScimResource {
     return provisioningService.deleteUser(id);
   }
 
+  @PATCH
+  @Path("/Users/{id}")
+  public Response patchUser(@PathParam("id") String id, ScimUser user, @Context UriInfo uriInfo) {
+    return provisioningService.updateUser(id, user, uriInfo);
+  }
+
+
   @GET
   @Path("/Groups")
   public Response listGroups(@Context UriInfo uriInfo) {
