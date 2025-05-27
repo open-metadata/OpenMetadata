@@ -15,7 +15,7 @@ public class GenericBackgroundWorker implements Managed {
 
   private static final int INITIAL_BACKOFF_SECONDS = 1;
   private static final int MAX_BACKOFF_SECONDS = 600; // 10 minutes
-  private static final int NO_JOB_SLEEP_SECONDS = 10; // Sleep if no jobs are available
+  public static final int NO_JOB_SLEEP_SECONDS = 10; // Sleep if no jobs are available
 
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
