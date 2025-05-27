@@ -11,6 +11,7 @@ on:
 jobs:
   format-and-unit:
     runs-on: ubuntu-latest
+    working-directory: ./ingestion
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
@@ -24,14 +25,6 @@ jobs:
 
       - name: Set up Nox
         run: |
-          NOXFILE="./ingestion/noxfile.py"
-          if [ -f "$NOXFILE" ]; then
-            echo "NOXFILE_PATH=$NOXFILE" >> $GITHUB_ENV
-            echo "noxfile found, environment variable set."
-          else
-            echo "Error: noxfile.py not found at $NOXFILE"
-            exit 1
-          fi
           # Install uv to speed up virtual environments installation
           curl -LsSf https://astral.sh/uv/install.sh | sh
           pip install nox
@@ -39,12 +32,12 @@ jobs:
       - name: Run Code Quality Checks
         if: ${{ matrix.python-version == '3.10' }}
         run: |
-          nox -f ${{ env.NOXFILE_PATH }} -s lint
+          nox -s lint
 
       - name: Run Unit Tests
         run: |
-          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f ${{ env.NOXFILE_PATH }} -s unit
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f -s unit
 
       - name: Run Unit Tests (specific plugins)
         run: |
-          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f ${{ env.NOXFILE_PATH }} -s unit-plugins
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit-plugins
