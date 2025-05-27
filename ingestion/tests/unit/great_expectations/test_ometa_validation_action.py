@@ -13,29 +13,35 @@ Test suite for the action module implementation
 """
 
 import os
-import subprocess
-import sys
 from unittest import mock
 
-import great_expectations as gx
+import pytest
 from jinja2 import Environment
 from pytest import mark
 
 from metadata.great_expectations.utils.ometa_config_handler import render_template
 
+_GX_0_18 = "0.18"
 
-def install_gx_018x():
-    """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
+try:
+    import great_expectations as gx
 
-    if not gx.__version__.startswith("0.18."):
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
-        )
+    from metadata.great_expectations.action import OpenMetadataValidationAction
+
+    _gx_version_ok = gx.__version__.startswith(_GX_0_18)
+except ImportError:
+    _gx_version_ok = False
+
+skip_gx = pytest.mark.skipif(
+    not _gx_version_ok,
+    reason=(
+        "Great Expectations not installed or version mismatch "
+        f"(required: {_GX_0_18})"
+    ),
+)
 
 
-install_gx_018x()
-
-
+@skip_gx
 @mark.parametrize(
     "input,expected",
     [
@@ -45,7 +51,6 @@ install_gx_018x()
 )
 def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context):
     """Test get table entity"""
-    from metadata.great_expectations.action import OpenMetadataValidationAction
 
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
@@ -57,6 +62,7 @@ def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context)
     assert res._type == expected
 
 
+@skip_gx
 @mark.parametrize(
     "input,expected",
     [
@@ -68,7 +74,6 @@ def test_get_table_entity_database_service_name(
     input, expected, mocked_ometa, mocked_ge_data_context
 ):
     """Test get table entity"""
-    from metadata.great_expectations.action import OpenMetadataValidationAction
 
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,

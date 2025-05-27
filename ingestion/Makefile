@@ -15,6 +15,8 @@ install:  ## Install the ingestion module to the current environment
 
 .PHONY: install_dev_env
 install_dev_env:  ## Install all dependencies for development (in edit mode)
+	pip install --upgrade pip
+	pip install nox
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
 
 .PHONY: install_dev
@@ -117,3 +119,7 @@ coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
+
+.PHONY: clean-nox
+clean-nox:
+	rm -rf .nox
