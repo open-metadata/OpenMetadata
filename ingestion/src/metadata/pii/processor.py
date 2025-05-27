@@ -26,7 +26,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.algorithms.classifiers import ColumnClassifier, PIISensitiveClassifier
 from metadata.pii.algorithms.tags import PIISensitivityTag
 from metadata.pii.algorithms.utils import get_top_classes, normalize_scores
 from metadata.pii.base_processor import AutoClassificationProcessor
@@ -48,6 +47,12 @@ class PIIProcessor(AutoClassificationProcessor):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
+
+        from metadata.pii.algorithms.classifiers import (  # pylint: disable=import-outside-toplevel
+            ColumnClassifier,
+            PIISensitiveClassifier,
+        )
+
         self._classifier: ColumnClassifier[PIISensitivityTag] = PIISensitiveClassifier()
 
         self.confidence_threshold = self.source_config.confidence / 100
