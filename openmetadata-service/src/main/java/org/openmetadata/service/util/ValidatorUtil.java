@@ -1,12 +1,11 @@
 package org.openmetadata.service.util;
 
-import io.dropwizard.jersey.validation.DropwizardConfiguredValidator;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import java.util.Arrays;
 import java.util.Set;
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import org.apache.commons.csv.CSVRecord;
 
 public class ValidatorUtil {
@@ -16,7 +15,7 @@ public class ValidatorUtil {
 
   static {
     ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-    VALIDATOR = new DropwizardConfiguredValidator(factory.getValidator());
+    VALIDATOR = factory.getValidator();
   }
 
   private ValidatorUtil() {
@@ -50,7 +49,6 @@ public class ValidatorUtil {
     } else {
       // Either name or email (or both) are null or empty, so validation cannot be performed
       // JSON schema validate method would have managed this case.
-
       return "";
     }
   }

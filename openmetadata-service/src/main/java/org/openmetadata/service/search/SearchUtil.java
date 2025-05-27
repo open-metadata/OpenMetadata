@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -191,7 +192,7 @@ public class SearchUtil {
               .withFetchSource(true)
               .withDeleted(includeDeleted);
 
-      javax.ws.rs.core.Response response = Entity.getSearchRepository().search(searchRequest, null);
+      Response response = Entity.getSearchRepository().search(searchRequest, null);
 
       Map<String, Object> searchResponse;
       if (response.getEntity() instanceof String responseStr) {

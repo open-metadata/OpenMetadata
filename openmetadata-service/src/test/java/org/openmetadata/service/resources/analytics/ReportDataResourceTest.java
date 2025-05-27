@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;

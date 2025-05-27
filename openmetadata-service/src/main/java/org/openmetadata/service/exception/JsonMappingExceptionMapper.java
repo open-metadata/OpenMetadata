@@ -15,11 +15,10 @@ package org.openmetadata.service.exception;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import io.dropwizard.jersey.errors.ErrorMessage;
-import javax.annotation.Priority;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
-import javax.ws.rs.ext.Provider;
+import jakarta.annotation.Priority;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
 
 /**
  * Dropwizard by default maps the JSON payload format issues (invalid URI etc.) violations to 400 Response with no error
@@ -30,9 +29,9 @@ import javax.ws.rs.ext.Provider;
 @Priority(1) // Override the default JsonMappingExceptionMapper by setting the priority higher
 public class JsonMappingExceptionMapper implements ExceptionMapper<JsonMappingException> {
   @Override
-  public Response toResponse(JsonMappingException exception) {
-    final Response response = BadRequestException.of().getResponse();
-    return Response.fromResponse(response)
+  public jakarta.ws.rs.core.Response toResponse(JsonMappingException exception) {
+    final jakarta.ws.rs.core.Response response = BadRequestException.of().getResponse();
+    return jakarta.ws.rs.core.Response.status(response.getStatus())
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
         .build();

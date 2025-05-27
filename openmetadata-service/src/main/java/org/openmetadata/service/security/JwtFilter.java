@@ -33,6 +33,12 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.Provider;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
@@ -44,12 +50,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -170,6 +170,7 @@ public class JwtFilter implements ContainerRequestFilter {
     // Check Validations
     checkValidationsForToken(claims, tokenFromHeader, userName);
 
+    // Setting Security Context
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
@@ -319,7 +320,6 @@ public class JwtFilter implements ContainerRequestFilter {
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
-    // TODO: check if we need to set the scheme and auth type
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",

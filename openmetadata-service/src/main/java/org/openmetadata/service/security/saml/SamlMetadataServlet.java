@@ -14,37 +14,38 @@
 package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.Auth;
-import com.onelogin.saml2.settings.Saml2Settings;
-import java.util.List;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import lombok.SneakyThrows;
+import com.onelogin.saml2.exception.SAMLException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.security.cert.CertificateEncodingException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 
 /** This Servlet outputs a login metadata config of the SP that is Openmetadata */
-@WebServlet("/api/v1/saml/metadata")
 @Slf4j
+@WebServlet("/api/v1/saml/metadata")
 public class SamlMetadataServlet extends HttpServlet {
   @Override
-  @SneakyThrows
-  protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) {
-    Auth auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
-    Saml2Settings settings = auth.getSettings();
-    String metadata = settings.getSPMetadata();
-    List<String> errors = Saml2Settings.validateMetadata(metadata);
-    if (errors.isEmpty()) {
-      resp.getOutputStream().println(metadata);
-    } else {
-      resp.setContentType("text/html; charset=UTF-8");
-      for (String error : errors) {
-        LOG.error(
-            "[SamlMetadataServlet] Errors in getting Metadata : {} : Errors : {}",
-            metadata,
-            errors);
-        resp.getOutputStream().println("<p>" + error + "</p>");
-      }
+  protected void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    try {
+      // Convert Jakarta servlet types to javax servlet types using Apache Felix wrappers
+      javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);
+      javax.servlet.http.HttpServletResponse wrappedResponse =
+          new HttpServletResponseWrapper(response);
+
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
+      String metadata = auth.getSettings().getSPMetadata();
+      response.setContentType("text/xml");
+      response.getWriter().write(metadata);
+    } catch (SAMLException | CertificateEncodingException ex) {
+      LOG.error("Error generating SAML metadata", ex);
+      throw new ServletException("Error generating SAML metadata", ex);
     }
   }
 }

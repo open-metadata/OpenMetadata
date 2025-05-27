@@ -511,6 +511,10 @@ export interface MetadataDatabaseConnection {
      */
     username?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
     classificationName?: string;

@@ -20,13 +20,13 @@ import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getEntityLinkForFieldName;
 
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import jakarta.json.stream.JsonParsingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;

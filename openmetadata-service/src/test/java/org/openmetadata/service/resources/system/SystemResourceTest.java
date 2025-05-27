@@ -13,7 +13,11 @@ import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
-import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -21,9 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.Validator;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -107,11 +108,12 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   static void setup() throws IOException, ConfigurationException {
     // Get config object from test yaml file
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+    ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
+    Validator validator = validatorFactory.getValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> configFactory =
         new YamlConfigurationFactory<>(
             OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
-    config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
+    config = configFactory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
   @BeforeAll

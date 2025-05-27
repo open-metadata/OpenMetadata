@@ -142,6 +142,9 @@ public class FullyQualifiedName {
 
   /** Adds quotes to name as required */
   public static String quoteName(String name) {
+    if (name == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
     Matcher matcher = namePattern.matcher(name);
     if (!matcher.find() || matcher.end() != name.length()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
@@ -170,6 +173,9 @@ public class FullyQualifiedName {
 
   /** Adds quotes to name as required */
   public static String unquoteName(String name) {
+    if (name == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
     Matcher matcher = namePattern.matcher(name);
     if (!matcher.find() || matcher.end() != name.length()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));

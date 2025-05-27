@@ -1,7 +1,7 @@
 package org.openmetadata.service.mcp.tools;
 
+import jakarta.json.JsonPatch;
 import java.util.Map;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;

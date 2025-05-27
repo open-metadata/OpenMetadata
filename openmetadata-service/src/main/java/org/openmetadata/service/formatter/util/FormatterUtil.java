@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,8 +31,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;

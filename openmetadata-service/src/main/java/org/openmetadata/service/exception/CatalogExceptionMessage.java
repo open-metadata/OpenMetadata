@@ -118,6 +118,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String invalidName(String name) {
+    if (name == null) {
+      return "name must not be null";
+    }
     return String.format("Invalid name %s", name);
   }
 

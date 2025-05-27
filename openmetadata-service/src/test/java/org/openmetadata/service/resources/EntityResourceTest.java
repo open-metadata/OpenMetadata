@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.resources;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -60,7 +60,6 @@ import com.flipkart.zjsonpatch.JsonDiff;
 import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.aggregations.Aggregation;
@@ -76,6 +75,9 @@ import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.json.JsonXContent;
 import io.socket.client.IO;
 import io.socket.client.Socket;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -97,8 +99,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -971,7 +971,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
-      containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
+      containerTest.updateEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS);
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
@@ -1136,7 +1136,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Try to search entity with INCOMPLETE description
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Response response;
+    es.org.elasticsearch.client.Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -1185,7 +1185,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Search for entities without description
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Response response;
+    es.org.elasticsearch.client.Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -2309,9 +2309,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Initiate the delete operation after connection is established
-    javax.ws.rs.core.Response response =
-        deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
-    assertEquals(javax.ws.rs.core.Response.Status.ACCEPTED.getStatusCode(), response.getStatus());
+    Response response = deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
+    assertEquals(Status.ACCEPTED.getStatusCode(), response.getStatus());
 
     // Validate initial response
     DeleteEntityResponse deleteResponse = response.readEntity(DeleteEntityResponse.class);
@@ -2339,7 +2338,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return deleteMessage;
   }
 
-  protected javax.ws.rs.core.Response deleteEntityAsync(
+  protected Response deleteEntityAsync(
       UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws HttpResponseException {
     try {
@@ -2417,7 +2416,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient client = getSearchClient();
     Request request = new Request("GET", "/_cat/indices");
     request.addParameter("format", "json");
-    Response response = client.performRequest(request);
+    es.org.elasticsearch.client.Response response = client.performRequest(request);
     JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
     List<String> indexNamesFromResponse = new ArrayList<>();
     for (int i = 0; i < jsonArray.length(); i++) {
@@ -3752,7 +3751,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEventually(
           "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
           () -> {
-            Response response = searchClient.performRequest(request);
+            es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
             String jsonString = EntityUtils.toString(response.getEntity());
             @SuppressWarnings("unchecked")
             HashMap<String, Object> map =
@@ -4441,7 +4440,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
-    Response response = searchClient.performRequest(request);
+    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
@@ -4469,7 +4468,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
-    Response response = searchClient.performRequest(request);
+    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);

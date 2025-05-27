@@ -847,6 +847,10 @@ export interface ConfigClass {
      */
     sslConfig?: SSLConfigObject;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
@@ -2699,6 +2703,10 @@ export interface ConfigConnection {
      */
     databaseName?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -3193,6 +3201,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**

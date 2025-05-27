@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,7 +49,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.getEntityTypeFromObject;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -70,6 +69,8 @@ import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -85,8 +86,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -2130,11 +2129,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
     RestClient searchClient = getSearchClient();
-    IndexMapping index = getSearchRepository().getIndexMapping(getEntityTypeFromObject(entity));
+    IndexMapping index =
+        Entity.getSearchRepository().getIndexMapping(getEntityTypeFromObject(entity));
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         format(
             "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
@@ -3149,11 +3150,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //  Restore the soft-deleted tables present in other containers
     for (UUID id : createdUUIDs) {
       restoreEntity(
-          new RestoreEntity().withId(id), javax.ws.rs.core.Response.Status.OK, ADMIN_AUTH_HEADERS);
+          new RestoreEntity().withId(id),
+          jakarta.ws.rs.core.Response.Status.OK,
+          ADMIN_AUTH_HEADERS);
     }
     restoreEntity(
         new RestoreEntity().withId(entity.getId()),
-        javax.ws.rs.core.Response.Status.OK,
+        jakarta.ws.rs.core.Response.Status.OK,
         ADMIN_AUTH_HEADERS);
   }
 
