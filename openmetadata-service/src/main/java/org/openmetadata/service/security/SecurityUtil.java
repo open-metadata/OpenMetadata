@@ -133,7 +133,17 @@ public final class SecurityUtil {
       Map<String, ?> claims,
       String defaulPrincipalClaim) {
     String email;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+    boolean isBot = false;
+    if (claims.containsKey("isBot")) {
+      Object isBotValue = claims.get("isBot");
+
+      if (isBotValue instanceof Boolean) {
+        isBot = (Boolean) isBotValue;
+      } else if (isBotValue instanceof String) {
+        isBot = Boolean.parseBoolean((String) isBotValue);
+      }
+    }
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
       String emailClaimValue = getClaimOrObject(claims.get(emailClaim));
