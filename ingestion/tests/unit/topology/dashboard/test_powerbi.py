@@ -354,6 +354,6 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_snowflake_source(
             MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertEqual(result["database"] is None, True)
-        self.assertEqual(result["schema"] is None, True)
+        self.assertIsNone(result["database"])
+        self.assertIsNone(result["schema"])
         self.assertEqual(result["table"], "CUSTOMER_TABLE")
