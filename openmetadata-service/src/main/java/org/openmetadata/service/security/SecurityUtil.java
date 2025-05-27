@@ -100,7 +100,18 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, ?> claims) {
     String userName;
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
+
+    boolean isBot = false;
+    if (claims.containsKey("isBot")) {
+      Object isBotValue = claims.get("isBot");
+
+      if (isBotValue instanceof Boolean) {
+        isBot = (Boolean) isBotValue;
+      } else if (isBotValue instanceof String) {
+        isBot = Boolean.parseBoolean((String) isBotValue);
+      }
+    }
+    if (!nullOrEmpty(jwtPrincipalClaimsMapping) && !isBot) {
       // We have a mapping available so we will use that
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
