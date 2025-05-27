@@ -2,6 +2,15 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
+try:
+    import pyodbc  # noqa: F401
+except ImportError:
+    # skip the test if pyodbc cannnot be imported: either because is not installed or
+    # because a broken dynamic library not found
+    pytest.skip("pyodbc not properly installed", allow_module_level=True)
+
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.selectable import CTE
