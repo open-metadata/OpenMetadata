@@ -7,6 +7,10 @@ import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimUser;
 import org.openmetadata.service.scim.ScimProvisioningService;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Path("/v1/scim")
 @Tag(name = "SCIM")
 @Produces({ "application/json", "application/scim+json" })
@@ -18,6 +22,36 @@ public class ScimResource {
   public ScimResource(ScimProvisioningService provisioningService) {
     this.provisioningService = provisioningService;
   }
+
+  @GET
+  @Path("/")
+  public Response getServiceProviderConfig() {
+    Map<String, Object> response = new HashMap<>();
+    response.put("schemas", List.of("urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"));
+    response.put("patch", Map.of("supported", true));
+    response.put("bulk", Map.of("supported", false));
+    response.put("filter", Map.of("supported", false));
+    response.put("changePassword", Map.of("supported", false));
+    response.put("sort", Map.of("supported", false));
+    response.put("etag", Map.of("supported", false));
+    response.put("authenticationSchemes", List.of(
+            Map.of(
+                    "type", "oauthbearer",
+                    "name", "OAuth Bearer Token",
+                    "description", "Authentication scheme using the OAuth Bearer Token Standard",
+                    "specUri", "http://www.rfc-editor.org/info/rfc6750",
+                    "primary", true
+            )
+    ));
+    return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/ServiceProviderConfig")
+  public Response getServiceProviderConfigAlias() {
+    return getServiceProviderConfig();
+  }
+
 
   @GET
   @Path("/Users")
