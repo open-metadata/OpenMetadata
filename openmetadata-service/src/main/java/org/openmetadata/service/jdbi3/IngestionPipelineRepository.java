@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -275,8 +276,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 startTs,
                 endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList =
-        pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
+    if (pipelineServiceClient != null) {
+      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    }
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
         allPipelineStatusList,
