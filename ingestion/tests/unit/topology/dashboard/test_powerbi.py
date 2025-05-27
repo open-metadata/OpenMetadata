@@ -15,7 +15,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
-from metadata.ingestion.source.dashboard.powerbi.models import Dataset, PowerBIDashboard
+from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataset,
+    PowerBIDashboard,
+    PowerBiTable,
+    PowerBITableSource,
+)
 
 MOCK_REDSHIFT_EXP = """
 let
@@ -167,6 +172,19 @@ MOCK_DATASET_FROM_WORKSPACE = Dataset(
         },
     ],
 )
+MOCK_DATASET_FROM_WORKSPACE_V2 = Dataset(
+    id="testdataset",
+    name="Test Dataset",
+    tables=[],
+    expressions=[
+        {
+            "name": "DB",
+        },
+        {
+            "name": "Schema",
+        },
+    ],
+)
 MOCK_DASHBOARD_DATA_MODEL = DashboardDataModel(
     name="dummy_datamodel",
     id=uuid.uuid4(),
@@ -292,3 +310,50 @@ class PowerBIUnitTest(TestCase):
 
         # Verify get_reference_by_email was not called when there are no owners
         self.powerbi.metadata.get_reference_by_email.assert_not_called()
+
+    @pytest.mark.order(3)
+    def test_parse_table_info_from_source_exp(self):
+        table = PowerBiTable(
+            name="test_table",
+            source=[PowerBITableSource(expression=MOCK_REDSHIFT_EXP)],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_REDSHIFT_RESULT)
+
+        # no source expression
+        table = PowerBiTable(
+            name="test_table",
+            source=[PowerBITableSource(expression=None)],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, {})
+
+        # no source
+        table = PowerBiTable(
+            name="test_table",
+            source=[],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, {})
+
+    @pytest.mark.order(4)
+    @patch.object(
+        PowerbiSource,
+        "_fetch_dataset_from_workspace",
+        return_value=MOCK_DATASET_FROM_WORKSPACE_V2,
+    )
+    def test_parse_dataset_expressions(self, *_):
+        # test with valid snowflake source but no
+        # dataset expression value
+        result = self.powerbi._parse_snowflake_source(
+            MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertIsNone(result["database"])
+        self.assertIsNone(result["schema"])
+        self.assertEqual(result["table"], "CUSTOMER_TABLE")

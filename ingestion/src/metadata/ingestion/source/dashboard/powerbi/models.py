@@ -143,7 +143,7 @@ class PowerBITableSource(BaseModel):
     PowerBI Table Source
     """
 
-    expression: str
+    expression: Optional[str] = None
 
 
 class PowerBiTable(BaseModel):
@@ -171,7 +171,7 @@ class TablesResponse(BaseModel):
 
 class DatasetExpression(BaseModel):
     name: str
-    expression: str
+    expression: Optional[str] = None
 
 
 class Dataset(BaseModel):
