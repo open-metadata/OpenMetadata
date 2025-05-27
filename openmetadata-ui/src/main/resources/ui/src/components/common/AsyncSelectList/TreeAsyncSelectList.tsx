@@ -131,7 +131,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         <Button
           data-testid="cancelAssociatedTag"
           size="small"
-          type="link"
           onClick={onCancel}>
           {t('label.cancel')}
         </Button>
