@@ -22,4 +22,5 @@ public interface ScimProvisioningService {
   Response updateGroup(String id, ScimGroup group);
 
   Response deleteGroup(String id);
+  Response getUser(String id, UriInfo uriInfo);
 }

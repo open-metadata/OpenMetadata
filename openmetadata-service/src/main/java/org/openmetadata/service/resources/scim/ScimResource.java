@@ -66,4 +66,10 @@ public class ScimResource {
   public Response deleteGroup(@PathParam("id") String id) {
     return provisioningService.deleteGroup(id);
   }
+
+  @GET
+  @Path("/Users/{id}")
+  public Response getUser(@PathParam("id") String id, @Context UriInfo uriInfo) {
+    return provisioningService.getUser(id, uriInfo);
+  }
 }
