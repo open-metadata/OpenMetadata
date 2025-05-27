@@ -72,6 +72,9 @@ class TokenService {
 
   // Refresh the token if it is expired
   async refreshToken() {
+    // eslint-disable-next-line no-console
+    console.timeLog('refreshToken', 'Token initiated refresh');
+
     if (this.isTokenUpdateInProgress()) {
       return;
     }
@@ -107,7 +110,9 @@ class TokenService {
           // Perform logout for any error
           this.clearRefreshInProgress();
 
-          throw error;
+          throw new Error(
+            `Failed to refresh token: ${(error as Error).message}`
+          );
         }
         // Do nothing
       } finally {

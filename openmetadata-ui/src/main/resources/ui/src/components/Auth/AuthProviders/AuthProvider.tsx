@@ -290,8 +290,6 @@ export const AuthProvider = ({
    * This method will be call upon successful signIn
    */
   const startTokenExpiryTimer = () => {
-    // console.timeStamp('startTokenExpiryTimer');
-
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
       getOidcToken()
@@ -313,7 +311,7 @@ export const AuthProvider = ({
 
       const timerId = setTimeout(() => {
         tokenService.current?.refreshToken();
-      }, 2 * 60 * 1000);
+      }, timeoutExpiry);
       setTimeoutId(Number(timerId));
     }
   };
@@ -557,24 +555,27 @@ export const AuthProvider = ({
                 });
 
                 // Refresh the token and retry the requests in the queue
-                tokenService.current.refreshToken().then((token) => {
-                  if (token) {
-                    // Retry the pending requests
-                    initializeAxiosInterceptors();
-                    pendingRequests.forEach(({ resolve, reject, config }) => {
-                      axiosClient.request(config).then(resolve).catch(reject);
-                    });
+                tokenService.current
+                  .refreshToken()
+                  .then((token) => {
+                    if (token) {
+                      // Retry the pending requests
+                      initializeAxiosInterceptors();
+                      pendingRequests.forEach(({ resolve, reject, config }) => {
+                        axiosClient.request(config).then(resolve).catch(reject);
+                      });
 
-                    // Clear the queue after retrying
-                    pendingRequests = [];
-                  } else {
+                      // Clear the queue after retrying
+                      pendingRequests = [];
+                    } else {
+                      resetUserDetails(true);
+                    }
+                  })
+                  .catch((error) => {
                     resetUserDetails(true);
-                  }
-                });
-              }).catch((err) => {
-                resetUserDetails(true);
 
-                return Promise.reject(err);
+                    return Promise.reject(error);
+                  });
               });
             } else {
               // If refresh is in progress, queue the request
