@@ -16,10 +16,6 @@
  */
 export interface ScimConfiguration {
     /**
-     * Static token used to authenticate incoming SCIM requests.
-     */
-    bearerToken?: string;
-    /**
      * Whether SCIM provisioning is enabled.
      */
     enabled?: boolean;

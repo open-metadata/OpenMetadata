@@ -17,12 +17,6 @@
       "description": "The name of the identity provider for SCIM (e.g., azure, okta).",
       "type": "string",
       "default": "azure"
-    },
-    "bearerToken": {
-      "title": "Bearer Token",
-      "description": "Static token used to authenticate incoming SCIM requests.",
-      "type": "string",
-      "default": "your-secure-scim-token"
     }
   },
   "additionalProperties": false

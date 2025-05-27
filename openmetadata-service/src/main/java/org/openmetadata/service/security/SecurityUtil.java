@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -48,11 +49,22 @@ public final class SecurityUtil {
 
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    if (principal == null) {
+      return null;
+    }
+    String name = principal.getName();
+    if (getScimConfiguration() != null && getScimConfiguration().getEnabled()) {
+      return name;
+    }
+    return name.split("[/@]")[0];
   }
 
   public static LoginConfiguration getLoginConfiguration() {
     return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
+  }
+
+  public static ScimConfiguration getScimConfiguration() {
+    return SettingsCache.getSetting(SettingsType.SCIM_CONFIGURATION, ScimConfiguration.class);
   }
 
   public static Map<String, String> authHeaders(String username) {
