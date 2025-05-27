@@ -24,7 +24,7 @@ jobs:
 
       - name: Set up Nox
         run: |
-          NOXFILE="./path/to/noxfile/noxfile.py"
+          NOXFILE="./ingestion/noxfile.py"
           if [ -f "$NOXFILE" ]; then
             echo "NOXFILE_PATH=$NOXFILE" >> $GITHUB_ENV
             echo "noxfile found, environment variable set."
