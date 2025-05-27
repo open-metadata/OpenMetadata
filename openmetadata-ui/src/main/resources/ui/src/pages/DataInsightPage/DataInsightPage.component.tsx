@@ -14,7 +14,7 @@
 import { Card, Col, Row } from 'antd';
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
@@ -92,19 +92,31 @@ const DataInsightPage = () => {
     }
   }, [selectedChart]);
 
-  const { noDataInsightPermission, noKPIPermission, dataInsightTabs } =
-    useMemo(() => {
-      const data = {
-        noDataInsightPermission:
-          !viewDataInsightChartPermission &&
-          (tab === DataInsightTabs.APP_ANALYTICS ||
-            tab === DataInsightTabs.DATA_ASSETS),
-        noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
-        dataInsightTabs: dataInsightClassBase.getDataInsightTab(),
-      };
+  const { noDataInsightPermission, noKPIPermission } = useMemo(() => {
+    const data = {
+      noDataInsightPermission:
+        !viewDataInsightChartPermission &&
+        (tab === DataInsightTabs.APP_ANALYTICS ||
+          tab === DataInsightTabs.DATA_ASSETS),
+      noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
+    };
 
-      return data;
-    }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
+    return data;
+  }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
+
+  const renderTabComponent = useMemo(() => {
+    const currentTab = dataInsightClassBase
+      .getDataInsightTab()
+      .find((tabItem) => tabItem.key === tab);
+
+    if (!currentTab) {
+      return <Navigate replace to={DataInsightTabs.DATA_ASSETS} />;
+    }
+
+    const TabComponent = currentTab.component;
+
+    return <TabComponent />;
+  }, [tab]);
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
     return (
@@ -148,21 +160,7 @@ const DataInsightPage = () => {
                     <DataInsightHeader onScrollToChart={handleScrollToChart} />
                   </Col>
                 )}
-                <Col span={24}>
-                  <Routes>
-                    {dataInsightTabs.map((tab) => (
-                      <Route
-                        element={<tab.component />}
-                        key={tab.key}
-                        path={tab.path}
-                      />
-                    ))}
-                    <Route
-                      element={<Navigate to={getDataInsightPathWithFqn()} />}
-                      path="*"
-                    />
-                  </Routes>
-                </Col>
+                <Col span={24}>{renderTabComponent}</Col>
               </Row>
             </Card>
           </DataInsightProvider>
