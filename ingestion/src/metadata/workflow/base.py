@@ -53,6 +53,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.workflow.context.context_manager import ContextManager, ContextsEnum
+from metadata.workflow.context.workflow_context import WorkflowContextFieldsEnum
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -104,12 +106,19 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         )
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
+        # Initialize the context manager and set serviceName if present
+        self.init_workflow_context()
 
         # We create the ometa client at the workflow level and pass it to the steps
         self.metadata = create_ometa_client(
             self.workflow_config.openMetadataServerConfig
         )
-        self.set_ingestion_pipeline_status(state=PipelineState.running)
+        self.set_ingestion_pipeline_status(
+            state=PipelineState.running,
+            pipeline_satus_metadata=ContextManager.get_context(
+                ContextsEnum.WORKFLOW
+            ).model_dump(),
+        )
 
         self.post_init()
 
@@ -120,6 +129,16 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
 
         return self._ingestion_pipeline
+
+    def init_workflow_context(self):
+        if hasattr(self.config, "source") and hasattr(
+            self.config.source, "serviceName"
+        ):
+            ContextManager.set_context_attr(
+                ContextsEnum.WORKFLOW,
+                WorkflowContextFieldsEnum.SERVICE_NAME,
+                self.config.source.serviceName,
+            )
 
     def stop(self) -> None:
         """

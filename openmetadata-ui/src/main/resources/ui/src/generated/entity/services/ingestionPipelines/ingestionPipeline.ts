@@ -653,6 +653,10 @@ export interface PipelineStatus {
      */
     endDate?: number;
     /**
+     * Metadata for the pipeline status.
+     */
+    metadata?: { [key: string]: any };
+    /**
      * Pipeline status denotes if its failed or succeeded.
      */
     pipelineState?: PipelineState;
@@ -3401,6 +3405,10 @@ export interface ConfigClass {
      */
     useSSL?: boolean;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
@@ -4751,6 +4759,10 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
      */
@@ -5239,6 +5251,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
