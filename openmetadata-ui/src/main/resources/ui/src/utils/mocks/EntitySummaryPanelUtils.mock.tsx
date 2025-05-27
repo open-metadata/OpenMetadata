@@ -41,10 +41,7 @@ export const mockTextBasedSummaryTitleResponse = (
 export const mockLinkBasedSummaryTitleResponse = (
   <Link
     target="_blank"
-    to={{
-      pathname:
-        'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
-    }}>
+    to="http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task">
     <div className="d-flex items-center">
       <Text
         className="entity-title text-link-color font-medium m-r-xss"
@@ -168,10 +165,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
     title: (
       <Link
         target="_blank"
-        to={{
-          pathname:
-            'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
-        }}>
+        to="http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists">
         <div className="d-flex items-center">
           <Text
             className="entity-title text-link-color font-medium m-r-xss"
