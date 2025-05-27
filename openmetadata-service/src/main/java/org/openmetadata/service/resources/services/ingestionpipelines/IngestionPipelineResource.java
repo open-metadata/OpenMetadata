@@ -699,6 +699,9 @@ public class IngestionPipelineResource
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
     // IngestionPipeline
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
     Response response = createOrUpdate(uriInfo, securityContext, pipeline);
@@ -732,6 +735,11 @@ public class IngestionPipelineResource
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
 
@@ -748,6 +756,9 @@ public class IngestionPipelineResource
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     return pipelineServiceClient.getHostIp();
   }
 
@@ -765,6 +776,11 @@ public class IngestionPipelineResource
       })
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     return pipelineServiceClient.getServiceStatus();
   }
 
@@ -887,6 +903,9 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     Map<String, String> lastIngestionLogs =
