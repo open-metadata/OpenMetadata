@@ -11,7 +11,10 @@ on:
 jobs:
   format-and-unit:
     runs-on: ubuntu-latest
-    working-directory: ./ingestion
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./ingestion
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
