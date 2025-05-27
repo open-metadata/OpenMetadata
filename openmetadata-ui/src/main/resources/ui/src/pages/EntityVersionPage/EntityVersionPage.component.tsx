@@ -189,7 +189,7 @@ const EntityVersionPage: FunctionComponent = () => {
           );
 
           setEntityPermissions(permission);
-        } catch (error) {
+        } catch {
           //
         }
       }

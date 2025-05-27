@@ -77,7 +77,7 @@ const QueryPage = () => {
         queryId || ''
       );
       setQueryPermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),

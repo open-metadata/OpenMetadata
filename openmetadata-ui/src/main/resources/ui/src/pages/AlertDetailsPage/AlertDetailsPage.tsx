@@ -137,7 +137,7 @@ function AlertDetailsPage({
       });
 
       setAlertDetails(observabilityAlert);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setLoadingCount((count) => count - 1);
@@ -153,7 +153,7 @@ function AlertDetailsPage({
       });
 
       setAlertEventCounts(alertCounts);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setAlertEventCountsLoading(false);

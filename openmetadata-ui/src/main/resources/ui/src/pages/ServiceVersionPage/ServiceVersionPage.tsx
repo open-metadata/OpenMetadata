@@ -324,7 +324,7 @@ function ServiceVersionPage() {
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         setPaging(pagingObject);
       } finally {

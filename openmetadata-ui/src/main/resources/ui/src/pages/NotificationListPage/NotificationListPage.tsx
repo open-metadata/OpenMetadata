@@ -164,7 +164,7 @@ const NotificationListPage = () => {
 
         handlePagingChange(paging);
         fetchAllAlertsPermission(data);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );

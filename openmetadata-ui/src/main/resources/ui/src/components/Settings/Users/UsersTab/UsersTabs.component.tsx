@@ -73,7 +73,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         .map((user) => (user as PromiseFulfilledResult<User>).value);
 
       setAdditionalUsersDetails(filteredUser);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsDetailsLoading(false);
