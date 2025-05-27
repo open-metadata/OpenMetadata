@@ -22,22 +22,26 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install uv and nox
+      - name: Set up Nox
         run: |
+          if [ -f ./path/to/noxfile/noxfile.py ]; then
+            echo "NOXFILE_PATH=./ingestion/noxfile.py" >> $GITHUB_ENV
+          else
+            echo "noxfile.py not found!" && exit 1
+          fi
+          # Install uv to speed up virtual environments installation
           curl -LsSf https://astral.sh/uv/install.sh | sh
           pip install nox
 
       - name: Run Code Quality Checks
-        # We only want to check the format for a single Python version,
-        # no need to run it for all versions
         if: ${{ matrix.python-version == '3.10' }}
         run: |
-          nox -s lint
+          nox -f ${{ env.NOXFILE_PATH }} -s lint
 
       - name: Run Unit Tests
         run: |
-          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f ${{ env.NOXFILE_PATH }} -s unit
 
       - name: Run Unit Tests (specific plugins)
         run: |
-          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit-plugins
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -f ${{ env.NOXFILE_PATH }} -s unit-plugins
