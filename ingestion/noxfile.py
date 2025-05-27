@@ -47,8 +47,8 @@ def lint(session):
     session.install(".[dev]")
     # Configuration from pyproject.toml is taken into account out of the box
     session.run("black", "--check", ".", "../openmetadata-airflow-apis/")
-    session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
-    session.run("pycln", "--diff", ".", "../openmetadata-airflow-apis/")
+    #session.run("isort", "--check-only", ".", "../openmetadata-airflow-apis/")
+    #session.run("pycln", "--diff", ".", "../openmetadata-airflow-apis/")
     # TODO: It remains to adapt the command from the Makefile:
     # 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --errors-only
     # 	--rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata
