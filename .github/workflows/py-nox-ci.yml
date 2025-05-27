@@ -30,9 +30,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libkrb5-dev build-essential
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Generate Python Data Models
+        run: |
           cd ..
           make install_antlr_cli
-          make generate
+          pip install datamodel-code-generator==0.25.6
+          mkdir -p ingestion/src/metadata/generated
+          python scripts/datamodel_generation.py
+          antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr \
+            ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+
 
       - name: Set up Nox
         run: |

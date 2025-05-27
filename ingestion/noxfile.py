@@ -38,7 +38,7 @@ def get_python_versions():
 
 @nox.session(
     name="lint",
-    reuse_venv=False,
+    reuse_venv=True,
     venv_backend="uv|venv",
 )
 def lint(session):
@@ -57,7 +57,7 @@ def lint(session):
 
 
 @nox.session(
-    name="unit", reuse_venv=False, venv_backend="uv|venv", python=get_python_versions()
+    name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions()
 )
 def unit(session):
     session.install(".[all-dev-env, test-unit]")
@@ -83,6 +83,7 @@ def unit(session):
     ]
     ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
 
+    # run pytest with the ignore arguments and in parallel mode
     session.run("pytest", "tests/unit/", *ignore_args)
 
 
