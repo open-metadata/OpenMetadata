@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { EditorView, __serializeForClipboard } from '@tiptap/pm/view';
+import { EditorView } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
@@ -51,7 +49,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     );
 
     const slice = view.state.selection.content();
-    const { dom, text } = __serializeForClipboard(view, slice);
+    const { dom, text } = view.serializeForClipboard(slice);
 
     event.dataTransfer.clearData();
     event.dataTransfer.setData('text/html', dom.innerHTML);

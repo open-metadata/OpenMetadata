@@ -52,6 +52,30 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
   })(type);
 };
 
+const OidcCallbackWrapper = ({
+  userManager,
+  onError,
+  onSuccess,
+}: {
+  userManager: UserManager;
+  onError: (error: Error) => void;
+  onSuccess: (user: User) => void;
+}) => {
+  const CallbackComponent = Callback as unknown as ComponentType<{
+    userManager: UserManager;
+    onError: (error: Error) => void;
+    onSuccess: (user: User) => void;
+  }>;
+
+  return (
+    <CallbackComponent
+      userManager={userManager}
+      onError={onError}
+      onSuccess={onSuccess}
+    />
+  );
+};
+
 const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   (
     {
@@ -155,13 +179,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
             element={
-              <Callback
+              <OidcCallbackWrapper
                 userManager={userManager}
-                onError={(error) => {
+                onError={(error: Error) => {
                   showErrorToast(error?.message);
                   onLoginFailure();
                 }}
-                onSuccess={(user) => {
+                onSuccess={(user: User) => {
                   setOidcToken(user.id_token);
                   onLoginSuccess(user as OidcUser);
                 }}
@@ -172,7 +196,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           {/* silent callback route to handle the silent auth flow */}
           <Route
             element={
-              <Callback
+              <OidcCallbackWrapper
                 userManager={userManager}
                 onError={handleSilentSignInFailure}
                 onSuccess={handleSilentSignInSuccess}
