@@ -14,9 +14,14 @@ Test lineage parser to get inlets and outlets information
 from datetime import datetime
 from typing import List, Set
 
-from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.serialization.serde import serialize
+import pytest
+
+try:
+    from airflow import DAG
+    from airflow.operators.bash import BashOperator
+    from airflow.serialization.serde import serialize
+except ImportError:
+    pytest.skip("Airflow dependencies not installed", allow_module_level=True)
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
