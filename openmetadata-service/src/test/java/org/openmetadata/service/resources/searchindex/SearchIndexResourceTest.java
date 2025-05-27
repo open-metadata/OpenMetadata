@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.searchindex;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -41,6 +40,8 @@ import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.sort.SortOrder;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,8 +50,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -432,7 +431,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   @Test
   void testNewAggregation(TestInfo testInfo) throws IOException {
     DataQualityReport dataQualityReport = new DataQualityReport();
-    SearchRepository searchRepository = getSearchRepository();
+    SearchRepository searchRepository = Entity.getSearchRepository();
     String query =
         "{\"query\":{\"bool\":{\"should\":[{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuite\"}}},{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuiteTwo\"}}}]}}}";
 

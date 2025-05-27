@@ -3,16 +3,17 @@ package org.openmetadata.service.mcp;
 import static org.openmetadata.service.search.SearchUtil.searchMetadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
-import io.dropwizard.setup.Environment;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.DispatcherType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -66,7 +67,7 @@ public class McpServer {
             new JwtFilter(
                 config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
     contextHandler.addFilter(
-        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+        new FilterHolder((Filter) authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
   }
 
   public void addTools(McpSyncServer server) {
