@@ -151,7 +151,7 @@ public class SettingsCache {
               .withConfigValue(applicationConfig.getScimConfiguration());
       Entity.getSystemRepository().createNewSetting(setting);
     }
-    
+
     // Initialise Search Settings
     Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
