@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -362,7 +363,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
           testCaseResourceTest.createRequest(
-              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -563,7 +565,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
           testCaseResourceTest.createRequest(
-              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
     }
 
@@ -714,7 +717,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
           testCaseResourceTest.createRequest(
-              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases.add(testCase.getEntityReference());

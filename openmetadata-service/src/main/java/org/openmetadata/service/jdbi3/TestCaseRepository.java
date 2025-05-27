@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -105,7 +106,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public void setFields(TestCase test, Fields fields) {
     test.setTestSuites(
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
-    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : test.getTestSuite());
+    test.setTestSuite(
+        fields.contains(TEST_SUITE_FIELD)
+            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
     test.setTestCaseResult(
@@ -141,7 +145,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public EntityInterface getParentEntity(TestCase entity, String fields) {
-    return Entity.getEntity(entity.getTestSuite(), fields, ALL);
+    EntityReference testSuite = entity.getTestSuite();
+    if (testSuite == null) {
+      EntityLink entityLink = EntityLink.parse(entity.getEntityLink());
+      return Entity.getEntity(entityLink, fields, ALL);
+    } else {
+      return Entity.getEntity(testSuite, fields, ALL);
+    }
   }
 
   @Override
@@ -187,10 +197,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
   }
 
+  /*
+   * Get the test suite for a test case. We'll use the entity linked to the test case
+   * to find the basic test suite. If it doesn't exist, create a new one.
+   */
   private EntityReference getOrCreateTestSuite(TestCase test) {
     EntityReference entityReference = null;
     try {
-      entityReference = getTestSuite(test);
+      EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+      EntityInterface entity = Entity.getEntity(entityLink, "", ALL);
+      return getTestSuite(entity.getId(), TEST_SUITE, TABLE, Direction.TO);
     } catch (EntityNotFoundException e) {
       // If the test suite is not found, we'll create a new one
       EntityLink entityLink = EntityLink.parse(test.getEntityLink());
@@ -202,16 +218,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               .withName(entityLink.getEntityFQN() + ".testSuite")
               .withBasicEntityReference(entityLink.getEntityFQN());
       TestSuite testSuite = mapper.createToEntity(createTestSuite, INGESTION_BOT_NAME);
+      testSuite.setBasic(true);
       testSuiteRepository.create(null, testSuite);
       entityReference = testSuite.getEntityReference();
     }
     return entityReference;
   }
 
-  private EntityReference getTestSuite(TestCase test) throws EntityNotFoundException {
+  private EntityReference getTestSuite(UUID id, String to, String from, Direction direction)
+      throws EntityNotFoundException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    List<CollectionDAO.EntityRelationshipRecord> records = new ArrayList<>();
+    switch (direction) {
+      case FROM -> records = findFromRecords(id, to, Relationship.CONTAINS, from);
+      case TO -> records = findToRecords(id, from, Relationship.CONTAINS, to);
+    }
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
@@ -221,7 +242,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     throw new EntityNotFoundException(
         String.format(
                 "Error occurred when retrieving executable test suite for testCase %s. ",
-                test.getName())
+                id.toString())
             + "No executable test suite was found.");
   }
 
@@ -808,8 +829,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      populateEntityFieldTags(
-          Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
+      populateEntityFieldTags(TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
       return maskSampleData(sampleData, table, table.getColumns());
@@ -898,5 +918,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         }
       }
     }
+  }
+
+  private enum Direction {
+    TO,
+    FROM
   }
 }
