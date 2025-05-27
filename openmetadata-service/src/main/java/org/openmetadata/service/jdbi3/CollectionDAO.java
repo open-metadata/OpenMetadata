@@ -70,6 +70,7 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -975,6 +976,13 @@ public interface CollectionDAO {
       bulkRemoveTo(fromId, toIdsAsString, fromEntity, toEntity, relation);
     }
 
+    default void bulkRemoveFromRelationship(
+        List<UUID> fromIds, UUID toId, String fromEntity, String toEntity, int relation) {
+
+      List<String> fromIdsAsString = fromIds.stream().map(UUID::toString).toList();
+      bulkRemoveFrom(fromIdsAsString, toId, fromEntity, toEntity, relation);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
@@ -1018,6 +1026,20 @@ public interface CollectionDAO {
     void bulkRemoveTo(
         @BindUUID("fromId") UUID fromId,
         @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship "
+            + "WHERE fromEntity = :fromEntity "
+            + "AND fromId IN (<fromIds>) "
+            + "AND toEntity = :toEntity "
+            + "AND relation = :relation "
+            + "AND toId = :toId")
+    void bulkRemoveFrom(
+        @BindList("fromIds") List<String> fromIds,
+        @BindUUID("toId") UUID toId,
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
@@ -2036,6 +2058,14 @@ public interface CollectionDAO {
           entityLink.getFullyQualifiedFieldType(),
           glossaryTermLink.getFullyQualifiedFieldType());
     }
+
+    default List<String> listThreadsByTaskAssignee(String taskAssigneesId) {
+      String condition = String.format(" WHERE taskAssigneesIds LIKE '%%%s%%'", taskAssigneesId);
+      return listThreadsByTaskAssigneesId(condition);
+    }
+
+    @SqlQuery("SELECT json FROM thread_entity <cond>")
+    List<String> listThreadsByTaskAssigneesId(@Define("cond") String cond);
 
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count "
@@ -5735,6 +5765,7 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
+        case SUPPORT_TOKEN -> JsonUtils.readValue(json, SupportToken.class);
       };
     }
   }

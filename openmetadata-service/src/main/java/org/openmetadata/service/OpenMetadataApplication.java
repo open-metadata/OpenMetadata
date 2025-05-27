@@ -60,6 +60,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -91,6 +92,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.McpServer;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -136,7 +138,7 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
-  private Authorizer authorizer;
+  protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   private Limits limits;
 
@@ -240,8 +242,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
 
-    JobHandlerRegistry registry = new JobHandlerRegistry();
-    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    JobHandlerRegistry registry = getJobHandlerRegistry();
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
@@ -262,13 +263,31 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerSamlServlets(catalogConfig, environment);
 
     // Asset Servlet Registration
-    registerAssetServlet(catalogConfig.getWebConfiguration(), environment);
+    registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
+
+    // Register MCP
+    registerMCPServer(catalogConfig, environment);
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  protected void registerMCPServer(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getMcpConfiguration() != null
+        && catalogConfig.getMcpConfiguration().isEnabled()) {
+      McpServer mcpServer = new McpServer();
+      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
+    }
+  }
+
+  protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    return registry;
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
@@ -358,10 +377,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet(OMWebConfiguration webConfiguration, Environment environment) {
+  private void registerAssetServlet(
+      OpenMetadataApplicationConfig config,
+      OMWebConfiguration webConfiguration,
+      Environment environment) {
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet("/assets", "/", "index.html", webConfiguration);
+        new OpenMetadataAssetServlet(
+            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
   }

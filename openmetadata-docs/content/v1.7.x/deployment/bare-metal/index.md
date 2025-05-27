@@ -220,6 +220,7 @@ ELASTICSEARCH_SCHEME='https'
 ELASTICSEARCH_BATCH_SIZE='10'
 ELASTICSEARCH_HOST='vpc-<random_characters>.<aws_region>.es.amazonaws.com'
 ELASTICSEARCH_PASSWORD='<ES_PASSWORD>'
+ELASTICSEARCH_CLUSTER_ALIAS='<clusterAlias>'
 ```
 
 ### Configure OpenSearch
@@ -231,8 +232,13 @@ ELASTICSEARCH_PORT="<OPENSEARCH_ENDPOINT_PORT>"
 ELASTICSEARCH_SCHEME="<OPENSEARCH_ENDPOINT_SCHEME>"
 ELASTICSEARCH_USER="<OPENSEARCH_USERNAME>"
 ELASTICSEARCH_PASSWORD="<OPENSEARCH_PASSWORD>"
-...
+ELASTICSEARCH_CLUSTER_ALIAS="<clusterAlias>"
 ```
+{% note %}
+
+If you want to separate indexes for production and non-production environments, you can set the `clusterAlias` in the configuration file.
+
+{% /note %}
 
 ### Configure Ingestion
 

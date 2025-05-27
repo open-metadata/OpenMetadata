@@ -212,14 +212,6 @@ site_menu:
     url: /deployment/upgrade/docker
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
     url: /deployment/upgrade/kubernetes
-  - category: Deployment / Upgrade OpenMetadata / Version Changes
-    url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
-    url: /deployment/upgrade/versions/100-to-110
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.1.x to 1.2.x
-    url: /deployment/upgrade/versions/110-to-120
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
-    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
@@ -1127,6 +1119,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.7.0 Release
+    url: /releases/all-releases/#1.7.0-release
+  - category: Releases / All Releases / 1.6.11 Release
+    url: /releases/all-releases/#1.6.11-release
   - category: Releases / All Releases / 1.6.10 Release
     url: /releases/all-releases/#1.6.10-release
   - category: Releases / All Releases / 1.6.9 Release

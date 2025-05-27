@@ -861,7 +861,7 @@ test.describe('Bulk Import Export', () => {
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.click('[type="button"] >> text="Next"', { force: true });
+        await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
           passed: '9',
@@ -889,12 +889,10 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );

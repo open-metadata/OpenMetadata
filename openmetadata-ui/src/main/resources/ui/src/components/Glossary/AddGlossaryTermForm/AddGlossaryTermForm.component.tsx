@@ -248,7 +248,7 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.ASYNC_SELECT_LIST,
+      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
       props: {
         className: 'glossary-select',
         'data-testid': 'related-terms',
@@ -256,6 +256,8 @@ const AddGlossaryTermForm = ({
         placeholder: t('label.add-entity', {
           entity: t('label.related-term-plural'),
         }),
+        open: false,
+        hasNoActionButtons: true,
         fetchOptions: fetchGlossaryList,
         initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
           label: data.fullyQualifiedName,

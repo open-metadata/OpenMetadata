@@ -13,7 +13,6 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import process from 'process';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
@@ -50,6 +49,7 @@ import { PipelineType } from '../generated/api/services/ingestionPipelines/creat
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './CommonUtils';
+import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -608,9 +608,8 @@ export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
 
   return path;
 };
-
 export const getPathNameFromWindowLocation = () => {
-  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+  return window.location.pathname.replace(getBasePath() ?? '', '');
 };
 
 export const getTagsDetailsPath = (entityFQN: string) => {

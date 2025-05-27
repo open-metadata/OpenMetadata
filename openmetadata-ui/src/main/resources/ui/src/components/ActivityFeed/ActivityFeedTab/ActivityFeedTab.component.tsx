@@ -776,7 +776,7 @@ export const ActivityFeedTab = ({
                     />
                     <span>{t('label.task-plural')}</span>
                   </Space>
-                  <span>
+                  <span data-testid="left-panel-task-count">
                     {getCountBadge(
                       countData?.data?.openTaskCount,
                       '',
