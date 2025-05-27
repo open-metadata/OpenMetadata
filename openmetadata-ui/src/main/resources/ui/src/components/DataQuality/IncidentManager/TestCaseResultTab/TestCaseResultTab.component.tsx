@@ -12,17 +12,12 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-} from '../../../../constants/constants';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
@@ -41,6 +36,7 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
@@ -217,19 +213,18 @@ const TestCaseResultTab = () => {
             </Typography.Text>
             {hasEditPermission &&
               Boolean(
-                withoutSqlParams.length || testCaseData?.useDynamicAssertion
+                testCaseData?.parameterValues?.length ||
+                  testCaseData?.useDynamicAssertion
               ) && (
-                <Tooltip
+                <EditIconButton
+                  newLook
+                  data-testid="edit-parameter-icon"
+                  size="small"
                   title={t('label.edit-entity', {
                     entity: t('label.parameter'),
-                  })}>
-                  <Icon
-                    component={EditIcon}
-                    data-testid="edit-parameter-icon"
-                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    onClick={() => setIsParameterEdit(true)}
-                  />
-                </Tooltip>
+                  })}
+                  onClick={() => setIsParameterEdit(true)}
+                />
               )}
           </Space>
 
@@ -251,17 +246,15 @@ const TestCaseResultTab = () => {
                     {startCase(param.name)}
                   </Typography.Text>
                   {hasEditPermission && (
-                    <Tooltip
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-sql-param-icon"
+                      size="small"
                       title={t('label.edit-entity', {
                         entity: t('label.parameter'),
-                      })}>
-                      <Icon
-                        component={EditIcon}
-                        data-testid="edit-sql-param-icon"
-                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                        onClick={() => setIsParameterEdit(true)}
-                      />
-                    </Tooltip>
+                      })}
+                      onClick={() => setIsParameterEdit(true)}
+                    />
                   )}
                 </Space>
               </Col>

@@ -62,7 +62,7 @@ describe('TestCaseClassBase', () => {
       },
     ];
 
-    const result = testCaseClassBase.getTab(openTaskCount);
+    const result = testCaseClassBase.getTab(openTaskCount, false);
 
     expect(result).toEqual(expectedTabs);
   });

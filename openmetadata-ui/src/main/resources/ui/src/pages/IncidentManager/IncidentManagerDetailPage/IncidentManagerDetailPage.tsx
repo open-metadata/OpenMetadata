@@ -113,7 +113,10 @@ const IncidentManagerDetailPage = ({
     }, [testCasePermission]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
-    const tabs = testCaseClassBase.getTab(feedCount.openTaskCount);
+    const tabs = testCaseClassBase.getTab(
+      feedCount.openTaskCount,
+      isVersionPage
+    );
 
     return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
       key,
