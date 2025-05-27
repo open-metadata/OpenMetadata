@@ -24,7 +24,7 @@ from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
-from ...src.metadata.data_quality.api.models import TestCaseDefinition
+from metadata.data_quality.api.models import TestCaseDefinition
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
