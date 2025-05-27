@@ -30,6 +30,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libkrb5-dev build-essential
+          cd ..
+          make install_antlr_cli
+          make generate
 
       - name: Set up Nox
         run: |
