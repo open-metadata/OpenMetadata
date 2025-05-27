@@ -26,10 +26,6 @@ jest.mock('../../hooks/useApplicationStore', () => {
   };
 });
 
-jest.mock('../../utils/AuthProvider.util', () => ({
-  isProtectedRoute: jest.fn().mockReturnValue(true),
-}));
-
 jest.mock(
   '../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => {

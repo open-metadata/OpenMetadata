@@ -4,6 +4,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 name: Team Label
 jobs:
