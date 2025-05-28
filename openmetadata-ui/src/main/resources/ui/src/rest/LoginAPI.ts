@@ -36,5 +36,7 @@ export const renewToken = async () => {
 };
 
 export const logoutUser = async () => {
-  return await axiosClient.get(`${BASE_URL}/logout`);
+  const response = await axiosClient.get(`${BASE_URL}/logout`);
+
+  return response.data;
 };

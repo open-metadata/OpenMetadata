@@ -47,19 +47,6 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
       useAuthProvider();
 
-    const handleOnLogoutSuccess = async () => {
-      try {
-        await instance.logout();
-        for (const key in localStorage) {
-          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
-            localStorage.removeItem(key);
-          }
-        }
-      } finally {
-        handleSuccessfulLogout();
-      }
-    };
-
     const login = async () => {
       try {
         const isInIframe = window.self !== window.top;
@@ -78,8 +65,17 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const logout = () => {
-      handleOnLogoutSuccess();
+    const logout = async () => {
+      try {
+        for (const key in localStorage) {
+          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } finally {
+        // Cleanup application state
+        handleSuccessfulLogout();
+      }
     };
 
     const fetchIdToken = async (

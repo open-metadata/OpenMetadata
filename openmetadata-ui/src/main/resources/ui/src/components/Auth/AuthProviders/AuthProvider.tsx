@@ -181,10 +181,10 @@ export const AuthProvider = ({
   };
 
   // Handler to perform logout within application
-  const onLogoutHandler = useCallback(() => {
+  const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    authenticatorRef.current?.invokeLogout();
+    await authenticatorRef.current?.invokeLogout();
     setIsAuthenticated(false);
 
     // reset the user details on logout

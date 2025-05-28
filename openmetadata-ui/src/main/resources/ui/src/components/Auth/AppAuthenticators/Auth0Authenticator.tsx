@@ -43,7 +43,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           console.error(error);
         });
       },
-      invokeLogout() {
+      async invokeLogout() {
         try {
           logout({
             localOnly: true,

@@ -19,7 +19,6 @@ import React, {
   useImperativeHandle,
 } from 'react';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -31,7 +30,6 @@ interface Props {
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
-    const { setIsAuthenticated } = useApplicationStore();
     const { handleSuccessfulLogout } = useAuthProvider();
 
     const login = async () => {
@@ -39,10 +37,11 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = async () => {
-      setIsAuthenticated(false);
       try {
+        // Perform logout on Okta
         oktaAuth.tokenManager.clear();
       } finally {
+        // Cleanup application state
         handleSuccessfulLogout();
       }
     };

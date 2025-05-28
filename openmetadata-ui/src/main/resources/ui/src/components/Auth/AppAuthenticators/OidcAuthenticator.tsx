@@ -84,10 +84,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setIsSigningUp(true);
     };
 
-    const logout = () => {
+    const logout = async () => {
       try {
+        await userManager.signoutRedirect({
+          post_logout_redirect_uri: window.location.origin,
+        });
+      } catch (error) {
+        // If signout fails, still clean up local state
         userManager.removeUser();
       } finally {
+        // Cleanup application state
         handleSuccessfulLogout();
       }
     };
