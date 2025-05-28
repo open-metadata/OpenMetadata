@@ -198,7 +198,7 @@ def run_data_quality_workflow(
                                 {"name": "max", "value": "600"},
                                 {"name": "columnName", "value": "last_update"},
                                 {"name": "rangeType", "value": "YEAR"},
-                                {"name": "rangeInterval", "value": "12"},
+                                {"name": "rangeInterval", "value": "50"},
                             ],
                         },
                     ],
