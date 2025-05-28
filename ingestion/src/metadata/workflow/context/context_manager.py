@@ -10,19 +10,12 @@ import threading
 from enum import Enum
 from typing import Any, Optional
 
-from metadata.workflow.context.base import BaseContext
-from metadata.workflow.context.workflow_context import (
-    WorkflowContext,
-    WorkflowContextFieldsEnum,
-)
+from metadata.workflow.context.base import BaseContext, BaseContextFieldsEnum
+from metadata.workflow.context.workflow_context import WorkflowContext
 
 # NOTE: To make the context available on the context manager we need to:
 #         1. Add it to the ContextsEnum
-#         2. Add the ContextFieldEnum to the ContextFieldsEnums Union.
-#         3. Declare it and initialize it as a class attribute in ContextManager
-
-# NOTE: This should become a Union as soon as we have more than one context.
-ContextFieldsEnums = WorkflowContextFieldsEnum
+#         2. Declare it and initialize it as a class attribute in ContextManager
 
 
 class ContextsEnum(Enum):
@@ -63,7 +56,7 @@ class ContextManager:
 
     @classmethod
     def set_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: ContextFieldsEnums, value: Any
+        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum, value: Any
     ):
         """
         Thread-safe method to set an attribute on a context.
@@ -80,7 +73,7 @@ class ContextManager:
 
     @classmethod
     def get_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: ContextFieldsEnums
+        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum
     ) -> Any:
         """
         Thread-safe method to get an attribute from a context.
