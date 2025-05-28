@@ -59,16 +59,7 @@ const EntityImportRouter = () => {
   return (
     <Routes>
       {entityPermission.EditAll && (
-        <>
-          <Route
-            element={<BulkEntityImportPage />}
-            path={ROUTES.ENTITY_IMPORT}
-          />
-          <Route
-            element={<BulkEntityImportPage />}
-            path={ROUTES.BULK_EDIT_ENTITY_WITH_FQN}
-          />
-        </>
+        <Route element={<BulkEntityImportPage />} path="*" />
       )}
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
