@@ -60,6 +60,7 @@ RELKIND_MAP = {
     "Doris": TableType.Regular,
     "View": TableType.View,
     "MEMORY": TableType.View,
+    "OLAP": TableType.MaterializedView,
 }
 
 DorisDialect.get_table_names_and_type = get_table_names_and_type
@@ -179,7 +180,9 @@ class DorisSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
         tables = [
-            TableNameAndType(name=name, type_=RELKIND_MAP.get(engine))
+            TableNameAndType(
+                name=name, type_=RELKIND_MAP.get(engine, TableType.Regular)
+            )
             for name, engine in self.connection.execute(
                 sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}
             )
