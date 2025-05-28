@@ -29,7 +29,11 @@ export type Joined = JoinedWith & {
   name: string;
 };
 
-export const FrequentlyJoinedTables = () => {
+export const FrequentlyJoinedTables = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { t } = useTranslation();
   const { data, filterWidgets } = useGenericContext<Table>();
 
@@ -64,7 +68,7 @@ export const FrequentlyJoinedTables = () => {
     </Space>
   ));
 
-  return (
+  return renderAsExpandableCard ? (
     <ExpandableCard
       cardProps={{
         title: t('label.frequently-joined-table-plural'),
@@ -73,5 +77,7 @@ export const FrequentlyJoinedTables = () => {
       isExpandDisabled={isEmpty(joinedTables)}>
       {content}
     </ExpandableCard>
+  ) : (
+    <>{content}</>
   );
 };

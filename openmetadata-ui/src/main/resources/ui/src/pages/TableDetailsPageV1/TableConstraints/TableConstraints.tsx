@@ -32,7 +32,11 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-const TableConstraints = () => {
+const TableConstraints = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data, permissions, onUpdate } = useGenericContext<Table>();
@@ -168,13 +172,17 @@ const TableConstraints = () => {
 
   return (
     <>
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
-        isExpandDisabled={isEmpty(data?.tableConstraints)}>
-        {content}
-      </ExpandableCard>
+      {renderAsExpandableCard ? (
+        <ExpandableCard
+          cardProps={{
+            title: header,
+          }}
+          isExpandDisabled={isEmpty(data?.tableConstraints)}>
+          {content}
+        </ExpandableCard>
+      ) : (
+        content
+      )}
       {isModalOpen && (
         <TableConstraintsModal
           constraint={data?.tableConstraints}

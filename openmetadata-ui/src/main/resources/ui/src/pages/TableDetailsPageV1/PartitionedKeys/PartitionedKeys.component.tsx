@@ -23,7 +23,11 @@ import {
   Table as TableType,
 } from '../../../generated/entity/data/table';
 
-export const PartitionedKeys = () => {
+export const PartitionedKeys = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { data, filterWidgets } = useGenericContext<TableType>();
 
   const partitionColumnDetails = useMemo(
@@ -80,7 +84,7 @@ export const PartitionedKeys = () => {
     />
   );
 
-  return (
+  return renderAsExpandableCard ? (
     <ExpandableCard
       cardProps={{
         title: t('label.table-partition-plural'),
@@ -88,5 +92,7 @@ export const PartitionedKeys = () => {
       isExpandDisabled={isEmpty(partitionColumnDetails)}>
       {content}
     </ExpandableCard>
+  ) : (
+    content
   );
 };
