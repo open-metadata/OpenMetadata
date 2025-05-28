@@ -20,7 +20,8 @@
         "properties": {
           "op": {
             "type": "string",
-            "enum": ["add", "replace", "remove"]
+            "enum": ["add", "replace", "remove"],
+            "javaType": "java.lang.String"
           },
           "path": {
             "type": "string"
