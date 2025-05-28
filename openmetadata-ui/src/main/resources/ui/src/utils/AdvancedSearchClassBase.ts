@@ -535,6 +535,8 @@ class AdvancedSearchClassBase {
 
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
+          showSearch: true,
+          ['data-testid']: 'advanced-search-field-select',
           // Adding filterOption to search by label
           // Since the default search behavior is by value which gives incorrect results
           // Ex. for search term 'name', it will return 'Task' in results as well
