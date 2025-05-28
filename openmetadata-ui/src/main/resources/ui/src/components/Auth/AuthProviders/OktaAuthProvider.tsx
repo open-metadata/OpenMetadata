@@ -46,10 +46,16 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         pkce,
         tokenManager: {
           autoRenew: false,
+          expireEarlySeconds: 60,
         },
         cookies: {
           secure: true,
           sameSite: 'none',
+        },
+        services: {
+          autoRenew: false,
+          renewOnTabActivation: false,
+          tabInactivityDuration: 3600,
         },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]

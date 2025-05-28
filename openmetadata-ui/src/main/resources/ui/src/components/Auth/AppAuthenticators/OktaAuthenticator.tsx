@@ -48,9 +48,6 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewToken = async () => {
-      // eslint-disable-next-line no-console
-      console.timeLog('RenewToken');
-
       const renewToken = await oktaAuth.token.renewTokens();
       oktaAuth.tokenManager.setTokens(renewToken);
       const newToken =
