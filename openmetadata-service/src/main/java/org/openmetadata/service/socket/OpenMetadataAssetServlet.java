@@ -16,11 +16,11 @@ package org.openmetadata.service.socket;
 import static org.openmetadata.service.exception.OMErrorPageHandler.setSecurityHeader;
 
 import io.dropwizard.servlets.assets.AssetServlet;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
