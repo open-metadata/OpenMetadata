@@ -47,9 +47,7 @@ def prepare_data(create_test_data, trino_container):
         ).fetchall()
 
 
-# Skip this test as for some reason it fails in CI
-# FIXME: this needs investigation
-@pytest.mark.skip("Skipping table diff test due to CI issues")
+@pytest.mark.skip("Skipping while investigating CI failure. Test passes locally.")
 @pytest.mark.parametrize(
     "test_case_definition,expected_result",
     [
