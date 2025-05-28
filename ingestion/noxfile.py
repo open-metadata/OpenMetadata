@@ -20,8 +20,6 @@ import nox
 #    - Add integration tests
 #    - Address the TODOs in the code
 
-# TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
-
 SUPPORTED_PYTHON_VERSIONS = ["3.9", "3.10", "3.11"]
 
 
@@ -67,20 +65,14 @@ def unit(session):
     # TODO: We need to remove ignored test once they can be run properly within nox
     # Run unit tests
     ignored_tests = [
-        "test_dbt.py",
-        "test_sample_usage.py",
-        "test_ssl_manager.py",
         "test_usage_filter.py",
-        "test_import_checker.py",
-        "test_suite/",
         "profiler/test_profiler_partitions.py",
         "profiler/test_workflow.py",
-        "workflow",
         "topology",
     ]
     ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
 
-    # run pytest with the ignore arguments and in parallel mode
+    # run pytest with the ignore arguments
     session.run("pytest", "tests/unit/", *ignore_args)
 
 
