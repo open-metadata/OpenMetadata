@@ -428,6 +428,9 @@ const GlossaryPage = () => {
       <div className="d-flex justify-center items-center">
         <ErrorPlaceHolder
           className="mt-0-important border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.glossary'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
@@ -443,6 +446,13 @@ const GlossaryPage = () => {
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}
+          permissionValue={
+            createGlossaryPermission
+              ? t('label.create-entity', {
+                  entity: t('label.glossary'),
+                })
+              : ''
+          }
           size={SIZE.X_LARGE}
           type={
             createGlossaryPermission

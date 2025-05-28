@@ -321,6 +321,9 @@ const KPIChart: FC<Props> = ({
               ) : (
                 <ErrorPlaceHolder
                   className="border-none"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                 />
               )}
@@ -345,6 +348,9 @@ const KPIChart: FC<Props> = ({
             }
             className="m-0 border-none"
             permission={createKPIPermission}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
             size={SIZE.MEDIUM}
             type={
               createKPIPermission

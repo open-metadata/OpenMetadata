@@ -529,6 +529,9 @@ const IncidentManager = ({
     return (
       <ErrorPlaceHolder
         className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );

@@ -25,11 +25,18 @@ const AssignErrorPlaceHolder = ({
   heading,
   button,
   children,
+  permissionValue,
 }: AssignPlaceholderProps) => {
   const { t } = useTranslation();
 
   if (!permission) {
-    return <PermissionErrorPlaceholder className={className} size={size} />;
+    return (
+      <PermissionErrorPlaceholder
+        className={className}
+        permissionValue={permissionValue}
+        size={size}
+      />
+    );
   }
 
   return (

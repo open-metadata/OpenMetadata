@@ -30,12 +30,19 @@ const CreateErrorPlaceHolder = ({
   doc,
   buttonId,
   placeholderText,
+  permissionValue,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
 
   if (!permission) {
-    return <PermissionErrorPlaceholder className={className} size={size} />;
+    return (
+      <PermissionErrorPlaceholder
+        className={className}
+        permissionValue={permissionValue}
+        size={size}
+      />
+    );
   }
 
   return (

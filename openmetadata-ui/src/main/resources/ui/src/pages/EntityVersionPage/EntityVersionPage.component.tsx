@@ -188,7 +188,7 @@ const EntityVersionPage: FunctionComponent = () => {
           );
 
           setEntityPermissions(permission);
-        } catch (error) {
+        } catch {
           //
         }
       }
@@ -495,7 +495,17 @@ const EntityVersionPage: FunctionComponent = () => {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(currentVersionData)} ${t(
+              'label.version'
+            )}`,
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     let VersionPage = null;

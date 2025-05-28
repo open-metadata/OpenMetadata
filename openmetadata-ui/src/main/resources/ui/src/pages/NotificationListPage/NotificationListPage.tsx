@@ -164,7 +164,7 @@ const NotificationListPage = () => {
 
         handlePagingChange(paging);
         fetchAllAlertsPermission(data);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -356,6 +356,9 @@ const NotificationListPage = () => {
                   className="p-y-md"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.alert'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
                     navigate(

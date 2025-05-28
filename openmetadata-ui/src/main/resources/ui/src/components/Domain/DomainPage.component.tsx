@@ -187,6 +187,9 @@ const DomainPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           className="mt-0-important border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.domain'),
+          })}
           size={SIZE.X_LARGE}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -202,6 +205,13 @@ const DomainPage = () => {
           className="mt-0-important border-none"
           heading={t('label.domain')}
           permission={createDomainPermission}
+          permissionValue={
+            createDomainPermission
+              ? t('label.create-entity', {
+                  entity: t('label.domain'),
+                })
+              : ''
+          }
           size={SIZE.X_LARGE}
           type={
             createDomainPermission

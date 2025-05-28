@@ -93,6 +93,9 @@ const PersonaPageLayout = () => {
           className="border-none"
           heading={t('label.persona')}
           permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.persona'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
         />

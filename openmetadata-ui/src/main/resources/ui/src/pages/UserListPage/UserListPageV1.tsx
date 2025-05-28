@@ -366,6 +366,9 @@ const UserListPageV1 = () => {
               className="border-none"
               heading={t('label.user')}
               permission={isAdminUser}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.user'),
+              })}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}
               onClick={handleAddNewUser}
             />

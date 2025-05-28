@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
@@ -26,6 +28,7 @@ const AdminProtectedRoute = ({
   hasPermission,
   children,
 }: AdminProtectedRouteProps): JSX.Element => {
+  const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const location = useLocation();
 
@@ -35,6 +38,7 @@ const AdminProtectedRoute = ({
     return (
       <ErrorPlaceHolder
         className="border-none"
+        permissionValue={t('label.view')}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );

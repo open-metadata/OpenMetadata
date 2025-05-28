@@ -12,17 +12,16 @@
  */
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { PermissionPlaceholderProps } from './placeholder.interface';
 
 const PermissionErrorPlaceholder = ({
   size = SIZE.LARGE,
   className,
+  permissionValue,
 }: PermissionPlaceholderProps) => {
-  const { t } = useTranslation();
-
   return (
     <div
       className={classNames(
@@ -41,7 +40,13 @@ const PermissionErrorPlaceholder = ({
         />
         <div className="text-center text-sm font-normal">
           <Typography.Paragraph className="w-68" style={{ marginBottom: '0' }}>
-            {t('message.no-access-placeholder')}
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: permissionValue,
+              }}
+            />
           </Typography.Paragraph>
         </div>
       </Space>

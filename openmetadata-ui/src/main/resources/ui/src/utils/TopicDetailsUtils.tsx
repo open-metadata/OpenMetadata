@@ -70,7 +70,13 @@ export const getTopicDetailsPageTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children: !viewSampleDataPermission ? (
         <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={i18n.t('label.view-entity', {
+              entity: i18n.t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         sampleDataTab

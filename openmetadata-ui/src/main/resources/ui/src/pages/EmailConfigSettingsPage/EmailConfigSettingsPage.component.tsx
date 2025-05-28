@@ -127,6 +127,9 @@ function EmailConfigSettingsPage() {
         <ErrorPlaceHolder
           className="mt-24"
           heading={t('label.email-configuration-lowercase')}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.email-configuration'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
         />
       );

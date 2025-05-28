@@ -137,7 +137,7 @@ function AlertDetailsPage({
       });
 
       setAlertDetails(observabilityAlert);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setLoadingCount((count) => count - 1);
@@ -153,7 +153,7 @@ function AlertDetailsPage({
       });
 
       setAlertEventCounts(alertCounts);
-    } catch (error) {
+    } catch {
       // Error handling
     } finally {
       setAlertEventCountsLoading(false);
@@ -327,9 +327,16 @@ function AlertDetailsPage({
   );
 
   if (!loadingCount && !viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.alert-detail-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
-
   if (!loadingCount && isUndefined(alertDetails)) {
     return <ErrorPlaceHolder className="m-0" />;
   }

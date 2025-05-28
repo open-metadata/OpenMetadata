@@ -302,7 +302,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       sampleDataTab: !viewSampleDataPermission ? (
         <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         <SampleDataWithMessages

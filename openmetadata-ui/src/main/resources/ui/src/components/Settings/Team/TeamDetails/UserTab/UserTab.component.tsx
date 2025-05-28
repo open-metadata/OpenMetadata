@@ -359,6 +359,9 @@ export const UserTab = ({
         className="mt-0-important border-none"
         heading={t('label.user')}
         permission={editUserPermission}
+        permissionValue={t('label.edit-entity', {
+          entity: t('label.user'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
     ) : (

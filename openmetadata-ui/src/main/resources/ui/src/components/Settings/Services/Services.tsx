@@ -275,6 +275,9 @@ const Services = ({ serviceName }: ServicesProps) => {
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
+          permissionValue={t('label.create-entity', {
+            entity: `${servicesDisplayName[serviceName]}`,
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />

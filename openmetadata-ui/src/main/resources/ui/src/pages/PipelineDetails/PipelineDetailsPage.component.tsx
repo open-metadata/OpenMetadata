@@ -310,7 +310,15 @@ const PipelineDetailsPage = () => {
   }
 
   if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.pipeline-detail-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

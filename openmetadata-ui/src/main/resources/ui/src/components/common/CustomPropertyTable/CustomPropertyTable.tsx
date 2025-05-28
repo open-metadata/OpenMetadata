@@ -213,7 +213,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   if (!hasPermission) {
     return (
       <div className="flex-center">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </div>
     );
   }

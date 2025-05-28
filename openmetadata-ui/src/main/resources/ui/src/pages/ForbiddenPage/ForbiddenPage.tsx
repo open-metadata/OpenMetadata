@@ -15,7 +15,12 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 
 const ForbiddenPage = () => {
-  return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  return (
+    <ErrorPlaceHolder
+      className="border-none"
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
 };
 
 export default withPageLayout(ForbiddenPage);

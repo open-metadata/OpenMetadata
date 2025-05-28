@@ -315,6 +315,9 @@ const RolesListPage = () => {
                   className="border-none"
                   heading={t('label.role').toString()}
                   permission={addRolePermission}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.role'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddRole}
                 />

@@ -325,7 +325,7 @@ function ServiceVersionPage() {
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         setPaging(pagingObject);
       } finally {
@@ -452,7 +452,17 @@ function ServiceVersionPage() {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(currentVersionData)} ${t(
+              'label.service'
+            )}`,
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     return (
