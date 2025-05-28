@@ -50,7 +50,6 @@ import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
-import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
@@ -255,13 +254,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         />
       </div>
     );
-  }
-
-  if (
-    isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails?.extension)
-  ) {
-    return <ExtensionTable extension={entityDetails?.extension} />;
   }
 
   if (isRenderedInRightPanel) {
