@@ -121,7 +121,7 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.TABLE_SCHEMA]: () => <SchemaTable />,
   [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: () => (
-    <FrequentlyJoinedTables />
+    <FrequentlyJoinedTables renderAsExpandableCard={false} />
   ),
   [DetailPageWidgetKeys.DATA_PRODUCTS]: () => (
     <DataProductsContainer
@@ -133,7 +133,9 @@ export const WIDGET_COMPONENTS = {
   [GlossaryTermDetailPageWidgetKeys.TERMS_TABLE]: () => (
     <GlossaryTermTab isGlossary />
   ),
-  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => <TableConstraints />,
+  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => (
+    <TableConstraints renderAsExpandableCard={false} />
+  ),
   [DetailPageWidgetKeys.TOPIC_SCHEMA]: () => <TopicSchemaFields />,
   [DetailPageWidgetKeys.DATA_MODEL]: () => <ModelTab />,
   [DetailPageWidgetKeys.CONTAINER_CHILDREN]: () => (
@@ -163,5 +165,7 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: () => (
     <StoredProcedureCodeCard />
   ),
-  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => <PartitionedKeys />,
+  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
+    <PartitionedKeys renderAsExpandableCard={false} />
+  ),
 } as const;
