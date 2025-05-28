@@ -14,13 +14,12 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.Configuration;
+import io.dropwizard.core.Configuration;
 import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
@@ -122,11 +121,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("fernetConfiguration")
   private FernetConfiguration fernetConfiguration;
-
-  @JsonProperty("health")
-  @NotNull
-  @Valid
-  private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;

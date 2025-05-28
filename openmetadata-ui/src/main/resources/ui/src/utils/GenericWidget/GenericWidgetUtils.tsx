@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
-import { ExtensionTable } from '../../components/common/CustomPropertyTable/ExtensionTable';
+import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -34,6 +35,7 @@ import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
+  WIDGET_CUSTOM_PROPERTIES,
 } from '../../constants/CustomizeWidgets.constants';
 import {
   DetailPageWidgetKeys,
@@ -104,14 +106,34 @@ export const WIDGET_COMPONENTS = {
     <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
-    <ExtensionTable
-      extension={{
-        email: 'customproperty@OpenMetadata.com',
-        name: 'OpenMetadata',
-      }}
-      tableClassName="m-0"
-    />
+    <div className="flex gap-2 flex-col">
+      {WIDGET_CUSTOM_PROPERTIES.map((prop, index) => (
+        <div
+          className={classNames(' bordered', {
+            'top-border-radius': index === 0,
+            'bottom-border-radius':
+              index === WIDGET_CUSTOM_PROPERTIES.length - 1,
+          })}
+          key={prop.name}>
+          <PropertyValue
+            extension={{
+              [prop.name]: prop.value,
+            }}
+            hasEditPermissions={false}
+            key={prop.name}
+            property={{
+              name: prop.name,
+              propertyType: prop.propertyType,
+              description: prop.description,
+              displayName: prop.displayName,
+            }}
+            onExtensionUpdate={() => Promise.resolve()}
+          />
+        </div>
+      ))}
+    </div>
   ),
+
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
     <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
   ),

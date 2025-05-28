@@ -706,6 +706,12 @@ class PowerbiSource(DashboardServiceSource):
                 if dataset and dataset.expressions:
                     # find keyword from dataset expressions
                     for dexpression in dataset.expressions:
+                        if not dexpression.expression:
+                            logger.debug(
+                                f"No expression value found inside dataset"
+                                f"({dataset.name}) expressions' name={dexpression.name}"
+                            )
+                            continue
                         if dexpression.name == match.group(2):
                             pattern = r'DefaultValue="([^"]+)"'
                             kw_match = re.search(pattern, dexpression.expression)
@@ -784,7 +790,9 @@ class PowerbiSource(DashboardServiceSource):
             if not isinstance(table.source, list):
                 return {}
             source_expression = table.source[0].expression
-
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return {}
             # parse snowflake source
             table_info = self._parse_snowflake_source(
                 source_expression, datamodel_entity
