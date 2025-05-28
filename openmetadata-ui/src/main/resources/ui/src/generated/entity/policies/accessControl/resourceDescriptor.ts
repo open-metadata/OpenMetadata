@@ -65,6 +65,7 @@ export enum Operation {
     Trigger = "Trigger",
     ViewAll = "ViewAll",
     ViewBasic = "ViewBasic",
+    ViewCustomFields = "ViewCustomFields",
     ViewDataProfile = "ViewDataProfile",
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
