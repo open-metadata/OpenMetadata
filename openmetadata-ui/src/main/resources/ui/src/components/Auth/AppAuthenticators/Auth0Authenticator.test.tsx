@@ -13,8 +13,6 @@
 
 import { act, render } from '@testing-library/react';
 import React, { createRef } from 'react';
-import { AuthProvider } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -37,15 +35,6 @@ jest.mock('@auth0/auth0-react', () => ({
     getIdTokenClaims: mockGetIdTokenClaims,
     logout,
   }),
-}));
-
-const setIsAuthenticated = jest.fn();
-const authConfig = { provider: AuthProvider.Auth0 };
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest
-    .fn()
-    .mockImplementation(() => ({ setIsAuthenticated, authConfig })),
 }));
 
 const handleSuccessfulLogout = jest.fn();
@@ -94,7 +83,6 @@ describe('Auth0Authenticator', () => {
     });
 
     expect(logout).toHaveBeenCalled();
-    expect(setIsAuthenticated).toHaveBeenCalledWith(false);
     expect(handleSuccessfulLogout).toHaveBeenCalled();
   });
 
@@ -119,48 +107,6 @@ describe('Auth0Authenticator', () => {
     expect(result).toBe('mock-id-token');
   });
 
-  it('should reject if provider is not Auth0', async () => {
-    // Override useApplicationStore to return a different provider
-
-    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
-      () => ({
-        setIsAuthenticated,
-        authConfig: { provider: 'other' },
-      })
-    );
-
-    const ref = createRef<any>();
-    render(
-      <Auth0Authenticator ref={ref}>
-        <div>Child</div>
-      </Auth0Authenticator>
-    );
-
-    await expect(ref.current.renewIdToken()).rejects.toMatch(
-      'server.auth-provider-not-supported-renewing'
-    );
-  });
-
-  it('should reject if authConfig is missing', async () => {
-    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
-      () => ({
-        setIsAuthenticated,
-        authConfig: undefined,
-      })
-    );
-
-    const ref = createRef<AuthenticatorRef>();
-    render(
-      <Auth0Authenticator ref={ref}>
-        <div>Child</div>
-      </Auth0Authenticator>
-    );
-
-    await expect(ref.current?.renewIdToken()).rejects.toMatch(
-      'server.can-not-renew-token-authentication-not-present'
-    );
-  });
-
   it('should reject if getAccessTokenSilently throws', async () => {
     mockGetAccessTokenSilently.mockImplementationOnce(() =>
       Promise.reject(new Error('access error'))
@@ -172,8 +118,8 @@ describe('Auth0Authenticator', () => {
       </Auth0Authenticator>
     );
 
-    await expect(ref.current?.renewIdToken()).rejects.toMatch(
-      'server.error-while-renewing-id-token-with-message'
+    await expect(ref.current?.renewIdToken()).rejects.toThrow(
+      new Error('access error')
     );
   });
 
@@ -188,8 +134,8 @@ describe('Auth0Authenticator', () => {
       </Auth0Authenticator>
     );
 
-    await expect(ref.current?.renewIdToken()).rejects.toMatch(
-      'server.error-while-renewing-id-token-with-message'
+    await expect(ref.current?.renewIdToken()).rejects.toThrow(
+      new Error('claims error')
     );
   });
 });
