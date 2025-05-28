@@ -56,7 +56,19 @@ const ClassificationRouter = withSuspenseFallback(
 );
 const GlossaryRouter = withSuspenseFallback(
   React.lazy(
-    () => import(/* webpackChunkName: "GlossaryRouter" */ './GlossaryRouter')
+    () =>
+      import(
+        /* webpackChunkName: "GlossaryRouter" */ './GlossaryRouter/GlossaryRouter'
+      )
+  )
+);
+
+const GlossaryTermRouter = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "GlossaryTermRouter" */ './GlossaryTermRouter/GlossaryTermRouter'
+      )
   )
 );
 
@@ -659,7 +671,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
       <Route element={<GlossaryRouter />} path="/glossary/*" />
-      <Route element={<GlossaryRouter />} path="/glossary-term/*" />
+      <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />

@@ -13,14 +13,14 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import AddGlossaryPage from '../../pages/AddGlossary/AddGlossaryPage.component';
-import GlossaryPage from '../../pages/Glossary/GlossaryPage/GlossaryPage.component';
-import { userPermissions } from '../../utils/PermissionsUtils';
-import GlossaryVersion from '../Glossary/GlossaryVersion/GlossaryVersion.component';
-import AdminProtectedRoute from './AdminProtectedRoute';
+import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import AddGlossaryPageComponent from '../../../pages/AddGlossary/AddGlossaryPage.component';
+import GlossaryPage from '../../../pages/Glossary/GlossaryPage/GlossaryPage.component';
+import { userPermissions } from '../../../utils/PermissionsUtils';
+import GlossaryVersion from '../../Glossary/GlossaryVersion/GlossaryVersion.component';
+import AdminProtectedRoute from '../AdminProtectedRoute';
 
 const GlossaryRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -35,7 +35,7 @@ const GlossaryRouter = () => {
     <Routes>
       <Route
         element={
-          <AddGlossaryPage
+          <AddGlossaryPageComponent
             pageTitle={t('label.add-entity', {
               entity: t('label.glossary'),
             })}
@@ -47,15 +47,6 @@ const GlossaryRouter = () => {
         element={<GlossaryVersion isGlossary />}
         path={ROUTES.GLOSSARY_VERSION.replace(ROUTES.GLOSSARY, '')}
       />
-      <Route
-        element={<GlossaryVersion />}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB.replace(ROUTES.GLOSSARY, '')}
-      />
-      <Route
-        element={<GlossaryVersion />}
-        path={ROUTES.GLOSSARY_TERMS_VERSION.replace(ROUTES.GLOSSARY, '')}
-      />
-
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>

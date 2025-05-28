@@ -60,17 +60,6 @@ describe('GlossaryRouter', () => {
     expect(await screen.findByText('GlossaryVersion')).toBeInTheDocument();
   });
 
-  it('should render GlossaryVersion component for glossary terms version route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={['/terms/versions/123/tab', '/terms/versions/123']}>
-        <GlossaryRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('GlossaryVersion')).toBeInTheDocument();
-  });
-
   it('should render GlossaryPage component for glossary details route', async () => {
     render(
       <MemoryRouter

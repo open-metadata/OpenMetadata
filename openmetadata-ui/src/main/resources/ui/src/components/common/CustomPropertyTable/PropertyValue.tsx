@@ -36,6 +36,7 @@ import {
   omitBy,
   toNumber,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -278,7 +279,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
 
         const initialValues = {
-          dateTimeValue: value ? moment(value, format) : undefined,
+          dateTimeValue: value ? DateTime.fromFormat(value, format) : undefined,
         };
 
         const formId = `dateTime-form-${propertyName}`;
@@ -298,10 +299,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               id={formId}
               initialValues={initialValues}
               layout="vertical"
-              onFinish={(values: { dateTimeValue: Moment }) => {
+              onFinish={(values: { dateTimeValue: DateTime }) => {
                 onInputSave(
                   values.dateTimeValue
-                    ? values.dateTimeValue.format(format)
+                    ? values.dateTimeValue.toFormat(format)
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
               }}>
