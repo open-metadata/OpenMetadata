@@ -104,7 +104,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         )
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
-        # Initialize the context manager and set serviceName if present
 
         # We create the ometa client at the workflow level and pass it to the steps
         self.metadata = create_ometa_client(
