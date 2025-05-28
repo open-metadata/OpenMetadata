@@ -3,6 +3,7 @@ package org.openmetadata.service.scim.impl;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.scim.ScimGroup;
+import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
 import org.openmetadata.service.scim.ScimProvisioningService;
 
@@ -23,6 +24,11 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
   }
 
   public Response getUser(String id, UriInfo uriInfo) {
+    return notImplemented();
+  }
+
+  @Override
+  public Response patchUser(String id, ScimPatchOp request, UriInfo uriInfo) {
     return notImplemented();
   }
 

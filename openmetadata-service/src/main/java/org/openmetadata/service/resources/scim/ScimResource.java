@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import org.openmetadata.schema.api.scim.ScimGroup;
+import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
 import org.openmetadata.service.scim.ScimProvisioningService;
 
@@ -79,8 +80,8 @@ public class ScimResource {
 
   @PATCH
   @Path("/Users/{id}")
-  public Response patchUser(@PathParam("id") String id, ScimUser user, @Context UriInfo uriInfo) {
-    return provisioningService.updateUser(id, user, uriInfo);
+  public Response patchUser(@PathParam("id") String id, ScimPatchOp request, @Context UriInfo uriInfo) {
+    return provisioningService.patchUser(id, request, uriInfo);
   }
 
 
