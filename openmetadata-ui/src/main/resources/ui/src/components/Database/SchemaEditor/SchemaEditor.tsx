@@ -26,7 +26,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -50,6 +50,8 @@ const SchemaEditor = ({
   onChange,
   onFocus,
 }: SchemaEditorProps) => {
+  const editorRef = useRef<Editor>();
+  const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -88,6 +90,26 @@ const SchemaEditor = ({
     }
   };
 
+  const editorWillUnmount = useCallback(() => {
+    const editorWrapper = (
+      editorRef as React.MutableRefObject<CodeMirror.Editor>
+    ).current.getWrapperElement();
+    if (editorWrapper) {
+      editorWrapper.remove();
+    }
+    if (wrapperRef.current) {
+      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
+    }
+  }, [editorRef, wrapperRef]);
+
+  const editorDidMount = useCallback(
+    (editorElement: Editor) => {
+      (editorRef as React.MutableRefObject<CodeMirror.Editor>).current =
+        editorElement;
+    },
+    [editorRef]
+  );
+
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
@@ -114,7 +136,10 @@ const SchemaEditor = ({
 
       <CodeMirror
         className={editorClass}
+        editorDidMount={editorDidMount}
+        editorWillUnmount={editorWillUnmount}
         options={defaultOptions}
+        ref={wrapperRef}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}
