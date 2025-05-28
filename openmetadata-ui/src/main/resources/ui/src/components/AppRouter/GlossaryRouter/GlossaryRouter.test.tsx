@@ -14,19 +14,19 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import GlossaryRouter from './GlossaryRouter';
 
-jest.mock('../../pages/AddGlossary/AddGlossaryPage.component', () => {
+jest.mock('../../../pages/AddGlossary/AddGlossaryPage.component', () => {
   return jest.fn(() => <div>AddGlossaryPage</div>);
 });
 
-jest.mock('../Glossary/GlossaryVersion/GlossaryVersion.component', () => {
+jest.mock('../../Glossary/GlossaryVersion/GlossaryVersion.component', () => {
   return jest.fn(() => <div>GlossaryVersion</div>);
 });
 
-jest.mock('../../pages/Glossary/GlossaryPage/GlossaryPage.component', () => {
+jest.mock('../../../pages/Glossary/GlossaryPage/GlossaryPage.component', () => {
   return jest.fn(() => <div>GlossaryPage</div>);
 });
 
-jest.mock('../../utils/PermissionsUtils', () => {
+jest.mock('../../../utils/PermissionsUtils', () => {
   return {
     userPermissions: {
       hasViewPermissions: jest.fn(() => true),
@@ -34,7 +34,7 @@ jest.mock('../../utils/PermissionsUtils', () => {
   };
 });
 
-jest.mock('./AdminProtectedRoute', () => ({
+jest.mock('../AdminProtectedRoute', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ children }) => children),
 }));

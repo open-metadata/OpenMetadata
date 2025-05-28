@@ -134,7 +134,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN,
         databaseSchemaPermission,
-        databaseSchema
+        databaseSchema,
+        navigate
       ),
     [
       databaseSchemaPermission,

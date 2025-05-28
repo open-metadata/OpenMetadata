@@ -297,7 +297,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails
+        serviceDetails,
+        navigate
       ),
     [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
     // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options

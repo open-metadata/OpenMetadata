@@ -108,7 +108,8 @@ const APICollectionPage: FunctionComponent = () => {
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
         apiCollectionPermission,
-        apiCollection
+        apiCollection,
+        navigate
       ),
     [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
   );

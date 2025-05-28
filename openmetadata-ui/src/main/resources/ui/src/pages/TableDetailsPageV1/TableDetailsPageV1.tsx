@@ -164,7 +164,8 @@ const TableDetailsPageV1: React.FC = () => {
             EntityType.TABLE,
             tableFqn,
             tablePermissions,
-            tableDetails
+            tableDetails,
+            navigate
           )
         : [],
     [tablePermissions, tableFqn, tableDetails]
