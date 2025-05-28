@@ -12,7 +12,6 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -25,6 +24,7 @@ import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validator;
 import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -72,6 +71,8 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
@@ -1125,11 +1126,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void parseConfig() throws Exception {
-    if (debug) {
-      Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-      root.setLevel(Level.DEBUG);
-    }
     ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
