@@ -12,6 +12,7 @@
 Validate the deprecated functions still work.
 """
 from metadata.workflow.workflow_output_handler import print_init_error, print_status
+
 from .test_base_workflow import SimpleWorkflow, config
 
 
