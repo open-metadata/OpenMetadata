@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
@@ -290,6 +291,33 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public ResultList<PipelineStatus> listExternalAppStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
     return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, Map<String, Object> metadataFilter, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .filter(
+            pipelineStatus -> {
+              Map<String, Object> metadata = pipelineStatus.getMetadata();
+              if (metadata == null) {
+                return false;
+              }
+
+              for (Map.Entry<String, Object> entry : metadataFilter.entrySet()) {
+                if (!metadata.containsKey(entry.getKey())
+                    || !metadata.get(entry.getKey()).equals(entry.getValue())) {
+                  return false;
+                }
+              }
+              return true;
+            })
         .map(
             pipelineStatus ->
                 pipelineStatus.withConfig(
