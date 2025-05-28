@@ -10,12 +10,19 @@ import threading
 from enum import Enum
 from typing import Any, Optional
 
-from metadata.workflow.context.base import BaseContext, BaseContextFieldsEnum
-from metadata.workflow.context.workflow_context import WorkflowContext
+from metadata.workflow.context.base import BaseContext
+from metadata.workflow.context.workflow_context import (
+    WorkflowContext,
+    WorkflowContextFieldsEnum,
+)
 
 # NOTE: To make the context available on the context manager we need to:
 #         1. Add it to the ContextsEnum
-#         2. Declare it and initialize it as a class attribute in ContextManager
+#         2. Add the ContextFieldEnum to the ContextFieldsEnums Union.
+#         3. Declare it and initialize it as a class attribute in ContextManager
+
+# NOTE: This should become a Union as soon as we have more than one context.
+ContextFieldsEnums = WorkflowContextFieldsEnum
 
 
 class ContextsEnum(Enum):
@@ -56,7 +63,7 @@ class ContextManager:
 
     @classmethod
     def set_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum, value: Any
+        cls, context_enum: ContextsEnum, field_enum: ContextFieldsEnums, value: Any
     ):
         """
         Thread-safe method to set an attribute on a context.
@@ -73,7 +80,7 @@ class ContextManager:
 
     @classmethod
     def get_context_attr(
-        cls, context_enum: ContextsEnum, field_enum: BaseContextFieldsEnum
+        cls, context_enum: ContextsEnum, field_enum: ContextFieldsEnums
     ) -> Any:
         """
         Thread-safe method to get an attribute from a context.
@@ -104,3 +111,19 @@ class ContextManager:
         with cls._lock:
             instance = cls.get_instance()
             return getattr(instance, context_enum.value)
+
+    @classmethod
+    def dump_contexts(cls) -> Optional[dict[str, Any]]:
+        """
+        Dump all available contexts as a dictionary: {contextName: content}
+        Assumes each context is a Pydantic object.
+        """
+        with cls._lock:
+            instance = cls.get_instance()
+            result: dict[str, Any] = {}
+            for context_enum in ContextsEnum:
+                context_obj = getattr(instance, context_enum.value)
+                result[context_enum.value] = context_obj.model_dump()
+            if result:
+                return result
+            return None

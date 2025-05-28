@@ -33,6 +33,7 @@ from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
+from metadata.workflow.context.context_manager import ContextManager
 
 logger = ometa_logger()
 
@@ -82,26 +83,21 @@ class WorkflowStatusMixin:
             timestamp=Timestamp(self._start_ts),
         )  # type: ignore
 
-    def merge_pipeline_status_metadata(
-        self, pipeline_status: PipelineStatus, metadata: Optional[dict] = None
+    def update_pipeline_status_metadata(
+        self, pipeline_status: PipelineStatus
     ) -> PipelineStatus:
         """
-        Merge the pipeline status metadata with the provided metadata.
+        Update the pipeline status metadata with the context manager data.
         """
-        if pipeline_status.metadata:
-            if metadata:
-                pipeline_status.metadata = Map(
-                    **{**pipeline_status.metadata.model_dump(), **metadata}
-                )
+        metadata = ContextManager.dump_contexts()
+        if metadata:
+            pipeline_status.metadata = Map(**metadata)
         else:
-            pipeline_status.metadata = Map(**metadata) if metadata else None
+            pipeline_status.metadata = None
         return pipeline_status
 
     def set_ingestion_pipeline_status(
-        self,
-        state: PipelineState,
-        ingestion_status: Optional[IngestionStatus] = None,
-        pipeline_satus_metadata: Optional[dict] = None,
+        self, state: PipelineState, ingestion_status: Optional[IngestionStatus] = None
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -139,9 +135,7 @@ class WorkflowStatusMixin:
                     )
                 )
 
-                pipeline_status = self.merge_pipeline_status_metadata(
-                    pipeline_status, pipeline_satus_metadata
-                )
+                pipeline_status = self.update_pipeline_status_metadata(pipeline_status)
 
                 self.metadata.create_or_update_pipeline_status(
                     self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
