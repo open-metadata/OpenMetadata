@@ -301,7 +301,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public ResultList<PipelineStatus> listExternalAppStatus(
-      String ingestionPipelineFQN, Map<String, Object> metadataFilter, Long startTs, Long endTs) {
+      String ingestionPipelineFQN, String serviceName, Long startTs, Long endTs) {
     return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
         .filter(
             pipelineStatus -> {
@@ -309,14 +309,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               if (metadata == null) {
                 return false;
               }
-
-              for (Map.Entry<String, Object> entry : metadataFilter.entrySet()) {
-                if (!metadata.containsKey(entry.getKey())
-                    || !metadata.get(entry.getKey()).equals(entry.getValue())) {
-                  return false;
-                }
-              }
-              return true;
+              Map<String, Object> workflowMetadata =
+                  JsonUtils.readOrConvertValue(metadata.get("workflow"), Map.class);
+              String pipelineStatusService = (String) workflowMetadata.get("serviceName");
+              return pipelineStatusService != null && pipelineStatusService.equals(serviceName);
             })
         .map(
             pipelineStatus ->
