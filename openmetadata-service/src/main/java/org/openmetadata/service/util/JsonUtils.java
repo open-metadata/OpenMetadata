@@ -36,6 +36,19 @@ import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Paths;
@@ -51,19 +64,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.json.JsonReader;
-import javax.json.JsonStructure;
-import javax.json.JsonValue;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
@@ -148,7 +148,16 @@ public final class JsonUtils {
   }
 
   public static JsonStructure getJsonStructure(Object o) {
-    return OBJECT_MAPPER.convertValue(o, JsonStructure.class);
+    try {
+      // Convert object to JSON string using Jackson
+      String jsonString = OBJECT_MAPPER.writeValueAsString(o);
+      // Parse the JSON string using Jakarta JSON API to get a JsonStructure
+      try (JsonReader reader = Json.createReader(new java.io.StringReader(jsonString))) {
+        return reader.read();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert object to JsonStructure", e);
+    }
   }
 
   public static Map<String, Object> getMap(Object o) {
@@ -310,24 +319,33 @@ public final class JsonUtils {
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
-    return OBJECT_MAPPER.convertValue(value, clz);
+    // Convert Jakarta JSON JsonValue to Jackson JsonNode
+    try {
+      String jsonString = value.toString();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
+      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+    }
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonNode source = readTree(v1);
     JsonNode dest = readTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
       throws JsonPatchException, IOException {
-    // Convert javax.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
+    // Convert jakarta.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
     String patchString = patch.toString();
     JsonNode patchNode;
     try {

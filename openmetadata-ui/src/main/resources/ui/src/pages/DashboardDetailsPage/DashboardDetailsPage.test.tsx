@@ -25,6 +25,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider');
