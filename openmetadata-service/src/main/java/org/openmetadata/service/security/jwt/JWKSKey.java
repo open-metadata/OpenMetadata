@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.security.jwt;
 
-import javax.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
 
