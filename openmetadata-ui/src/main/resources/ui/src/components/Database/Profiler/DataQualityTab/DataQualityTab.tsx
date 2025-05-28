@@ -422,7 +422,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         return acc;
       }, [] as TestCaseResolutionStatus[]);
       setTestCaseStatus(data);
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsStatusLoading(false);
@@ -454,7 +454,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       }, [] as TestCasePermission[]);
 
       setTestCasePermissions(data);
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsPermissionLoading(false);

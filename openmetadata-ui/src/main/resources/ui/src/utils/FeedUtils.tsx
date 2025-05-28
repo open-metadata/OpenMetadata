@@ -133,13 +133,11 @@ export const getReplyText = (
     return i18next.t('label.reply-in-conversation');
   }
   if (count === 1) {
-    return `${count} ${
-      singular ? singular : i18next.t('label.older-reply-lowercase')
-    }`;
+    return `${count} ${singular ?? i18next.t('label.older-reply-lowercase')}`;
   }
 
   return `${count} ${
-    plural ? plural : i18next.t('label.older-reply-plural-lowercase')
+    plural ?? i18next.t('label.older-reply-plural-lowercase')
   }`;
 };
 

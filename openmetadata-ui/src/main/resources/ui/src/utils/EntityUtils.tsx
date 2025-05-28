@@ -188,8 +188,8 @@ export const getEntityTags = (
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags((entityDetail as Table).columns || []),
-        ...(entityDetail.tags || []),
+        ...getTableTags((entityDetail as Table).columns ?? []),
+        ...(entityDetail.tags ?? []),
       ];
 
       return tableTags;
@@ -197,13 +197,13 @@ export const getEntityTags = (
     case EntityType.DASHBOARD:
     case EntityType.SEARCH_INDEX:
     case EntityType.PIPELINE:
-      return getTagsWithoutTier(entityDetail.tags || []);
+      return getTagsWithoutTier(entityDetail.tags ?? []);
 
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.DASHBOARD_DATA_MODEL: {
-      return entityDetail.tags || [];
+      return entityDetail.tags ?? [];
     }
 
     default:

@@ -272,14 +272,11 @@ const IncidentManagerDetailPage = ({
     [testCaseFQN, activeTab]
   );
   const fetchCurrentVersion = async (id: string) => {
-    // setIsVersionDataLoading(true);
     try {
       const response = await getTestCaseVersionDetails(id, version);
       setTestCase(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      // setIsVersionDataLoading(false);
     }
   };
 

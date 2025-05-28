@@ -173,7 +173,7 @@ const IncidentManagerPageHeader = ({
       const { data } = await getListTestCaseIncidentByStateId(id);
 
       setTestCaseStatusData(first(data));
-    } catch (error) {
+    } catch {
       setTestCaseStatusData(undefined);
     }
   };

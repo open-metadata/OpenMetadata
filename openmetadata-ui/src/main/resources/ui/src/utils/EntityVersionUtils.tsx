@@ -633,8 +633,8 @@ export const getCommonExtraInfoForVersionDetails = (
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
+      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
+      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
     );
   } else if (tier?.tagFQN) {
     tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
