@@ -334,6 +334,9 @@ const ObservabilityAlertsPage = () => {
                   className="p-y-md border-none"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.alert'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}
                 />

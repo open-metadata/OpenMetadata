@@ -854,6 +854,9 @@ export const createAnnouncement = async (
   await announcementForm(page, { ...data, startDate, endDate });
   await page.reload();
   await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.getByTestId('announcement-card').isVisible();
 
   await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
@@ -1271,7 +1274,8 @@ export const softDeleteEntity = async (
   );
 
   await page.reload();
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
@@ -1302,7 +1306,8 @@ export const softDeleteEntity = async (
 
   await restoreEntity(page);
   await page.reload();
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await deletedEntityCommonChecks({
     page,
     endPoint,
@@ -1315,6 +1320,7 @@ export const hardDeleteEntity = async (
   entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
+  await clickOutside(page);
   await page.click('[data-testid="manage-button"]');
   await page.waitForSelector('[data-testid="delete-button"]');
   await page.click('[data-testid="delete-button"]');

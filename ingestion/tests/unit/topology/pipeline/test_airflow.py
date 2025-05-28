@@ -14,6 +14,13 @@ Test Airflow processing
 from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
+
+try:
+    import airflow  # noqa: F401
+except ImportError:
+    pytest.skip("Airflow dependencies not installed", allow_module_level=True)
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
