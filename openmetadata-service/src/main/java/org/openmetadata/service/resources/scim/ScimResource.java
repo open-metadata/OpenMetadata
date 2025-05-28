@@ -103,6 +103,20 @@ public class ScimResource {
     return provisioningService.updateGroup(id, group);
   }
 
+  @GET
+  @Path("/Groups/{id}")
+  public Response getGroup(@PathParam("id") String id, @Context UriInfo uriInfo) {
+    return provisioningService.getGroup(id, uriInfo);
+  }
+
+
+  @PATCH
+  @Path("/Groups/{id}")
+  public Response patchGroup(@PathParam("id") String id, ScimPatchOp request, @Context UriInfo uriInfo) {
+    return provisioningService.patchGroup(id, request, uriInfo);
+  }
+
+
   @DELETE
   @Path("/Groups/{id}")
   public Response deleteGroup(@PathParam("id") String id) {

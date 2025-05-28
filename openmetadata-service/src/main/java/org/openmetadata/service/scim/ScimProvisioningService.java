@@ -27,4 +27,32 @@ public interface ScimProvisioningService {
 
   Response patchUser(String id, ScimPatchOp request, UriInfo uriInfo);
 
+  Response getGroup(String id, UriInfo uriInfo);  // For GET /Groups/{id}
+
+  Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo);  // For PATCH /Groups/{id}
+
+
+  default Response bulkOperation() {
+    return Response.status(Response.Status.NOT_IMPLEMENTED)
+            .entity("Bulk operation not supported")
+            .build();
+  }
+
+  default Response changePassword(String id, String newPassword) {
+    return Response.status(Response.Status.NOT_IMPLEMENTED)
+            .entity("Change password not supported")
+            .build();
+  }
+
+  default Response searchUsers(String filter) {
+    return Response.status(Response.Status.NOT_IMPLEMENTED)
+            .entity("User filtering not supported")
+            .build();
+  }
+
+  default Response sortUsers(String sortBy) {
+    return Response.status(Response.Status.NOT_IMPLEMENTED)
+            .entity("User sorting not supported")
+            .build();
+  }
 }

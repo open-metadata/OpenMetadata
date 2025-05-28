@@ -32,6 +32,16 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
+  @Override
+  public Response getGroup(String id, UriInfo uriInfo) {
+    return notImplemented();
+  }
+
+  @Override
+  public Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo) {
+    return notImplemented();
+  }
+
   public Response updateUser(String id, ScimUser user, UriInfo uriInfo) {
     return notImplemented();
   }
