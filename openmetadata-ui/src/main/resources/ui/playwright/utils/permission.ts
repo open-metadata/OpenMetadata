@@ -21,6 +21,9 @@ export const checkNoPermissionPlaceholder = async (
   label: string | RegExp,
   permission = false
 ) => {
+  const labelText =
+    typeof label === 'string' ? label : label.source.replace(/^\/|\/$/g, ''); // remove leading/trailing slashes
+
   const placeholder = page
     .getByLabel(label)
     .locator('[data-testid="permission-error-placeholder"]');
@@ -30,7 +33,7 @@ export const checkNoPermissionPlaceholder = async (
   } else {
     await expect(placeholder).toBeVisible();
     await expect(placeholder).toContainText(
-      'You don’t have access, please check with the admin to get permissions'
+      `You don't have necessary permissions. Please check with the admin to get the View ${labelText} permission.`
     );
   }
 };

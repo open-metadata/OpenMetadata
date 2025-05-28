@@ -73,7 +73,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         .map((user) => (user as PromiseFulfilledResult<User>).value);
 
       setAdditionalUsersDetails(filteredUser);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsDetailsLoading(false);
@@ -133,6 +133,9 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
               permission
               className="p-y-md"
               heading={t('label.user')}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.user'),
+              })}
               type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
             />
           ),

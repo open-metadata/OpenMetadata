@@ -724,7 +724,7 @@ test.describe('Domains Rbac', () => {
         await expect(
           userPage.getByTestId('permission-error-placeholder')
         ).toHaveText(
-          'You don’t have access, please check with the admin to get permissions'
+          "You don't have necessary permissions. Please check with the admin to get the  permission."
         );
       }
 

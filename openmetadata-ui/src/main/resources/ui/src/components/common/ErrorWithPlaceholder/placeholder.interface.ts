@@ -27,6 +27,7 @@ export interface ErrorPlaceholderProps {
   onClick?: () => void;
   permission?: boolean;
   placeholderText?: ReactNode;
+  permissionValue?: string;
 }
 
 export interface NoDataPlaceholderProps {
@@ -46,6 +47,7 @@ export interface CreatePlaceholderProps {
   permission?: boolean;
   buttonId?: string;
   placeholderText?: ReactNode;
+  permissionValue?: string;
   onClick?: () => void;
 }
 
@@ -56,11 +58,13 @@ export interface AssignPlaceholderProps {
   permission?: boolean;
   children?: React.ReactNode;
   button?: React.ReactNode;
+  permissionValue?: string;
 }
 
 export interface PermissionPlaceholderProps {
   size?: SIZE;
   className?: string;
+  permissionValue?: string;
 }
 
 export interface FilterPlaceholderProps {

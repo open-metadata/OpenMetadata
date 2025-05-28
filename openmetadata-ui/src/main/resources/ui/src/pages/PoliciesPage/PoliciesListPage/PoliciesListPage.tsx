@@ -317,6 +317,9 @@ const PoliciesListPage = () => {
                   className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.policy'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddPolicy}
                 />

@@ -86,6 +86,9 @@ const SubDomainsTable = ({
         className="p-md p-b-lg"
         heading={t('label.sub-domain')}
         permission={permissions.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.sub-domain'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAddSubDomain}
       />

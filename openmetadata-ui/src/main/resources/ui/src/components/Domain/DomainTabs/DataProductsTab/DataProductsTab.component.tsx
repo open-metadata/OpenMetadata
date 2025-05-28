@@ -114,6 +114,9 @@ const DataProductsTab = forwardRef(
         <ErrorPlaceHolder
           heading={t('label.data-product')}
           permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.data-product'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={onAddDataProduct}
         />

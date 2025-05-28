@@ -145,7 +145,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         selectedQuery.id ?? ''
       );
       setQueryPermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -312,7 +312,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchTags(searchText);
       setTagsFilter((pre) => ({ ...pre, options }));
-    } catch (error) {
+    } catch {
       setTagsFilter((pre) => ({ ...pre, options: [] }));
     } finally {
       setIsTagsLoading(false);
@@ -329,7 +329,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchTags();
       setTagsFilter((pre) => ({ ...pre, options, initialOptions: options }));
-    } catch (error) {
+    } catch {
       setTagsFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
     } finally {
       setIsTagsLoading(false);
@@ -370,7 +370,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchOwner();
       setOwnerFilter((pre) => ({ ...pre, options, initialOptions: options }));
-    } catch (error) {
+    } catch {
       setOwnerFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
     } finally {
       setIsOwnerLoading(false);
@@ -397,7 +397,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const options = await fetchOwner(searchText);
       setOwnerFilter((pre) => ({ ...pre, options }));
-    } catch (error) {
+    } catch {
       setOwnerFilter((pre) => ({ ...pre, options: [] }));
     } finally {
       setIsOwnerLoading(false);
@@ -491,6 +491,9 @@ const TableQueries: FC<TableQueriesProp> = ({
         doc={USAGE_DOCS}
         heading={t('label.query-lowercase-plural')}
         permission={permissions?.query.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.query'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddQueryClick}
       />

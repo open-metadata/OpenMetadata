@@ -281,6 +281,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
               permission={hasAccess}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.custom-property'),
+              })}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}
             />
           ),

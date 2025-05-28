@@ -253,6 +253,15 @@ const TeamDetailsV1 = ({
         doc={doc}
         heading={heading}
         permission={permission}
+        permissionValue={
+          type === ERROR_PLACEHOLDER_TYPE.CREATE
+            ? t('label.create-entity', {
+                entity: heading,
+              })
+            : t('label.edit-entity', {
+                entity: heading,
+              })
+        }
         type={type}
         onClick={onClick}>
         {children}
@@ -804,6 +813,7 @@ const TeamDetailsV1 = ({
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
+          heading: t('label.policy'),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,

@@ -241,6 +241,9 @@ const TestSuitePipelineTab = ({
           }
           heading={t('label.pipeline')}
           permission={createPermission}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.test-suite-ingestion'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
           {t('message.no-table-pipeline')}
         </ErrorPlaceHolder>

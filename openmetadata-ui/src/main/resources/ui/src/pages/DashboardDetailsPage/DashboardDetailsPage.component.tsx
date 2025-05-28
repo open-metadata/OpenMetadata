@@ -269,7 +269,15 @@ const DashboardDetailsPage = () => {
     );
   }
   if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.dashboard-detail-plural-lowercase'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

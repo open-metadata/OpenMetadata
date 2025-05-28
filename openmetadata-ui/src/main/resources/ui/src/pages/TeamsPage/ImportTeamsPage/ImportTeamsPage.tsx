@@ -163,7 +163,20 @@ const ImportTeamsPage = () => {
   }
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
   if (!permission?.Create || !permission?.EditAll) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.create-entity', {
+          entity: t('label.import-entity', {
+            entity:
+              type === ImportType.USERS
+                ? t('label.user-plural')
+                : t('label.team-plural'),
+          }),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isUndefined(team)) {

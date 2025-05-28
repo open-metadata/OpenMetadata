@@ -261,6 +261,9 @@ const BotListV1 = ({
           doc={BOTS_DOCS}
           heading={t('label.bot')}
           permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.bot'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddBotClick}
         />
