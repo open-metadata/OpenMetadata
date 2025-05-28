@@ -11,15 +11,14 @@
 """
 Nox sessions for testing and formatting checks.
 """
-import ast
 import os
-from pathlib import Path
+
+import nox
 
 # NOTE: This is still a work in progress! We still need to:
 #    - Fix ignored unit tests
 #    - Add integration tests
 #    - Address the TODOs in the code
-import nox
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
@@ -96,44 +95,13 @@ PLUGINS = list(PLUGINS_TESTS.keys())
 
 @nox.session(
     name="unit-plugins",
-    reuse_venv=True,
+    reuse_venv=False,
     venv_backend="uv|venv",
     python=get_python_versions(),
 )
 @nox.parametrize("plugin", PLUGINS)
 def unit_plugins(session, plugin):
-    versions = extract_attribute_from_setup("VERSIONS", "setup.py")
-
-    if not versions:
-        session.error("Not able to extract VERSIONS from setup.py")
-        session.exit(1)
-
-    if plugin not in versions:
-        session.error(
-            f"Plugin {plugin} not found in VERSIONS. Available plugins: {list(versions)}"
-        )
-        session.exit(1)
-
     session.install(".[test-unit]")
-    session.install(versions[plugin])
+    session.install(f".[{plugin}]")
     # Assuming the plugin has its own tests in a specific directory
     session.run("pytest", PLUGINS_TESTS[plugin])
-
-
-def extract_attribute_from_setup(attr_name: str, setup_path: str = "setup.py"):
-    # TODO: We should consider using a more robust method to extract attributes
-    # such as moving out the attributes to a separate file.
-    setup_file = Path(setup_path)
-    if not setup_file.exists():
-        raise FileNotFoundError(f"{setup_path} not found")
-
-    with setup_file.open("r") as f:
-        tree = ast.parse(f.read(), filename=setup_path)
-
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == attr_name:
-                    return ast.literal_eval(node.value)
-
-    return None  # Not found
