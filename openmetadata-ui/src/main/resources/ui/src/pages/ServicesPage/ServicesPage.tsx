@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -137,6 +137,9 @@ const ServicesPage = () => {
       <Col span={24}>
         <ErrorPlaceHolder
           className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: startCase(serviceName),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </Col>
