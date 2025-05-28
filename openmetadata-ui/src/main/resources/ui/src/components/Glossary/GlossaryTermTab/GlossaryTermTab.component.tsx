@@ -851,6 +851,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary-term')}
           permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.glossary-term'),
+          })}
           placeholderText={t('message.no-glossary-term')}
           type={
             permissions.Create && glossaryTermStatus === Status.Approved

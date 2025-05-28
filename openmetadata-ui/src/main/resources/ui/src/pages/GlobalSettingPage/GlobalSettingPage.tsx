@@ -67,6 +67,7 @@ const GlobalSettingPage = () => {
     return (
       <ErrorPlaceHolder
         className="border-none h-min-80"
+        permissionValue={t('label.setting-plural')}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
