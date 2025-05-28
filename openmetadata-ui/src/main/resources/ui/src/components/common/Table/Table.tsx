@@ -110,7 +110,7 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      if (!currentUser?.name || !entityKey) {
+      if (!currentUser || !entityKey) {
         return;
       }
 
@@ -118,34 +118,29 @@ const Table = <T extends Record<string, unknown>>(
         selected,
         key,
         columnDropdownSelections,
-        currentUser.name,
+        currentUser?.fullyQualifiedName ?? '',
         entityKey
       );
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityKey, currentUser?.name]
+    [columnDropdownSelections, entityKey, currentUser]
   );
 
   const handleBulkColumnAction = useCallback(() => {
-    if (!currentUser?.name || !entityKey) {
+    if (!currentUser || !entityKey) {
       return;
     }
 
     const newSelections = handleBulkTableColumnAction(
       dropdownColumnList,
       columnDropdownSelections,
-      currentUser.name,
+      currentUser.fullyQualifiedName ?? '',
       entityKey
     );
 
     setColumnDropdownSelections(newSelections);
-  }, [
-    dropdownColumnList,
-    columnDropdownSelections,
-    currentUser?.name,
-    entityKey,
-  ]);
+  }, [dropdownColumnList, columnDropdownSelections, currentUser, entityKey]);
 
   const menu = useMemo(
     () => ({
@@ -244,9 +239,9 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    if (entityKey && currentUser?.name) {
+    if (entityKey && currentUser) {
       const savedSelections = getTableColumnConfigSelections(
-        currentUser.name,
+        currentUser.fullyQualifiedName ?? '',
         entityKey,
         isFullViewTable,
         defaultVisibleColumns
@@ -254,7 +249,7 @@ const Table = <T extends Record<string, unknown>>(
 
       setColumnDropdownSelections(savedSelections);
     }
-  }, [entityKey, currentUser?.name, defaultVisibleColumns, isFullViewTable]);
+  }, [entityKey, currentUser, defaultVisibleColumns, isFullViewTable]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
