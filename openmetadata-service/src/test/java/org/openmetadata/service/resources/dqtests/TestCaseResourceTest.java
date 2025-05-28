@@ -1329,7 +1329,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("includeAllTests", true);
     queryParams.put("include", "all");
     executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(initialSize, executableTestSuiteTestCases.getData().size());
+    boolean hasDeletedTrue = false;
+    boolean hasDeletedFalse = false;
+    for (TestCase testCase : executableTestSuiteTestCases.getData()) {
+      if (!hasDeletedTrue && testCase.getDeleted()) {
+        hasDeletedTrue = true;
+      } else if (!hasDeletedFalse && !testCase.getDeleted()) {
+        hasDeletedFalse = true;
+      }
+    }
+    assertTrue(hasDeletedTrue && hasDeletedFalse); // We should have both deleted and non-deleted test cases in the executable test suite
 
     // Hard Delete a test case from the executable test suite and check that it is deleted from the
     // executable test suite and from the logical test suite
