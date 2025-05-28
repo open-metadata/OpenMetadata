@@ -40,6 +40,11 @@ export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.DATABASE_SCHEMA,
 ];
 
+export enum JSONLOGIC_OPERATORS {
+  OR = 'or',
+  NOT = 'not',
+}
+
 export const resolveFieldType = (
   fields: Fields | undefined,
   field: string
@@ -664,7 +669,8 @@ const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
 export const jsonLogicToElasticsearch = (
   logic: JsonLogic,
   configFields: Fields,
-  parentField?: string
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
 ): ElasticsearchQuery => {
   if (logic.and) {
     return {
@@ -686,7 +692,12 @@ export const jsonLogicToElasticsearch = (
     return {
       bool: {
         should: logic.or.map((item: JsonLogic) =>
-          jsonLogicToElasticsearch(item, configFields)
+          jsonLogicToElasticsearch(
+            item,
+            configFields,
+            undefined,
+            JSONLOGIC_OPERATORS.OR
+          )
         ),
       },
     };
@@ -695,7 +706,12 @@ export const jsonLogicToElasticsearch = (
   if (logic['!']) {
     return {
       bool: {
-        must_not: jsonLogicToElasticsearch(logic['!'], configFields),
+        must_not: jsonLogicToElasticsearch(
+          logic['!'],
+          configFields,
+          undefined,
+          JSONLOGIC_OPERATORS.NOT
+        ),
       },
     };
   }
@@ -703,6 +719,12 @@ export const jsonLogicToElasticsearch = (
   if (logic['==']) {
     const [field, value] = logic['=='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+    const isOrNotOperator = [
+      JSONLOGIC_OPERATORS.OR,
+      JSONLOGIC_OPERATORS.NOT,
+    ].includes(parentOp as JSONLOGIC_OPERATORS);
+
     const [parentKey] = field.var.split('.');
     if (
       typeof field === 'object' &&
@@ -710,7 +732,8 @@ export const jsonLogicToElasticsearch = (
       field.var.includes('.') &&
       !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
         parentKey as EntityReferenceFields
-      )
+      ) &&
+      !isOrNotOperator
     ) {
       return {
         bool: {
@@ -735,19 +758,6 @@ export const jsonLogicToElasticsearch = (
   if (logic['!=']) {
     const [field, value] = logic['!='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
-      return {
-        bool: {
-          must_not: [
-            {
-              term: {
-                [fieldVar]: value,
-              },
-            },
-          ],
-        },
-      };
-    }
 
     return {
       bool: {
