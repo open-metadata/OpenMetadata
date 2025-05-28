@@ -44,6 +44,7 @@ import {
 import {
   getTableColumnConfigSelections,
   getTableExpandableConfig,
+  handleBulkTableColumnAction,
   handleUpdateTableColumnSelections,
 } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -109,28 +110,42 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
+      if (!currentUser?.name || !entityKey) {
+        return;
+      }
+
       const updatedSelections = handleUpdateTableColumnSelections(
         selected,
         key,
         columnDropdownSelections,
-        currentUser?.fullyQualifiedName ?? '',
+        currentUser.name,
         entityKey
       );
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityKey]
+    [columnDropdownSelections, entityKey, currentUser?.name]
   );
 
   const handleBulkColumnAction = useCallback(() => {
-    if (dropdownColumnList.length === columnDropdownSelections.length) {
-      setColumnDropdownSelections([]);
-    } else {
-      setColumnDropdownSelections(
-        dropdownColumnList.map((option) => option.value)
-      );
+    if (!currentUser?.name || !entityKey) {
+      return;
     }
-  }, [dropdownColumnList, columnDropdownSelections]);
+
+    const newSelections = handleBulkTableColumnAction(
+      dropdownColumnList,
+      columnDropdownSelections,
+      currentUser.name,
+      entityKey
+    );
+
+    setColumnDropdownSelections(newSelections);
+  }, [
+    dropdownColumnList,
+    columnDropdownSelections,
+    currentUser?.name,
+    entityKey,
+  ]);
 
   const menu = useMemo(
     () => ({
@@ -229,15 +244,17 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    const selections = getTableColumnConfigSelections(
-      currentUser?.fullyQualifiedName ?? '',
-      entityKey,
-      isFullViewTable,
-      defaultVisibleColumns
-    );
+    if (entityKey && currentUser?.name) {
+      const savedSelections = getTableColumnConfigSelections(
+        currentUser.name,
+        entityKey,
+        isFullViewTable,
+        defaultVisibleColumns
+      );
 
-    setColumnDropdownSelections(selections);
-  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+      setColumnDropdownSelections(savedSelections);
+    }
+  }, [entityKey, currentUser?.name, defaultVisibleColumns, isFullViewTable]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
