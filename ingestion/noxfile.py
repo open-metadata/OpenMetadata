@@ -22,7 +22,7 @@ import nox
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
-SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11"]
+SUPPORTED_PYTHON_VERSIONS = ["3.9", "3.10", "3.11"]
 
 
 def get_python_versions():
@@ -67,8 +67,6 @@ def unit(session):
     # TODO: We need to remove ignored test once they can be run properly within nox
     # Run unit tests
     ignored_tests = [
-        "test_ometa_endpoints.py",
-        "test_ometa_mlmodel.py",
         "test_dbt.py",
         "test_sample_usage.py",
         "test_ssl_manager.py",
