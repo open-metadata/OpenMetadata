@@ -21,4 +21,4 @@ class BaseContext(BaseModel):
     """
 
     class Config:
-        validate_assignment = True
+        validate_assignment: bool = True

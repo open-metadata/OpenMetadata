@@ -8,7 +8,7 @@ This approach combines extensibility with attribute-based access and IDE/static 
 
 import threading
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from metadata.workflow.context.base import BaseContext, BaseContextFieldsEnum
 from metadata.workflow.context.workflow_context import WorkflowContext
@@ -32,11 +32,11 @@ class ContextManager:
     Singleton manager for all workflow contexts. Dynamically registers and exposes contexts as attributes.
     """
 
-    _instance = None
-    _lock = threading.RLock()
+    _instance: Optional["ContextManager"] = None
+    _lock: threading.RLock = threading.RLock()
 
     # List of Contexts
-    workflow = WorkflowContext()
+    workflow: WorkflowContext = WorkflowContext()
 
     def __new__(cls):
         if cls._instance is None:
