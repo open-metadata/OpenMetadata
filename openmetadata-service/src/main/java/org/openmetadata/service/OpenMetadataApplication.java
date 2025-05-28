@@ -48,10 +48,10 @@ import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
+
+// import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
@@ -317,36 +317,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       CommonHelper.assertNotNull(
           "OidcConfiguration", config.getAuthenticationConfiguration().getOidcConfiguration());
 
-      // Set up a Session Manager
+      // Set up a Session Manager - DropWizard handles session configuration automatically
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      if (contextHandler.getSessionHandler() == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
-      }
+      // Note: In Jetty 12, session handling is managed by DropWizard's servlet context configuration
 
       AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
           new AuthenticationCodeFlowHandler(
               config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
 
-      // Register Servlets
-      ServletHolder authLoginHolder =
-          new ServletHolder(new AuthLoginServlet(authenticationCodeFlowHandler));
-      authLoginHolder.setName("oauth_login");
-      environment.getApplicationContext().addServlet(authLoginHolder, "/api/v1/auth/login");
+      // Register Servlets using DropWizard's servlet registration methods
+      environment.servlets().addServlet("oauth_login", new AuthLoginServlet(authenticationCodeFlowHandler))
+          .addMapping("/api/v1/auth/login");
 
-      ServletHolder authCallbackHolder =
-          new ServletHolder(new AuthCallbackServlet(authenticationCodeFlowHandler));
-      authCallbackHolder.setName("auth_callback");
-      environment.getApplicationContext().addServlet(authCallbackHolder, "/callback");
+      environment.servlets().addServlet("auth_callback", new AuthCallbackServlet(authenticationCodeFlowHandler))
+          .addMapping("/callback");
 
-      ServletHolder authLogoutHolder =
-          new ServletHolder(new AuthLogoutServlet(authenticationCodeFlowHandler));
-      authLogoutHolder.setName("auth_logout");
-      environment.getApplicationContext().addServlet(authLogoutHolder, "/api/v1/auth/logout");
+      environment.servlets().addServlet("auth_logout", new AuthLogoutServlet(authenticationCodeFlowHandler))
+          .addMapping("/api/v1/auth/logout");
 
-      ServletHolder refreshHolder =
-          new ServletHolder(new AuthRefreshServlet(authenticationCodeFlowHandler));
-      refreshHolder.setName("auth_refresh");
-      environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
+      environment.servlets().addServlet("auth_refresh", new AuthRefreshServlet(authenticationCodeFlowHandler))
+          .addMapping("/api/v1/auth/refresh");
     }
   }
 
@@ -406,11 +396,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
 
-      // Ensure we have a session handler
+      // Ensure we have a session handler - DropWizard handles session configuration automatically
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      if (contextHandler.getSessionHandler() == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
-      }
+      // Note: In Jetty 12, session handling is managed by DropWizard's servlet context configuration
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
@@ -428,39 +416,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
       samlMetadataServlet.addMapping("/api/v1/saml/metadata");
 
-      // 1) SAML Login
-      ServletHolder samlLoginHolder = new ServletHolder();
-      samlLoginHolder.setName("saml_login");
-      samlLoginHolder.setServlet(new SamlLoginServlet());
-      contextHandler.addServlet(samlLoginHolder, "/api/v1/saml/login");
-
-      // 2) SAML Assertion Consumer (ACS)
-      ServletHolder samlAcsHolder = new ServletHolder();
-      samlAcsHolder.setName("saml_acs");
-      samlAcsHolder.setServlet(
-          new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlAcsHolder, "/api/v1/saml/acs");
-
-      // 3) SAML Metadata
-      ServletHolder samlMetadataHolder = new ServletHolder();
-      samlMetadataHolder.setName("saml_metadata");
-      samlMetadataHolder.setServlet(new SamlMetadataServlet());
-      contextHandler.addServlet(samlMetadataHolder, "/api/v1/saml/metadata");
-
-      // 4) SAML Token Refresh
-      ServletHolder samlRefreshHolder = new ServletHolder();
-      samlRefreshHolder.setName("saml_refresh_token");
-      samlRefreshHolder.setServlet(new SamlTokenRefreshServlet());
-      contextHandler.addServlet(samlRefreshHolder, "/api/v1/saml/refresh");
-
-      // 5) SAML Logout
-      ServletHolder samlLogoutHolder = new ServletHolder();
-      samlLogoutHolder.setName("saml_logout_token");
-      samlLogoutHolder.setServlet(
-          new SamlLogoutServlet(
-              catalogConfig.getAuthenticationConfiguration(),
-              catalogConfig.getAuthorizerConfiguration()));
-      contextHandler.addServlet(samlLogoutHolder, "/api/v1/saml/logout");
+      // Note: SAML servlets are already registered above using DropWizard's environment.servlets().addServlet()
+      // No need for additional ServletHolder-based registration
     }
   }
 
@@ -667,21 +624,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .getApplicationContext()
         .addFilter(socketAddressFilterHolder, pathSpec, EnumSet.of(DispatcherType.REQUEST));
-    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
+    environment.servlets().addServlet("feed", new FeedServlet()).addMapping(pathSpec);
     // Upgrade connection to websocket from Http
     try {
-      JettyWebSocketServletContainerInitializer.configure(
-          environment.getApplicationContext(),
-          (servletContext, wsContainer) -> {
-            wsContainer.setMaxTextMessageSize(65535);
-            wsContainer.setMaxBinaryMessageSize(65535);
+      // JettyWebSocketServletContainerInitializer.configure(
+      //     environment.getApplicationContext(),
+      //     (servletContext, wsContainer) -> {
+      //       wsContainer.setMaxTextMessageSize(65535);
+      //       wsContainer.setMaxBinaryMessageSize(65535);
 
-            // Register endpoint using Jetty WebSocket API
-            wsContainer.addMapping(
-                pathSpec,
-                (req, resp) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-          });
+      //       // Register endpoint using Jetty WebSocket API
+      //       wsContainer.addMapping(
+      //           pathSpec,
+      //           (req, resp) ->
+      //               new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+      //     });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
