@@ -1198,7 +1198,7 @@ export const getParameterValueDiffDisplay = (
           </Typography.Text>
         ) : (
           otherParamDiffs.map((diff, index) => (
-            <Space key={diff.name} size={4}>
+            <Space data-testid={diff.name} key={diff.name} size={4}>
               <Typography.Text className="text-grey-muted">
                 {`${diff.name}:`}
               </Typography.Text>
