@@ -110,10 +110,6 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      if (!currentUser || !entityKey) {
-        return;
-      }
-
       const updatedSelections = handleUpdateTableColumnSelections(
         selected,
         key,
@@ -124,23 +120,19 @@ const Table = <T extends Record<string, unknown>>(
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityKey, currentUser]
+    [columnDropdownSelections, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
-    if (!currentUser || !entityKey) {
-      return;
-    }
-
     const newSelections = handleBulkTableColumnAction(
       dropdownColumnList,
       columnDropdownSelections,
-      currentUser.fullyQualifiedName ?? '',
+      currentUser?.fullyQualifiedName ?? '',
       entityKey
     );
 
     setColumnDropdownSelections(newSelections);
-  }, [dropdownColumnList, columnDropdownSelections, currentUser, entityKey]);
+  }, [dropdownColumnList, columnDropdownSelections, entityKey]);
 
   const menu = useMemo(
     () => ({
@@ -239,17 +231,15 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    if (entityKey && currentUser) {
-      const savedSelections = getTableColumnConfigSelections(
-        currentUser.fullyQualifiedName ?? '',
-        entityKey,
-        isFullViewTable,
-        defaultVisibleColumns
-      );
+    const savedSelections = getTableColumnConfigSelections(
+      currentUser?.fullyQualifiedName ?? '',
+      entityKey,
+      isFullViewTable,
+      defaultVisibleColumns
+    );
 
-      setColumnDropdownSelections(savedSelections);
-    }
-  }, [entityKey, currentUser, defaultVisibleColumns, isFullViewTable]);
+    setColumnDropdownSelections(savedSelections);
+  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>

@@ -129,6 +129,15 @@ jest.mock('../../../utils/ContainerDetailUtils', () => ({
   updateContainerColumnTags: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      name: 'currentUser',
+      fullyQualifiedName: 'currentUser',
+    },
+  }),
+}));
+
 jest.mock(
   '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () =>

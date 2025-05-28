@@ -79,6 +79,15 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      name: 'currentUser',
+      fullyQualifiedName: 'currentUser',
+    },
+  }),
+}));
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
