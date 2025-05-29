@@ -154,6 +154,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Filter by workflowType.",
               schema = @Schema(implementation = WorkflowType.class))
           @QueryParam("workflowType")
@@ -163,7 +168,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(implementation = WorkflowStatus.class))
           @QueryParam("workflowStatus")
           String status) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
     }

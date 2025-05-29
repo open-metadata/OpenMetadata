@@ -155,8 +155,16 @@ public class DatabaseSchemaResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("database", databaseParam)
+            .addQueryParam("domain", domain);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

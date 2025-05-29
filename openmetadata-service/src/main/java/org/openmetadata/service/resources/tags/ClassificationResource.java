@@ -142,8 +142,13 @@ public class ClassificationResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

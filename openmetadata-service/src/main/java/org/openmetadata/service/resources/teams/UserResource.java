@@ -294,8 +294,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("team", teamParam).addQueryParam("domain", domain);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
     }

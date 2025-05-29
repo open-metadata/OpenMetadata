@@ -114,9 +114,16 @@ public class StoredProcedureResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter =
-        new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
+        new ListFilter(include)
+            .addQueryParam("databaseSchema", databaseSchemaParam)
+            .addQueryParam("domain", domain);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

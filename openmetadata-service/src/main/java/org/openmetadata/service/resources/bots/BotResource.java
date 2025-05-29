@@ -176,9 +176,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return listInternal(
-        uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET

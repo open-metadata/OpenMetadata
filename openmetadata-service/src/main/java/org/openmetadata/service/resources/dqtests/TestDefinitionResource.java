@@ -141,6 +141,11 @@ public class TestDefinitionResource
           @QueryParam("entityType")
           String entityType,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Filter by a test platform",
               schema = @Schema(implementation = TestPlatform.class))
           @QueryParam("testPlatform")
@@ -150,7 +155,7 @@ public class TestDefinitionResource
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
           String supportedDataTypeParam) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
     }

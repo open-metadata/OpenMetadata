@@ -161,10 +161,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
     filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
+    filter.addQueryParam("domain", domain);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps();

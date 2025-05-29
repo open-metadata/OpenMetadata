@@ -250,8 +250,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("agentType", agentType)
+            .addQueryParam("domain", domain);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
