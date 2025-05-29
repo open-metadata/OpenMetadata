@@ -680,13 +680,10 @@ class LookerSource(DashboardServiceSource):
             return source_cols
 
         # Build lineage for each field
-        for field_name, sql in field_sql_map.items():
+        for field_name, _ in field_sql_map.items():
             source_cols = resolve(field_name)
             for source_col in source_cols:
-                # Create Column objects for source and target
-                source_column = Column(name=source_col)
-                target_column = Column(name=field_name)
-                column_lineage.append((source_column, target_column))
+                column_lineage.append((source_col, field_name))
 
         return column_lineage
 
@@ -770,7 +767,7 @@ class LookerSource(DashboardServiceSource):
         """
         for db_service_name in self.get_db_service_names() or []:
             lineage_parser = LineageParser(
-                sql_query,
+                f"create view {view_name} as {sql_query}",
                 self._get_db_dialect(db_service_name),
                 timeout_seconds=30,
             )
@@ -778,18 +775,15 @@ class LookerSource(DashboardServiceSource):
                 self._parsed_views[view_name] = sql_query
                 for from_table_name in lineage_parser.source_tables:
                     # Process column level lineage
-                    column_lineage = []
-                    if lineage_parser.column_lineage:
-                        for col_lineage in lineage_parser.column_lineage:
-                            from_table = col_lineage.source.table
-                            if str(from_table) == str(from_table_name):
-                                column_lineage.append(
-                                    (
-                                        Column(name=col_lineage.source.column),
-                                        Column(name=col_lineage.target.column),
-                                    )
-                                )
-
+                    column_lineage = [
+                        (
+                            source_col.raw_name,
+                            target_col.raw_name,
+                        )
+                        for source_col, target_col in lineage_parser.column_lineage
+                        or []
+                        if source_col.parent == from_table_name
+                    ]
                     yield self.build_lineage_request(
                         source=str(from_table_name),
                         db_service_name=db_service_name,
@@ -1088,11 +1082,11 @@ class LookerSource(DashboardServiceSource):
                 processed_column_lineage = []
                 for source_col, target_col in column_lineage:
                     from_column = get_column_fqn(
-                        table_entity=from_entity, column=target_col.name
+                        table_entity=from_entity, column=str(target_col)
                     )
                     to_column = self._get_data_model_column_fqn(
                         data_model_entity=to_entity,
-                        column=source_col.name,
+                        column=str(source_col),
                     )
                     if from_column and to_column:
                         processed_column_lineage.append(
