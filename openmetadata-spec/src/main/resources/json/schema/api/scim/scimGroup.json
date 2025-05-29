@@ -18,6 +18,10 @@
       "type": "string",
       "description": "External system identifier"
     },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the group is active"
+    },
     "members": {
       "type": "array",
       "description": "Members of the group",

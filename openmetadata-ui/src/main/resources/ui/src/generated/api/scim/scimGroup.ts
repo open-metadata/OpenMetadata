@@ -15,6 +15,10 @@
  */
 export interface ScimGroup {
     /**
+     * Whether the group is active
+     */
+    active?: boolean;
+    /**
      * Human-readable name of the group
      */
     displayName: string;
