@@ -24,6 +24,7 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { entityMap } from '../../../../constants/entity.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -255,7 +256,10 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Tooltip
               placement="topRight"
               title={t('label.manage-entity', {
-                entity: capitalize(entityType),
+                entity:
+                  entityType in entityMap
+                    ? entityMap[entityType as keyof typeof entityMap]
+                    : capitalize(entityType),
               })}>
               <Button
                 className={classNames('flex-center px-1.5', buttonClassName)}
