@@ -80,6 +80,49 @@ jest.mock('./ExportUtilClassBase', () => ({
   },
 }));
 
+jest.mock('../components/Tag/TagsV1/TagsV1.component', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  __esModule: true,
+  OwnerLabel: jest.fn(),
+}));
+
+jest.mock('../components/common/QueryCount/QueryCount.component', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('./StringsUtils', () => ({
+  bytesToSize: jest.fn(),
+  getEncodedFqn: jest.fn(),
+  stringToHTML: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('./TableUtils', () => ({
+  getDataTypeString: jest.fn(),
+  getTagsWithoutTier: jest.fn(),
+  getTierTags: jest.fn(),
+  getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('./TagsUtils', () => ({
+  getTableTags: jest.fn(),
+}));
+
+jest.mock('./CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('./DataInsightUtils', () => ({
+  getDataInsightPathWithFqn: jest.fn(),
+}));
+jest.mock('./EntityLink', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation((value) => value),
+}));
+
 describe('EntityUtils unit tests', () => {
   describe('highlightEntityNameAndDescription method', () => {
     it('highlightEntityNameAndDescription method should return the entity with highlighted name and description', () => {
