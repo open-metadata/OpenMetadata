@@ -46,6 +46,19 @@ jest.mock('../../../constants/constants', () => ({
   PAGE_SIZE_MEDIUM: 15,
 }));
 
+jest.mock('../IconButtons/EditIconButton', () => ({
+  EditIconButton: jest.fn().mockImplementation(() => <div>EditIconButton</div>),
+}));
+
+jest.mock('../../../utils/APIUtils', () => ({
+  formatTeamsResponse: jest.fn(),
+  formatUsersResponse: jest.fn(),
+}));
+
+jest.mock('../UserTag/UserTag.component', () => ({
+  UserTag: jest.fn().mockReturnValue(<div>UserTag</div>),
+}));
+
 describe('UserTeamSelectableList Component Test', () => {
   it('should render children if provided', () => {
     render(
