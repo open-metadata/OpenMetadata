@@ -650,42 +650,48 @@ class LookerSource(DashboardServiceSource):
         Returns a list of tuples containing (source_column, target_column)
         """
         column_lineage = []
+        try:
+            # Build a map: field_name → sql block
+            field_sql_map = {}
+            for field_type in ["dimensions", "measures", "dimension_groups"]:
+                for field in getattr(view, field_type, []):
+                    if hasattr(field, "sql"):
+                        field_sql_map[field.name] = field.sql
 
-        # Build a map: field_name → sql block
-        field_sql_map = {}
-        for field_type in ["dimensions", "measures", "dimension_groups"]:
-            for field in getattr(view, field_type, []):
-                if hasattr(field, "sql"):
-                    field_sql_map[field.name] = field.sql
+            # Regex to extract ${TABLE}.col and ${field}
+            table_col_pattern = re.compile(r"\$\{TABLE\}\.([a-zA-Z_][a-zA-Z0-9_]*)")
+            dimension_ref_pattern = re.compile(
+                r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}"
+            )
 
-        # Regex to extract ${TABLE}.col and ${field}
-        table_col_pattern = re.compile(r"\$\{TABLE\}\.([a-zA-Z_][a-zA-Z0-9_]*)")
-        dimension_ref_pattern = re.compile(r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}")
+            # Recursive resolver
+            def resolve(field_name, visited=None):
+                if visited is None:
+                    visited = set()
+                if field_name in visited:
+                    return set()
+                visited.add(field_name)
 
-        # Recursive resolver
-        def resolve(field_name, visited=None):
-            if visited is None:
-                visited = set()
-            if field_name in visited:
-                return set()
-            visited.add(field_name)
+                sql = field_sql_map.get(field_name, "")
+                source_cols = set(table_col_pattern.findall(sql))
+                dimension_refs = dimension_ref_pattern.findall(sql)
 
-            sql = field_sql_map.get(field_name, "")
-            source_cols = set(table_col_pattern.findall(sql))
-            dimension_refs = dimension_ref_pattern.findall(sql)
+                for ref in dimension_refs:
+                    source_cols.update(resolve(ref, visited))
 
-            for ref in dimension_refs:
-                source_cols.update(resolve(ref, visited))
+                return source_cols
 
-            return source_cols
+            # Build lineage for each field
+            for field_name, _ in field_sql_map.items():
+                source_cols = resolve(field_name)
+                for source_col in source_cols:
+                    column_lineage.append((source_col, field_name))
 
-        # Build lineage for each field
-        for field_name, _ in field_sql_map.items():
-            source_cols = resolve(field_name)
-            for source_col in source_cols:
-                column_lineage.append((source_col, field_name))
-
-        return column_lineage
+            return column_lineage
+        except Exception as e:
+            logger.warning(f"Error extracting column lineage: {e}")
+            logger.debug(traceback.format_exc())
+            return []
 
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
