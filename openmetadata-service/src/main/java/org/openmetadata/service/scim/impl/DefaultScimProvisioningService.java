@@ -46,7 +46,7 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
-  public Response deleteUser(String id) {
+  public Response deleteUser(String id, UriInfo uriInfo) {
     return notImplemented();
   }
 
@@ -54,15 +54,15 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
-  public Response createGroup(ScimGroup group) {
+  public Response createGroup(ScimGroup group, UriInfo uriInfo) {
     return notImplemented();
   }
 
-  public Response updateGroup(String id, ScimGroup group) {
+  public Response updateGroup(String id, ScimGroup group, UriInfo uriInfo) {
     return notImplemented();
   }
 
-  public Response deleteGroup(String id) {
+  public Response deleteGroup(String id, UriInfo uriInfo) {
     return notImplemented();
   }
 }

@@ -14,15 +14,15 @@ public interface ScimProvisioningService {
 
   Response updateUser(String id, ScimUser user, UriInfo uriInfo);
 
-  Response deleteUser(String id);
+  Response deleteUser(String id, UriInfo uriInfo);
 
   Response listGroups(UriInfo uriInfo);
 
-  Response createGroup(ScimGroup group);
+  Response createGroup(ScimGroup group, UriInfo uriInfo);
 
-  Response updateGroup(String id, ScimGroup group);
+  Response updateGroup(String id, ScimGroup group, UriInfo uriInfo);
 
-  Response deleteGroup(String id);
+  Response deleteGroup(String id, UriInfo uriInfo);
   Response getUser(String id, UriInfo uriInfo);
 
   Response patchUser(String id, ScimPatchOp request, UriInfo uriInfo);

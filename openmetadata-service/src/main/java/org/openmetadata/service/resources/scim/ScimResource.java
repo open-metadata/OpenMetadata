@@ -74,8 +74,8 @@ public class ScimResource {
 
   @DELETE
   @Path("/Users/{id}")
-  public Response deleteUser(@PathParam("id") String id) {
-    return provisioningService.deleteUser(id);
+  public Response deleteUser(@PathParam("id") String id, @Context UriInfo uriInfo) {
+    return provisioningService.deleteUser(id, uriInfo);
   }
 
   @PATCH
@@ -93,14 +93,14 @@ public class ScimResource {
 
   @POST
   @Path("/Groups")
-  public Response createGroup(ScimGroup group) {
-    return provisioningService.createGroup(group);
+  public Response createGroup(ScimGroup group, @Context UriInfo uriInfo) {
+    return provisioningService.createGroup(group, uriInfo);
   }
 
   @PUT
   @Path("/Groups/{id}")
-  public Response updateGroup(@PathParam("id") String id, ScimGroup group) {
-    return provisioningService.updateGroup(id, group);
+  public Response updateGroup(@PathParam("id") String id, ScimGroup group, @Context UriInfo uriInfo) {
+    return provisioningService.updateGroup(id, group , uriInfo);
   }
 
   @GET
@@ -119,8 +119,8 @@ public class ScimResource {
 
   @DELETE
   @Path("/Groups/{id}")
-  public Response deleteGroup(@PathParam("id") String id) {
-    return provisioningService.deleteGroup(id);
+  public Response deleteGroup(@PathParam("id") String id , @Context UriInfo uriInfo) {
+    return provisioningService.deleteGroup(id, uriInfo);
   }
 
   @GET
