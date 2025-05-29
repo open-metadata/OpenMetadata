@@ -10,7 +10,7 @@ Collate AI seamlessly integrates with the Autopilot application in Collate to au
 
 ## How Collate AI Integrates with Autopilot
 
-{%  youtube videoId="xV-WTva8vG8" start="0:00" end="4:20" width="800px" height="450px" /%}x`
+{%  youtube videoId="xV-WTva8vG8" start="0:00" end="4:20" width="800px" height="450px" /%}
 
 ### Automated Metadata Ingestion with Autopilot
 
