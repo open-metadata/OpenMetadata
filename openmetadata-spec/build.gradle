@@ -13,7 +13,6 @@
 
 plugins {
     id 'antlr'
-    // TODO: Add jsonschema2pojo plugin back once we resolve the configuration issues
 }
 
 dependencies {
@@ -36,9 +35,8 @@ dependencies {
     // ANTLR for grammar processing
     antlr "org.antlr:antlr4:${antlrVersion}"
     
-    // JSON Schema to POJO for code generation (using the same approach as Maven)
+    // JSON Schema to POJO dependencies for custom task
     implementation "org.jsonschema2pojo:jsonschema2pojo-core:${jsonschema2pojoVersion}"
-    implementation "org.jsonschema2pojo:jsonschema2pojo-maven-plugin:${jsonschema2pojoVersion}"
     implementation "org.jsonschema2pojo:jsonschema2pojo-cli:${jsonschema2pojoVersion}"
 }
 
@@ -49,12 +47,10 @@ generateGrammarSource {
     outputDirectory = file("${buildDir}/generated-src/antlr/main")
 }
 
-// CRITICAL: JSON Schema to POJO generation - the build cannot work without this
-// We need to generate the schema classes that the interfaces depend on
-
+// Custom task for JSON Schema to POJO generation - fallback to Maven generated sources
 task generateJsonSchema2Pojo(type: Copy) {
     group = 'code generation'  
-    description = 'Copy existing generated JSON Schema classes (temporary solution)'
+    description = 'Copy existing generated JSON Schema classes (fallback solution until plugin issues resolved)'
     
     def mavenTargetDir = "${projectDir}/target/generated-sources/jsonschema2pojo"
     def gradleTargetDir = "${buildDir}/generated-sources/jsonschema2pojo"
@@ -71,6 +67,10 @@ task generateJsonSchema2Pojo(type: Copy) {
         println "Copying generated JSON Schema classes from Maven target to Gradle build..."
         println "From: ${mavenTargetDir}"
         println "To: ${gradleTargetDir}"
+    }
+    
+    doLast {
+        println "Note: Using Maven-generated sources as fallback. Consider implementing proper Gradle generation later."
     }
 }
 
@@ -109,7 +109,7 @@ sourceSets {
 // Ensure code generation happens before compilation
 compileJava.dependsOn generateJsonSchema2Pojo, copyAntlrSources
 
-// Make sure ANTLR generation happens before compilation (if we implement proper generation later)
+// Make sure ANTLR generation happens before compilation
 compileJava.dependsOn generateGrammarSource
 sourceSets.main.java.srcDirs += generateGrammarSource.outputDirectory
 

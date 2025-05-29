@@ -81,3 +81,15 @@ compileJava.enabled = false
 compileTestJava.enabled = false
 test.enabled = false
 jar.enabled = false
+
+// Configure sourcesJar task to depend on yarn tasks
+sourcesJar {
+    dependsOn yarnBuild
+    from 'src/main/resources/ui/src'
+    archiveClassifier = 'sources'
+}
+
+// Configure javadocJar if it exists
+if (tasks.findByName('javadocJar')) {
+    javadocJar.enabled = false
+}
