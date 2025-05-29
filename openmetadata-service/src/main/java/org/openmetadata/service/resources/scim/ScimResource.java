@@ -112,8 +112,8 @@ public class ScimResource {
 
   @PATCH
   @Path("/Groups/{id}")
-  public Response patchGroup(@PathParam("id") String id, ScimPatchOp request, @Context UriInfo uriInfo) {
-    return provisioningService.patchGroup(id, request, uriInfo);
+  public Response patchGroup(@PathParam("id") String id, ScimPatchOp request, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return provisioningService.patchGroup(id, request, uriInfo, securityContext);
   }
 
 

@@ -1,6 +1,7 @@
 package org.openmetadata.service.scim.impl;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
@@ -38,7 +39,7 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
   }
 
   @Override
-  public Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo) {
+  public Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 

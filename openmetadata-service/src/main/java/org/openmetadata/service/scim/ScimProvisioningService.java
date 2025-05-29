@@ -1,6 +1,7 @@
 package org.openmetadata.service.scim;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
@@ -29,7 +30,7 @@ public interface ScimProvisioningService {
 
   Response getGroup(String id, UriInfo uriInfo);  // For GET /Groups/{id}
 
-  Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo);  // For PATCH /Groups/{id}
+  Response patchGroup(String id, ScimPatchOp request, UriInfo uriInfo, SecurityContext securityContext);  // For PATCH /Groups/{id}
 
 
   default Response bulkOperation() {
