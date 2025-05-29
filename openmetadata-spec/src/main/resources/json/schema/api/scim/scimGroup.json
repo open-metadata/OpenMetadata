@@ -6,6 +6,14 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.scim.ScimGroup",
   "properties": {
+    "schemas": {
+      "type": "array",
+      "description": "SCIM schemas used for this resource",
+      "items": {
+        "type": "string"
+      },
+      "default": ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+    },
     "id": {
       "type": "string",
       "description": "Unique identifier for the group"
@@ -45,6 +53,6 @@
       }
     }
   },
-  "required": ["displayName"],
+  "required": ["schemas", "displayName"],
   "additionalProperties": false
 }

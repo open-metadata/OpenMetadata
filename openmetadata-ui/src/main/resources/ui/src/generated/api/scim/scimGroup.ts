@@ -34,6 +34,10 @@ export interface ScimGroup {
      * Members of the group
      */
     members?: Member[];
+    /**
+     * SCIM schemas used for this resource
+     */
+    schemas: string[];
 }
 
 export interface Member {
