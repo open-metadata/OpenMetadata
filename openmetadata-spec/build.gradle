@@ -1,0 +1,117 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'antlr'
+    // TODO: Add jsonschema2pojo plugin back once we resolve the configuration issues
+}
+
+dependencies {
+    // Project dependencies
+    api project(':common')
+    
+    // Manual Lombok dependencies for this module (plugin has context issues)
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    
+    // Core dependencies
+    api "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    api "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    api "javax.ws.rs:javax.ws.rs-api:2.1.1"
+    api "org.antlr:antlr4-runtime:${antlrVersion}"
+    api "javax.validation:validation-api:2.0.1.Final"
+    api "org.slf4j:slf4j-api:${slf4jVersion}"
+    api "io.github.resilience4j:resilience4j-retry:2.2.0"
+    
+    // ANTLR for grammar processing
+    antlr "org.antlr:antlr4:${antlrVersion}"
+    
+    // JSON Schema to POJO for code generation (using the same approach as Maven)
+    implementation "org.jsonschema2pojo:jsonschema2pojo-core:${jsonschema2pojoVersion}"
+    implementation "org.jsonschema2pojo:jsonschema2pojo-maven-plugin:${jsonschema2pojoVersion}"
+    implementation "org.jsonschema2pojo:jsonschema2pojo-cli:${jsonschema2pojoVersion}"
+}
+
+// ANTLR configuration
+generateGrammarSource {
+    maxHeapSize = "64m"
+    arguments += ['-visitor', '-long-messages']
+    outputDirectory = file("${buildDir}/generated-src/antlr/main")
+}
+
+// CRITICAL: JSON Schema to POJO generation - the build cannot work without this
+// We need to generate the schema classes that the interfaces depend on
+
+task generateJsonSchema2Pojo(type: Copy) {
+    group = 'code generation'  
+    description = 'Copy existing generated JSON Schema classes (temporary solution)'
+    
+    def mavenTargetDir = "${projectDir}/target/generated-sources/jsonschema2pojo"
+    def gradleTargetDir = "${buildDir}/generated-sources/jsonschema2pojo"
+    
+    from mavenTargetDir
+    into gradleTargetDir
+    
+    // Only copy if Maven generated sources exist
+    onlyIf {
+        file(mavenTargetDir).exists()
+    }
+    
+    doFirst {
+        println "Copying generated JSON Schema classes from Maven target to Gradle build..."
+        println "From: ${mavenTargetDir}"
+        println "To: ${gradleTargetDir}"
+    }
+}
+
+task copyAntlrSources(type: Copy) {
+    group = 'code generation'
+    description = 'Copy existing generated ANTLR classes (temporary solution)'
+    
+    def mavenTargetDir = "${projectDir}/target/generated-sources/antlr4"
+    def gradleTargetDir = "${buildDir}/generated-sources/antlr4"
+    
+    from mavenTargetDir
+    into gradleTargetDir
+    
+    // Only copy if Maven generated sources exist
+    onlyIf {
+        file(mavenTargetDir).exists()
+    }
+    
+    doFirst {
+        println "Copying generated ANTLR classes from Maven target to Gradle build..."
+        println "From: ${mavenTargetDir}"
+        println "To: ${gradleTargetDir}"
+    }
+}
+
+// Add the generated sources to the main source set
+sourceSets {
+    main {
+        java {
+            srcDirs += "${buildDir}/generated-sources/jsonschema2pojo"
+            srcDirs += "${buildDir}/generated-sources/antlr4"
+        }
+    }
+}
+
+// Ensure code generation happens before compilation
+compileJava.dependsOn generateJsonSchema2Pojo, copyAntlrSources
+
+// Make sure ANTLR generation happens before compilation (if we implement proper generation later)
+compileJava.dependsOn generateGrammarSource
+sourceSets.main.java.srcDirs += generateGrammarSource.outputDirectory
+
+// Fix task dependencies for source jar generation
+sourcesJar.dependsOn generateJsonSchema2Pojo, copyAntlrSources, generateGrammarSource

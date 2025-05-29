@@ -1,0 +1,148 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'org.openapi.generator' version '7.2.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+dependencies {
+    // Project dependencies
+    api project(':openmetadata-spec')
+    
+    // HTTP Client - Feign
+    api 'io.github.openfeign:feign-core:13.1'
+    api 'io.github.openfeign:feign-jackson:13.1'
+    api 'io.github.openfeign:feign-slf4j:13.1'
+    api 'io.github.openfeign:feign-okhttp:13.1'
+    
+    // Jackson
+    api "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    api "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    api "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    api "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+    api "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
+    
+    // Swagger/OpenAPI
+    api "io.swagger.core.v3:swagger-annotations:${openapiswaggerVersion}"
+    api 'org.openapitools:jackson-databind-nullable:0.2.6'
+    
+    // Elasticsearch client
+    api "org.elasticsearch.client:elasticsearch-rest-high-level-client:${elasticsearchVersion}"
+    
+    // OAuth & JWT
+    api 'com.github.scribejava:scribejava-core:8.3.3'
+    api 'com.github.scribejava:scribejava-apis:8.3.3'
+    api "com.auth0:java-jwt:${javaJwtVersion}"
+    
+    // Utilities
+    api 'com.google.code.findbugs:jsr305:3.0.2'
+    
+    // Test dependencies
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+}
+
+// OpenAPI Generator configuration
+openApiGenerate {
+    generatorName = 'java'
+    inputSpec = "${project(':openmetadata-service').buildDir}/resources/main/assets/swagger.yaml"
+    outputDir = "${buildDir}/generated"
+    apiPackage = 'org.openmetadata.client.api'
+    modelPackage = 'org.openmetadata.client.model'
+    invokerPackage = 'org.openmetadata.client'
+    
+    configOptions = [
+        dateLibrary: 'java8',
+        library: 'feign',
+        serializationLibrary: 'jackson',
+        hideGenerationTimestamp: 'true',
+        disallowAdditionalPropertiesIfNotPresent: 'false'
+    ]
+    
+    additionalProperties = [
+        'groupId': project.group,
+        'artifactId': project.name,
+        'artifactVersion': project.version,
+        'artifactDescription': 'OpenMetadata Java Client'
+    ]
+}
+
+// Create a task dependency instead of using the extension method
+// We'll make this depend on the jar task instead to avoid circular dependency
+tasks.named('openApiGenerate') {
+    dependsOn ':openmetadata-service:jar'
+}
+
+// Add generated sources to the main source set
+sourceSets {
+    main {
+        java {
+            srcDirs "${buildDir}/generated/src/main/java"
+        }
+    }
+}
+
+compileJava.dependsOn tasks.openApiGenerate
+
+// Version file generation
+task generateVersionFile {
+    doLast {
+        def versionDir = file("${buildDir}/resources/main/catalog")
+        versionDir.mkdirs()
+        def versionFile = new File(versionDir, "VERSION")
+        versionFile.text = "${project.version}\n"
+    }
+}
+
+processResources.dependsOn generateVersionFile
+
+// Fat JAR configuration
+shadowJar {
+    archiveClassifier = 'all'
+    manifest {
+        attributes(
+            'Main-Class': 'org.openmetadata.client.OpenMetadataClient',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version
+        )
+    }
+    
+    // Exclude duplicate files
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    
+    // Merge service files
+    mergeServiceFiles()
+}
+
+// Assembly-like task for creating distribution
+task assembleDist(type: Zip) {
+    group = 'distribution'
+    description = 'Creates a distribution ZIP containing the client JAR and dependencies'
+    archiveClassifier = 'dist'
+    
+    from configurations.runtimeClasspath
+    from shadowJar
+    
+    into('lib') {
+        from configurations.runtimeClasspath
+    }
+    into('') {
+        from shadowJar
+    }
+}
+
+build.dependsOn shadowJar, assembleDist

@@ -1,0 +1,83 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'com.github.node-gradle.node' version '7.0.1'
+}
+
+// No Java dependencies for UI module
+
+node {
+    version = '18.19.0'
+    yarnVersion = '1.22.18'
+    download = true
+    workDir = file("${project.buildDir}/nodejs")
+    yarnWorkDir = file("${project.buildDir}/yarn")
+    nodeProjectDir = file("${projectDir}/src/main/resources/ui")
+}
+
+// Configure yarn tasks
+yarn_install {
+    inputs.file("src/main/resources/ui/package.json")
+    inputs.file("src/main/resources/ui/yarn.lock")
+    outputs.dir("src/main/resources/ui/node_modules")
+    args = ['--frozen-lockfile']
+}
+
+// UI test task
+task yarnTest(type: YarnTask) {
+    dependsOn yarn_install
+    inputs.dir("src/main/resources/ui/src")
+    inputs.file("src/main/resources/ui/package.json")
+    outputs.dir("src/main/resources/ui/coverage")
+    args = ['run', 'test']
+    
+    // Skip tests if requested
+    enabled = !project.hasProperty('skipTests') || !project.property('skipTests').toBoolean()
+}
+
+// UI build task
+task yarnBuild(type: YarnTask) {
+    dependsOn yarn_install, yarnTest
+    inputs.dir("src/main/resources/ui/src")
+    inputs.file("src/main/resources/ui/package.json")
+    outputs.dir("src/main/resources/ui/dist")
+    args = ['run', 'build']
+}
+
+// Copy UI build output to resources
+task copyUIResources(type: Copy) {
+    dependsOn yarnBuild
+    from 'src/main/resources/ui/dist'
+    into "${buildDir}/resources/main"
+    
+    // Handle file extensions that shouldn't be filtered
+    exclude '**/*.ttf', '**/*.woff', '**/*.woff2', '**/*.eot', '**/*.svg', '**/*.png', '**/*.gz'
+}
+
+// Copy JSON data resources
+task copyJSONResources(type: Copy) {
+    from 'src/main/resources/json/data'
+    into "${buildDir}/resources/main"
+}
+
+// Configure the main processResources task
+processResources {
+    dependsOn copyUIResources, copyJSONResources
+}
+
+// Disable default Java tasks since this is a pure UI module
+compileJava.enabled = false
+compileTestJava.enabled = false
+test.enabled = false
+jar.enabled = false
