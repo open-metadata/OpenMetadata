@@ -8,7 +8,7 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
-import javax.validation.Validator;
+import jakarta.validation.Validator;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;

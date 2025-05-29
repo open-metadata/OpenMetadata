@@ -1,11 +1,11 @@
 package org.openmetadata.service.util.jdbi;
 
+import jakarta.validation.constraints.NotNull;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 
 /**
  * Database authentication provider is the main interface responsible for all implementation that requires additional
