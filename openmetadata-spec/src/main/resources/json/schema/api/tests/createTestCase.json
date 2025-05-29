@@ -55,6 +55,6 @@
       "default": []
     }
   },
-  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "required": ["name", "testDefinition", "entityLink"],
   "additionalProperties": false
 }
