@@ -44,6 +44,10 @@
       "description": "Name used for display purposes. Example 'Data Science team'.",
       "type": "string"
     },
+    "externalId": {
+      "description": "External identifier for the team from an external identity provider (e.g., Azure AD group ID).",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the team.",
       "$ref": "../../type/basic.json#/definitions/markdown"
