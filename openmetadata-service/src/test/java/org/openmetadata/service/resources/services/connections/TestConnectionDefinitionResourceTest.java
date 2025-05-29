@@ -3,8 +3,8 @@ package org.openmetadata.service.resources.services.connections;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
