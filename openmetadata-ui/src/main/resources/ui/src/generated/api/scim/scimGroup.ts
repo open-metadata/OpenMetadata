@@ -35,9 +35,14 @@ export interface ScimGroup {
      */
     members?: Member[];
     /**
+     * Metadata about the group
+     */
+    meta?: Meta;
+    /**
      * SCIM schemas used for this resource
      */
     schemas: string[];
+    [property: string]: any;
 }
 
 export interface Member {
@@ -53,5 +58,16 @@ export interface Member {
      * ID of the member (user)
      */
     value: string;
+    [property: string]: any;
+}
+
+/**
+ * Metadata about the group
+ */
+export interface Meta {
+    created?:      Date;
+    lastModified?: Date;
+    location?:     string;
+    resourceType?: string;
     [property: string]: any;
 }

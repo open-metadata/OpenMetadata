@@ -51,8 +51,28 @@
         },
         "required": ["value"]
       }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the group",
+      "properties": {
+        "resourceType": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "location": {
+          "type": "string"
+        }
+      }
     }
   },
   "required": ["schemas", "displayName"],
-  "additionalProperties": false
+  "additionalProperties": true
 }
