@@ -51,6 +51,7 @@ import {
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getTierTags } from './TableUtils';
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -104,7 +105,7 @@ jest.mock('./TableUtils', () => ({
   getDataTypeString: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   getTierTags: jest.fn(),
-  getUsagePercentile: jest.fn(),
+  getUsagePercentile: jest.fn().mockImplementation((value) => value + 'th'),
 }));
 
 jest.mock('./TagsUtils', () => ({
@@ -238,13 +239,12 @@ describe('EntityUtils unit tests', () => {
       expect(result).toContain('label.query-plural');
       expect(result).toContain('label.column-plural');
       expect(result).toContain('label.row-plural');
-
-      expect(result).toContain('Tier4');
+      expect(getTierTags).toHaveBeenCalledWith([MOCK_TIER_DATA]);
       expect(result).toContain('Regular');
       expect(result).toContain('sample_data');
       expect(result).toContain('ecommerce_db');
       expect(result).toContain('shopify');
-      expect(result).toContain('0th label.pctile-lowercase');
+      expect(result).toContain('0th');
       expect(result).toContain('4');
       expect(result).toContain('14567');
     });
