@@ -42,13 +42,19 @@ task yarnTest(type: YarnTask) {
     outputs.dir("src/main/resources/ui/coverage")
     args = ['run', 'test']
     
-    // Make this task part of the test group so -x test excludes it
+    // Make this task part of the test group
     group = 'verification'
     description = 'Run frontend tests using yarn'
     
-    // Skip tests if requested via -DskipTests property
+    // Skip tests if:
+    // 1. -DskipTests property is set
+    // 2. -x test is used (check if test task is excluded)
     onlyIf {
-        !project.hasProperty('skipTests') || !project.property('skipTests').toBoolean()
+        def skipTests = project.hasProperty('skipTests') && project.property('skipTests').toBoolean()
+        def testTaskExcluded = project.gradle.startParameter.excludedTaskNames.any { 
+            it == 'test' || it == 'yarnTest' || it.endsWith(':test') || it.endsWith(':yarnTest')
+        }
+        return !skipTests && !testTaskExcluded
     }
 }
 
