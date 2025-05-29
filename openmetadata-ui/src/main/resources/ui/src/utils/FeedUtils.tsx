@@ -133,13 +133,11 @@ export const getReplyText = (
     return i18next.t('label.reply-in-conversation');
   }
   if (count === 1) {
-    return `${count} ${
-      singular ? singular : i18next.t('label.older-reply-lowercase')
-    }`;
+    return `${count} ${singular ?? i18next.t('label.older-reply-lowercase')}`;
   }
 
   return `${count} ${
-    plural ? plural : i18next.t('label.older-reply-plural-lowercase')
+    plural ?? i18next.t('label.older-reply-plural-lowercase')
   }`;
 };
 
@@ -629,6 +627,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
     [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
     [EntityField.FIELDS]: i18next.t('label.field-plural'),
+    [EntityField.PARAMETER_VALUES]: i18next.t('label.parameter-plural'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
