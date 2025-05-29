@@ -178,3 +178,22 @@ es_nif_data: LabeledData = {
     ],
     "pii_sensitivity": True,
 }
+
+# Sample data for regression tests
+
+# Previously, this data was incorrectly tagged as PII.DATE_TIME
+false_positive_datetime_data: LabeledData = {
+    "column_name": None,
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "60001",
+        "60002",
+        "60003",
+        "60004",
+        "60005",
+        "60006",
+        "60007",
+    ],
+    "pii_tags": [],
+    "pii_sensitivity": False,
+}
