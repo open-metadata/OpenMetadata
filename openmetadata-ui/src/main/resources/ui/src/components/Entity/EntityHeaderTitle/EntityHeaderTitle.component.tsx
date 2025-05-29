@@ -21,7 +21,7 @@ import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg'
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
-import { entityMap } from '../../../constants/entity.constants';
+import { EntityTypeName } from '../../../constants/entity.constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -182,10 +182,8 @@ const EntityHeaderTitle = ({
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
                   entity: entityType
-                    ? entityType in entityMap
-                      ? entityMap[entityType as keyof typeof entityMap]
-                      : capitalize(entityType)
-                    : '',
+                    ? EntityTypeName[entityType]
+                    : capitalize(entityType ?? ''),
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "
