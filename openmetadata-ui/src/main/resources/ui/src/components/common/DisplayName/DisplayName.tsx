@@ -13,7 +13,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -47,10 +47,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   };
 
   // function to render text with optional link
-  const renderTextWithOptionalLink = (
-    name: React.ReactNode,
-    testId?: React.ReactNode
-  ) => {
+  const renderTextWithOptionalLink = (name: ReactNode, testId: ReactNode) => {
     return link ? (
       <Link className="break-word" data-testid={testId} to={link}>
         {name}
