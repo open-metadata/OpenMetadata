@@ -1,3 +1,9 @@
+tasks.withType(JavaCompile) {
+    // Ensure the correct lombok.config is used regardless of Gradle's root/module logic
+    options.compilerArgs += [
+        "-Alombok.config=${projectDir}/lombok.config"
+    ]
+}
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");

@@ -42,13 +42,21 @@ task yarnTest(type: YarnTask) {
     outputs.dir("src/main/resources/ui/coverage")
     args = ['run', 'test']
     
-    // Skip tests if requested
-    enabled = !project.hasProperty('skipTests') || !project.property('skipTests').toBoolean()
+    // Make this task part of the test group so -x test excludes it
+    group = 'verification'
+    description = 'Run frontend tests using yarn'
+    
+    // Skip tests if requested via -DskipTests property
+    onlyIf {
+        !project.hasProperty('skipTests') || !project.property('skipTests').toBoolean()
+    }
 }
 
 // UI build task
 task yarnBuild(type: YarnTask) {
-    dependsOn yarn_install, yarnTest
+    dependsOn yarn_install
+    // Always depend on yarnTest, but yarnTest will be skipped if tests are excluded
+    dependsOn yarnTest
     inputs.dir("src/main/resources/ui/src")
     inputs.file("src/main/resources/ui/package.json")
     outputs.dir("src/main/resources/ui/dist")

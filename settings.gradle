@@ -18,11 +18,7 @@ pluginManagement {
     }
 }
 
-plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
-}
-
-rootProject.name = 'platform'
+rootProject.name = 'OpenMetadata'
 
 // Include all subprojects
 include 'openmetadata-spec'
