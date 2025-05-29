@@ -30,6 +30,24 @@ class PresidioRecognizerResultPatcher(Protocol):
         ...
 
 
+def combine_patchers(
+    *patchers: PresidioRecognizerResultPatcher,
+) -> PresidioRecognizerResultPatcher:
+    """
+    Combine multiple patchers into one.
+    This allows us to apply multiple patches in sequence.
+    """
+
+    def combined_patcher(
+        recognizer_results: Sequence[RecognizerResult], text: str
+    ) -> Sequence[RecognizerResult]:
+        for patcher in patchers:
+            recognizer_results = patcher(recognizer_results, text)
+        return recognizer_results
+
+    return combined_patcher
+
+
 def url_patcher(
     recognizer_results: Sequence[RecognizerResult], text: str
 ) -> Sequence[RecognizerResult]:
