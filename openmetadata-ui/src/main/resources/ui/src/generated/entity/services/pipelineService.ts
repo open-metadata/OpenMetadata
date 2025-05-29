@@ -557,7 +557,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Service Type
      */
-    type?: Type;
+    type?: ConnectionType;
     /**
      * Choose Auth Config Type.
      */
@@ -825,7 +825,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum Type {
+export enum ConnectionType {
     Backend = "Backend",
     MatillionETL = "MatillionETL",
     Mysql = "Mysql",
@@ -964,7 +964,7 @@ export interface NifiCredentialsConfiguration {
  *
  * S3 Connection.
  *
- * Path leading to your projects
+ * Local Projects Path for SSIS.
  */
 export interface SSISProjectsLocationLocalPathOrS3Bucket {
     awsConfig?: AWSCredentials;
@@ -982,17 +982,21 @@ export interface SSISProjectsLocationLocalPathOrS3Bucket {
     /**
      * Service Type
      */
-    type?:         S3Type;
+    type?: SSISProjectsLocationLocalPathOrS3BucketType;
+    /**
+     * Path leading to your projects
+     */
     projectsPath?: string;
-    [property: string]: any;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * Local storage service type
  */
-export enum S3Type {
+export enum SSISProjectsLocationLocalPathOrS3BucketType {
     Local = "local",
     S3 = "S3",
 }

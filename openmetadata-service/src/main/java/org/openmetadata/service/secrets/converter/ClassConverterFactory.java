@@ -48,6 +48,8 @@ import org.openmetadata.schema.services.connections.pipeline.MatillionConnection
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
+import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
+
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {
@@ -96,6 +98,8 @@ public final class ClassConverterFactory {
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
+
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

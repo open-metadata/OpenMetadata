@@ -218,7 +218,7 @@ export enum MssqlType {
  *
  * S3 Connection.
  *
- * Path leading to your projects
+ * Local Projects Path for SSIS.
  */
 export interface SSISProjectsLocationLocalPathOrS3Bucket {
     awsConfig?: AWSCredentials;
@@ -236,9 +236,11 @@ export interface SSISProjectsLocationLocalPathOrS3Bucket {
     /**
      * Service Type
      */
-    type?:         S3Type;
+    type?: Type;
+    /**
+     * Path leading to your projects
+     */
     projectsPath?: string;
-    [property: string]: any;
 }
 
 /**
@@ -291,8 +293,10 @@ export interface AWSCredentials {
  * Service Type
  *
  * S3 service type
+ *
+ * Local storage service type
  */
-export enum S3Type {
+export enum Type {
     Local = "local",
     S3 = "S3",
 }
