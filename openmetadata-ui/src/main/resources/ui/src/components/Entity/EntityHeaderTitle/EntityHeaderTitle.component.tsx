@@ -181,9 +181,10 @@ const EntityHeaderTitle = ({
               <Tooltip
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: entityType
-                    ? EntityTypeName[entityType]
-                    : capitalize(entityType ?? ''),
+                  entity:
+                    entityType && entityType in EntityTypeName
+                      ? EntityTypeName[entityType]
+                      : capitalize(entityType),
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "
