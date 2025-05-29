@@ -1,0 +1,70 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+.env/
+.envrc
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Logs and local dev files
+*.log
+*.sqlite3
+*.db
+*.pot
+*.mo
+
+# Jupyter notebooks and IPython history
+*.ipynb
+.ipynb_checkpoints/
+.ipython/
+
+# Git and VCS
+.git/
+.gitignore
+.gitattributes
+
+# Docker-related
+Dockerfile
+docker-compose.yml
+
+# Editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

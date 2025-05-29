@@ -13,7 +13,7 @@
 Query parser utils tests
 """
 import json
-import os.path
+from pathlib import Path
 from unittest import TestCase
 
 from metadata.workflow.usage import UsageWorkflow
@@ -80,14 +80,17 @@ class QueryParserTest(TestCase):
             "shopify.raw_customer": 11,
         }
         config_dict = json.loads(config)
-        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
-            "sampleDataFolder"
-        ] = (
-            os.path.dirname(__file__)
-            + "/../../../"
-            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
-                "sampleDataFolder"
-            ]
+
+        ingestion_dir = Path(__file__).parent.parent.parent.parent
+        assert (
+            ingestion_dir.name == "ingestion"
+        ), "Expected ingestion directory name to be 'ingestion', this is likely caused by a refact"
+
+        conn_opts = config_dict["source"]["serviceConnection"]["config"][
+            "connectionOptions"
+        ]
+        conn_opts["sampleDataFolder"] = str(
+            ingestion_dir.parent / conn_opts["sampleDataFolder"]
         )
         workflow = UsageWorkflow.create(config_dict)
         workflow.execute()
