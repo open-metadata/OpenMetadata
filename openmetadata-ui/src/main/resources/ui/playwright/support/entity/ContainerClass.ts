@@ -25,10 +25,10 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ContainerClass extends EntityClass {
-  private containerName = `pw-container-${uuid()}`;
-  private childContainerName = `pw-container-${uuid()}`;
+  private containerName = `pw.container%${uuid()}`;
+  private childContainerName = `pw.container%${uuid()}`;
   service = {
-    name: `pw-storage-service-${uuid()}`,
+    name: `pw.storage%service-${uuid()}`,
     serviceType: 'S3',
     connection: {
       config: {

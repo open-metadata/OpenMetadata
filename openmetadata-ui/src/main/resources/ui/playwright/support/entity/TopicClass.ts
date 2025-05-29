@@ -25,7 +25,7 @@ import { EntityClass } from './EntityClass';
 
 export class TopicClass extends EntityClass {
   service = {
-    name: `pw-messaging-service-${uuid()}`,
+    name: `pw.messaging%service-${uuid()}`,
     serviceType: 'Kafka',
     connection: {
       config: {
@@ -38,7 +38,7 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw-topic-${uuid()}`;
+  private topicName = `pw.topic%${uuid()}`;
 
   children = [
     {

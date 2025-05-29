@@ -28,7 +28,7 @@ import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
   service = {
-    name: `pw-database-service-${uuid()}`,
+    name: `pw.database%service-${uuid()}`,
     serviceType: 'Mysql',
     connection: {
       config: {
@@ -47,11 +47,11 @@ export class TableClass extends EntityClass {
     },
   };
   database = {
-    name: `pw-database-${uuid()}`,
+    name: `pw.database%${uuid()}`,
     service: this.service.name,
   };
   schema = {
-    name: `pw-database-schema-${uuid()}`,
+    name: `pw.database%schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
   columnsName = [
