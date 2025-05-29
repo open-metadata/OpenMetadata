@@ -75,7 +75,7 @@ def date_time_patcher(
         if result.entity_type == "DATE_TIME":
             # try to parse using dateutils, if it fails, skip the result
             try:
-                parse(text[result.start : result.end])
+                _ = parse(text[result.start : result.end])
             except ValueError:
                 # if parsing fails, skip the result
                 continue
