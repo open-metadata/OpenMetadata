@@ -50,7 +50,7 @@ import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
@@ -94,8 +94,8 @@ import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getServiceDetailsPath,
+  getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -188,10 +188,7 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityType = getEntityType(task.about) ?? '';
 
   if (entityType === EntityType.TEST_CASE) {
-    return getIncidentManagerDetailPagePath(
-      entityFqn,
-      IncidentManagerTabs.ISSUES
-    );
+    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
     return getUserPath(
       entityFqn,

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
+import { cloneDeep, isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
@@ -84,7 +84,7 @@ export const createTestCaseParameters = (
           if (arrayValues.length) {
             acc.push({ name: key, value: JSON.stringify(arrayValues) });
           }
-        } else {
+        } else if (!isNil(value)) {
           acc.push({ name: key, value: value as string });
         }
 
