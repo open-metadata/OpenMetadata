@@ -13,7 +13,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -46,27 +46,46 @@ const DisplayName: React.FC<DisplayNameProps> = ({
     }
   };
 
+  // function to render text with optional link
+  const renderTextWithOptionalLink = (
+    name: React.ReactNode,
+    testId?: React.ReactNode
+  ) => {
+    return link ? (
+      <Link className="break-word" data-testid={testId} to={link}>
+        {name}
+      </Link>
+    ) : (
+      <span className="break-word" data-testid={testId}>
+        {name}
+      </span>
+    );
+  };
+
+  const renderMainContent = useMemo(() => {
+    if (isEmpty(displayName)) {
+      return renderTextWithOptionalLink(name, name);
+    }
+
+    // Show both name and displayName when displayName exists
+    return (
+      <>
+        {name}
+        <Typography.Text
+          className="m-b-0 d-block break-word"
+          data-testid="column-display-name">
+          {renderTextWithOptionalLink(displayName, name)}
+        </Typography.Text>
+      </>
+    );
+  }, [displayName, name, renderTextWithOptionalLink]);
+
   return (
     <div className="flex-column hover-icon-group w-max-full">
       <Typography.Text
-        className="m-b-0 d-block text-grey-muted break-word"
+        className="m-b-0 d-block break-word"
         data-testid="column-name">
-        {isEmpty(displayName) ? (
-          <Link className="break-word" data-testid={name} to={link}>
-            {name}
-          </Link>
-        ) : (
-          <>
-            {name}
-            <Typography.Text
-              className="m-b-0 d-block break-word"
-              data-testid="column-display-name">
-              <Link className="break-word" data-testid={name} to={link}>
-                {displayName}
-              </Link>
-            </Typography.Text>
-          </>
-        )}
+        {renderMainContent}
       </Typography.Text>
 
       {allowRename ? (
