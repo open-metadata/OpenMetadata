@@ -15,7 +15,6 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
-import React from 'react';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import CustomStatistic from './CustomStatistic';
 

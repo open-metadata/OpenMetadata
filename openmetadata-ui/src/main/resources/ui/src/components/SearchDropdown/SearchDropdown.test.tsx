@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 
@@ -97,9 +102,7 @@ describe('Search DropDown Component', () => {
 
     expect(container).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(container);
-    });
+    userEvent.click(container);
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
@@ -114,9 +117,7 @@ describe('Search DropDown Component', () => {
 
     expect(container).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(container);
-    });
+    userEvent.click(container);
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
@@ -134,7 +135,7 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
@@ -142,21 +143,24 @@ describe('Search DropDown Component', () => {
     const option2 = await screen.findByTestId('User 2');
 
     await act(async () => {
-      userEvent.click(option2);
+      fireEvent.click(option2);
     });
 
     let option1Checkbox = await screen.findByTestId('User 1-checkbox');
     let option2Checkbox = await screen.findByTestId('User 2-checkbox');
 
     expect(option1Checkbox).toBeChecked();
-    expect(option2Checkbox).toBeChecked();
+
+    await waitFor(() => {
+      expect(option2Checkbox).toBeChecked();
+    });
 
     const clearButton = await screen.findByTestId('clear-button');
 
     expect(clearButton).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(clearButton);
+      fireEvent.click(clearButton);
     });
 
     option1Checkbox = await screen.findByTestId('User 1-checkbox');
@@ -174,14 +178,14 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
     await act(async () => {
       const searchInput = await screen.findByTestId('search-input');
-      await userEvent.type(searchInput, 'user');
+      await fireEvent.change(searchInput, { target: { value: 'user' } });
     });
 
     expect(await screen.findByTestId('search-input')).toHaveValue('user');
@@ -197,7 +201,7 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
@@ -205,23 +209,25 @@ describe('Search DropDown Component', () => {
     const option2 = await screen.findByTestId('User 2');
 
     await act(async () => {
-      userEvent.click(option2);
+      fireEvent.click(option2);
     });
 
     const updateButton = await screen.findByTestId('update-btn');
 
     await act(async () => {
-      userEvent.click(updateButton);
+      fireEvent.click(updateButton);
     });
 
     // onChange should be called with previous selected keys and current selected keys
-    expect(mockOnChange).toHaveBeenCalledWith(
-      [
-        { key: 'User 1', label: 'User 1' },
-        { key: 'User 2', label: 'User 2' },
-      ],
-      'owner.displayName'
-    );
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [
+          { key: 'User 1', label: 'User 1' },
+          { key: 'User 2', label: 'User 2' },
+        ],
+        'owner.displayName'
+      );
+    });
   });
 
   it('Selected option should unselect on next click', async () => {
@@ -232,7 +238,7 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
@@ -244,7 +250,7 @@ describe('Search DropDown Component', () => {
     const option1 = await screen.findByTestId('User 1');
 
     await act(async () => {
-      userEvent.click(option1);
+      fireEvent.click(option1);
     });
 
     option1Checkbox = await screen.findByTestId('User 1-checkbox');
@@ -264,7 +270,7 @@ describe('Search DropDown Component', () => {
     expect(dropdownMenu).toBeNull();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     dropdownMenu = await screen.findByTestId('drop-down-menu');
@@ -276,7 +282,7 @@ describe('Search DropDown Component', () => {
     expect(closeButton).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(closeButton);
+      fireEvent.click(closeButton);
     });
 
     dropdownMenu = screen.queryByTestId('drop-down-menu');
@@ -298,7 +304,7 @@ describe('Search DropDown Component', () => {
     // Click on dropdown button
 
     await act(async () => {
-      userEvent.click(dropdownButton);
+      fireEvent.click(dropdownButton);
     });
 
     // Dropdown menu should render and checkbox for user1 should be checked as it is passed in 'selectedKeys'
@@ -314,7 +320,7 @@ describe('Search DropDown Component', () => {
     // Uncheck the 'user1' checkbox
 
     await act(async () => {
-      userEvent.click(option1Checkbox);
+      fireEvent.click(option1Checkbox);
     });
 
     // Check if 'user1' options is unselected
@@ -330,7 +336,7 @@ describe('Search DropDown Component', () => {
     expect(closeButton).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(closeButton);
+      fireEvent.click(closeButton);
     });
 
     dropdownMenu = screen.queryByTestId('drop-down-menu');
@@ -340,7 +346,7 @@ describe('Search DropDown Component', () => {
     // Open the dropdown again.
 
     await act(async () => {
-      userEvent.click(dropdownButton);
+      fireEvent.click(dropdownButton);
     });
 
     dropdownMenu = await screen.findByTestId('drop-down-menu');
@@ -362,7 +368,7 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
@@ -379,19 +385,19 @@ describe('Search DropDown Component', () => {
     expect(container).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(container);
+      fireEvent.click(container);
     });
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
     const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
     await act(async () => {
-      userEvent.click(noOwnerCheckbox);
+      fireEvent.click(noOwnerCheckbox);
     });
 
     const updateButton = await screen.findByTestId('update-btn');
     await act(async () => {
-      userEvent.click(updateButton);
+      fireEvent.click(updateButton);
     });
 
     // onChange should be called with previous selected keys and current selected keys

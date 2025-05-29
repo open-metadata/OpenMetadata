@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { TourSteps } from '@deuex-solutions/react-tour';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import Tour from './Tour';
 
@@ -45,7 +43,6 @@ jest.mock('../Modals/TourEndModal/TourEndModal', () =>
 
 const mockUpdateIsTourOpen = jest.fn();
 const mockUpdateTourPage = jest.fn();
-const mockPush = jest.fn();
 const mockProps = {
   steps: [] as TourSteps[],
 };
@@ -59,31 +56,31 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider()),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AppTour component', () => {
-  it('element render and actions check', () => {
+  it('element render and actions check', async () => {
     render(<Tour {...mockProps} />);
 
     expect(screen.getByText('ReactTour')).toBeInTheDocument();
     expect(screen.getByText('TourEndModal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'Close Request' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Request' }));
 
     expect(mockUpdateIsTourOpen).toHaveBeenCalledWith(false);
 
-    userEvent.click(screen.getByRole('button', { name: 'Skip Request' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip Request' }));
 
     expect(mockUpdateTourPage).toHaveBeenCalledWith(
       CurrentTourPageType.MY_DATA_PAGE
     );
-    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/');
 
-    userEvent.click(screen.getByTestId('last-step-button'));
+    fireEvent.click(screen.getByTestId('last-step-button'));
 
     expect(screen.getByText('TourEndModal is open')).toBeInTheDocument();
   });

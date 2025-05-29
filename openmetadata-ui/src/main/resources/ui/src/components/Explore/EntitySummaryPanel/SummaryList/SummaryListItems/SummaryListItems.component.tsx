@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';

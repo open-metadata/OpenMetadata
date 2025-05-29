@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
-import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import axiosClient from '../../../rest';
@@ -38,7 +36,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -157,9 +155,7 @@ describe('Test auth provider', () => {
 
     expect(logoutButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(logoutButton);
-    });
+    fireEvent.click(logoutButton);
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();
   });

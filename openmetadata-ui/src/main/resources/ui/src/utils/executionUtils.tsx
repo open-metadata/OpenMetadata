@@ -15,7 +15,6 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
-import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
   PipelineStatus,

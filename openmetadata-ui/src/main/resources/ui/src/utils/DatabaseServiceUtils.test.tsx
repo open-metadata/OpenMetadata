@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -40,8 +39,9 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {

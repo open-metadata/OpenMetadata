@@ -13,6 +13,7 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
+
 import {
   Configuration,
   IPublicClientApplication,
@@ -26,8 +27,9 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil, isNumber } from 'lodash';
+import { WebStorageStateStore } from 'oidc-client';
 import Qs from 'qs';
-import React, {
+import {
   ComponentType,
   ReactNode,
   useCallback,
@@ -37,7 +39,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -145,7 +147,7 @@ export const AuthProvider = ({
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
@@ -154,7 +156,10 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const userConfig = useMemo(
-    () => (authConfig ? getUserManagerConfig(authConfig) : {}),
+    () =>
+      authConfig
+        ? getUserManagerConfig(authConfig)
+        : ({} as Record<string, string | boolean | WebStorageStateStore>),
     [authConfig]
   );
 
@@ -190,7 +195,7 @@ export const AuthProvider = ({
     tokenService.current.clearRefreshInProgress();
 
     // Upon logout, redirect to the login page
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
 
   const fetchDomainList = useCallback(async () => {
@@ -210,7 +215,7 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     }
   };
 
@@ -237,7 +242,7 @@ export const AuthProvider = ({
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
     } else {
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     }
   };
 
@@ -325,7 +330,7 @@ export const AuthProvider = ({
     setIsSigningUp(false);
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = useCallback(
@@ -362,20 +367,20 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
+            navigate(ROUTES.UNAUTHORISED);
             showErrorToast(err);
-            history.push(ROUTES.UNAUTHORISED);
           } else {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
-            history.push(ROUTES.SIGNUP);
+            navigate(ROUTES.SIGNUP);
           }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
           showErrorToast(err);
           resetUserDetails();
-          history.push(ROUTES.SIGNIN);
+          navigate(ROUTES.SIGNIN);
         }
       } finally {
         setApplicationLoading(false);

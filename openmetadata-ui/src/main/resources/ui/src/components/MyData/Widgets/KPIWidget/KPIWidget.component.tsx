@@ -15,7 +15,7 @@ import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -237,11 +237,7 @@ const KPIWidget = ({
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={
-                <Link
-                  rel="noreferrer"
-                  target="_blank"
-                  to={{ pathname: DATA_INSIGHT_DOCS }}
-                />
+                <Link rel="noreferrer" target="_blank" to={DATA_INSIGHT_DOCS} />
               }
               values={{
                 doc: t('label.doc-plural-lowercase'),

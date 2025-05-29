@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -88,7 +88,7 @@ const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
         {breadcrumbs.length > 0 && (
           <div className="d-flex gap-2 items-center m-b-xs lineage-breadcrumb">
             {breadcrumbs.map((breadcrumb, index) => (
-              <React.Fragment key={breadcrumb.name}>
+              <Fragment key={breadcrumb.name}>
                 <Typography.Text
                   className="text-grey-muted lineage-breadcrumb-item"
                   ellipsis={{ tooltip: true }}>
@@ -99,7 +99,7 @@ const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
                     {t('label.slash-symbol')}
                   </Typography.Text>
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         )}

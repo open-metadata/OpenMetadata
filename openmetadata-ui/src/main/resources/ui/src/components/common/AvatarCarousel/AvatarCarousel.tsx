@@ -12,13 +12,7 @@
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Carousel } from 'antd';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
 import './avatar-carousel.less';

@@ -13,8 +13,6 @@
 
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
@@ -25,6 +23,7 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
+import { t } from './i18next/LocalUtil';
 import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 

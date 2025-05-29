@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import './data-statistic-widget.less';

@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -144,7 +144,6 @@ function VersionTable<T extends Column | SearchIndexField>({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        accessor: 'name',
         width: 200,
         render: renderColumnName,
       },
@@ -152,7 +151,6 @@ function VersionTable<T extends Column | SearchIndexField>({
         title: t('label.type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
         render: (dataTypeDisplay: T['dataTypeDisplay']) => {
@@ -179,7 +177,6 @@ function VersionTable<T extends Column | SearchIndexField>({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        accessor: 'description',
         width: 400,
         render: (description: T['description']) =>
           description ? (
@@ -203,7 +200,6 @@ function VersionTable<T extends Column | SearchIndexField>({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags: T['tags']) => (
           <TagsViewer
@@ -216,7 +212,6 @@ function VersionTable<T extends Column | SearchIndexField>({
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags: T['tags']) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags ?? []).Glossary} />

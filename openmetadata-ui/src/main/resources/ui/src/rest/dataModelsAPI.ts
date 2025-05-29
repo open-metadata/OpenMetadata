@@ -78,7 +78,7 @@ export const getDataModelVersionsList = async (id: string) => {
   return response.data;
 };
 
-export const getDataModelVersion = async (id: string, version: string) => {
+export const getDataModelVersion = async (id: string, version?: string) => {
   const url = `${URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);

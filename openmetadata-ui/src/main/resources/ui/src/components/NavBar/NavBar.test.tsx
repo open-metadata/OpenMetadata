@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ONE_HOUR_MS } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
@@ -113,8 +112,14 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
     .fn()
     .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
 });
+jest.mock('../AppBar/SearchOptions', () => {
+  return jest.fn().mockReturnValue(<div data-testid="cmd">SearchOptions</div>);
+});
+jest.mock('../AppBar/Suggestions', () => {
+  return jest.fn().mockReturnValue(<div data-testid="cmd">Suggestions</div>);
+});
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('antd', () => ({

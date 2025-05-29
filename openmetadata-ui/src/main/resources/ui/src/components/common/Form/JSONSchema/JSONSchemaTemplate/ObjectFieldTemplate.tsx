@@ -19,7 +19,7 @@ import {
 import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, FunctionComponent } from 'react';
+import { createElement, Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
@@ -103,7 +103,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
         </Space>
 
         {AdditionalField &&
-          React.createElement(AdditionalField, {
+          createElement(AdditionalField, {
             data: additionalFieldContent,
           })}
 

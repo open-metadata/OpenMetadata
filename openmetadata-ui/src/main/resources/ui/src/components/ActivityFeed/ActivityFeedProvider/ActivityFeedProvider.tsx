@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,
@@ -110,7 +110,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   }, []);
 
   const fetchUpdatedThread = useCallback(
-    async (id) => {
+    async (id: string) => {
       try {
         const res = await getFeedById(id);
         setSelectedThread(res.data);
@@ -212,7 +212,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
-  const refreshActivityFeed = useCallback((threads) => {
+  const refreshActivityFeed = useCallback((threads: Thread[]) => {
     setEntityThread([...threads]);
   }, []);
 

@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { ErrorBoundary as ErrorBoundaryWrapper } from 'react-error-boundary';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import ErrorFallback from './ErrorFallback';
 
@@ -22,10 +22,10 @@ interface Props {
 }
 
 const ErrorBoundary: React.FC<Props> = ({ children }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const onErrorReset = () => {
-    history.push(ROUTES.HOME);
+    navigate(ROUTES.HOME);
   };
 
   return (

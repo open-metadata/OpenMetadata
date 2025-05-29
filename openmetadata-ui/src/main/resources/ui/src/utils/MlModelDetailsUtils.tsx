@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -27,7 +25,7 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { MlModelDetailPageTabProps } from './MlModel/MlModelClassBase';
 
 // eslint-disable-next-line max-len
@@ -53,7 +51,7 @@ export const getMlModelDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.FEATURES}
-          name={labelMap[EntityTabs.FEATURES] ?? i18n.t('label.feature-plural')}
+          name={labelMap[EntityTabs.FEATURES] ?? t('label.feature-plural')}
         />
       ),
       key: EntityTabs.FEATURES,
@@ -67,7 +65,7 @@ export const getMlModelDetailsPageTabs = ({
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={
             labelMap[EntityTabs.ACTIVITY_FEED] ??
-            i18n.t('label.activity-feed-and-task-plural')
+            t('label.activity-feed-and-task-plural')
           }
         />
       ),
@@ -89,7 +87,7 @@ export const getMlModelDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DETAILS}
-          name={labelMap[EntityTabs.DETAILS] ?? i18n.t('label.detail-plural')}
+          name={labelMap[EntityTabs.DETAILS] ?? t('label.detail-plural')}
         />
       ),
       key: EntityTabs.DETAILS,
@@ -104,7 +102,7 @@ export const getMlModelDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.LINEAGE}
-          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
+          name={labelMap[EntityTabs.LINEAGE] ?? t('label.lineage')}
         />
       ),
       key: EntityTabs.LINEAGE,
@@ -125,7 +123,7 @@ export const getMlModelDetailsPageTabs = ({
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={
             labelMap[EntityTabs.CUSTOM_PROPERTIES] ??
-            i18n.t('label.custom-property-plural')
+            t('label.custom-property-plural')
           }
         />
       ),

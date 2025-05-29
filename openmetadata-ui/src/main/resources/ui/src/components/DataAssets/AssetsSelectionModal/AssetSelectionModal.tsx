@@ -33,7 +33,6 @@ import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
-  default as React,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -154,6 +153,11 @@ export const AssetSelectionModal = ({
       page = 1,
       index = activeFilter,
       updatedQueryFilter,
+    }: {
+      searchText?: string;
+      page?: number;
+      index?: SearchIndex;
+      updatedQueryFilter?: Record<string, unknown>;
     }) => {
       try {
         setIsLoading(true);
