@@ -14,6 +14,7 @@
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import classNames from 'classnames';
 import {
   cloneDeep,
   groupBy,
@@ -416,7 +417,9 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className="m-b-0 d-block break-word"
+                  className={classNames('m-b-0 d-block break-word', {
+                    'text-grey-muted': !isEmpty(displayName),
+                  })}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>

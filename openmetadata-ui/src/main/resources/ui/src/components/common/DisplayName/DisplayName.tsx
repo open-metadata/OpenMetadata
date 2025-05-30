@@ -67,9 +67,11 @@ const DisplayName: React.FC<DisplayNameProps> = ({
     // Show both name and displayName when displayName exists
     return (
       <>
-        {name}
+        <Typography.Text className="break-word text-grey-muted">
+          {name}
+        </Typography.Text>
         <Typography.Text
-          className="m-b-0 d-block break-word"
+          className="d-block break-word"
           data-testid="column-display-name">
           {renderNameWithOptionalLink(displayName, name)}
         </Typography.Text>
@@ -79,9 +81,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
 
   return (
     <div className="flex-column hover-icon-group w-max-full">
-      <Typography.Text
-        className="m-b-0 d-block break-word"
-        data-testid="column-name">
+      <Typography.Text className="m-b-0 d-block" data-testid="column-name">
         {renderMainContent}
       </Typography.Text>
 
