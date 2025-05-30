@@ -52,11 +52,13 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+    SNOWFLAKE_TABLE_OWNERS,
 )
 from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
+    get_table_owner_wrapper,
     get_view_definition_wrapper,
 )
 
@@ -331,6 +333,17 @@ def get_stream_definition(  # pylint: disable=unused-argument
     except Exception:
         pass
     return None
+
+
+@reflection.cache
+def get_table_owner(self, connection, table_name, schema=None, **kw):
+    return get_table_owner_wrapper(
+        self,
+        connection=connection,
+        query=SNOWFLAKE_TABLE_OWNERS,
+        table_name=table_name,
+        schema=schema,
+    )
 
 
 @reflection.cache
