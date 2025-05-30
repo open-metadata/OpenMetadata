@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -35,8 +36,14 @@ export class DashboardServiceClass extends EntityClass {
       },
     },
   };
+  childEntity = {
+    name: `pw-dashboard-${uuid()}`,
+    displayName: `pw-dashboard-${uuid()}`,
+    service: this.entity.name,
+  };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  childrenArrayResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DashboardService);
@@ -44,7 +51,10 @@ export class DashboardServiceClass extends EntityClass {
     this.type = 'Dashboard Service';
   }
 
-  async create(apiContext: APIRequestContext) {
+  async create(
+    apiContext: APIRequestContext,
+    customChildDashboards?: { name: string; displayName: string }[]
+  ) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/dashboardServices',
       {
@@ -56,7 +66,39 @@ export class DashboardServiceClass extends EntityClass {
 
     this.entityResponseData = service;
 
-    return service;
+    if (!isUndefined(customChildDashboards)) {
+      const childDashboardResponseData: ResponseDataType[] = [];
+      for (const child of customChildDashboards) {
+        const childDashboard = {
+          ...child,
+          service: this.entity.name,
+        };
+        const childDashboardResponse = await apiContext.post(
+          '/api/v1/dashboards',
+          {
+            data: childDashboard,
+          }
+        );
+        childDashboardResponseData.push(await childDashboardResponse.json());
+      }
+      this.childrenArrayResponseData = childDashboardResponseData;
+    } else {
+      const childDashboard = {
+        ...this.childEntity,
+      };
+      const childDashboardResponse = await apiContext.post(
+        '/api/v1/dashboards',
+        {
+          data: childDashboard,
+        }
+      );
+      this.childrenArrayResponseData.push(await childDashboardResponse.json());
+    }
+
+    return {
+      service,
+      children: this.childrenArrayResponseData,
+    };
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {

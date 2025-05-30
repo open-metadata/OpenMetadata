@@ -357,3 +357,14 @@ export const reloadAndWaitForNetworkIdle = async (page: Page) => {
     state: 'detached',
   });
 };
+
+export const generateEntityChildren = (entityName: string, count = 25) => {
+  return Array.from({ length: count }, (_, i) => {
+    const id = uuid();
+
+    return {
+      name: `pw-${entityName}-${i + 1}-${id}`,
+      displayName: `pw-${entityName}-${i + 1}-${id}`,
+    };
+  });
+};
