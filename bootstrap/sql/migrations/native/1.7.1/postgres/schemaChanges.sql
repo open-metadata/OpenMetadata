@@ -21,15 +21,13 @@ WHERE
 
 UPDATE dashboard_service_entity
 SET json = jsonb_set(
-    jsonb_set(
-        json,
-        '{connection,config}',
-        (json->'connection'->'config') - 'siteUrl' - 'apiVersion' - 'env'
-    ),
-    '{connection}',
-    json->'connection'
+    json,
+    '{connection,config}',
+    (json->'connection'->'config') - 'siteUrl' - 'apiVersion' - 'env'
 )
-WHERE serviceType = 'Tableau';
+WHERE serviceType = 'Tableau'
+  AND json ?? 'connection'
+  AND json->'connection' ?? 'config';
 
 -- Add runtime: enabled for AutoPilot
 UPDATE apps_marketplace

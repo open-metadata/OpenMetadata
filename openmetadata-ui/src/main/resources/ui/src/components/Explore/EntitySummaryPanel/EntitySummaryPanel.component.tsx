@@ -14,6 +14,7 @@
 import { Card, Typography } from 'antd';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -41,6 +42,7 @@ export default function EntitySummaryPanel({
   entityDetails,
   highlights,
 }: EntitySummaryPanelProps) {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const { getEntityPermission } = usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] =
@@ -87,6 +89,9 @@ export default function EntitySummaryPanel({
       return (
         <ErrorPlaceHolder
           className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-asset'),
+          })}
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
