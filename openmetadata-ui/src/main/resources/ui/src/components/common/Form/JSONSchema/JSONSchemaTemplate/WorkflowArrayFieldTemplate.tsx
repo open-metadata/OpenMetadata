@@ -12,10 +12,13 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import { isArray, isObject, startCase } from 'lodash';
 import React from 'react';
+import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
+import { useClipboard } from '../../../../../hooks/useClipBoard';
+import './workflow-array-field-template.less';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const isFilterPatternField = (id: string) => {
@@ -53,6 +56,29 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
   const options = generateOptions();
+  const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
+    JSON.stringify(value)
+  );
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await onCopyToClipBoard();
+    props.formContext?.onClipboardUpdate?.(JSON.stringify(value));
+  };
+
+  const handlePaste = async () => {
+    const text = await onPasteFromClipBoard();
+    if (text) {
+      try {
+        const parsedValue = JSON.parse(text);
+        if (Array.isArray(parsedValue)) {
+          props.onChange(parsedValue);
+        }
+      } catch (error) {
+        // Do nothing
+      }
+    }
+  };
 
   return (
     <Row>
@@ -63,7 +89,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           <Typography>{startCase(props.name)}</Typography>
         )}
       </Col>
-      <Col span={24}>
+      <Col className="select-container" span={24}>
         <Select
           className="m-t-xss w-full"
           data-testid="workflow-array-field-template"
@@ -73,12 +99,35 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           open={options ? undefined : false}
           options={options}
           placeholder={placeholder}
+          tokenSeparators={[',']}
           value={value}
           onBlur={() => props.onBlur(id, value)}
           onChange={(value) => props.onChange(value)}
           onFocus={handleFocus}
-          {...(!options && { tokenSeparators: [','] })}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+              e.preventDefault();
+              handlePaste();
+            }
+          }}
         />
+
+        <div className="workflow-array-field-divider" />
+        <Tooltip
+          overlayClassName="custom-tooltip"
+          placement="top"
+          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
+          <Button
+            className="workflow-array-field-copy-button remove-button-default-styling"
+            icon={<CopyLeft />}
+            size="small"
+            type="text"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopy(e);
+            }}
+          />
+        </Tooltip>
       </Col>
     </Row>
   );
