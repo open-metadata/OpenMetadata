@@ -94,6 +94,8 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.AzureAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.JsonUtils;
 import org.pac4j.core.context.HttpConstants;
@@ -130,10 +132,12 @@ public class AuthenticationCodeFlowHandler {
   private final int tokenValidity;
   private final String maxAge;
   private final String promptType;
+  private final AuthenticatorHandler authenticatorHandler;
 
   public AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConfiguration) {
+      AuthorizerConfiguration authorizerConfiguration,
+      AuthenticatorHandler authenticatorHandler) {
     // Assert oidcConfig and Callback Url
     CommonHelper.assertNotNull(
         "OidcConfiguration", authenticationConfiguration.getOidcConfiguration());
@@ -157,6 +161,7 @@ public class AuthenticationCodeFlowHandler {
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
+    this.authenticatorHandler = authenticatorHandler;
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -337,6 +342,13 @@ public class AuthenticationCodeFlowHandler {
 
       // Put Credentials in Session
       req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+      String accessToken = credentials.getAccessToken().getValue();
+
+      if (client instanceof AzureAd2Client
+          && authenticatorHandler instanceof AzureAuthenticator azureAuthenticator) {
+        JWT idToken = credentials.getIdToken();
+        azureAuthenticator.validateGroupAndRoleMapping(idToken, accessToken);
+      }
 
       // Redirect
       sendRedirectWithToken(req, resp, credentials);
