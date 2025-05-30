@@ -51,6 +51,17 @@ export class DashboardServiceClass extends EntityClass {
     this.type = 'Dashboard Service';
   }
 
+  private async createDashboardChild(
+    apiContext: APIRequestContext,
+    dashboardData: { name: string; displayName: string; service: string }
+  ): Promise<ResponseDataType> {
+    const response = await apiContext.post('/api/v1/dashboards', {
+      data: dashboardData,
+    });
+
+    return await response.json();
+  }
+
   async create(
     apiContext: APIRequestContext,
     customChildDashboards?: { name: string; displayName: string }[]
@@ -66,34 +77,33 @@ export class DashboardServiceClass extends EntityClass {
 
     this.entityResponseData = service;
 
+    const childDashboardResponseData: ResponseDataType[] = [];
+
     if (!isUndefined(customChildDashboards)) {
-      const childDashboardResponseData: ResponseDataType[] = [];
       for (const child of customChildDashboards) {
         const childDashboard = {
           ...child,
           service: this.entity.name,
         };
-        const childDashboardResponse = await apiContext.post(
-          '/api/v1/dashboards',
-          {
-            data: childDashboard,
-          }
+
+        const responseData = await this.createDashboardChild(
+          apiContext,
+          childDashboard
         );
-        childDashboardResponseData.push(await childDashboardResponse.json());
+        childDashboardResponseData.push(responseData);
       }
-      this.childrenArrayResponseData = childDashboardResponseData;
     } else {
       const childDashboard = {
         ...this.childEntity,
       };
-      const childDashboardResponse = await apiContext.post(
-        '/api/v1/dashboards',
-        {
-          data: childDashboard,
-        }
+      const responseData = await this.createDashboardChild(
+        apiContext,
+        childDashboard
       );
-      this.childrenArrayResponseData.push(await childDashboardResponse.json());
+      childDashboardResponseData.push(responseData);
     }
+
+    this.childrenArrayResponseData = childDashboardResponseData;
 
     return {
       service,

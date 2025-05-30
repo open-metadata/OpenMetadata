@@ -12,11 +12,8 @@
  */
 import test, { expect } from '@playwright/test';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
-import {
-  createNewPage,
-  generateEntityChildren,
-  redirectToHomePage,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { generateEntityChildren } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
