@@ -85,13 +85,34 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = async () => {
-      try {
-        // If signout fails, still clean up local state
-        await userManager.removeUser();
-      } finally {
-        // Cleanup application state
-        handleSuccessfulLogout();
-      }
+      return new Promise<void>((resolve, reject) => {
+        userManager.metadataService.getEndSessionEndpoint().then((endpoint) => {
+          if (endpoint) {
+            // Perform singout from sso if endSessionEndpointAvailable
+            userManager
+              .signoutRedirect({
+                post_logout_redirect_uri:
+                  window.location.origin + ROUTES.SIGNIN,
+              })
+              .then(() => {
+                // Cleanup application state
+                handleSuccessfulLogout();
+                resolve();
+              })
+              .catch((error) => {
+                reject(error);
+              });
+          } else {
+            try {
+              // If signout fails, still clean up local state
+              userManager.removeUser().then(resolve);
+            } finally {
+              // Cleanup application state
+              handleSuccessfulLogout();
+            }
+          }
+        });
+      });
     };
 
     // Performs silent signIn and returns with IDToken

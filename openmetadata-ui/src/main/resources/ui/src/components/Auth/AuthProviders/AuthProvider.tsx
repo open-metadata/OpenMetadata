@@ -184,7 +184,9 @@ export const AuthProvider = ({
   const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
+    // Let SSO complete the logout process
     await authenticatorRef.current?.invokeLogout();
+
     setIsAuthenticated(false);
 
     // reset the user details on logout
