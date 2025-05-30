@@ -719,6 +719,8 @@ site_menu:
   - category: Collate AI
     url: /collateai
 
+  - category: Collate AI / Autopilot
+    url: /collateai/collate-ai-autopilot-workflows
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
   - category: Collate AI / Collate AI Tier Agent
