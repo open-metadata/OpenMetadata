@@ -1,0 +1,40 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'io.freefair.lombok'
+}
+
+dependencies {
+    api "org.slf4j:slf4j-api:${slf4jVersion}"
+    
+    // Dropwizard Jersey
+    api("io.dropwizard:dropwizard-jersey:${dropwizardVersion}") {
+        exclude group: 'ch.qos.logback', module: 'logback-core'
+        exclude group: 'ch.qos.logback', module: 'logback-classic'
+        exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
+    }
+    
+    // JSON Schema to POJO generation
+    api("org.jsonschema2pojo:jsonschema2pojo-core:${jsonschema2pojoVersion}") {
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+        exclude group: 'com.google.code.gson', module: 'gson'
+        exclude group: 'org.yaml', module: 'snakeyaml'
+    }
+    
+    // Commons Codec
+    api 'commons-codec:commons-codec:1.17.1'
+    
+    // Test dependencies
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+}

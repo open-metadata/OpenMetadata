@@ -1,0 +1,240 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'distribution'
+}
+
+description = 'OpenMetadata binary distribution'
+
+dependencies {
+    implementation project(':openmetadata-service')
+}
+
+configurations {
+    uiDependency {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    uiDependency project(':openmetadata-ui')
+}
+
+// Distribution configuration
+distributions {
+    main {
+        distributionBaseName = 'openmetadata'
+        contents {
+            // Include service JAR and dependencies
+            from(project(':openmetadata-service').configurations.runtimeClasspath) {
+                into 'libs'
+            }
+            from(project(':openmetadata-service').tasks.jar) {
+                into 'libs'
+            }
+            
+            // Include UI resources if available
+            from(project(':openmetadata-ui').tasks.processResources) {
+                into 'ui'
+            }
+            
+            // Include configuration files
+            from('../conf') {
+                into 'conf'
+            }
+            
+            // Include scripts
+            from('../bin') {
+                into 'bin'
+                fileMode = 0755
+            }
+            
+            // Include bootstrap
+            from('../bootstrap') {
+                into 'bootstrap'
+                fileMode = 0755
+            }
+            
+            // Include README
+            from('../README.md')
+        }
+    }
+    
+    backendOnly {
+        distributionBaseName = 'openmetadata-backend'
+        contents {
+            // Include service JAR and dependencies
+            from(project(':openmetadata-service').configurations.runtimeClasspath) {
+                into 'libs'
+            }
+            from(project(':openmetadata-service').tasks.jar) {
+                into 'libs'
+            }
+            
+            // Include configuration files
+            from('../conf') {
+                into 'conf'
+            }
+            
+            // Include scripts
+            from('../bin') {
+                into 'bin'
+                fileMode = 0755
+            }
+            
+            // Include bootstrap
+            from('../bootstrap') {
+                into 'bootstrap'
+                fileMode = 0755
+            }
+            
+            // Include README
+            from('../README.md')
+        }
+    }
+}
+
+// Task to copy dependencies (equivalent to Maven dependency:copy-dependencies)
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "${buildDir}/libs"
+}
+
+// Backend-only distribution task
+task backendTar(type: Tar) {
+    group = 'distribution'
+    description = 'Creates a TAR archive containing the backend-only distribution'
+    archiveBaseName = 'openmetadata-backend'
+    compression = Compression.GZIP
+    archiveExtension = 'tar.gz'
+    
+    // Include service JAR and dependencies
+    from(project(':openmetadata-service').configurations.runtimeClasspath) {
+        into 'libs'
+    }
+    from(project(':openmetadata-service').tasks.jar) {
+        into 'libs'
+    }
+    
+    // Include configuration files
+    from('../conf') {
+        into 'conf'
+    }
+    
+    // Include scripts
+    from('../bin') {
+        into 'bin'
+        fileMode = 0755
+    }
+    
+    // Include bootstrap
+    from('../bootstrap') {
+        into 'bootstrap'
+        fileMode = 0755
+    }
+    
+    // Include README
+    from('../README.md')
+}
+
+task backendZip(type: Zip) {
+    group = 'distribution'
+    description = 'Creates a ZIP archive containing the backend-only distribution'
+    archiveBaseName = 'openmetadata-backend'
+    
+    // Include service JAR and dependencies
+    from(project(':openmetadata-service').configurations.runtimeClasspath) {
+        into 'libs'
+    }
+    from(project(':openmetadata-service').tasks.jar) {
+        into 'libs'
+    }
+    
+    // Include configuration files
+    from('../conf') {
+        into 'conf'
+    }
+    
+    // Include scripts
+    from('../bin') {
+        into 'bin'
+        fileMode = 0755
+    }
+    
+    // Include bootstrap
+    from('../bootstrap') {
+        into 'bootstrap'
+        fileMode = 0755
+    }
+    
+    // Include README
+    from('../README.md')
+}
+
+// Default distribution includes UI
+distTar {
+    dependsOn ':openmetadata-ui:processResources'
+    compression = Compression.GZIP
+    archiveExtension = 'tar.gz'
+}
+
+distZip {
+    dependsOn ':openmetadata-ui:processResources'
+}
+
+// Make backend-only tasks available
+assemble.dependsOn backendTar, backendZip
+
+// Install task
+installDist {
+    dependsOn ':openmetadata-ui:processResources'
+}
+
+// Backend-only install
+task installBackend(type: Sync) {
+    group = 'distribution'
+    description = 'Installs the backend-only distribution into a directory'
+    into "${buildDir}/install/openmetadata-backend"
+    
+    // Include service JAR and dependencies
+    from(project(':openmetadata-service').configurations.runtimeClasspath) {
+        into 'libs'
+    }
+    from(project(':openmetadata-service').tasks.jar) {
+        into 'libs'
+    }
+    
+    // Include configuration files
+    from('../conf') {
+        into 'conf'
+    }
+    
+    // Include scripts
+    from('../bin') {
+        into 'bin'
+        fileMode = 0755
+    }
+    
+    // Include bootstrap
+    from('../bootstrap') {
+        into 'bootstrap'
+        fileMode = 0755
+    }
+    
+    // Include README
+    from('../README.md')
+}
+
+build.dependsOn installDist, installBackend

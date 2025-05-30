@@ -1,0 +1,184 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+plugins {
+    id 'java-platform'
+    id 'maven-publish'
+    id 'signing'
+    id 'org.sonarqube' version '4.4.1.3373'
+    id 'com.diffplug.spotless' version '6.25.0'
+    id 'jacoco'
+    id 'org.gradle.test-retry' version '1.5.8' apply false
+    id 'io.freefair.lombok' version '8.6' apply false
+}
+
+allprojects {
+    group = 'org.open-metadata'
+    version = '1.8.0-SNAPSHOT'
+    
+    repositories {
+        mavenCentral()
+        maven {
+            name = "Apache Snapshots"
+            url = "https://repository.apache.org/content/repositories/snapshots/"
+            mavenContent {
+                snapshotsOnly()
+            }
+        }
+        maven {
+            name = "AWS Redshift"
+            url = "https://s3.amazonaws.com/redshift-maven-repository/release"
+        }
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+    apply plugin: 'jacoco'
+    apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'org.gradle.test-retry'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    dependencies {
+        // Test dependencies
+        testImplementation platform('org.junit:junit-bom:5.9.3')
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+        testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+        testImplementation 'org.awaitility:awaitility:4.2.2'
+    }
+
+    // Spotless configuration
+    spotless {
+        java {
+            target 'src/main/java/**/*.java', 'src/test/java/**/*.java'
+            googleJavaFormat('1.17.0').reflowLongStrings(false).formatJavadoc(false)
+            removeUnusedImports()
+        }
+    }
+
+    // Test configuration
+    test {
+        useJUnitPlatform()
+        maxParallelForks = Runtime.runtime.availableProcessors()
+        testLogging {
+            events "passed", "skipped", "failed"
+        }
+        retry {
+            maxRetries = 2
+            maxFailures = 5
+        }
+    }
+
+    // JaCoCo configuration
+    jacoco {
+        toolVersion = "0.8.10"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    // Publishing configuration
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                
+                pom {
+                    name = project.name
+                    description = 'OpenMetadata is an all-in-one platform for data discovery, data lineage, data quality, observability, governance, and team collaboration.'
+                    url = 'https://github.com/open-metadata/OpenMetadata'
+                    
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    
+                    developers {
+                        developer {
+                            name = 'OpenMetadata'
+                            email = 'openmetadata@getcollate.io'
+                            organization = 'Get Collate'
+                            organizationUrl = 'https://getcollate.io/'
+                        }
+                    }
+                    
+                    scm {
+                        connection = 'scm:git:git@github.com:Open-Metadata/OpenMetadata'
+                        developerConnection = 'scm:git:git@github.com:Open-Metadata/OpenMetadata'
+                        url = 'scm:git:git@github.com:Open-Metadata/OpenMetadata'
+                    }
+                }
+            }
+        }
+        
+        repositories {
+            maven {
+                name = "OSSRH"
+                url = version.toString().endsWith('SNAPSHOT') ?
+                    "https://s01.oss.sonatype.org/content/repositories/snapshots" :
+                    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+                credentials {
+                    username = project.findProperty("ossrhUsername") ?: ""
+                    password = project.findProperty("ossrhPassword") ?: ""
+                }
+            }
+        }
+    }
+
+    // Signing configuration
+    signing {
+        required { gradle.taskGraph.hasTask("publish") }
+        sign publishing.publications.maven
+    }
+
+    // Javadoc configuration
+    javadoc {
+        options.addStringOption('Xdoclint:none', '-quiet')
+        if (JavaVersion.current().isJava9Compatible()) {
+            options.addBooleanOption('html5', true)
+        }
+    }
+}
+
+// SonarQube configuration
+sonar {
+    properties {
+        property "sonar.projectKey", "open-metadata_OpenMetadata"
+        property "sonar.organization", "open-metadata"
+        property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.working.directory", "build/sonar"
+        property "sonar.language", "java"
+        property "sonar.dynamicAnalysis", "reuseReports"
+    }
+}
+
+// Wrapper configuration
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = Wrapper.DistributionType.ALL
+}

@@ -22,7 +22,8 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-
+.gradle
+.gradle/
 catalog-services/catalog-services.iml
 
 # local docker volume
