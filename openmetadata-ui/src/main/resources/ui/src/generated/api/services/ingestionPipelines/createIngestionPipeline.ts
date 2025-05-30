@@ -3327,7 +3327,7 @@ export interface ConfigClass {
     /**
      * Underlying storage connection
      */
-    packageConnection?: SSISProjectsLocationLocalPathOrS3Bucket;
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -4881,14 +4881,10 @@ export interface OracleConnectionType {
 }
 
 /**
- * Underlying storage connection
- *
  * S3 Connection.
- *
- * Local Projects Path for SSIS.
  */
-export interface SSISProjectsLocationLocalPathOrS3Bucket {
-    awsConfig?: AWSCredentials;
+export interface S3Connection {
+    awsConfig: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -4903,22 +4899,15 @@ export interface SSISProjectsLocationLocalPathOrS3Bucket {
     /**
      * Service Type
      */
-    type?: SSISProjectsLocationLocalPathOrS3BucketType;
-    /**
-     * Path leading to your projects
-     */
-    projectsPath?: string;
+    type?: S3Type;
 }
 
 /**
  * Service Type
  *
  * S3 service type
- *
- * Local storage service type
  */
-export enum SSISProjectsLocationLocalPathOrS3BucketType {
-    Local = "local",
+export enum S3Type {
     S3 = "S3",
 }
 

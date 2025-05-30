@@ -11,6 +11,11 @@
         "type": "string",
         "enum": ["SSIS"],
         "default": "SSIS"
+      },
+      "localProjectsPath": {
+        "title": "Local Projects Path",
+        "description": "Path leading to your projects",
+        "type": "string"
       }
     },
     "properties": {
@@ -33,7 +38,7 @@
             "$ref": "../storage/s3Connection.json"
           },
           {
-            "$ref": "../pipeline/ssis/localProjectsPath.json"
+            "$ref": "#/definitions/localProjectsPath"
           }
         ]
       },

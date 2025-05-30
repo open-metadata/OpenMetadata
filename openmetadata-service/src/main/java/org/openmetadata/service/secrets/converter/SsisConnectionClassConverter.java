@@ -2,7 +2,6 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
-import org.openmetadata.schema.services.connections.pipeline.ssis.localProjectsPath;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -10,7 +9,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class SsisConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(S3Connection.class, localProjectsPath.class);
+      List.of(S3Connection.class, String.class);
 
   public SsisConnectionClassConverter() {
     super(SSISConnection.class);

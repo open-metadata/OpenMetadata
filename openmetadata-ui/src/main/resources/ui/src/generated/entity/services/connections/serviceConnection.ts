@@ -1049,6 +1049,10 @@ export interface ConfigClass {
      */
     useSSL?: boolean;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
@@ -1484,7 +1488,7 @@ export interface ConfigClass {
     /**
      * Underlying storage connection
      */
-    packageConnection?: SSISProjectsLocationLocalPathOrS3Bucket;
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -2683,6 +2687,10 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
      */
@@ -3182,6 +3190,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -3261,14 +3273,10 @@ export interface OracleConnectionType {
 }
 
 /**
- * Underlying storage connection
- *
  * S3 Connection.
- *
- * Local Projects Path for SSIS.
  */
-export interface SSISProjectsLocationLocalPathOrS3Bucket {
-    awsConfig?: AWSCredentials;
+export interface S3Connection {
+    awsConfig: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -3283,22 +3291,15 @@ export interface SSISProjectsLocationLocalPathOrS3Bucket {
     /**
      * Service Type
      */
-    type?: SSISProjectsLocationLocalPathOrS3BucketType;
-    /**
-     * Path leading to your projects
-     */
-    projectsPath?: string;
+    type?: S3Type;
 }
 
 /**
  * Service Type
  *
  * S3 service type
- *
- * Local storage service type
  */
-export enum SSISProjectsLocationLocalPathOrS3BucketType {
-    Local = "local",
+export enum S3Type {
     S3 = "S3",
 }
 
