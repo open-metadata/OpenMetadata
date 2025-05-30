@@ -22,7 +22,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.utils.logger import cli_logger, redacted_config
-from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
 logger = cli_logger()
@@ -37,6 +36,9 @@ def run_classification(config_path: Path) -> None:
 
     config_dict = None
     try:
+        # pylint: disable=import-outside-toplevel
+        from metadata.workflow.classification import AutoClassificationWorkflow
+
         config_dict = load_config_file(config_path)
         logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
         workflow = AutoClassificationWorkflow.create(config_dict)
