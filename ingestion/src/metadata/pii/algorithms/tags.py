@@ -107,6 +107,7 @@ class PIICategoryTag(enum.Enum):
     PASSWORD = "Password"
     BANK_NUMBER = "BankNumber"
     PERSON = "Person"
+    BIRTH_DATE = "BirthDate"
     GENDER = "Gender"
     NRP = "NRP"
     ADDRESS = "Address"

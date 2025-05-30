@@ -26,7 +26,8 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.algorithms.tags import PIISensitivityTag
+from metadata.pii.algorithms.classifiers import HeuristicPIIClassifier
+from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 from metadata.pii.algorithms.utils import get_top_classes, normalize_scores
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
@@ -50,11 +51,10 @@ class PIIProcessor(AutoClassificationProcessor):
 
         from metadata.pii.algorithms.classifiers import (  # pylint: disable=import-outside-toplevel
             ColumnClassifier,
-            PIISensitiveClassifier,
+            HeuristicPIIClassifier,
         )
 
-        self._classifier: ColumnClassifier[PIISensitivityTag] = PIISensitiveClassifier()
-
+        self._pii_classifier: ColumnClassifier[PIITag] = HeuristicPIIClassifier()
         self.confidence_threshold = self.source_config.confidence / 100
         self._tolerance = 0.01
 

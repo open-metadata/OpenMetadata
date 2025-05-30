@@ -12,10 +12,8 @@
 Classifier for PII detection and sensitivity tagging.
 """
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from typing import (
     Any,
-    DefaultDict,
     Dict,
     Generic,
     Hashable,
@@ -49,6 +47,7 @@ from metadata.pii.algorithms.presidio_utils import (
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 from metadata.pii.algorithms.tags_ops import get_pii_sensitivity
+from metadata.pii.algorithms.utils import group_by_average
 
 T = TypeVar("T", bound=Hashable)
 
@@ -168,18 +167,5 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
         pii_tags = self.classifier.predict_scores(
             sample_data, column_name, column_data_type
         )
-        results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)
-        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)
 
-        for tag, score in pii_tags.items():
-            # Convert PIITag to PIISensitivityTag
-            pii_sensitivity = get_pii_sensitivity(tag)
-            results[pii_sensitivity] += score
-            counts[pii_sensitivity] += 1
-
-        # Normalize the scores
-        for tag in results:
-            if counts[tag] > 0:
-                results[tag] /= counts[tag]
-
-        return results
+        return group_by_average(pii_tags, get_pii_sensitivity)

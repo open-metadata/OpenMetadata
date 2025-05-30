@@ -11,9 +11,11 @@
 """
 Utility functions for PII algorithms
 """
-from typing import Mapping, Sequence, TypeVar
+from collections import defaultdict
+from typing import Callable, DefaultDict, Mapping, Sequence, TypeVar
 
 T = TypeVar("T")
+S = TypeVar("S")
 
 
 def normalize_scores(scores: Mapping[T, float], tol: float = 0.01) -> Mapping[T, float]:
@@ -36,3 +38,28 @@ def get_top_classes(scores: Mapping[T, float], n: int, threshold: float) -> Sequ
     sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     top_classes = [key for key, score in sorted_scores if score >= threshold]
     return top_classes[:n]
+
+
+def group_by_average(
+    scores: Mapping[T, float], key_fn: Callable[[T], S]
+) -> Mapping[S, float]:
+    """
+    Group scores by a key function, computing the average score per group.
+
+    This maintains the invariant that scores are in the range [0, 1],
+    as long as the input scores are in that range.
+    """
+    result: DefaultDict[S, float] = defaultdict(float)
+    counts: DefaultDict[S, int] = defaultdict(int)
+
+    for key, score in scores.items():
+        group = key_fn(key)
+        result[group] += score
+        counts[group] += 1
+
+    # Calculate the average for each group
+    for group in result:
+        # Count is guaranteed to be non-zero since we only add to it
+        result[group] /= counts[group]
+
+    return result
