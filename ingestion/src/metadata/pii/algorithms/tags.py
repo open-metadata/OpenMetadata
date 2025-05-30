@@ -25,6 +25,9 @@ class PIISensitivityTag(enum.Enum):
 class PIITag(enum.Enum):
     """
     PII Tags (borrowed from Presidio https://microsoft.github.io/presidio/supported_entities/).
+    The values of these tags are valid Presidio entity names, changing them
+    will break the integration with Presidio.
+    A better name for this enum would have been `PredidionPII`.
     """
 
     # Global
@@ -92,20 +95,32 @@ class PIITag(enum.Enum):
         """
         return [tag.value for tag in cls]
 
-    def sensitivity(self) -> PIISensitivityTag:
-        """
-        Get the sensitivity level of the PII tag.
-        This map is opinionated and can be changed in the future according to users' needs.
-        """
-        if self in DEFAULT_NON_PII_SENSITIVE:
-            return PIISensitivityTag.NONSENSITIVE
-        return PIISensitivityTag.SENSITIVE
 
+@enum.unique
+class PIICategoryTag(enum.Enum):
+    """
+    PII Category Tags.
+    These tags are used to categorize the PII tags into broader categories,
+    for instance, to show the PII tags in the UI.
+    """
 
-DEFAULT_NON_PII_SENSITIVE = (
-    PIITag.DATE_TIME,
-    PIITag.NRP,
-    PIITag.LOCATION,
-    PIITag.PHONE_NUMBER,
-    PIITag.URL,
-)
+    PASSWORD = "Password"
+    BANK_NUMBER = "BankNumber"
+    PERSON = "Person"
+    GENDER = "Gender"
+    NRP = "NRP"
+    ADDRESS = "Address"
+    CREDIT_CARD = "CreditCardNumber"
+    CRYPTO = "Crypto"
+    DATE_TIME = "DateTime"
+    EMAIL_ADDRESS = "Email"
+    IBAN_CODE = "IBANCode"
+    IP_ADDRESS = "IPAddress"
+    LOCATION = "Location"
+    PHONE_NUMBER = "PhoneNumber"
+    MEDICAL_LICENSE = "MedicalLicense"
+    URL = "URL"
+    DRIVER_LICENSE = "DriverLicense"
+    NATIONAL_ID = "NationalID"
+    PASSPORT = "Passport"
+    VAT_CODE = "VATCode"
