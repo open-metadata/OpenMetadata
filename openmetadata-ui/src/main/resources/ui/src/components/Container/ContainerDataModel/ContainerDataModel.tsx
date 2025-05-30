@@ -63,6 +63,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
 
@@ -106,6 +109,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       TagFilterOptions[]
     >;
   }, [dataModel?.columns]);
+
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -184,10 +191,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           <TableTags<Column>
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -208,10 +217,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           <TableTags<Column>
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -225,6 +236,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       hasTagEditAccess,
       hasGlossaryTermEditAccess,
       hasDescriptionEditAccess,
+      openTagDropdownKey,
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,

@@ -105,6 +105,9 @@ const SchemaTable = () => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
+  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
+    null
+  );
 
   const [editColumn, setEditColumn] = useState<Column>();
 
@@ -204,6 +207,10 @@ const SchemaTable = () => {
   useEffect(() => {
     fetchTestCaseSummary();
   }, [tableFqn]);
+
+  const handleOpenTagDropdownKey = (key: string | null): void => {
+    setOpenTagDropdownKey(key);
+  };
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -481,10 +488,12 @@ const SchemaTable = () => {
           <TableTags<Column>
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={editTagsPermission}
             index={index}
             isReadOnly={deleted}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -505,10 +514,12 @@ const SchemaTable = () => {
           <TableTags<Column>
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
+            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={editGlossaryTermsPermission}
             index={index}
             isReadOnly={deleted}
+            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -551,6 +562,8 @@ const SchemaTable = () => {
       onThreadLinkSelect,
       tagFilter,
       testCaseCounts,
+      openTagDropdownKey,
+      handleOpenTagDropdownKey,
     ]
   );
 
