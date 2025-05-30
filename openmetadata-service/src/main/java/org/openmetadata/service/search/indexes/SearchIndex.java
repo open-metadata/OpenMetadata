@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -108,6 +109,11 @@ public interface SearchIndex {
             : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
     map.put("totalVotes", totalVotes);
     map.put("descriptionStatus", getDescriptionStatus(entity));
+
+    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
+    map.put(
+        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();

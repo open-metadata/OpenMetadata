@@ -446,6 +446,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "childrenCount": {
         "type": "integer"
       }

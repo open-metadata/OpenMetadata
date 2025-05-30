@@ -650,6 +650,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "columnDescriptionStatus": {
         "type": "keyword"
       },
