@@ -512,7 +512,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             description = "DataProduct for instance {id} is not found")
       })
   public Response addFollower(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the DataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
@@ -529,9 +528,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
-      operationId = "deleteFollower",
+      operationId = "deleteFollowerFromDataProduct",
       summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the entity.",
+      description = "Remove the user identified `userId` as a follower of the dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -542,7 +541,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                     schema = @Schema(implementation = ChangeEvent.class)))
       })
   public Response deleteFollower(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
