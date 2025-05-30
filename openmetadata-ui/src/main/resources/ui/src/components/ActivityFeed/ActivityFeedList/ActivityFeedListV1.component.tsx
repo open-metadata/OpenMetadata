@@ -14,10 +14,10 @@ import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 
@@ -35,6 +35,10 @@ interface ActivityFeedListV1Props {
     showRepliesContainer?: boolean;
   };
   selectedThread?: Thread;
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
+  onSave?: (message: string) => void;
 }
 
 const ActivityFeedListV1 = ({
@@ -51,6 +55,10 @@ const ActivityFeedListV1 = ({
   isForFeedTab = false,
   emptyPlaceholderText,
   selectedThread,
+  isAnnouncementTab,
+  updateAnnouncementThreads,
+  permissions,
+  onSave,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -72,14 +80,21 @@ const ActivityFeedListV1 = ({
     () =>
       entityThread.map((feed) => (
         <FeedPanelBodyV1
+          className={`activity-feed-announcement ${
+            activeFeedId === feed.id ? 'announcement-active' : ''
+          }`}
           componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
+          isAnnouncementTab={isAnnouncementTab}
           isForFeedTab={isForFeedTab}
           key={feed.id}
+          permissions={permissions}
           showThread={showThread}
+          updateAnnouncementThreads={updateAnnouncementThreads}
           onFeedClick={onFeedClick}
+          onSave={onSave}
         />
       )),
     [
@@ -102,7 +117,7 @@ const ActivityFeedListV1 = ({
         className="h-full p-x-md"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph
@@ -110,13 +125,13 @@ const ActivityFeedListV1 = ({
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolderNew>
       </div>
     );
   }
 
   return (
-    <div className="feed-list-container p-md" id="feedData">
+    <div className="feed-list-container p-t-0" id="feedData">
       {feeds}
     </div>
   );

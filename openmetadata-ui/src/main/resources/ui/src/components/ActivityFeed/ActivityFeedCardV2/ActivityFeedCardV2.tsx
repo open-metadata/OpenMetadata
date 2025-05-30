@@ -11,14 +11,27 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Avatar, Col, Input, Row } from 'antd';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
+import { t } from 'i18next';
+import _, { isEmpty, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { GeneratedBy } from '../../../generated/entity/feed/thread';
+import {
+  AnnouncementDetails,
+  GeneratedBy,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { updateThreadData } from '../../../utils/FeedUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import FeedCardBodyV1 from '../ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
+import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card-v2.less';
@@ -38,11 +51,17 @@ const ActivityFeedCardV2 = ({
     showThreadIcon: true,
     showRepliesContainer: true,
   },
+  isAnnouncementTab = false,
+  updateAnnouncementThreads,
+  permissions,
+  onSave,
 }: Readonly<ActivityFeedCardV2Props>) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
-  const { updateFeed } = useActivityFeedProvider();
-
+  const { updateFeed, fetchUpdatedThread } = useActivityFeedProvider();
+  const [isEditAnnouncement, setIsEditAnnouncement] = useState<boolean>(false);
+  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
+  const { currentUser } = useApplicationStore();
   const postLength = useMemo(
     () => feed?.posts?.length ?? 0,
     [feed?.posts?.length]
@@ -50,6 +69,7 @@ const ActivityFeedCardV2 = ({
 
   const onEditPost = () => {
     setIsEditPost(!isEditPost);
+    !isPost && setIsEditAnnouncement(!isEditAnnouncement); // do not open Edit Announcement Modal is its a post
   };
 
   const handleMouseEnter = () => {
@@ -67,27 +87,116 @@ const ActivityFeedCardV2 = ({
     setIsEditPost(!isEditPost);
   };
 
+  const updateThreadHandler = async (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ): Promise<void> => {
+    await updateThreadData(threadId, postId, isThread, data, noop);
+    await fetchUpdatedThread(threadId);
+  };
+  const handleAnnouncementUpdate = async (
+    title: string,
+    announcement: AnnouncementDetails
+  ) => {
+    const existingAnnouncement = {
+      ...feed,
+      announcement: feed.announcement,
+    };
+
+    const updatedAnnouncement = {
+      ...feed,
+      message: title,
+      announcement,
+    };
+
+    const isAnnouncementTimeUpdated =
+      _.isEqual(
+        existingAnnouncement?.announcement?.startTime,
+        updatedAnnouncement?.announcement?.startTime * 1000
+      ) &&
+      _.isEqual(
+        existingAnnouncement?.announcement?.endTime,
+        updatedAnnouncement?.announcement?.endTime * 1000
+      );
+
+    const patch = compare(existingAnnouncement, updatedAnnouncement);
+
+    if (!isEmpty(patch)) {
+      updateThreadHandler(feed.id, feed.id, true, patch);
+      if (isAnnouncementTab) {
+        updateAnnouncementThreads && updateAnnouncementThreads(); // if its Announcement tab in service page
+      } else {
+        !isAnnouncementTimeUpdated && // refetch new announcements only if announcements timings are updated
+          updateAnnouncementThreads &&
+          updateAnnouncementThreads();
+      }
+    }
+
+    setIsEditAnnouncement(false);
+  };
+  const repliesPostAvatarGroup = useMemo(() => {
+    return (
+      <Avatar.Group>
+        {(feed.posts ?? []).map((u) => (
+          <ProfilePicture
+            avatarType="outlined"
+            key={u.id}
+            name={u.from}
+            width="18"
+          />
+        ))}
+      </Avatar.Group>
+    );
+  }, [feed.posts]);
+  const isAnnouncementWithRepliesVisible =
+    feed.type === ThreadType.Announcement &&
+    !isPost &&
+    componentsVisibility.showRepliesContainer;
+
+  const isActivityFeedCardSidebarVisible =
+    feed.type !== ThreadType.Announcement ||
+    (feed.type === ThreadType.Announcement &&
+      !componentsVisibility.showRepliesContainer);
+
   return (
     <div
       className={classNames(
         'feed-card-v2-container p-sm',
         {
-          active: isActive,
+          active: isActive && feed.type !== ThreadType.Announcement,
+          'announcement-active':
+            isActive && feed.type === ThreadType.Announcement,
+          'announcement-gap': feed.type === ThreadType.Announcement,
         },
         className
-      )}>
-      <div
-        className={classNames('feed-card-v2-sidebar', {
-          'feed-card-v2-post-sidebar': isPost,
-        })}>
-        <ProfilePicture
-          avatarType="outlined"
-          name={post.from}
-          size={isPost ? 28 : 30}
-          width={isPost ? '28' : '30'}
-        />
-      </div>
-      <Row className="w-full" gutter={[0, 10]}>
+      )}
+      data-testid="activity-feed-card-v2">
+      {isAnnouncementWithRepliesVisible && (
+        <Col className="avatar-column d-flex flex-column items-center justify-between">
+          <UserPopOverCard userName={post.from} />
+
+          {repliesPostAvatarGroup}
+        </Col>
+      )}
+      {isActivityFeedCardSidebarVisible && (
+        <div
+          className={classNames('feed-card-v2-sidebar', {
+            'feed-card-v2-post-sidebar': isPost,
+          })}>
+          <ProfilePicture
+            avatarType="outlined"
+            name={post.from}
+            size={isPost ? 28 : 30}
+            width={isPost ? '28' : '30'}
+          />
+        </div>
+      )}
+      <Row
+        className="w-full"
+        gutter={[0, 10]}
+        style={{ whiteSpace: 'pre-wrap' }}>
         <Col
           className={classNames('feed-card-v2', {
             'feed-reply-card-v2': isPost,
@@ -105,6 +214,7 @@ const ActivityFeedCardV2 = ({
                 feed={feed}
                 fieldName={feed.feedInfo?.fieldName as EntityField}
                 fieldOperation={feed.fieldOperation}
+                isAnnouncementTab={isAnnouncementTab}
                 isEntityFeed={isPost}
                 timeStamp={post.postTs}
               />
@@ -124,8 +234,10 @@ const ActivityFeedCardV2 = ({
               <FeedCardFooter
                 componentsVisibility={componentsVisibility}
                 feed={feed}
+                isAnnouncementTab={isAnnouncementTab}
                 isPost={isPost}
                 post={post}
+                updateAnnouncementThreads={updateAnnouncementThreads}
               />
             </Col>
           </Row>
@@ -133,12 +245,43 @@ const ActivityFeedCardV2 = ({
             (feed.generatedBy !== GeneratedBy.System || isPost) && (
               <ActivityFeedActions
                 feed={feed}
+                isAnnouncementTab={isAnnouncementTab}
                 isPost={isPost}
+                permissions={permissions}
                 post={post}
+                updateAnnouncementThreads={updateAnnouncementThreads}
                 onEditPost={onEditPost}
               />
             )}
         </Col>
+        {showFeedEditor && showThread ? (
+          <ActivityFeedEditorNew
+            className={classNames(
+              'm-t-md feed-editor activity-feed-editor-container-new'
+            )}
+            onSave={onSave}
+          />
+        ) : (
+          showThread && (
+            <div className="d-flex gap-2">
+              <div>
+                <ProfilePictureNew
+                  avatarType="outlined"
+                  key={feed.id}
+                  name={getEntityName(currentUser)}
+                  size={32}
+                />
+              </div>
+
+              <Input
+                className="comments-input-field"
+                data-testid="comments-input-field"
+                placeholder={t('message.input-placeholder')}
+                onClick={() => setShowFeedEditor(true)}
+              />
+            </div>
+          )
+        )}
         {showThread && postLength > 0 && (
           <Col className="feed-replies" data-testid="feed-replies" span={24}>
             {feed?.posts?.map((reply) => (
@@ -146,14 +289,25 @@ const ActivityFeedCardV2 = ({
                 isPost
                 componentsVisibility={componentsVisibility}
                 feed={feed}
+                isAnnouncementTab={isAnnouncementTab}
                 isOpenInDrawer={isOpenInDrawer}
                 key={reply.id}
                 post={reply}
+                updateAnnouncementThreads={updateAnnouncementThreads}
               />
             ))}
           </Col>
         )}
       </Row>
+      {isEditAnnouncement && (
+        <EditAnnouncementModal
+          announcement={feed.announcement as AnnouncementDetails}
+          announcementTitle={feed.message}
+          open={isEditAnnouncement}
+          onCancel={() => setIsEditAnnouncement(false)}
+          onConfirm={handleAnnouncementUpdate}
+        />
+      )}
     </div>
   );
 };

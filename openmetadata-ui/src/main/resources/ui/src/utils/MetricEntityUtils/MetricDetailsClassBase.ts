@@ -40,6 +40,7 @@ export interface MetricDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  editAllPermission: boolean;
   getEntityFeedCount: () => Promise<void>;
   fetchMetricDetails: () => void;
   metricDetails: Metric;

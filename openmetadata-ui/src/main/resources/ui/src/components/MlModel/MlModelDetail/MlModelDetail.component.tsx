@@ -302,6 +302,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    editAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -319,6 +320,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         (mlModelPermissions.EditAll || mlModelPermissions.EditLineage) &&
         !deleted,
       viewAllPermission: mlModelPermissions.ViewAll,
+      editAllPermission: mlModelPermissions.EditAll,
     }),
     [mlModelPermissions, deleted]
   );
@@ -337,6 +339,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      editAllPermission,
       fetchMlModel,
       labelMap: tabLabelMap,
     });
@@ -357,6 +360,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    editAllPermission,
     fetchMlModel,
     customizedPage?.tabs,
   ]);

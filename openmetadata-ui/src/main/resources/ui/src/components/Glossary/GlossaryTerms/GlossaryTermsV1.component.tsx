@@ -261,6 +261,7 @@ const GlossaryTermsV1 = ({
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
                   layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
+                  permissions={permissions}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />

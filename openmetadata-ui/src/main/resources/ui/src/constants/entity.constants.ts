@@ -23,6 +23,9 @@ export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
   closedTaskCount: 0,
   totalCount: 0,
   mentionCount: 0,
+  activeAnnouncementCount: 0,
+  inactiveAnnouncementCount: 0,
+  totalAnnouncementCount: 0,
 };
 
 export const STEPS_FOR_IMPORT_ENTITY = [

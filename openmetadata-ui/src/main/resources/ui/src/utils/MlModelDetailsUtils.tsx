@@ -39,6 +39,7 @@ export const getMlModelDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  editAllPermission,
   fetchMlModel,
   handleFeedCount,
   mlModelDetail,
@@ -79,6 +80,7 @@ export const getMlModelDetailsPageTabs = ({
           entityType={EntityType.MLMODEL}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={fetchEntityFeedCount}
           onUpdateEntityDetails={fetchMlModel}
           onUpdateFeedCount={handleFeedCount}

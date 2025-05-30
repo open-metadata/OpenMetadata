@@ -17,6 +17,7 @@ import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg'
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { EntityType } from '../enums/entity.enum';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -419,6 +420,18 @@ export const STATUS_LABEL = {
   [Status.Success]: 'Success',
   [Status.Pending]: 'Pending',
 };
+
+export const serviceEntityTypes = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+];
 
 export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,

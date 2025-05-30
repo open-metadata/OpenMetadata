@@ -29,6 +29,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   onAfterClose,
   onUpdateEntityDetails,
   isForFeedTab = false,
+  onSave,
+  updateAnnouncementThreads,
+  isAnnouncementTab,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -66,11 +69,14 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <ActivityFeedCardNew
           feed={feed}
           isActive={isActive}
+          isAnnouncementTab={isAnnouncementTab}
           isForFeedTab={isForFeedTab}
           isPost={false}
           post={mainFeed}
           showActivityFeedEditor={showActivityFeedEditor}
           showThread={showThread}
+          updateAnnouncementThreads={updateAnnouncementThreads}
+          onSave={onSave}
         />
       )}
     </Button>
