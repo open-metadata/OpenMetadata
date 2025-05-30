@@ -47,7 +47,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   };
 
   // function to render text with optional link
-  const renderTextWithOptionalLink = (name: ReactNode, testId: ReactNode) => {
+  const renderNameWithOptionalLink = (name: ReactNode, testId: ReactNode) => {
     return link ? (
       <Link className="break-word" data-testid={testId} to={link}>
         {name}
@@ -61,7 +61,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
 
   const renderMainContent = useMemo(() => {
     if (isEmpty(displayName)) {
-      return renderTextWithOptionalLink(name, name);
+      return renderNameWithOptionalLink(name, name);
     }
 
     // Show both name and displayName when displayName exists
@@ -71,11 +71,11 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         <Typography.Text
           className="m-b-0 d-block break-word"
           data-testid="column-display-name">
-          {renderTextWithOptionalLink(displayName, name)}
+          {renderNameWithOptionalLink(displayName, name)}
         </Typography.Text>
       </>
     );
-  }, [displayName, name, renderTextWithOptionalLink]);
+  }, [displayName, name, renderNameWithOptionalLink]);
 
   return (
     <div className="flex-column hover-icon-group w-max-full">
