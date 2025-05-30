@@ -48,6 +48,7 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
+from metadata.pii.algorithms.tags_ops import get_pii_sensitivity
 
 T = TypeVar("T", bound=Hashable)
 
@@ -172,7 +173,7 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
 
         for tag, score in pii_tags.items():
             # Convert PIITag to PIISensitivityTag
-            pii_sensitivity = tag.sensitivity()
+            pii_sensitivity = get_pii_sensitivity(tag)
             results[pii_sensitivity] += score
             counts[pii_sensitivity] += 1
 

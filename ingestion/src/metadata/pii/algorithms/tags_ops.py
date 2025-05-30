@@ -1,17 +1,24 @@
+from typing import Dict, Set
+
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.algorithms.tags import PIICategoryTag, PIISensitivityTag, PIITag
+from metadata.utils import fqn
 
 GENERAL = "General"
 
-
-from metadata.utils import fqn
-
-
+# pyright: reportUnknownMemberType=false
 def get_general_tag_fqn(tag: PIICategoryTag) -> str:
     """Build the general tag FQN"""
-    return fqn.build(
+    fqn_str = fqn.build(
         None, entity_type=Tag, classification_name=GENERAL, tag_name=tag.value
     )
+
+    if fqn_str is None:
+        # This should be prevented by unit tests, but in case it happens,
+        # we raise an error to avoid silent failures.
+        raise ValueError(f"Failed to build FQN for tag: {tag}")
+
+    return fqn_str
 
 
 def get_pii_sensitivity(pii_tag: PIITag) -> PIISensitivityTag:
@@ -50,14 +57,14 @@ _P = PIICategoryTag
 _C = PIITag
 
 # Define what PIITag a PIICategoryTag contains
-_CATEGORY_MAP = {
-    _P.PASSWORD: {},
+_CATEGORY_MAP: Dict[PIICategoryTag, Set[PIITag]] = {
+    _P.PASSWORD: set(),
     _P.BANK_NUMBER: {_C.US_BANK_NUMBER},
     _P.CREDIT_CARD: {_C.CREDIT_CARD},
     _P.PERSON: {_C.PERSON},
-    _P.GENDER: {},
+    _P.GENDER: set(),
     _P.NRP: {_C.NRP},
-    _P.ADDRESS: {},
+    _P.ADDRESS: set(),
     _P.CRYPTO: {_C.CRYPTO},
     _P.DATE_TIME: {_C.DATE_TIME},
     _P.EMAIL_ADDRESS: {_C.EMAIL_ADDRESS},
