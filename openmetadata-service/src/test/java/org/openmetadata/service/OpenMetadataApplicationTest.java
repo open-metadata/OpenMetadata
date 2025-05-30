@@ -36,9 +36,9 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.apache5.connector.Apache5ConnectorProvider;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -264,7 +264,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private static void createClient() {
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new HttpUrlConnectorProvider());
+    config.connectorProvider(new Apache5ConnectorProvider());
     config.register(new JacksonFeature(APP.getObjectMapper()));
     config.property(ClientProperties.CONNECT_TIMEOUT, 0);
     config.property(ClientProperties.READ_TIMEOUT, 0);
