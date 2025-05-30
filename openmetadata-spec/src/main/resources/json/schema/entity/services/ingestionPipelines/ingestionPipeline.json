@@ -47,6 +47,10 @@
         "config": {
           "description": "Pipeline configuration for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "metadata": {
+          "description": "Metadata for the pipeline status.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
