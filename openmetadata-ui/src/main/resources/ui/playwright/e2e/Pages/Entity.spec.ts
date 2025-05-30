@@ -270,6 +270,14 @@ entities.forEach((EntityClass) => {
       await entity.inactiveAnnouncement(page);
     });
 
+    test(`Verify Feed Counts`, async ({ page }) => {
+      const { expectedCount, actualCount } = await entity.verifyFeedCounts(
+        page
+      );
+
+      expect(actualCount).toBe(expectedCount.toString());
+    });
+
     test(`UpVote & DownVote entity`, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
