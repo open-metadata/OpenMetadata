@@ -88,6 +88,8 @@ class SnowflakeSampler(SQASampler):
 
     def get_sample_query(self, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        return self._base_sample_query(column).cte(
+        rnd = self._base_sample_query(column).cte(
             f"{self.get_sampler_table_name()}_rnd"
         )
+        query = self.get_client().query(rnd)
+        return query.cte(f"{self.get_sampler_table_name()}_sample")
