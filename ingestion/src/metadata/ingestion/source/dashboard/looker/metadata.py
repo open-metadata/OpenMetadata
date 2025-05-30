@@ -684,11 +684,16 @@ class LookerSource(DashboardServiceSource):
 
             # Build lineage for each field
             for field_name, sql in field_sql_map.items():
-                if not sql:  # Skip if sql is None or empty
+                try:
+                    if not sql:  # Skip if sql is None or empty
+                        continue
+                    source_cols = resolve(field_name)
+                    for source_col in source_cols:
+                        column_lineage.append((source_col, field_name))
+                except Exception as err:
+                    logger.warning(f"Error processing field {field_name}: {err}")
+                    logger.debug(traceback.format_exc())
                     continue
-                source_cols = resolve(field_name)
-                for source_col in source_cols:
-                    column_lineage.append((source_col, field_name))
 
             return column_lineage
         except Exception as e:
