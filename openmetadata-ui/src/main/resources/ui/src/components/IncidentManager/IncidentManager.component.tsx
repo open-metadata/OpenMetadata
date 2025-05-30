@@ -66,7 +66,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getTestCaseDetailPagePath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
@@ -392,7 +392,7 @@ const IncidentManager = ({
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
               style={{ maxWidth: 280 }}
-              to={getIncidentManagerDetailPagePath(
+              to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record.testCaseReference)}
