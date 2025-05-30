@@ -47,21 +47,21 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   };
 
   // function to render text with optional link
-  const renderNameWithOptionalLink = (name: ReactNode, testId: ReactNode) => {
+  const renderNameWithOptionalLink = (displayText: ReactNode) => {
     return link ? (
-      <Link className="break-word" data-testid={testId} to={link}>
-        {name}
+      <Link className="break-word" data-testid={name} to={link}>
+        {displayText}
       </Link>
     ) : (
-      <span className="break-word" data-testid={testId}>
-        {name}
+      <span className="break-word" data-testid={name}>
+        {displayText}
       </span>
     );
   };
 
   const renderMainContent = useMemo(() => {
     if (isEmpty(displayName)) {
-      return renderNameWithOptionalLink(name, name);
+      return renderNameWithOptionalLink(name);
     }
 
     // Show both name and displayName when displayName exists
@@ -73,7 +73,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         <Typography.Text
           className="d-block break-word"
           data-testid="column-display-name">
-          {renderNameWithOptionalLink(displayName, name)}
+          {renderNameWithOptionalLink(displayName)}
         </Typography.Text>
       </>
     );
