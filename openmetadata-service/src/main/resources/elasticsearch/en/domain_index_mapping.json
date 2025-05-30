@@ -250,6 +250,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "extension": {
         "type": "object"
       }
