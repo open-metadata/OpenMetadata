@@ -67,7 +67,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
     // Show both name and displayName when displayName exists
     return (
       <>
-        <Typography.Text className="break-word text-grey-muted">
+        <Typography.Text className="break-word text-grey-600">
           {name}
         </Typography.Text>
         <Typography.Text

@@ -418,7 +418,7 @@ const SchemaTable = () => {
                 })}
                 <Typography.Text
                   className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-muted': !isEmpty(displayName),
+                    'text-grey-600': !isEmpty(displayName),
                   })}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
