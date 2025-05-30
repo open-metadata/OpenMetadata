@@ -123,12 +123,6 @@ describe('AddTeamForm component', () => {
       fireEvent.change(emailInput, { target: { value: 'testteam@gmail.com' } });
     });
 
-    // make team joinable
-    // const isJoinableSwitch = getByTestId('isJoinable-switch-button');
-    // await act(async () => {
-    //   fireEvent.click(isJoinableSwitch);
-    // });
-
     // save form
     const saveButton = getByText('label.save');
 
