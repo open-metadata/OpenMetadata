@@ -70,6 +70,19 @@ phone_data: LabeledData = {
     "pii_sensitivity": True,
 }
 
+data_time_data: LabeledData = {
+    "column_name": "event_time",
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "2023-10-01 12:00:00Z",
+        "2023-10-02 15:30:00Z",
+        "2023-10-03 18:45:00Z",
+        "2023-10-04 21:15:00Z",
+    ],
+    "pii_tags": [PIITag.DATE_TIME],
+    "pii_sensitivity": False,
+}
+
 non_pii_text_data: LabeledData = {
     "column_name": "random_text",
     "column_data_type": DataType.STRING,
@@ -173,8 +186,26 @@ es_nif_data: LabeledData = {
     "sample_data": ["48347544A", "08163649Y", "85738706L", "01922869T", "44729355J"],
     "pii_tags": [
         PIITag.ES_NIF,
-        PIITag.DATE_TIME,
         PIITag.US_DRIVER_LICENSE,  # low score
     ],
     "pii_sensitivity": True,
+}
+
+# Sample data for regression tests
+
+# Previously, this data was incorrectly tagged as PII.DATE_TIME
+false_positive_datetime_data: LabeledData = {
+    "column_name": None,
+    "column_data_type": DataType.STRING,
+    "sample_data": [
+        "60001",
+        "60002",
+        "60003",
+        "60004",
+        "60005",
+        "60006",
+        "60007",
+    ],
+    "pii_tags": [],
+    "pii_sensitivity": False,
 }
