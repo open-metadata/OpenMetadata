@@ -17,6 +17,7 @@ import { useApplicationStore } from '../useApplicationStore';
 
 interface UserPreferences {
   isSidebarCollapsed: boolean;
+  tableColumns: Record<string, string[]>;
 }
 
 interface Store {
@@ -31,6 +32,7 @@ interface Store {
 
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
+  tableColumns: {},
   // Add default values for other preferences
 };
 

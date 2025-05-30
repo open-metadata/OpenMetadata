@@ -44,6 +44,7 @@ import {
 import {
   getTableColumnConfigSelections,
   getTableExpandableConfig,
+  handleBulkTableColumnAction,
   handleUpdateTableColumnSelections,
 } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -123,14 +124,15 @@ const Table = <T extends Record<string, unknown>>(
   );
 
   const handleBulkColumnAction = useCallback(() => {
-    if (dropdownColumnList.length === columnDropdownSelections.length) {
-      setColumnDropdownSelections([]);
-    } else {
-      setColumnDropdownSelections(
-        dropdownColumnList.map((option) => option.value)
-      );
-    }
-  }, [dropdownColumnList, columnDropdownSelections]);
+    const newSelections = handleBulkTableColumnAction(
+      dropdownColumnList,
+      columnDropdownSelections,
+      currentUser?.fullyQualifiedName ?? '',
+      entityKey
+    );
+
+    setColumnDropdownSelections(newSelections);
+  }, [dropdownColumnList, columnDropdownSelections, entityKey]);
 
   const menu = useMemo(
     () => ({
@@ -229,14 +231,14 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    const selections = getTableColumnConfigSelections(
+    const savedSelections = getTableColumnConfigSelections(
       currentUser?.fullyQualifiedName ?? '',
       entityKey,
       isFullViewTable,
       defaultVisibleColumns
     );
 
-    setColumnDropdownSelections(selections);
+    setColumnDropdownSelections(savedSelections);
   }, [entityKey, defaultVisibleColumns, isFullViewTable]);
 
   return (

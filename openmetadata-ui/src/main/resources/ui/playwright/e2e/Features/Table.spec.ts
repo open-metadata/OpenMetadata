@@ -13,7 +13,11 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  createNewPage,
+  redirectToHomePage,
+} from '../../utils/common';
 import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -179,5 +183,48 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'
     );
+  });
+
+  test('should persist table column selections', async ({ page }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    const descriptionHeader = page.locator('th', { hasText: 'Description' });
+    const ownersHeader = page.locator('th', { hasText: 'Owners' });
+    const tagsHeader = page.locator('th', { hasText: 'Tags' });
+    const descriptionButton = page.locator('button', {
+      hasText: 'Description',
+    });
+
+    await expect(descriptionHeader).toBeVisible();
+    await expect(ownersHeader).toBeVisible();
+    await expect(tagsHeader).toBeVisible();
+
+    await expect(page.getByTestId('column-dropdown')).toBeVisible();
+
+    await page.getByTestId('column-dropdown').click();
+
+    await expect(descriptionButton).toBeVisible();
+
+    await descriptionButton.click();
+
+    await clickOutside(page);
+
+    await expect(descriptionHeader).not.toBeVisible();
+    await expect(ownersHeader).toBeVisible();
+    await expect(tagsHeader).toBeVisible();
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(descriptionHeader).not.toBeVisible();
+    await expect(ownersHeader).toBeVisible();
+    await expect(tagsHeader).toBeVisible();
   });
 });
