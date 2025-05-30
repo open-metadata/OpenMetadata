@@ -1,5 +1,5 @@
-from metadata.pii.algorithms.tags import PIITag
-from metadata.pii.algorithms.tags_ops import categorize_pii_tag
+from metadata.pii.algorithms.tags import PIICategoryTag, PIITag
+from metadata.pii.algorithms.tags_ops import categorize_pii_tag, get_general_tag_fqn
 
 
 def test_each_pii_tag_is_mapped_to_a_pii_tag_category():
@@ -23,3 +23,14 @@ def test_get_general_tag_fqn():
     assert get_general_tag_fqn(PIICategoryTag.PERSON) == "General.Person"
     assert get_general_tag_fqn(PIICategoryTag.CREDIT_CARD) == "General.CreditCardNumber"
     assert get_general_tag_fqn(PIICategoryTag.BANK_NUMBER) == "General.BankNumber"
+
+
+def test_get_general_tag_fqn_from_tag_category_never_fails():
+    """
+    Test that the general tag FQN from a tag category never fails.
+    """
+    for tag in PIICategoryTag:
+        try:
+            _ = get_general_tag_fqn(tag)
+        except ValueError:
+            raise AssertionError(f"Failed to get general tag FQN for tag {tag}.")
