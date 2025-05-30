@@ -485,6 +485,7 @@
     "enter-entity-name": "{{entity}}-naam invoeren",
     "enter-entity-value": "{{entity}}-waarde invoeren",
     "enter-field-description": "{{field}}-beschrijving invoeren",
+    "enter-file-content": "Bestand inhoud invoeren",
     "enter-property-value": "Eigenschapswaarde invoeren",
     "enter-type-password": "{{type}}-wachtwoord invoeren",
     "entity": "Entiteit",
