@@ -31,7 +31,8 @@
     <json-smart.version>2.5.2</json-smart.version>
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
-    <jetty.version>11.0.24</jetty.version>
+    <jetty.version>12.0.12</jetty.version>
+    <jakarta-server.version>11.0.24</jakarta-server.version>
     <logback-core.version>1.4.7</logback-core.version>
     <logback-classic.version>1.4.7</logback-classic.version>
   </properties>
@@ -287,6 +288,7 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
+      <version>${jetty.version}</version>
       <exclusions>
         <exclusion>
           <groupId>javax.servlet</groupId>
@@ -704,24 +706,9 @@
       <groupId>io.modelcontextprotocol.sdk</groupId>
       <artifactId>mcp</artifactId>
     </dependency>
-     <dependency>
-      <groupId>org.eclipse.jetty.websocket</groupId>
-      <artifactId>websocket-jakarta-server</artifactId>
-      <version>${jetty.version}</version>
-     </dependency>
     <dependency>
-      <groupId>org.eclipse.jetty.websocket</groupId>
-      <artifactId>websocket-jetty-server</artifactId>
-      <version>${jetty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty.websocket</groupId>
-      <artifactId>websocket-jetty-api</artifactId>
-      <version>${jetty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-servlet</artifactId>
+      <groupId>org.eclipse.jetty.ee10</groupId>
+      <artifactId>jetty-ee10-servlet</artifactId>
       <version>${jetty.version}</version>
     </dependency>
     <dependency>
@@ -732,6 +719,16 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-io</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-session</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-util</artifactId>
       <version>${jetty.version}</version>
     </dependency>
     <dependency>

@@ -11,7 +11,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlets.HeaderFilter;
 
@@ -86,10 +86,7 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
     holder.setInitParameter("headerConfig", headerConfig);
 
     // Add the filter to Jetty's application context with the specified URL pattern
-    // Note: ensure you have a session handler if needed
-    if (environment.getApplicationContext().getSessionHandler() == null) {
-      environment.getApplicationContext().setSessionHandler(new SessionHandler());
-    }
+    // Note: In Jetty 12, session handling is managed by DropWizard's servlet context configuration
 
     environment
         .getApplicationContext()
