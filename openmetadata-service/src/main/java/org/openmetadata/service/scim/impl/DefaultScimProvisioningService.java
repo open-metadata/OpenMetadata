@@ -47,7 +47,7 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
     return notImplemented();
   }
 
-  public Response deleteUser(String id, UriInfo uriInfo) {
+  public Response deleteUser(String id, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 

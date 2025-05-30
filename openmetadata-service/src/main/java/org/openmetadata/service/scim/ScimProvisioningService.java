@@ -15,7 +15,7 @@ public interface ScimProvisioningService {
 
   Response updateUser(String id, ScimUser user, UriInfo uriInfo);
 
-  Response deleteUser(String id, UriInfo uriInfo);
+  Response deleteUser(String id, UriInfo uriInfo, SecurityContext securityContext);
 
   Response listGroups(UriInfo uriInfo);
 

@@ -74,8 +74,8 @@ public class ScimResource {
 
   @DELETE
   @Path("/Users/{id}")
-  public Response deleteUser(@PathParam("id") String id, @Context UriInfo uriInfo) {
-    return provisioningService.deleteUser(id, uriInfo);
+  public Response deleteUser(@PathParam("id") String id, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return provisioningService.deleteUser(id, uriInfo, securityContext);
   }
 
   @PATCH
