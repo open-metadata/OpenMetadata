@@ -28,8 +28,9 @@ jest.mock('../../../utils/UserDataUtils', () => {
   };
 });
 
+const mockUseUserProfile = jest.fn().mockReturnValue(['', false, {}]);
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: jest.fn().mockImplementation(() => ['', false, {}]),
+  useUserProfile: () => mockUseUserProfile(),
 }));
 
 const mockData = {
@@ -43,5 +44,19 @@ describe('Test ProfilePicture component', () => {
     const avatar = await findByTestId(container, 'profile-avatar');
 
     expect(avatar).toBeInTheDocument();
+  });
+
+  it('should render with profile image when profileURL is available', async () => {
+    mockUseUserProfile.mockReturnValue([
+      'https://example.com/profile.jpg',
+      false,
+      {},
+    ]);
+
+    const { container } = render(<ProfilePicture {...mockData} width="36" />);
+
+    const profileImage = await findByTestId(container, 'profile-image');
+
+    expect(profileImage).toBeInTheDocument();
   });
 });

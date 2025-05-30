@@ -16,7 +16,7 @@ from metadata.pii.algorithms.feature_extraction import (
     extract_pii_tags,
     split_column_name,
 )
-from metadata.pii.algorithms.presidio_patches import url_patcher
+from metadata.pii.algorithms.presidio_patches import date_time_patcher, url_patcher
 from metadata.pii.algorithms.tags import PIITag
 
 
@@ -131,6 +131,30 @@ def test_person_extraction(fake, analyzer):
         samples,
         extracted,
     )
+
+
+def test_date_time_extraction_false_positive_regression(fake, analyzer):
+    """
+    Regression test for a false positive where a timestamp was incorrectly
+    marked as a date by the Presidio analyzer.
+    """
+    not_dates = [60001, 60002, 60003, 60004, 60005]
+    not_dates_str = [str(date) for date in not_dates]
+    extracted = extract_pii_tags(
+        analyzer, not_dates_str, recognizer_result_patcher=date_time_patcher
+    )
+    assert PIITag.DATE_TIME not in extracted
+
+
+def test_date_time_extraction_with_patched_results(fake, analyzer):
+    # Generate a list of dates and times
+    samples = [str(fake.date_time_this_century()) for _ in range(100)]
+    # Patch the results to avoid false positives
+    extracted = extract_pii_tags(
+        analyzer, samples, recognizer_result_patcher=date_time_patcher
+    )
+
+    assert PIITag.DATE_TIME in extracted
 
 
 # Extraction with patched URL

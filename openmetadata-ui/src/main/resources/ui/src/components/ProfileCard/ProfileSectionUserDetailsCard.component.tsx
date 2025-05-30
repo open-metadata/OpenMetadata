@@ -243,7 +243,7 @@ const ProfileSectionUserDetailsCard = ({
           <div className="d-flex items-center">
             <ProfilePicture
               data-testid="replied-user"
-              name={getEntityName(userData)}
+              name={userData?.name}
               width="80"
             />
           </div>
