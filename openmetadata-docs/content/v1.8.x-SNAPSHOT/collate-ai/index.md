@@ -15,6 +15,8 @@ Collate AI is an AI-powered tool within Collate that simplifies and enhances met
 - **Automated Data Documentation**: Automatically generates metadata descriptions for tables and columns, saving time and effort for data owners and stewards.
 - **Natural Language SQL Query Generation**: Allows users to interact with Collate AI through a chatbot to generate SQL queries by simply asking questions in plain English.
 - **SQL Query Optimization and Fixing**: Capable of optimizing and troubleshooting SQL queries to improve their performance and efficiency.
+- **AI-Driven Test Automation**: Automatically suggests and deploys relevant data quality tests based on table constraints and similarity with other assets, streamlining your data validation efforts.
+- **Automated Tier Classification**: Uses data lineage and usage analytics to intelligently assign Tier levels, helping teams prioritize and govern critical data assets.
 
 ## Why Collate AI is Useful
 
