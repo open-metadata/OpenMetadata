@@ -538,7 +538,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if not data_model_entity:
             return None
         for tbl_column in data_model_entity.columns:
-            if tbl_column.displayName.lower() == column.lower():
+            if (
+                tbl_column.displayName
+                and tbl_column.displayName.lower() == column.lower()
+            ) or (tbl_column.name.root.lower() == column.lower()):
                 return tbl_column.fullyQualifiedName.root
         return None
 
