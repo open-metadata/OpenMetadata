@@ -129,7 +129,7 @@ describe('Test PasswordWidget Component', () => {
     expect(passwordInput).toHaveValue('');
   });
 
-  it('Should render FileWidget and password input if uiFieldType is file', async () => {
+  it('Should render FileWidget and password input if uiFieldType is fileOrInput', async () => {
     render(<PasswordWidget {...mockProps2} />);
 
     const passwordInput = screen.getByTestId(
@@ -152,5 +152,22 @@ describe('Test PasswordWidget Component', () => {
 
     // Check if the file upload widget is disabled
     expect(fileUploadWidget).toBeDisabled();
+  });
+
+  it('Should render only FileWidget uiFieldType is file', async () => {
+    render(
+      <PasswordWidget
+        {...mockProps2}
+        schema={{ ...mockProps2.schema, uiFieldType: 'file' }}
+      />
+    );
+
+    const passwordInput = screen.queryByTestId(
+      'password-input-widget-root/sslConfig/caCertificate'
+    );
+    const fileUploadWidget = screen.getByText('FileUploadWidget');
+
+    expect(fileUploadWidget).toBeInTheDocument();
+    expect(passwordInput).toBeNull();
   });
 });

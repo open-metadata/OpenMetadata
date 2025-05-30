@@ -22,12 +22,13 @@ import './password-widget.less';
 const PasswordWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
   const [inputType, setInputType] = useState<CertificationInputType>(
-    props.schema.uiFieldType === 'file'
+    props.schema.uiFieldType === 'fileOrInput'
       ? CertificationInputType.FILE_UPLOAD
       : CertificationInputType.FILE_PATH
   );
 
   const isInputTypeFile = props.schema.uiFieldType === 'file';
+  const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
 
   const passwordWidgetValue = useMemo(() => {
     if (ALL_ASTERISKS_REGEX.test(props.value)) {
@@ -62,47 +63,47 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     setInputType(e.target.value);
   };
 
-  return (
-    <>
-      {isInputTypeFile ? (
-        <Radio.Group
-          className="password-widget"
-          data-testid={`password-input-radio-group-${props.id}`}
-          value={inputType}
-          onChange={onRadioChange}>
-          <Row>
-            <Col span={8}>
-              <Radio
-                className="widget-radio-option"
-                data-testid={`radio-${CertificationInputType.FILE_UPLOAD}`}
-                value={CertificationInputType.FILE_UPLOAD}>
-                <Typography.Text>{t('message.upload-file')}</Typography.Text>
-                <FileUploadWidget
-                  {...props}
-                  disabled={inputType === CertificationInputType.FILE_PATH}
-                />
-              </Radio>
-            </Col>
-            <Col span={16}>
-              <Radio
-                className="widget-radio-option"
-                data-testid={`radio-${CertificationInputType.FILE_PATH}`}
-                value={CertificationInputType.FILE_PATH}>
-                <Typography.Text>
-                  {t('label.enter-file-content')}
-                </Typography.Text>
-                {getPasswordInput(
-                  inputType === CertificationInputType.FILE_UPLOAD
-                )}
-              </Radio>
-            </Col>
-          </Row>
-        </Radio.Group>
-      ) : (
-        getPasswordInput()
-      )}
-    </>
-  );
+  if (isInputTypeFile) {
+    return <FileUploadWidget {...props} />;
+  }
+
+  if (isInputTypeFileOrInput) {
+    return (
+      <Radio.Group
+        className="password-widget"
+        data-testid={`password-input-radio-group-${props.id}`}
+        value={inputType}
+        onChange={onRadioChange}>
+        <Row>
+          <Col span={8}>
+            <Radio
+              className="widget-radio-option"
+              data-testid={`radio-${CertificationInputType.FILE_UPLOAD}`}
+              value={CertificationInputType.FILE_UPLOAD}>
+              <Typography.Text>{t('message.upload-file')}</Typography.Text>
+              <FileUploadWidget
+                {...props}
+                disabled={inputType === CertificationInputType.FILE_PATH}
+              />
+            </Radio>
+          </Col>
+          <Col span={16}>
+            <Radio
+              className="widget-radio-option"
+              data-testid={`radio-${CertificationInputType.FILE_PATH}`}
+              value={CertificationInputType.FILE_PATH}>
+              <Typography.Text>{t('label.enter-file-content')}</Typography.Text>
+              {getPasswordInput(
+                inputType === CertificationInputType.FILE_UPLOAD
+              )}
+            </Radio>
+          </Col>
+        </Row>
+      </Radio.Group>
+    );
+  }
+
+  return getPasswordInput();
 };
 
 export default PasswordWidget;
