@@ -45,6 +45,10 @@ export interface DataProduct {
      */
     extension?: any;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.
      */
     fullyQualifiedName?: string;

@@ -48,6 +48,10 @@ export interface Domain {
      */
     extension?: any;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
