@@ -1131,7 +1131,9 @@ class LookerSource(DashboardServiceSource):
                                 )
                             )
                     except Exception as err:
-                        logger.warning(f"Error processing column lineage {column_tuple}: {err}")
+                        logger.warning(
+                            f"Error processing column lineage {column_tuple}: {err}"
+                        )
                         logger.debug(traceback.format_exc())
                         continue
 
