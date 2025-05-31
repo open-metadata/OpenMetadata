@@ -131,8 +131,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                   "Limit the number test definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description =
@@ -205,15 +205,15 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Limit the number test suite returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limit,
       @Parameter(
               description = "Returns list of test suite after this offset (default = 0)",
               schema = @Schema(type = "string"))
           @QueryParam("offset")
           @DefaultValue("0")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
               description =

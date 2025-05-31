@@ -182,8 +182,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
