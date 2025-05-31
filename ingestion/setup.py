@@ -382,6 +382,7 @@ test_unit = {
     "pytest-order",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    "pylint",  # Some unit tests use pylint package (tests/unit/test_import_checker.py)
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
 }

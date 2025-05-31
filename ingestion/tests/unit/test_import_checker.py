@@ -20,7 +20,10 @@ from pylint import lint
 from pylint.reporters import BaseReporter
 from pylint.testutils import UnittestLinter
 
-from ingestion.plugins.import_checker import ImportChecker
+try:
+    from ingestion.plugins.import_checker import ImportChecker
+except ImportError:
+    from plugins.import_checker import ImportChecker
 
 
 class TestReporter(BaseReporter):
