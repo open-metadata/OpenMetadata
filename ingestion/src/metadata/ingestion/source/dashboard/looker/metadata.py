@@ -1099,10 +1099,10 @@ class LookerSource(DashboardServiceSource):
 
             if column_lineage:
                 processed_column_lineage = []
-                try:
-                    for column_tuple in column_lineage:
+                for column_tuple in column_lineage or []:
+                    try:
                         if len(column_tuple) < 2:
-                            logger.warning(
+                            logger.debug(
                                 f"Skipping invalid column tuple: {column_tuple}"
                             )
                             continue
@@ -1111,7 +1111,7 @@ class LookerSource(DashboardServiceSource):
                         target_col = column_tuple[-1]
 
                         if not source_col or not target_col:
-                            logger.warning(
+                            logger.debug(
                                 f"Skipping column tuple with empty values: source={source_col}, "
                                 f"target={target_col}, to_entity={to_entity.name}"
                             )
@@ -1130,9 +1130,11 @@ class LookerSource(DashboardServiceSource):
                                     fromColumns=[from_column], toColumn=to_column
                                 )
                             )
-                except Exception as err:
-                    logger.warning(f"Error processing column lineage: {err}")
-                    logger.debug(traceback.format_exc())
+                    except Exception as err:
+                        logger.warning(f"Error processing column lineage {column_tuple}: {err}")
+                        logger.debug(traceback.format_exc())
+                        continue
+
                 column_lineage = processed_column_lineage
 
             if from_entity:
