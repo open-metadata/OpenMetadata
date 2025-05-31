@@ -581,3 +581,32 @@ export const runRuleGroupTests = async (
     await page.getByTestId('clear-filters').click();
   }
 };
+
+export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
+  await showAdvancedSearchDialog(page);
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Perform click on rule field
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Database'
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    '=='
+  );
+
+  const inputElement = ruleLocator.locator(
+    '.rule--widget--SELECT .ant-select-selection-search-input'
+  );
+  await inputElement.fill('non-existing-value');
+  const dropdownText = page.locator('.ant-select-item-empty');
+
+  await expect(dropdownText).toContainText('Loading...');
+
+  await page.waitForTimeout(1000);
+
+  await expect(dropdownText).not.toContainText('Loading...');
+};
