@@ -69,9 +69,9 @@ export const getDashboards = async (
     params: {
       service,
       fields,
+      limit,
       ...paging,
       include,
-      limit,
     },
   });
 
