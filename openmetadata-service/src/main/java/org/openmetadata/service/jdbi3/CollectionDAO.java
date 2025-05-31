@@ -2878,6 +2878,11 @@ public interface CollectionDAO {
         condition += serviceCondition;
       }
 
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
       if (!nullOrEmpty(serviceType)) {
@@ -2912,6 +2917,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -2953,6 +2963,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();

@@ -51,6 +51,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
+    conditions.add(getProviderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -100,6 +101,19 @@ public class ListFilter extends Filter<ListFilter> {
         return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
       } else {
         return String.format("json->>'agentType' = '%s'", agentType);
+      }
+    }
+  }
+
+  public String getProviderCondition() {
+    String provider = queryParams.get("provider");
+    if (provider == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.provider') = '%s'", provider);
+      } else {
+        return String.format("json->>'provider' = '%s'", provider);
       }
     }
   }
