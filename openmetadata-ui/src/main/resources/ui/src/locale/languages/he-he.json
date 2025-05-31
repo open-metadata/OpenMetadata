@@ -485,6 +485,7 @@
     "enter-entity-name": "הזן שם {{entity}}",
     "enter-entity-value": "הזן ערך {{entity}}",
     "enter-field-description": "הזן תיאור של {{field}}",
+    "enter-file-content": "הזן תוכן קובץ",
     "enter-property-value": "הזן ערך נכס",
     "enter-type-password": "הזן סיסמה עבור {{type}}",
     "entity": "ישות",

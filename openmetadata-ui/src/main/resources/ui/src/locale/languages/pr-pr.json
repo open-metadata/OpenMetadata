@@ -485,6 +485,7 @@
     "enter-entity-name": "نام {{entity}} را وارد کنید",
     "enter-entity-value": "مقدار {{entity}} را وارد کنید",
     "enter-field-description": "توضیحات {{field}} را وارد کنید",
+    "enter-file-content": "فایل محتوا را وارد کنید",
     "enter-property-value": "مقدار ویژگی را وارد کنید",
     "enter-type-password": "رمز عبور {{type}} را وارد کنید",
     "entity": "نهاد",
