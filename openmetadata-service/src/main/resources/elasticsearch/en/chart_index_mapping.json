@@ -360,6 +360,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "dashboards": {
         "properties": {
           "id": {

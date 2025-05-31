@@ -347,6 +347,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "applicationType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"

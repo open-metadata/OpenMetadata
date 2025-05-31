@@ -345,6 +345,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "certification": {
         "type": "object",
         "properties": {

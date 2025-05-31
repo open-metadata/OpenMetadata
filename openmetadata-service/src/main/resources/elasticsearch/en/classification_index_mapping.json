@@ -124,6 +124,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {
