@@ -555,7 +555,7 @@ const GlossaryHeader = ({
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col className="d-flex" flex="auto">
+        <Col className="d-flex" flex="1">
           <EntityHeader
             badge={statusBadge}
             breadcrumb={breadcrumb}
@@ -566,7 +566,7 @@ const GlossaryHeader = ({
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
         </Col>
-        <Col flex="420px">
+        <Col>
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
