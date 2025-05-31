@@ -74,7 +74,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.API_ENDPOINT]: t('label.api-endpoint'),
   [EntityType.TOPIC]: t('label.topic'),
   [EntityType.DATA_PRODUCT]: t('label.data-product'),
-  [EntityType.MLMODEL]: t('label.mlmodel'),
+  [EntityType.MLMODEL]: t('label.ml-model'),
   [EntityType.SEARCH_INDEX]: t('label.search-index'),
   [EntityType.API_COLLECTION]: t('label.api-collection'),
   [EntityType.TEST_SUITE]: t('label.test-suite'),
