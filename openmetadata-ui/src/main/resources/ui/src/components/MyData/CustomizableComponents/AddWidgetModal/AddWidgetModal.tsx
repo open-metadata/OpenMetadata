@@ -22,7 +22,10 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import {
+  LandingPageWidgetKeys,
+  WidgetWidths,
+} from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
@@ -51,12 +54,18 @@ function AddWidgetModal({
   const fetchKnowledgePanels = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getAllKnowledgePanels({
+      const { data } = await getAllKnowledgePanels({
         fqnPrefix: 'KnowledgePanel',
         limit: PAGE_SIZE_MEDIUM,
       });
 
-      setWidgetsList(response.data);
+      // User can't add / update / delete Announcements widget
+      setWidgetsList(
+        data.filter(
+          (widget) =>
+            widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
