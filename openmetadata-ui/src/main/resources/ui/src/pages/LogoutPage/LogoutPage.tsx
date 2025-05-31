@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import React, { useEffect } from 'react';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 export const LogoutPage = () => {
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
 
   useEffect(() => {
     onLogoutHandler();

@@ -29,6 +29,10 @@ jest.mock('../../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
 }));
 
+jest.mock('../../../../utils/CommonUtils', () => ({
+  getStatisticsDisplayValue: jest.fn().mockImplementation(() => '10'),
+}));
+
 describe('ProfilerLatestValue component test', () => {
   it('Component should render', async () => {
     render(<ProfilerLatestValue {...mockProps} />);

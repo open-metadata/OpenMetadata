@@ -80,6 +80,9 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
 
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {

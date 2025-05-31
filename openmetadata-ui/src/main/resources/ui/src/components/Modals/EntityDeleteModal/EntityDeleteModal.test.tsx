@@ -28,8 +28,8 @@ const mockProp = {
   visible: false,
 };
 
-jest.mock('react-i18next', () => ({
-  Trans: jest.fn().mockImplementation(() => <div>Trans</div>),
+jest.mock('../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockImplementation(() => <div>Trans</div>),
 }));
 
 describe('Test EntityDelete Modal Component', () => {
