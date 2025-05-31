@@ -1,0 +1,53 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/ssisConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SSISConnection",
+    "description": "SSIS Metadata Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.SSISConnection",
+    "definitions": {
+      "SSISType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["SSIS"],
+        "default": "SSIS"
+      },
+      "localProjectsPath": {
+        "title": "Local Projects Path",
+        "description": "Path leading to your projects",
+        "type": "string"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/SSISType",
+        "default": "SSIS"
+      },
+      "databaseConnection": {
+        "title": "Metadata Database Connection",
+        "description": "Underlying database connection",
+        "$ref": "../database/mssqlConnection.json"
+      },
+      "packageConnection": {
+        "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+        "description": "Underlying storage connection",
+        "oneOf": [
+          {
+            "$ref": "../storage/s3Connection.json"
+          },
+          {
+            "$ref": "#/definitions/localProjectsPath"
+          }
+        ]
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["databaseConnection", "packageConnection"]
+  }
+  

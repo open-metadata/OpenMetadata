@@ -506,6 +506,7 @@ export enum PipelineServiceType {
     OpenLineage = "OpenLineage",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Wherescape = "Wherescape",
 }
