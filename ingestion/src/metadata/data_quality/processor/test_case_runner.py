@@ -198,7 +198,6 @@ class TestCaseRunner(Processor):
                                 column_name=test_case_to_create.columnName,
                             )
                         ),
-                        testSuite=test_suite_fqn,
                         parameterValues=(
                             list(test_case_to_create.parameterValues)
                             if test_case_to_create.parameterValues

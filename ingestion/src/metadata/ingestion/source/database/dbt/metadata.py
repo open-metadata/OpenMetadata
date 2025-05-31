@@ -1041,7 +1041,6 @@ class DbtSource(DbtServiceSource):
                                     manifest_node.name
                                 ),
                                 entityLink=entity_link_str,
-                                testSuite=test_suite.fullyQualifiedName,
                                 parameterValues=create_test_case_parameter_values(
                                     dbt_test
                                 ),
