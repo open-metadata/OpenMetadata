@@ -107,6 +107,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_table_ddl,
     get_table_names,
     get_table_names_reflection,
+    get_table_owner,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -119,6 +120,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
+    get_all_table_owners,
     get_all_view_definitions,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -157,6 +159,9 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
+
+Inspector.get_all_table_owners = get_all_table_owners
+Inspector.get_table_owner = get_table_owner
 
 
 class SnowflakeSource(
