@@ -551,10 +551,11 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
+                datamodel_view_name = (
+                    build_datamodel_name(explore.model_name, view.name) + "_view"
+                )
                 data_model_request = CreateDashboardDataModelRequest(
-                    name=EntityName(
-                        build_datamodel_name(explore.model_name, view.name)
-                    ),
+                    name=EntityName(datamodel_view_name),
                     displayName=view.name,
                     description=Markdown(view.description)
                     if view.description
@@ -568,9 +569,7 @@ class LookerSource(DashboardServiceSource):
                     project=explore.project_name,
                 )
                 yield Either(right=data_model_request)
-                self._view_data_model = self._build_data_model(
-                    build_datamodel_name(explore.model_name, view.name)
-                )
+                self._view_data_model = self._build_data_model(datamodel_view_name)
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
@@ -701,6 +700,57 @@ class LookerSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             return []
 
+    def _get_explore_column_lineage(
+        self, explore_model: LookmlModelExplore
+    ) -> Optional[List[ColumnLineage]]:
+        """
+        Build the lineage between the view and the explore
+        """
+        processed_column_lineage = []
+        for field in explore_model.columns or []:
+            try:
+                # Look for fields with format view_name.col
+                field_name = field.name.root
+                if "." not in field_name:
+                    logger.debug(
+                        f"Field [{field_name}] does not have a view name. Skipping."
+                    )
+                    continue
+
+                view_name, col_name = field_name.split(".")
+                if view_name != self._view_data_model.displayName:
+                    logger.debug(
+                        f"View name [{view_name}] do not match the view name"
+                        f"[{self._view_data_model.displayName}] Skipping."
+                    )
+                    continue
+
+                # Add lineage from view column to explore column
+                view_col = None
+                for col in self._view_data_model.columns:
+                    if (
+                        col.displayName and col.displayName.lower() == col_name.lower()
+                    ) or (col.name.root.lower() == col_name.lower()):
+                        view_col = col
+                        break
+                from_column = view_col.fullyQualifiedName.root if view_col else None
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=explore_model, column=str(field.name.root)
+                )
+
+                if from_column and to_column:
+                    processed_column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            except Exception as err:
+                logger.warning(
+                    "Error processing column lineage for explore_model"
+                    f"[{explore_model.name}] field [{field.name}]: {err}"
+                )
+                logger.debug(traceback.format_exc())
+                continue
+        return processed_column_lineage
+
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -718,8 +768,11 @@ class LookerSource(DashboardServiceSource):
                 logger.debug(
                     f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"
                 )
+                column_lineage = self._get_explore_column_lineage(explore_model)
                 yield self._get_add_lineage_request(
-                    from_entity=self._view_data_model, to_entity=explore_model
+                    from_entity=self._view_data_model,
+                    to_entity=explore_model,
+                    column_lineage=column_lineage,
                 )
 
             else:
