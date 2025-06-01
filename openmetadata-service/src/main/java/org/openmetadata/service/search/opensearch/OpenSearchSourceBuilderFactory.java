@@ -165,16 +165,12 @@ public class OpenSearchSourceBuilderFactory
 
       baseQuery.must(queryStringBuilder);
     } else {
-      // Separate fuzzy and non-fuzzy fields to prevent clause explosion with ngram fields
       Map<String, Float> fuzzyFields = new HashMap<>();
       Map<String, Float> nonFuzzyFields = new HashMap<>();
 
       for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
         String fieldName = fieldEntry.getKey();
         Float boost = fieldEntry.getValue();
-
-        // Exclude ngram fields from fuzzy search to prevent too_many_nested_clauses error
-        // Fuzzy search already handles typos and partial matches, so ngram is redundant
         if (fieldName.contains(".ngram")) {
           nonFuzzyFields.put(fieldName, boost);
         } else {
@@ -184,7 +180,6 @@ public class OpenSearchSourceBuilderFactory
 
       BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
-      // Add fuzzy query for non-ngram fields
       if (!fuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder fuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
@@ -200,7 +195,6 @@ public class OpenSearchSourceBuilderFactory
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      // Add non-fuzzy query for ngram fields (they handle partial matching already)
       if (!nonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
@@ -214,7 +208,6 @@ public class OpenSearchSourceBuilderFactory
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
 
-      // Ensure at least one of the should clauses matches
       combinedQuery.minimumShouldMatch(1);
       baseQuery.must(combinedQuery);
     }
