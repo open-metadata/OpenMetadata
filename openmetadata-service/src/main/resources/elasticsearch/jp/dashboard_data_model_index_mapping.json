@@ -100,9 +100,6 @@
       "lineage": {
         "type" : "object"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
       "version": {
         "type": "float"
       },

@@ -358,11 +358,6 @@
       "followers": {
         "type": "keyword"
       },
-      "votes" : {
-        "properties": {
-          "upVotes": {
-            "type": "long"
-          },
           "downVotes": {
             "type": "long"
           },

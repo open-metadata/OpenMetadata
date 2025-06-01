@@ -10,29 +10,15 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(
-        SearchSuggest.builder()
-            .input(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName())
-            .weight(5)
-            .build());
-    suggest.add(
-        SearchSuggest.builder()
-            .input(testCaseResolutionStatus.getTestCaseReference().getName())
-            .weight(10)
-            .build());
     doc.put(
         "fqnParts",
         getFQNParts(
-            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()));
     doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
     return doc;

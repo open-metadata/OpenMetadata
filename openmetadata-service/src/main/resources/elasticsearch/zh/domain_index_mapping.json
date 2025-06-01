@@ -106,9 +106,6 @@
       "entityType": {
         "type": "keyword"
       },
-      "suggest": {
-        "type": "completion"
-      },
       "owners": {
         "properties": {
           "id": {
@@ -188,9 +185,6 @@
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"
