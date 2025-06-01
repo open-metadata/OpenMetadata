@@ -6,6 +6,7 @@ import org.openmetadata.service.Entity;
 
 public class GlossaryTermIndex implements SearchIndex {
   final GlossaryTerm glossaryTerm;
+
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {
     this.glossaryTerm = glossaryTerm;
   }

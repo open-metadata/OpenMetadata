@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,10 +39,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     TestDefinition testDefinition =
         Entity.getEntity(
             Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            testCase.getFullyQualifiedName()));
+    doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
     doc.put("tags", testCase.getTags());

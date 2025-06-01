@@ -205,11 +205,6 @@ import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
-import os.org.opensearch.search.suggest.Suggest;
-import os.org.opensearch.search.suggest.SuggestBuilder;
-import os.org.opensearch.search.suggest.SuggestBuilders;
-import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
-import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized

@@ -23,7 +23,6 @@ public class APIEndpointIndex implements SearchIndex {
     this.apiEndpoint = apiEndpoint;
   }
 
-
   @Override
   public Object getEntity() {
     return apiEndpoint;

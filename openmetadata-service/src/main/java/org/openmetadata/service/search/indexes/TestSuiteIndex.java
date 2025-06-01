@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
@@ -19,10 +17,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
 
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            testSuite.getFullyQualifiedName()));
+    doc.put("fqnParts", getFQNParts(testSuite.getFullyQualifiedName()));
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));

@@ -16,7 +16,7 @@ import org.openmetadata.service.search.models.FlattenColumn;
 public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     implements ColumnIndex {
 
- @Override
+  @Override
   public Object getEntity() {
     return dashboardDataModel;
   }

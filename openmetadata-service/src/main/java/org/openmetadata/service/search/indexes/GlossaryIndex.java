@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.service.Entity;

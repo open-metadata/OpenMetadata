@@ -1,8 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -17,8 +15,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "fqnParts",
-        getFQNParts(
-            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()));
+        getFQNParts(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()));
     doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
     return doc;

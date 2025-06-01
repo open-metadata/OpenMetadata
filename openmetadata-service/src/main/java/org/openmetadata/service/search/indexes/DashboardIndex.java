@@ -12,7 +12,6 @@ public class DashboardIndex implements SearchIndex {
     this.dashboard = dashboard;
   }
 
-
   @Override
   public Object getEntity() {
     return dashboard;

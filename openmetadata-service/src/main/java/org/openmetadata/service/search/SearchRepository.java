@@ -1181,7 +1181,6 @@ public class SearchRepository {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
-
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,

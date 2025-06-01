@@ -25,7 +25,6 @@ public record TableIndex(Table table) implements ColumnIndex {
           "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
           "testSuite.changeDescription");
 
-
   @Override
   public Object getEntity() {
     return table;

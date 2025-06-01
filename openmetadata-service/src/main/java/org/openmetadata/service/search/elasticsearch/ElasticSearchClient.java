@@ -52,7 +52,6 @@ import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
-import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
@@ -90,11 +89,6 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
-import es.org.elasticsearch.search.suggest.Suggest;
-import es.org.elasticsearch.search.suggest.SuggestBuilder;
-import es.org.elasticsearch.search.suggest.SuggestBuilders;
-import es.org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
@@ -1460,8 +1454,6 @@ public class ElasticSearchClient implements SearchClient {
     JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
     return jsonResponse.getJsonObject("aggregations");
   }
-
-
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
