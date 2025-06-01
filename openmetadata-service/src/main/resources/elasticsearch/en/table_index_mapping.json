@@ -1,6 +1,6 @@
 {
  "settings": {
-   "index.mapping.total_fields.limit": 500,
+   "index.mapping.total_fields.limit": 250,
    "index": {
      "max_ngram_diff": 17
    },
