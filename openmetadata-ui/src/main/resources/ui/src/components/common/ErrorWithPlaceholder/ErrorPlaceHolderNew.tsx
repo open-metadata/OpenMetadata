@@ -34,6 +34,7 @@ const ErrorPlaceHolderNew = ({
   buttonId,
   icon,
   placeholderText,
+  permissionValue,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -45,6 +46,7 @@ const ErrorPlaceHolderNew = ({
             doc={doc}
             heading={heading}
             permission={permission}
+            permissionValue={permissionValue}
             placeholderText={placeholderText}
             size={size}
             onClick={onClick}
@@ -58,6 +60,7 @@ const ErrorPlaceHolderNew = ({
             className={className}
             heading={heading}
             permission={permission}
+            permissionValue={permissionValue}
             size={size}>
             {children}
           </AssignErrorPlaceHolder>
@@ -74,7 +77,13 @@ const ErrorPlaceHolderNew = ({
         );
 
       case ERROR_PLACEHOLDER_TYPE.PERMISSION:
-        return <PermissionErrorPlaceholder className={className} size={size} />;
+        return (
+          <PermissionErrorPlaceholder
+            className={className}
+            permissionValue={permissionValue}
+            size={size}
+          />
+        );
 
       case ERROR_PLACEHOLDER_TYPE.CUSTOM:
         return (
