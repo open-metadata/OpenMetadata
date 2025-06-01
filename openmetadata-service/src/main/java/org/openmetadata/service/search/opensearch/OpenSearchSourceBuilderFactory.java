@@ -165,21 +165,58 @@ public class OpenSearchSourceBuilderFactory
 
       baseQuery.must(queryStringBuilder);
     } else {
-      MultiMatchQueryBuilder multiMatchQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .prefixLength(1)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f);
+      // Separate fuzzy and non-fuzzy fields to prevent clause explosion with ngram fields
+      Map<String, Float> fuzzyFields = new HashMap<>();
+      Map<String, Float> nonFuzzyFields = new HashMap<>();
 
       for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
         String fieldName = fieldEntry.getKey();
         Float boost = fieldEntry.getValue();
-        multiMatchQueryBuilder.field(fieldName, boost);
+
+        // Exclude ngram fields from fuzzy search to prevent too_many_nested_clauses error
+        // Fuzzy search already handles typos and partial matches, so ngram is redundant
+        if (fieldName.contains(".ngram")) {
+          nonFuzzyFields.put(fieldName, boost);
+        } else {
+          fuzzyFields.put(fieldName, boost);
+        }
       }
 
-      baseQuery.must(multiMatchQueryBuilder);
+      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+
+      // Add fuzzy query for non-ngram fields
+      if (!fuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder fuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .fuzziness(Fuzziness.AUTO)
+                .prefixLength(1)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+
+        for (Map.Entry<String, Float> fieldEntry : fuzzyFields.entrySet()) {
+          fuzzyQueryBuilder.field(fieldEntry.getKey(), fieldEntry.getValue());
+        }
+        combinedQuery.should(fuzzyQueryBuilder);
+      }
+
+      // Add non-fuzzy query for ngram fields (they handle partial matching already)
+      if (!nonFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+
+        for (Map.Entry<String, Float> fieldEntry : nonFuzzyFields.entrySet()) {
+          nonFuzzyQueryBuilder.field(fieldEntry.getKey(), fieldEntry.getValue());
+        }
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+
+      // Ensure at least one of the should clauses matches
+      combinedQuery.minimumShouldMatch(1);
+      baseQuery.must(combinedQuery);
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();

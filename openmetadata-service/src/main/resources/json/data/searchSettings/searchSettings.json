@@ -250,6 +250,10 @@
           "boost": 1.0
         },
         {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        },
+        {
           "field": "tags.tagFQN.text",
           "boost": 5.0
         }
@@ -457,6 +461,10 @@
         {
           "field": "messageSchema.schemaFields.children.name.keyword",
           "boost": 1.0
+        },
+        {
+          "field": "fieldNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [
@@ -637,6 +645,10 @@
         {
           "field": "columns.children.name",
           "boost": 2.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [
@@ -902,6 +914,10 @@
         {
           "field": "dataModel.columns.children.name",
           "boost": 2.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [

@@ -77,6 +77,8 @@ public record TableIndex(Table table) implements ColumnIndex {
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
+      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
+      doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
       doc.put("columnDescriptionStatus", getColumnDescriptionStatus(table));
     }
     serviceSuggest.add(
