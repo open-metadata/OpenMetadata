@@ -28,6 +28,8 @@ Once you have the template, you can fill in the following details:
 
 - **name** (required): This field contains the name of the database.
 
+- **fullyQualifiedName** (required): This field contains the fully qualified name of the database service.
+
 - **displayName**: This field holds the display name of the database.
 
 - **description**: This field contains a detailed description or information about the database.
