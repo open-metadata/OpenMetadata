@@ -4512,9 +4512,6 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE externalId = :externalId")
-    String findUserByExternalId(@Bind("externalId") String externalId);
-
     @Override
     default User findEntityByName(String fqn, Include include) {
       return EntityDAO.super.findEntityByName(fqn.toLowerCase(), include);

@@ -277,12 +277,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
 
-    registerScimResource(catalogConfig, environment);
+    registerScimResource(environment);
   }
 
-  private void registerScimResource(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    ScimProvisioningService scimService = new DefaultScimProvisioningService(); // Stub for now
+  private void registerScimResource(Environment environment) {
+    ScimProvisioningService scimService = new DefaultScimProvisioningService();
     environment.jersey().register(new ScimResource(scimService));
   }
 
