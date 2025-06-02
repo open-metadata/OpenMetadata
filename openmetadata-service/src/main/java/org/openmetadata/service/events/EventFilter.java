@@ -15,17 +15,18 @@ package org.openmetadata.service.events;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.Provider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ForkJoinPool;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.JwtFilter;
@@ -85,7 +86,8 @@ public class EventFilter implements ContainerResponseFilter {
               if (JwtFilter.EXCLUDED_ENDPOINTS.stream()
                   .noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
                 ParallelStreamUtil.runAsync(
-                    () -> eventHandler.process(requestContext, responseContext), forkJoinPool);
+                    (Callable<Void>) () -> eventHandler.process(requestContext, responseContext),
+                    forkJoinPool);
               }
             });
   }
