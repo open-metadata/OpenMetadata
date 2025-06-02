@@ -18,6 +18,7 @@ from sqlalchemy import case, column
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.regexp import RegexpMatchFn
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable
 
@@ -57,8 +58,8 @@ class RegexCount(StaticMetric):
             case(
                 [
                     (
-                        column(self.col.name, self.col.type).regexp_match(
-                            self.expression
+                        RegexpMatchFn(
+                            column(self.col.name, self.col.type), self.expression
                         ),
                         1,
                     )
