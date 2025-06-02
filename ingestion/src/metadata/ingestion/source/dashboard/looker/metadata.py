@@ -112,6 +112,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
@@ -136,6 +137,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -161,6 +163,8 @@ GET_DASHBOARD_FIELDS = [
 
 TEMP_FOLDER_DIRECTORY = os.path.join(os.getcwd(), "tmp")
 REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
+
+LOOKER_TAG_CATEGORY = "LookerTags"
 
 
 def clean_dashboard_name(name: str) -> str:
@@ -433,6 +437,21 @@ class LookerSource(DashboardServiceSource):
         )
         return _datamodel
 
+    def yield_data_model_tags(
+        self, tags: List[str]
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to yield tags related to specific dashboards
+        """
+        if tags and self.source_config.includeTags:
+            yield from get_ometa_tag_and_classification(
+                tags=tags or [],
+                classification_name=LOOKER_TAG_CATEGORY,
+                tag_description="Looker Tag",
+                classification_description="Tags associated with looker entities",
+                include_tags=self.source_config.includeTags,
+            )
+
     def yield_bulk_datamodel(
         self, model: LookmlModelExplore
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -447,6 +466,8 @@ class LookerSource(DashboardServiceSource):
             ):
                 self.status.filter(datamodel_name, "Data model filtered out.")
             else:
+                if model.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(model.tags or [])
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
@@ -454,6 +475,12 @@ class LookerSource(DashboardServiceSource):
                     if model.description
                     else None,
                     service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=model.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
@@ -551,6 +578,8 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
+                if view.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(view.tags or [])
                 datamodel_view_name = (
                     build_datamodel_name(explore.model_name, view.name) + "_view"
                 )
@@ -561,6 +590,12 @@ class LookerSource(DashboardServiceSource):
                     if view.description
                     else None,
                     service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=view.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),
@@ -1152,43 +1187,46 @@ class LookerSource(DashboardServiceSource):
 
             if column_lineage:
                 processed_column_lineage = []
-                for column_tuple in column_lineage or []:
-                    try:
-                        if len(column_tuple) < 2:
-                            logger.debug(
-                                f"Skipping invalid column tuple: {column_tuple}"
-                            )
-                            continue
-
-                        source_col = column_tuple[0]
-                        target_col = column_tuple[-1]
-
-                        if not source_col or not target_col:
-                            logger.debug(
-                                f"Skipping column tuple with empty values: source={source_col}, "
-                                f"target={target_col}, to_entity={to_entity.name}"
-                            )
-                            continue
-
-                        from_column = get_column_fqn(
-                            table_entity=from_entity, column=str(target_col)
-                        )
-                        to_column = self._get_data_model_column_fqn(
-                            data_model_entity=to_entity,
-                            column=str(source_col),
-                        )
-                        if from_column and to_column:
-                            processed_column_lineage.append(
-                                ColumnLineage(
-                                    fromColumns=[from_column], toColumn=to_column
+                if isinstance(column_lineage[0], ColumnLineage):
+                    processed_column_lineage = column_lineage
+                else:
+                    for column_tuple in column_lineage or []:
+                        try:
+                            if len(column_tuple) < 2:
+                                logger.debug(
+                                    f"Skipping invalid column tuple: {column_tuple}"
                                 )
+                                continue
+
+                            source_col = column_tuple[0]
+                            target_col = column_tuple[-1]
+
+                            if not source_col or not target_col:
+                                logger.debug(
+                                    f"Skipping column tuple with empty values: source={source_col}, "
+                                    f"target={target_col}, to_entity={to_entity.name}"
+                                )
+                                continue
+
+                            from_column = get_column_fqn(
+                                table_entity=from_entity, column=str(target_col)
                             )
-                    except Exception as err:
-                        logger.warning(
-                            f"Error processing column lineage {column_tuple}: {err}"
-                        )
-                        logger.debug(traceback.format_exc())
-                        continue
+                            to_column = self._get_data_model_column_fqn(
+                                data_model_entity=to_entity,
+                                column=str(source_col),
+                            )
+                            if from_column and to_column:
+                                processed_column_lineage.append(
+                                    ColumnLineage(
+                                        fromColumns=[from_column], toColumn=to_column
+                                    )
+                                )
+                        except Exception as err:
+                            logger.warning(
+                                f"Error processing column lineage {column_tuple}: {err}"
+                            )
+                            logger.debug(traceback.format_exc())
+                            continue
 
                 column_lineage = processed_column_lineage
 
