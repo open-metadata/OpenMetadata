@@ -72,6 +72,9 @@ public class EntityRelationshipCleanup {
     private Map<String, Integer> orphansByRelationType;
   }
 
+  /**
+   * Initialize entity repositories for all known entity types
+   */
   private void initializeEntityRepositories() {
     for (String entityType : Entity.getEntityList()) {
       try {
@@ -83,6 +86,21 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  /**
+   * Main method to perform entity relationship cleanup with pagination
+   *
+   * @return CleanupResult containing summary of the cleanup operation
+   */
+  public CleanupResult performCleanup() {
+    return performCleanup(1000); // Default batch size of 1000
+  }
+
+  /**
+   * Main method to perform entity relationship cleanup with configurable batch size
+   *
+   * @param batchSize Number of relationships to process per batch
+   * @return CleanupResult containing summary of the cleanup operation
+   */
   public CleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
@@ -95,6 +113,7 @@ public class EntityRelationshipCleanup {
             .build();
 
     try {
+      // Get total count of relationships
       long totalRelationships = collectionDAO.relationshipDAO().getTotalRelationshipCount();
       result.setTotalRelationshipsScanned((int) totalRelationships);
 
@@ -107,8 +126,10 @@ public class EntityRelationshipCleanup {
       int processedCount = 0;
       int batchNumber = 1;
 
+      // Process relationships in batches to avoid memory issues
       while (offset < totalRelationships) {
         LOG.info("Processing batch {} (offset: {}, limit: {})", batchNumber, offset, batchSize);
+
         List<CollectionDAO.EntityRelationshipObject> relationshipBatch =
             collectionDAO.relationshipDAO().getAllRelationshipsPaginated(offset, batchSize);
 
@@ -117,10 +138,13 @@ public class EntityRelationshipCleanup {
           break;
         }
 
+        // Check each relationship in the batch for orphaned entities
         for (CollectionDAO.EntityRelationshipObject relationship : relationshipBatch) {
           OrphanedRelationship orphan = validateRelationship(relationship);
           if (orphan != null) {
             result.getOrphanedRelationships().add(orphan);
+
+            // Track statistics
             result
                 .getOrphansByEntityType()
                 .merge(orphan.getFromEntity() + "->" + orphan.getToEntity(), 1, Integer::sum);
@@ -132,6 +156,7 @@ public class EntityRelationshipCleanup {
         offset += relationshipBatch.size();
         batchNumber++;
 
+        // Log progress periodically
         if (processedCount % (batchSize * 10) == 0 || offset >= totalRelationships) {
           LOG.info(
               "Progress: {}/{} relationships processed, {} orphaned relationships found",
@@ -148,8 +173,10 @@ public class EntityRelationshipCleanup {
           processedCount,
           result.getOrphanedRelationshipsFound());
 
+      // Display findings
       displayOrphanedRelationships(result);
 
+      // Perform cleanup if not dry run
       if (!dryRun && !result.getOrphanedRelationships().isEmpty()) {
         result.setRelationshipsDeleted(
             deleteOrphanedRelationships(result.getOrphanedRelationships()));
@@ -169,6 +196,12 @@ public class EntityRelationshipCleanup {
     return result;
   }
 
+  /**
+   * Validates a single relationship to check if both entities exist
+   *
+   * @param relationship The relationship to validate
+   * @return OrphanedRelationship if the relationship is orphaned, null otherwise
+   */
   private OrphanedRelationship validateRelationship(
       CollectionDAO.EntityRelationshipObject relationship) {
     try {
@@ -177,12 +210,18 @@ public class EntityRelationshipCleanup {
       String fromEntity = relationship.getFromEntity();
       String toEntity = relationship.getToEntity();
 
+      // Check if fromEntity exists
       boolean fromExists = entityExists(fromId, fromEntity);
+
+      // Check if toEntity exists
       boolean toExists = entityExists(toId, toEntity);
+
+      // If both exist, relationship is valid
       if (fromExists && toExists) {
         return null;
       }
 
+      // Determine the reason for orphaning
       String reason;
       if (!fromExists && !toExists) {
         reason = "Both fromEntity and toEntity do not exist";
@@ -221,6 +260,13 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  /**
+   * Checks if an entity exists in the database
+   *
+   * @param entityId The ID of the entity
+   * @param entityType The type of the entity
+   * @return true if the entity exists, false otherwise
+   */
   private boolean entityExists(UUID entityId, String entityType) {
     try {
       EntityRepository<?> repository = entityRepositories.get(entityType);
@@ -228,6 +274,8 @@ public class EntityRelationshipCleanup {
         LOG.debug("No repository found for entity type: {}", entityType);
         return false;
       }
+
+      // Try to find the entity by ID
       repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS);
       return true;
     } catch (EntityNotFoundException e) {
@@ -240,6 +288,12 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  /**
+   * Deletes orphaned relationships from the database
+   *
+   * @param orphanedRelationships List of orphaned relationships to delete
+   * @return Number of relationships successfully deleted
+   */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());
     int deletedCount = 0;
@@ -286,12 +340,20 @@ public class EntityRelationshipCleanup {
     return deletedCount;
   }
 
+  /**
+   * Displays orphaned relationships in a formatted table
+   *
+   * @param result The cleanup result containing orphaned relationships
+   */
   private void displayOrphanedRelationships(CleanupResult result) {
     if (result.getOrphanedRelationships().isEmpty()) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
     }
+
     LOG.info("Found {} orphaned relationships", result.getOrphanedRelationshipsFound());
+
+    // Display detailed table of orphaned relationships
     List<String> columns =
         Arrays.asList("From Entity", "From ID", "To Entity", "To ID", "Relation", "Reason");
 
@@ -308,10 +370,18 @@ public class EntityRelationshipCleanup {
     }
 
     printToAsciiTable(columns, rows, "No orphaned relationships found");
+
+    // Display summary statistics
     displaySummaryStatistics(result);
   }
 
+  /**
+   * Displays summary statistics about orphaned relationships
+   *
+   * @param result The cleanup result containing statistics
+   */
   private void displaySummaryStatistics(CleanupResult result) {
+    // Display orphans by entity type
     if (!result.getOrphansByEntityType().isEmpty()) {
       LOG.info("Orphaned relationships by entity type:");
       List<String> entityColumns = Arrays.asList("Entity Type Pair", "Count");
@@ -325,6 +395,7 @@ public class EntityRelationshipCleanup {
       printToAsciiTable(entityColumns, entityRows, "No entity type statistics");
     }
 
+    // Display orphans by relation type
     if (!result.getOrphansByRelationType().isEmpty()) {
       LOG.info("Orphaned relationships by relation type:");
       List<String> relationColumns = Arrays.asList("Relation Type", "Count");
@@ -340,20 +411,41 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  /**
+   * Gets a human-readable name for a relationship type
+   *
+   * @param relation The relationship type integer
+   * @return Human-readable relationship name
+   */
   private String getRelationshipName(int relation) {
+    // Map common relationship types to names
+    // These constants should ideally be imported from the actual schema
     return switch (relation) {
       case 10 -> "CONTAINS";
+        return "CONTAINS";
+      case 11:
       case 11 -> "CREATED_BY";
+      case 12:
       case 12 -> "MENTIONED_IN";
+      case 13:
       case 13 -> "PARENT_OF";
       case 14 -> "OWNS";
+        return "OWNS";
       case 15 -> "FOLLOWS";
+        return "FOLLOWS";
       case 16 -> "JOINED";
+        return "JOINED";
+      case 17:
       case 17 -> "REACTED_TO";
+      case 18:
       case 18 -> "REPLIED_TO";
       case 19 -> "TESTED_BY";
+        return "TESTED_BY";
       case 20 -> "UPSTREAM";
+        return "UPSTREAM";
+      case 21:
       case 21 -> "DOWNSTREAM";
+      default:
       default -> "RELATION_" + relation;
     };
   }
