@@ -566,7 +566,7 @@ const GlossaryHeader = ({
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
         </Col>
-        <Col>
+        <Col className="flex items-center">
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
