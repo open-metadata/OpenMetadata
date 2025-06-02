@@ -93,6 +93,7 @@ The role that is going to be used to perform the ingestion, needs to have the fo
         }
     ]
 }
+```
 Otherwise, you might be finding issues such as
 
 PAM authentication failed for user "<user>"
