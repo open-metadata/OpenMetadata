@@ -1165,7 +1165,7 @@ class LookerSource(DashboardServiceSource):
             db_service_name: name of the service from the config
             to_entity: Dashboard Entity being used
         """
-        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals, too-many-nested-blocks
         logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
