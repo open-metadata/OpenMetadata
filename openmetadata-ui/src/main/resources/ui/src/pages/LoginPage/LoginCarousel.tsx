@@ -24,9 +24,7 @@ const LoginCarousel = () => {
   return (
     <div className="carousal-container" data-testid="carousel-container">
       <Carousel
-        autoplay
         dots
-        autoplaySpeed={5000}
         beforeChange={(_, next) => setCurrentIndex(next)}
         easing="ease-in-out"
         effect="fade">
@@ -34,12 +32,13 @@ const LoginCarousel = () => {
           <div
             className="text-center"
             data-testid="slider-container"
-            key={uniqueId() + '-' + currentIndex + '-' + idx}>
+            key={uniqueId() + '-' + currentIndex + '-' + idx}
+            style={{ padding: '24px' }}>
             <Typography.Title className="carousel-header" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="m-b-lg carousal-description"
+              className="carousal-description"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>

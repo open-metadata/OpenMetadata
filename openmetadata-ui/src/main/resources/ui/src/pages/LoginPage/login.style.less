@@ -12,22 +12,18 @@
  */
 
 @import (reference) url('./../../styles/variables.less');
+@import (reference) url('./../../styles/fonts.less');
 
 .login-form-container {
-  background-color: @grey-100;
-  padding: @size-lg;
+  //   background-color: @grey-100;
+  //   padding: @size-lg;
   padding-left: 0;
-  height: 100vh;
+  height: calc(100vh - 32px);
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  //   justify-content: flex-start;
 
-  @media screen and (max-width: 1024px) {
-    padding: @size-md;
-    justify-content: center;
-  }
-
-  .form-item {
+  .login-box {
     background-color: @white;
     border-radius: @border-radius-lg;
     box-shadow: 0px 24px 48px -12px rgba(10, 13, 18, 0.18);
@@ -35,45 +31,45 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: @size-2xl auto;
-    padding: @size-xl @size-2xl;
+    margin: 0 auto;
+    padding: @size-2xl;
     text-align: center;
     height: auto;
-    max-width: 500px;
+    // max-width: 500px;
 
     @media screen and (min-width: 1650px) {
-      min-width: 650px;
+      //   min-width: 650px;
       margin: auto;
     }
 
-    @media screen and (max-width: 1200px) {
-      margin: @size-md;
-      padding: @size-lg;
-      width: 100%;
-    }
+    // @media screen and (max-width: 1200px) {
+    //   //   margin: @size-md;
+    //   padding: @size-lg;
+    //   width: 100%;
+    // }
 
-    @media screen and (max-width: 1024px) {
-      margin: 0 auto;
-    }
+    // @media screen and (max-width: 1024px) {
+    //   margin: 0 auto;
+    // }
 
-    @media screen and (max-width: 768px) {
-      min-width: 320px;
-    }
+    // @media screen and (max-width: 768px) {
+    //   min-width: 320px;
+    // }
 
     .header-text {
       font-size: 28px;
-      font-weight: 700;
+      font-weight: 600;
       color: @grey-800;
-      margin-top: @size-xl;
-      margin-bottom: 0px;
 
-      @media screen and (max-width: 768px) {
-        font-size: 24px;
-        margin-top: @size-lg;
-      }
+      margin-top: @size-xl;
+
+      //   @media screen and (max-width: 768px) {
+      //     font-size: 24px;
+      //     margin-top: @size-lg;
+      //   }
 
       @media screen and (min-width: 1650px) {
-        font-size: 40px;
+        font-size: 36px;
       }
     }
 
@@ -82,24 +78,24 @@
       width: 380px;
 
       @media screen and (min-width: 1650px) {
-        width: 550px;
+        // width: 550px;
       }
 
       @media screen and (max-width: 1024px) {
-        width: 100%;
-        max-width: 380px;
-        margin: 2rem auto 0;
+        // width: 100%;
+        // max-width: 380px;
+        // margin: 2rem auto 0;
       }
 
       .error-alert {
         border-color: #fbb4ae;
       }
 
-      .login-btn {
-        @media screen and (min-width: 1650px) {
-          font-size: 18px;
-        }
-      }
+      //   .login-btn {
+      //     @media screen and (min-width: 1650px) {
+      //       font-size: 18px;
+      //     }
+      //   }
     }
 
     label {
@@ -148,9 +144,9 @@
         }
       }
 
-      @media screen and (max-width: 768px) {
-        width: 100%;
-      }
+      //   @media screen and (max-width: 768px) {
+      //     width: 100%;
+      //   }
 
       @media screen and (min-width: 1650px) {
         width: 600px;
@@ -172,77 +168,6 @@
     .sso-signup {
       margin-top: @size-xl;
       margin-bottom: @size-lg;
-    }
-  }
-
-  .form-carousel-container {
-    position: fixed;
-    right: @size-lg;
-    top: @size-lg;
-    width: calc(58.33% - @size-lg);
-    height: calc(100vh - @size-lg * 2);
-    overflow: hidden;
-    background: linear-gradient(45deg, #194185 0%, #2e90fa 100%);
-    border-radius: @size-mlg;
-
-    @media screen and (min-width: 1710px) {
-      right: @size-xl;
-      top: @size-xl;
-      width: calc(58.33% - @size-xl);
-      height: calc(100vh - @size-xl * 2);
-    }
-
-    @media screen and (max-width: 1024px) {
-      display: none;
-    }
-  }
-
-  .ant-carousel .slick-dots li {
-    width: 3% !important;
-    height: 5% !important;
-  }
-
-  .carousel-header {
-    color: @white;
-    font-weight: 700;
-    font-size: max(32px, 2.5vw);
-    line-height: 1.2;
-
-    @media screen and (min-width: 1650px) {
-      font-size: 50px;
-    }
-
-    @media screen and (min-width: 2400px) {
-      font-size: 64px;
-    }
-
-    @media screen and (min-width: 3600px) {
-      font-size: 80px;
-    }
-  }
-
-  .carousal-description {
-    width: min(600px, 80%);
-    text-align: center;
-    margin: 16px auto 5%;
-    padding: 0 48px;
-    color: @grey-50;
-    font-size: max(14px, 1vw);
-    line-height: 1.5;
-
-    @media screen and (min-width: 1650px) {
-      font-size: 20px;
-      width: 720px;
-    }
-
-    @media screen and (min-width: 2400px) {
-      font-size: 28px;
-      width: 940px;
-    }
-
-    @media screen and (min-width: 3600px) {
-      font-size: 48px;
-      width: 1800px;
     }
   }
 }
@@ -306,8 +231,12 @@
   .image-container {
     position: relative;
 
-    .governance-image {
-      width: 60%;
+    .governance-image,
+    .collaboration-image,
+    .observability-image,
+    .discovery-image,
+    .collate-ai-img {
+      width: 100% !important;
     }
 
     .governance-top-left {

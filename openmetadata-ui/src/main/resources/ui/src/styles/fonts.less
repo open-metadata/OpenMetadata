@@ -13,6 +13,22 @@
 
 @import (reference) url('./variables.less');
 
+// Set base font size using CSS custom property
+:root {
+  --ant-font-size-base: 14px;
+}
+
+@media screen and (min-width: 1600px) {
+  :root {
+    --ant-font-size-base: 16px;
+  }
+}
+
+// Override @font-size-base for different screen sizes
+@media screen and (min-width: 1600px) {
+  @font-size-base: 16px;
+}
+
 // font family
 pre {
   font-family: 'Source Code Pro', sans-serif;
@@ -174,6 +190,26 @@ a.ant-typography,
 
 // =============================== New Design System ===============================
 
+// Base font size for different screen sizes
+html {
+  font-size: 14px; // Default size matching @font-size-base
+}
+
+// Override Ant Design's base font size for different screen sizes
+:root {
+  --ant-font-size-base: 14px;
+}
+
+@media screen and (min-width: 1600px) {
+  html {
+    font-size: 16px;
+  }
+
+  :root {
+    --ant-font-size-base: 16px;
+  }
+}
+
 .text-secondary-new {
   color: #414651;
 }
@@ -220,43 +256,43 @@ a.ant-typography,
 
 // Font Style Definitions
 .display-lg {
-  .text-style(48px, 60px, -2%);
+  .text-style(3.428rem, 4.285rem, -2%);
 
   .font-weight-variants();
 }
 
 .display-md {
-  .text-style(36px, 44px, -2%);
+  .text-style(2.571rem, 3.142rem, -2%);
 
   .font-weight-variants();
 }
 
 .display-sm {
-  .text-style(30px, 38px, 0%);
+  .text-style(2.142rem, 2.714rem, 0%);
 
   .font-weight-variants();
 }
 
 .display-xs {
-  .text-style(24px, 32px, 0%);
+  .text-style(1.714rem, 2.285rem, 0%);
 
   .font-weight-variants();
 }
 
 .text-xl {
-  .text-style(20px, 30px);
+  .text-style(1.428rem, 2.142rem);
 }
 .text-lg {
-  .text-style(18px, 28px);
+  .text-style(1.285rem, 2rem);
 }
 .text-md {
-  .text-style(16px, 24px);
+  .text-style(1.142rem, 1.714rem);
 }
 .text-sm {
-  .text-style(14px, 20px);
+  .text-style(1rem, 1.428rem);
 }
 .text-xs {
-  .text-style(12px, 18px);
+  .text-style(0.857rem, 1.285rem);
 }
 
 // =============================== End of New Design System ===============================

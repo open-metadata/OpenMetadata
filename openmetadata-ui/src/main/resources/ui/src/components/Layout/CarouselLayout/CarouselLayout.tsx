@@ -1,0 +1,48 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Col, Grid, Layout, Row } from 'antd';
+import { Content } from 'antd/lib/layout/layout';
+import React, { ReactNode } from 'react';
+import LoginCarousel from '../../../pages/LoginPage/LoginCarousel';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
+import './carousel-layout.less';
+
+export const CarouselLayout = ({
+  pageTitle,
+  children,
+}: {
+  pageTitle: string;
+  children: ReactNode;
+}) => {
+  const { lg } = Grid.useBreakpoint();
+
+  return (
+    <Layout>
+      <DocumentTitle title={pageTitle} />
+      <Content className="p-md">
+        <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
+          <Col className="carousel-left-side-container" span={lg ? 8 : 24}>
+            {children}
+          </Col>
+          {lg && (
+            <Col span={18}>
+              <div className="form-carousel-container">
+                <LoginCarousel />
+              </div>
+            </Col>
+          )}
+        </Row>
+      </Content>
+    </Layout>
+  );
+};
