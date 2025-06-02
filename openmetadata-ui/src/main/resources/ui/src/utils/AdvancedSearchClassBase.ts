@@ -25,6 +25,7 @@ import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_OPERATORS,
@@ -36,6 +37,7 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { LabelType } from '../generated/type/tagLabel';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
@@ -722,6 +724,28 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.ENTITY_TYPE,
           }),
           useAsyncSearch: true,
+        },
+      },
+      [EntityFields.SUGGESTED_DESCRIPTION]: {
+        label: t('label.suggested-description'),
+        type: 'select',
+        operators: NULL_CHECK_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      [EntityFields.TAGS_LABEL_TYPE]: {
+        label: t('label.tag-label-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: {
+            [LabelType.Manual]: t('label.manual'),
+            [LabelType.Derived]: t('label.derived'),
+            [LabelType.Propagated]: t('label.propagated'),
+            [LabelType.Automated]: t('label.automated'),
+            [LabelType.Generated]: t('label.generated'),
+          },
         },
       },
     };
