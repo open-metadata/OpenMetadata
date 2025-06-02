@@ -1,7 +1,8 @@
 import json
 
 from metadata.pii.algorithms.tags import PIICategoryTag
-from tests import REPO_ROOT_DIR
+
+from .... import REPO_ROOT_DIR
 
 
 def test_pii_categories_agree_with_openmetadata_ner_entities() -> None:

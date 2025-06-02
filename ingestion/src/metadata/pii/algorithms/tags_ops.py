@@ -1,41 +1,6 @@
-from typing import Dict, Set
+from typing import Collection, Dict, Optional, Set
 
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.algorithms.tags import PIICategoryTag, PIISensitivityTag, PIITag
-from metadata.utils import fqn
-
-GENERAL = "General"
-
-# pyright: reportUnknownMemberType=false
-def get_general_tag_fqn(tag: PIICategoryTag) -> str:
-    """Build the general tag FQN"""
-    fqn_str = fqn.build(
-        None, entity_type=Tag, classification_name=GENERAL, tag_name=tag.value
-    )
-
-    if fqn_str is None:
-        # This should be prevented by unit tests, but in case it happens,
-        # we raise an error to avoid silent failures.
-        raise ValueError(f"Failed to build FQN for tag: {tag}")
-
-    return fqn_str
-
-
-def get_pii_sensitivity(pii_tag: PIITag) -> PIISensitivityTag:
-    """
-    Get the sensitivity level of the PII tag.
-    This map is opinionated and can be changed in the future according to users' needs.
-    """
-    default_non_pii_sensitive = (
-        PIITag.DATE_TIME,
-        PIITag.NRP,
-        PIITag.LOCATION,
-        PIITag.PHONE_NUMBER,
-        PIITag.URL,
-    )
-    if pii_tag in default_non_pii_sensitive:
-        return PIISensitivityTag.NONSENSITIVE
-    return PIISensitivityTag.SENSITIVE
 
 
 def categorize_pii_tag(pii_tag: PIITag) -> PIICategoryTag:
@@ -52,11 +17,55 @@ def categorize_pii_tag(pii_tag: PIITag) -> PIICategoryTag:
     raise ValueError(f"PII tag does not belong to any category: {pii_tag}")
 
 
+def get_sensitivity_for_pii_category(
+    pii_category_tag: PIICategoryTag,
+) -> PIISensitivityTag:
+    """
+    Get the sensitivity level of the PIICategoryTag.
+    This map is opinionated and can be changed in according to users' needs.
+    """
+    non_pii_sensitive = (
+        PIICategoryTag.GENDER,
+        PIICategoryTag.NRP,
+        PIICategoryTag.DATE_TIME,
+        PIICategoryTag.LOCATION,
+        # FIXME: Do we really want to consider PHONE_NUMBER as non-sensitive?
+        PIICategoryTag.PHONE_NUMBER,
+        PIICategoryTag.URL,
+    )
+    if pii_category_tag in non_pii_sensitive:
+        return PIISensitivityTag.NONSENSITIVE
+    return PIISensitivityTag.SENSITIVE
+
+
+def resolve_sensitivity(
+    sensitivities: Collection[PIISensitivityTag],
+) -> Optional[PIISensitivityTag]:
+    """
+    Resolve the sensitivity level from a list of PIISensitivityTag.
+    Most restricted sensitivity is returned if multiple tags are present.
+    """
+    if not sensitivities:
+        return None
+    if PIISensitivityTag.SENSITIVE in sensitivities:
+        return PIISensitivityTag.SENSITIVE
+    return PIISensitivityTag.NONSENSITIVE
+
+
+def get_sensitivity_for_pii(pii_tag: PIITag) -> PIISensitivityTag:
+    """
+    Get the sensitivity level of the PIITag.
+    This map is opinionated and can be changed in the future according to users' needs.
+    """
+    pii_category_tag = categorize_pii_tag(pii_tag)
+    return get_sensitivity_for_pii_category(pii_category_tag)
+
+
 # Parent child aliases
 _P = PIICategoryTag
 _C = PIITag
 
-# Define what PIITag a PIICategoryTag contains
+# Define the PIITag's a PIICategoryTag contains
 _CATEGORY_MAP: Dict[PIICategoryTag, Set[PIITag]] = {
     _P.PASSWORD: set(),
     _P.BANK_NUMBER: {_C.US_BANK_NUMBER},

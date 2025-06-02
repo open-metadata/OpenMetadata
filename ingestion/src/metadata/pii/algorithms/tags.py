@@ -16,9 +16,55 @@ import enum
 from typing import List
 
 
+class PIIClassificationName(enum.Enum):
+    # FIXME: Not sure what the purpose of General vs PII is here.
+    """Classification name for PII tags"""
+    PII = "PII"
+    GENERAL = "General"
+
+
 class PIISensitivityTag(enum.Enum):
     SENSITIVE = "Sensitive"
     NONSENSITIVE = "NonSensitive"
+
+    @classmethod
+    def pii_classification_name(cls) -> PIIClassificationName:
+        return PIIClassificationName.PII
+
+
+@enum.unique
+class PIICategoryTag(enum.Enum):
+    """
+    PII Category Tags.
+    These tags are used to categorize the PII tags into broader categories,
+    for instance, to show the PII tags in the UI.
+    """
+
+    PASSWORD = "Password"
+    BANK_NUMBER = "BankNumber"
+    PERSON = "Person"
+    BIRTH_DATE = "BirthDate"
+    GENDER = "Gender"
+    NRP = "NRP"
+    ADDRESS = "Address"
+    CREDIT_CARD = "CreditCardNumber"
+    CRYPTO = "Crypto"
+    DATE_TIME = "DateTime"
+    EMAIL_ADDRESS = "Email"
+    IBAN_CODE = "IBANCode"
+    IP_ADDRESS = "IPAddress"
+    LOCATION = "Location"
+    PHONE_NUMBER = "PhoneNumber"
+    MEDICAL_LICENSE = "MedicalLicense"
+    URL = "URL"
+    DRIVER_LICENSE = "DriverLicense"
+    NATIONAL_ID = "NationalID"
+    PASSPORT = "Passport"
+    VAT_CODE = "VATCode"
+
+    @classmethod
+    def pii_classification_name(cls) -> PIIClassificationName:
+        return PIIClassificationName.GENERAL
 
 
 @enum.unique
@@ -27,7 +73,7 @@ class PIITag(enum.Enum):
     PII Tags (borrowed from Presidio https://microsoft.github.io/presidio/supported_entities/).
     The values of these tags are valid Presidio entity names, changing them
     will break the integration with Presidio.
-    A better name for this enum would have been `PredidionPII`.
+    A better name for this enum would have been `PresidioPII`.
     """
 
     # Global
@@ -94,34 +140,3 @@ class PIITag(enum.Enum):
         Get all the values of the enum as a set of strings.
         """
         return [tag.value for tag in cls]
-
-
-@enum.unique
-class PIICategoryTag(enum.Enum):
-    """
-    PII Category Tags.
-    These tags are used to categorize the PII tags into broader categories,
-    for instance, to show the PII tags in the UI.
-    """
-
-    PASSWORD = "Password"
-    BANK_NUMBER = "BankNumber"
-    PERSON = "Person"
-    BIRTH_DATE = "BirthDate"
-    GENDER = "Gender"
-    NRP = "NRP"
-    ADDRESS = "Address"
-    CREDIT_CARD = "CreditCardNumber"
-    CRYPTO = "Crypto"
-    DATE_TIME = "DateTime"
-    EMAIL_ADDRESS = "Email"
-    IBAN_CODE = "IBANCode"
-    IP_ADDRESS = "IPAddress"
-    LOCATION = "Location"
-    PHONE_NUMBER = "PhoneNumber"
-    MEDICAL_LICENSE = "MedicalLicense"
-    URL = "URL"
-    DRIVER_LICENSE = "DriverLicense"
-    NATIONAL_ID = "NationalID"
-    PASSPORT = "Passport"
-    VAT_CODE = "VATCode"

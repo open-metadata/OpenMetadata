@@ -45,14 +45,12 @@ from metadata.pii.algorithms.presidio_utils import (
     build_analyzer_engine,
     set_presidio_logger_level,
 )
-from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
-from metadata.pii.algorithms.tags_ops import get_pii_sensitivity
-from metadata.pii.algorithms.utils import group_by_average
+from metadata.pii.algorithms.tags import PIITag
 
 T = TypeVar("T", bound=Hashable)
 
 
-class ColumnClassifier(ABC, Generic[T]):
+class ColumnLabeler(ABC, Generic[T]):
     """
     Base class for column classifiers.
     This class defines the interface for classifiers that predict the class
@@ -77,7 +75,7 @@ class ColumnClassifier(ABC, Generic[T]):
 
 
 @final
-class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
+class HeuristicPIILabeler(ColumnLabeler[PIITag]):
     """
     Heuristic PII Column Classifier
     """
@@ -140,32 +138,12 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             if tag in column_name_matches:
                 final_score += self._column_name_contribution
             # Apply the score cutoff
-            if final_score >= self._score_cutoff:
-                final_results[tag] = final_score
+            if final_score < self._score_cutoff:
+                continue
+            final_results[tag] = final_score
+
+        # Make sure all scores are capped at 1.0
+        for tag in final_results:
+            final_results[tag] = min(final_results[tag], 1.0)
 
         return final_results
-
-
-class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
-    """
-    Implements a classifier for PII sensitivity tags based on a given
-    PII column classifier. If no classifier is provided, it defaults to
-    using the HeuristicPIIColumnClassifier.
-    """
-
-    def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):
-        self.classifier: ColumnClassifier[PIITag] = (
-            classifier or HeuristicPIIClassifier()
-        )
-
-    def predict_scores(
-        self,
-        sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        column_data_type: Optional[DataType] = None,
-    ) -> Mapping[PIISensitivityTag, float]:
-        pii_tags = self.classifier.predict_scores(
-            sample_data, column_name, column_data_type
-        )
-
-        return group_by_average(pii_tags, get_pii_sensitivity)
