@@ -262,14 +262,19 @@ export const TestSuites = () => {
   }, [testSuitePermission, pageSize, searchValue, owner]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-suite'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row
-      className="p-x-md"
-      data-testid="test-suite-container"
-      gutter={[16, 16]}>
+    <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
         <Row justify="space-between">
           <Col>

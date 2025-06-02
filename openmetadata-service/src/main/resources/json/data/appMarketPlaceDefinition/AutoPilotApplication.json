@@ -1,0 +1,23 @@
+{
+  "name": "AutoPilotApplication",
+  "displayName": "AutoPilot",
+  "description": "Easily setup any new service that you need by only defining the connection.\n This workflow will take care of configuring and deploying any relevant pipelines to ingest the metadata with good default values.\n Afterwards you are able to edit any configuration as you see fit.",
+  "features": "Easily Service Setup by automating the configuration, deployment and triggering the relevant pipelines to ingest your service metadata.",
+  "appType": "internal",
+  "appScreenshots": [],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "NoSchedule",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp",
+  "runtime": {
+    "enabled": true
+  },
+  "appConfiguration": {
+    "type": "AutoPilotApplication",
+    "active": true,
+    "entityLink": null
+  }
+}

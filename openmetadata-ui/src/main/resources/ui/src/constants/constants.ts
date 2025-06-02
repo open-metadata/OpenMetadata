@@ -55,6 +55,7 @@ export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
@@ -83,6 +84,10 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
+export const COLLATE_SAAS = 'CollateSaaS';
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -247,8 +252,12 @@ export const ROUTES = {
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
-  INCIDENT_MANAGER_DETAILS: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}`,
-  INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  // test case
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_FQN}`,
+  TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -369,7 +378,7 @@ export const ERROR_MESSAGE = {
 };
 
 export const ICON_DIMENSION = {
-  with: 14,
+  width: 14,
   height: 14,
   fontSize: 14,
 };
@@ -419,3 +428,6 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const ONE_HOUR_MS = 60 * 60 * 1000;

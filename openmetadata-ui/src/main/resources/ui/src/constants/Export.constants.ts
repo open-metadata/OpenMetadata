@@ -13,4 +13,10 @@
 export enum ExportTypes {
   CSV = 'CSV',
   PNG = 'PNG',
+  PDF = 'PDF',
 }
+
+export const BETA_EXPORT_TYPES = [ExportTypes.PNG, ExportTypes.PDF];
+
+export const LINEAGE_EXPORT_SELECTOR =
+  '#lineage-container .react-flow__viewport';

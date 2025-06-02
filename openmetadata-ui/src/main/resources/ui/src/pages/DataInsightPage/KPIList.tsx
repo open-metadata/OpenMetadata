@@ -78,7 +78,7 @@ const KPIList = () => {
       });
       setKpiList(response.data);
       setKpiPaging(response.paging);
-    } catch (err) {
+    } catch {
       setKpiList([]);
       setKpiPaging(pagingObject);
     } finally {
@@ -223,7 +223,13 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.kpi-uppercase'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ),
     [viewKPIPermission]
   );
@@ -231,8 +237,8 @@ const KPIList = () => {
   return (
     <>
       <Table
-        className="kpi-table"
         columns={columns}
+        containerClassName="kpi-table"
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,

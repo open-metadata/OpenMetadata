@@ -12,38 +12,37 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
-import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
-
 const { Sider } = Layout;
 
-const LeftSidebar = ({
-  isSidebarCollapsed,
-}: {
-  isSidebarCollapsed: boolean;
-}) => {
+const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
+  const {
+    preferences: { isSidebarCollapsed },
+  } = useCurrentUserPreferences();
 
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -100,13 +99,6 @@ const LeftSidebar = ({
           }),
         };
       }),
-      {
-        type: 'divider',
-        style: {
-          flex: 1,
-        },
-      },
-      ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
 
@@ -127,26 +119,52 @@ const LeftSidebar = ({
       trigger={null}
       width={228}>
       <div className="logo-container">
-        <BrandImage
-          alt="OpenMetadata Logo"
-          className="vertical-middle"
-          dataTestId="image"
-          height={40}
-          isMonoGram={isSidebarCollapsed}
-          width="auto"
-        />
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={40}
+            isMonoGram={isSidebarCollapsed}
+            width="auto"
+          />
+        </Link>
       </div>
 
-      <Menu
-        inlineIndent={16}
-        items={menuItems as MenuItemType[]}
-        mode="inline"
-        openKeys={openKeys}
-        rootClassName="left-sidebar-menu"
-        selectedKeys={selectedKeys}
-        onClick={handleMenuClick}
-        onOpenChange={setOpenKeys}
-      />
+      <div className="left-sidebar-layout">
+        <div className="menu-container">
+          <div className="top-menu">
+            <Menu
+              inlineIndent={16}
+              items={menuItems}
+              mode="inline"
+              openKeys={openKeys}
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+              onClick={handleMenuClick}
+              onOpenChange={setOpenKeys}
+            />
+          </div>
+
+          <div className="bottom-menu">
+            <Menu
+              inlineIndent={16}
+              items={[
+                {
+                  type: 'divider',
+                  style: {
+                    margin: '8px 0',
+                  },
+                },
+                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+              ]}
+              mode="inline"
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+            />
+          </div>
+        </div>
+      </div>
 
       {showConfirmLogoutModal && (
         <Modal

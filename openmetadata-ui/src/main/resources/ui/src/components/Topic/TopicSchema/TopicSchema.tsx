@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -82,6 +74,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+  const viewTypeOptions = [
+    {
+      label: t('label.field-plural'),
+      value: SchemaViewType.FIELDS,
+    },
+    { label: t('label.text'), value: SchemaViewType.TEXT },
+  ];
+
   const { fqn: entityFqn } = useFqn();
   const {
     data: topicDetails,
@@ -312,16 +312,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   useEffect(() => {
     setExpandedRowKeys(schemaAllRowKeys);
   }, []);
 
   return (
-    <Row className="mt-4" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
           <Typography.Text type="secondary">
@@ -339,14 +335,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <>
           {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
             <Col span={24}>
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.FIELDS}>
-                  {t('label.field-plural')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.TEXT}>
-                  {t('label.text')}
-                </Radio.Button>
-              </Radio.Group>
+              <Segmented
+                className="segment-toggle"
+                options={viewTypeOptions}
+                value={viewType}
+                onChange={(value) => setViewType(value as SchemaViewType)}
+              />
             </Col>
           )}
 

@@ -64,7 +64,13 @@ const GlobalSettingPage = () => {
   }, []);
 
   if (isEmpty(settingItems)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        permissionValue={t('label.setting-plural')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -77,7 +83,7 @@ const GlobalSettingPage = () => {
         <Col span={24}>
           <Row className="setting-items-container" gutter={[20, 20]}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} span={8}>
+              <Col key={setting?.key} lg={8} md={12} sm={24}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={setting}

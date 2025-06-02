@@ -62,7 +62,7 @@ class TopicClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.TOPIC_SCHEMA]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
@@ -99,7 +99,10 @@ class TopicClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.TOPIC_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -108,7 +111,7 @@ class TopicClassBase {
           {
             h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
             i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
+            w: 1,
             x: 0,
             y: 0,
             static: false,
@@ -116,9 +119,9 @@ class TopicClassBase {
           {
             h: this.defaultWidgetHeight[DetailPageWidgetKeys.TOPIC_SCHEMA],
             i: DetailPageWidgetKeys.TOPIC_SCHEMA,
-            w: 6,
+            w: 1,
             x: 0,
-            y: 0,
+            y: 1,
             static: false,
           },
         ],

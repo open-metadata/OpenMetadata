@@ -39,7 +39,7 @@ const DataProductSummary = ({
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Space className="w-full" direction="vertical" size={20}>
+      <div className="d-flex flex-col gap-5">
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
@@ -100,7 +100,7 @@ const DataProductSummary = ({
             )}
           </Col>
         </Row>
-      </Space>
+      </div>
     </SummaryPanelSkeleton>
   );
 };

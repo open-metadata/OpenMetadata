@@ -8,6 +8,7 @@ import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPE
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -64,12 +65,14 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void install() {
+  public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
-    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
-      return;
-    }
-    if (app.getAppType().equals(AppType.Internal)
+    if (Boolean.TRUE.equals(app.getDeleted())
+        || (app.getAppSchedule() == null)
+        || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
+            .contains(app.getScheduleType())) {
+      LOG.debug("App {} does not support scheduling.", app.getName());
+    } else if (app.getAppType().equals(AppType.Internal)
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
@@ -84,7 +87,7 @@ public class AbstractNativeApplication implements NativeApplication {
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
-      scheduleExternal();
+      scheduleExternal(installedBy);
     }
   }
 
@@ -101,7 +104,8 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
+    if (Set.of(ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual)
+        .contains(app.getScheduleType())) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application with the provided configuration payload
@@ -133,14 +137,16 @@ public class AbstractNativeApplication implements NativeApplication {
     AppScheduler.getInstance().scheduleApplication(app);
   }
 
-  public void scheduleExternal() {
+  public void scheduleExternal(String updatedBy) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
       updateAppConfig(
-          ingestionPipelineRepository, JsonUtils.getMap(this.getApp().getAppConfiguration()));
+          ingestionPipelineRepository,
+          JsonUtils.getMap(this.getApp().getAppConfiguration()),
+          updatedBy);
     } catch (EntityNotFoundException ex) {
       Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
@@ -178,7 +184,9 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void updateAppConfig(
-      IngestionPipelineRepository repository, Map<String, Object> appConfiguration) {
+      IngestionPipelineRepository repository,
+      Map<String, Object> appConfiguration,
+      String updatedBy) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
@@ -186,7 +194,7 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
-    repository.update(null, original, updated);
+    repository.update(null, original, updated, updatedBy);
   }
 
   private void createAndBindIngestionPipeline(

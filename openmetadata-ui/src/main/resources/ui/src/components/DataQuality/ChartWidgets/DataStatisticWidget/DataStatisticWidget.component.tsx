@@ -34,14 +34,14 @@ const DataStatisticWidget = ({
       className="h-full"
       data-testid={`${name}-data-statistic-widget`}
       loading={isLoading}>
-      <Typography.Paragraph className="text-xs text-grey-muted data-statistic-widget-title">
+      <Typography.Paragraph className="text-xs font-semibold data-statistic-widget-title">
         {title}
       </Typography.Paragraph>
 
       <div className="d-flex gap-2 items-center m-b-xss">
         <Icon height={24} width={24} {...iconProps} />
         <Typography.Paragraph
-          className="font-medium text-xl m-b-0"
+          className="font-medium text-md m-b-0"
           data-testid="total-value">
           {`${countValue} ${dataLabel}`}
         </Typography.Paragraph>

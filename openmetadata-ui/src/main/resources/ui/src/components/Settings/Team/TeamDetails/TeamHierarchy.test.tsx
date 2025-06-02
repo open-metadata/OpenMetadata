@@ -26,6 +26,12 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
+  showDeletedTeam: false,
+  onShowDeletedTeamChange: jest.fn(),
+  handleAddTeamButtonClick: jest.fn(),
+  createTeamPermission: true,
+  isTeamDeleted: false,
+  handleTeamSearch: jest.fn(),
 };
 
 const mockShowErrorToast = jest.fn();
@@ -71,6 +77,10 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>SearchBar</div>)
+);
+
 describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
     await act(async () => {
@@ -108,7 +118,7 @@ describe('Team Hierarchy page', () => {
     expect(assetCountColumn).toBeInTheDocument();
     expect(descriptionColumn).toBeInTheDocument();
 
-    expect(rows).toHaveLength(MOCK_TABLE_DATA.length);
+    expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });
 
   it('Should render child row in table', async () => {

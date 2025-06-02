@@ -79,6 +79,8 @@ const mockProps = {
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
   onThreadLinkSelect: jest.fn(),
+  isTabExpanded: false,
+  toggleTabExpanded: jest.fn(),
 };
 
 jest.mock('../../../utils/GlossaryTerm/GlossaryTermUtil', () => ({
@@ -95,6 +97,10 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
     _esModule: true,
   };
 });
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
 
 describe('Test Glossary-term component', () => {
   it('Should render GenericTab component', async () => {

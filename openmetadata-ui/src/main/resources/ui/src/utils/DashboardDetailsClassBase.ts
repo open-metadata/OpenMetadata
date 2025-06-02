@@ -61,8 +61,8 @@ class DashboardDetailsClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.CHARTS_TABLE]: 6,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.CHARTS_TABLE]: 4,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
@@ -97,7 +97,10 @@ class DashboardDetailsClassBase {
 
     return [
       {
-        h: 8.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.CHARTS_TABLE] +
+          0.3,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

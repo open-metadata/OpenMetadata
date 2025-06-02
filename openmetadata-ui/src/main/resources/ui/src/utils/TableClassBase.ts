@@ -74,9 +74,9 @@ class TableClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8,
+      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8.5,
       [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
@@ -98,8 +98,8 @@ class TableClassBase {
       EntityTabs.SAMPLE_DATA,
       EntityTabs.TABLE_QUERIES,
       EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
       EntityTabs.LINEAGE,
+      EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
@@ -118,7 +118,11 @@ class TableClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA] +
+          // Padding for left panel container
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

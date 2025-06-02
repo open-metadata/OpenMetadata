@@ -144,7 +144,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -288,12 +288,14 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.MLMODEL}
                     key={tagType}
                     permission={false}
@@ -357,8 +359,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.MLMODEL}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

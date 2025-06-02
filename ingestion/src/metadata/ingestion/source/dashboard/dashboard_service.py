@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -362,7 +362,31 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            yield from self.yield_lineage_request(lineage)
+
+        # yield datamodel lineage with tables from db services
+        db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details) or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+        for db_service_name in db_service_names or []:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details, db_service_name)
+                or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+
+    def yield_lineage_request(
+        self, lineage: Optional[Either[AddLineageRequest]] = None
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Method to yield lineage request
+        """
+        if lineage:
             if lineage.right is not None:
                 yield Either(
                     right=OMetaLineageRequest(
@@ -372,14 +396,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
             else:
                 yield lineage
-
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
 
     def yield_bulk_tags(
         self, *args, **kwargs
@@ -522,7 +538,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if not data_model_entity:
             return None
         for tbl_column in data_model_entity.columns:
-            if tbl_column.displayName.lower() == column.lower():
+            if (
+                tbl_column.displayName
+                and tbl_column.displayName.lower() == column.lower()
+            ) or (tbl_column.name.root.lower() == column.lower()):
                 return tbl_column.fullyQualifiedName.root
         return None
 
@@ -612,6 +631,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         patch_request = PatchRequest(
             original_entity=original_entity,
             new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn

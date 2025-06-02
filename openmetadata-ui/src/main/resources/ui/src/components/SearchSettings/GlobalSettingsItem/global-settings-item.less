@@ -13,9 +13,9 @@
 @import url('../../../styles/variables.less');
 
 .global-settings-item {
-  border: 1px solid @grey-10;
+  border: 1px solid @grey-100;
   border-radius: 12px;
-  background-color: @grey-17;
+  background-color: @grey-50;
   font-size: 14px;
   font-weight: 500;
 
@@ -35,19 +35,19 @@
       appearance: textfield;
     }
   }
+
+  .inline-edit-container {
+    min-width: 145px;
+    width: 50px;
+  }
+
+  .value-container {
+    min-width: 150px;
+  }
 }
 
 .global-settings-item-value {
   background-color: @team-avatar-bg;
   color: @blue-3;
   border-radius: 4px;
-}
-
-.inline-edit-container {
-  min-width: 145px;
-  width: 50px;
-}
-
-.value-container {
-  min-width: 150px;
 }

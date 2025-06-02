@@ -5,7 +5,7 @@
     <parent>
         <artifactId>platform</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.8.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -147,6 +147,7 @@
                     <targetPackage>org.openmetadata.schema</targetPackage>
                     <includeJsr303Annotations>true</includeJsr303Annotations>
                     <generateBuilders>true</generateBuilders>
+                    <useJakartaValidation>true</useJakartaValidation>
                     <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
                 </configuration>
                 <dependencies>

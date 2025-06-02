@@ -179,7 +179,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -207,12 +207,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
                     permission={false}
@@ -276,8 +278,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.DASHBOARD}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tabs-new"
                   data-testid="tabs"
                   defaultActiveKey={tab}
                   items={tabItems}

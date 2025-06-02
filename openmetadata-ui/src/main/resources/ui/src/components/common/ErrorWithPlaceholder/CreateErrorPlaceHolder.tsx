@@ -31,17 +31,27 @@ const CreateErrorPlaceHolder = ({
   doc,
   buttonId,
   placeholderText,
+  permissionValue,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
 
   if (!permission) {
-    return <PermissionErrorPlaceholder className={className} size={size} />;
+    return (
+      <PermissionErrorPlaceholder
+        className={className}
+        permissionValue={permissionValue}
+        size={size}
+      />
+    );
   }
 
   return (
     <div
-      className={classNames(className, 'h-full flex-center')}
+      className={classNames(
+        className,
+        'h-full flex-center border-default border-radius-sm'
+      )}
       data-testid={`create-error-placeholder-${heading}`}>
       <Space align="center" className="w-full" direction="vertical" size={10}>
         <AddPlaceHolderIcon

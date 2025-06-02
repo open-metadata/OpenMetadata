@@ -23,7 +23,7 @@ AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 AUTHENTICATION_PROVIDER=azure
-AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys, {your domain}/api/v1/system/config/jwks]   # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys, https://{your domain}/api/v1/system/config/jwks]   # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY=https://login.microsoftonline.com/{Tenant ID}                                                          # Update with your Tenant ID
 AUTHENTICATION_CLIENT_ID={CLIENT_ID}            # Update with your Client ID of Azure Application
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
@@ -37,7 +37,7 @@ AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 AUTHENTICATION_PROVIDER=azure
-AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys, {your domain}/api/v1/system/config/jwks]   # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys, https://{your domain}/api/v1/system/config/jwks]   # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY=https://login.microsoftonline.com/{Tenant ID}                                                          # Update with your Tenant ID
 AUTHENTICATION_CLIENT_ID={CLIENT_ID}            # Update with your Client ID of Azure Application
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
@@ -45,10 +45,11 @@ AUTHENTICATION_CLIENT_TYPE=confidential
 
 OIDC_CLIENT_ID={Client ID}                      # Update with your Client ID
 OIDC_TYPE= azure
+OIDC_TENANT=https://login.microsoftonline.com/{Tenant ID} 
 OIDC_CLIENT_SECRET={Client Secret}              # Update with your Client Secret
-// OIDC_DISCOVERY_URI: https://login.microsoftonline.com/.well-known/openid-configuration  
-OIDC_DISCOVERY_URI: ""      
-OIDC_CALLBACK: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+OIDC_DISCOVERY_URI= https://login.microsoftonline.com/.well-known/openid-configuration  
+OIDC_DISCOVERY_URI= ""      
+OIDC_CALLBACK= ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
 
 ```
 {% /codeWithLanguageSelector %}

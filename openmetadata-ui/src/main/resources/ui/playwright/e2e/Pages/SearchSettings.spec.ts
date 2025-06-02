@@ -127,15 +127,10 @@ test.describe('Search Settings Tests', () => {
 test.describe('Search Preview test', () => {
   const table1 = new TableClass();
   const table2 = new TableClass();
-  // Override properties to include "Searchable" keyword
-  table1.entity.name = `pw-table-Searchable-${
-    table1.entity.name.split('pw-table-')[1]
-  }`;
-  table1.entity.displayName = `Searchable Table ${
-    table1.entity.displayName.split('pw table ')[1]
-  }`;
-  table2.entity.description =
-    'This is a Searchable test table for search settings verification';
+  // Override properties to include "ranking" keyword
+  table1.entity.name = `${table1.entity.name}-ranking`;
+  table1.entity.displayName = `${table1.entity.name}`;
+  table2.entity.description = `This is a ${table1.entity.name} test table for search settings verification`;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -164,7 +159,7 @@ test.describe('Search Preview test', () => {
     );
 
     const searchInput = page.getByTestId('searchbar');
-    await searchInput.fill('Searchable');
+    await searchInput.fill(table1.entity.name);
 
     const descriptionField = page.getByTestId(
       `field-configuration-panel-description`
@@ -185,7 +180,7 @@ test.describe('Search Preview test', () => {
 
     await expect(
       firstCard.getByTestId('entity-header-display-name')
-    ).toHaveText(table1.entity.displayName);
+    ).toHaveText(table1.entity.name);
 
     // Check the second card has table2's description using data-testid
     const secondCard = searchCards.nth(1);

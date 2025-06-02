@@ -11,18 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import {
   GlossaryTerm,
   TermReference,
@@ -34,7 +28,11 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
-import TagButton from '../../../common/TagButton/TagButton.component';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
@@ -130,61 +128,52 @@ const GlossaryTermReferences = () => {
     <Space
       className="w-full"
       data-testid={`section-${t('label.reference-plural')}`}>
-      <div className="flex-center">
-        <Typography.Text className="text-sm font-medium">
-          {t('label.reference-plural')}
-        </Typography.Text>
-        {references.length > 0 && permissions.EditAll && (
-          <Tooltip
-            title={
-              permissions.EditAll
-                ? t('label.edit-entity', {
-                    entity: t('label.reference-plural'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="cursor-pointer flex-center m-l-xss"
-              data-testid="edit-button"
-              disabled={!permissions.EditAll}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setIsViewMode(false)}
-            />
-          </Tooltip>
-        )}
-      </div>
+      <Typography.Text className="text-sm font-medium">
+        {t('label.reference-plural')}
+      </Typography.Text>
+      {permissions.EditAll &&
+        (isEmpty(references) ? (
+          <PlusIconButton
+            data-testid="term-references-add-button"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.reference-plural'),
+            })}
+            onClick={() => {
+              setIsViewMode(false);
+            }}
+          />
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-button"
+            disabled={!permissions.EditAll}
+            size="small"
+            onClick={() => setIsViewMode(false)}
+          />
+        ))}
     </Space>
   );
 
   return (
-    <Card
-      className="new-header-border-card"
-      data-testid="references-container"
-      title={header}>
-      {isVersionView ? (
-        getVersionReferenceElements()
-      ) : (
-        <div className="d-flex flex-wrap">
-          {references.map((ref) => renderReferenceElement(ref))}
-          {permissions.EditAll && references.length === 0 && (
-            <TagButton
-              className="text-primary cursor-pointer"
-              dataTestId="term-references-add-button"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-              onClick={() => {
-                setIsViewMode(false);
-              }}
-            />
-          )}
-          {!permissions.EditAll && references.length === 0 && (
-            <div>{NO_DATA_PLACEHOLDER}</div>
-          )}
-        </div>
-      )}
+    <>
+      <ExpandableCard
+        cardProps={{
+          title: header,
+        }}
+        dataTestId="references-container"
+        isExpandDisabled={isEmpty(references)}>
+        {isVersionView ? (
+          getVersionReferenceElements()
+        ) : !permissions.EditAll || !isEmpty(references) ? (
+          <div className="d-flex flex-wrap">
+            {references.map((ref) => renderReferenceElement(ref))}
+            {!permissions.EditAll && references.length === 0 && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
+            )}
+          </div>
+        ) : null}
+      </ExpandableCard>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}
@@ -194,7 +183,7 @@ const GlossaryTermReferences = () => {
         }}
         onSave={handleReferencesSave}
       />
-    </Card>
+    </>
   );
 };
 

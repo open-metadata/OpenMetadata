@@ -29,8 +29,10 @@ import { isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
   ComponentType,
+  createContext,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -64,13 +66,13 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
+import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
-  isProtectedRoute,
   prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
 import {
@@ -120,12 +122,22 @@ let responseInterceptor: number | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pendingRequests: any[] = [];
 
+type AuthContextType = {
+  onLoginHandler: () => void;
+  onLogoutHandler: () => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
+  handleFailedLogin: () => void;
+  handleSuccessfulLogout: () => void;
+  updateAxiosInterceptors: () => void;
+};
+
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
 export const AuthProvider = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
   const {
-    setHelperFunctionsRef,
     setCurrentUser,
     updateNewUser: setNewUserProfile,
     setIsAuthenticated,
@@ -169,10 +181,12 @@ export const AuthProvider = ({
   };
 
   // Handler to perform logout within application
-  const onLogoutHandler = useCallback(() => {
+  const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    authenticatorRef.current?.invokeLogout();
+    // Let SSO complete the logout process
+    await authenticatorRef.current?.invokeLogout();
+
     setIsAuthenticated(false);
 
     // reset the user details on logout
@@ -209,7 +223,7 @@ export const AuthProvider = ({
   }, []);
 
   const handledVerifiedUser = () => {
-    if (!isProtectedRoute(location.pathname)) {
+    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
       history.push(ROUTES.HOME);
     }
   };
@@ -230,9 +244,11 @@ export const AuthProvider = ({
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     setOidcToken('');
+    setRefreshToken('');
     setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
+    TokenService.getInstance().clearRefreshInProgress();
     if (forceLogout) {
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
@@ -295,10 +311,9 @@ export const AuthProvider = ({
       // else just set timer to try for silentSignIn before token expires
       clearTimeout(timeoutId);
 
-      const timerId = setTimeout(
-        tokenService.current?.refreshToken,
-        timeoutExpiry
-      );
+      const timerId = setTimeout(() => {
+        tokenService.current?.refreshToken();
+      }, timeoutExpiry);
       setTimeoutId(Number(timerId));
     }
   };
@@ -362,6 +377,7 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
+            showErrorToast(err);
             history.push(ROUTES.UNAUTHORISED);
           } else {
             setNewUserProfile(user.profile);
@@ -394,16 +410,11 @@ export const AuthProvider = ({
     ]
   );
 
-  // Callback to cleanup session related info upon successful logout
-  const handleSuccessfulLogout = () => {
-    resetUserDetails();
-  };
-
   /**
    * Stores redirect URL for successful login
    */
   const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (isProtectedRoute(location.pathname)) {
+    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
       storeRedirectPath(location.pathname);
     }
   }, [location.pathname, storeRedirectPath]);
@@ -525,8 +536,12 @@ export const AuthProvider = ({
           if (status === ClientErrors.UNAUTHORIZED) {
             // For login or refresh we don't want to fire another refresh req
             // Hence rejecting it
-            if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url)) {
-              return Promise.reject(error as Error);
+            if (
+              UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
+              (error.config.url === '/users/loggedInUser' &&
+                !error.response.data.message.includes('Expired token!'))
+            ) {
+              return Promise.reject(error);
             }
             handleStoreProtectedRedirectPath();
 
@@ -542,24 +557,27 @@ export const AuthProvider = ({
                 });
 
                 // Refresh the token and retry the requests in the queue
-                tokenService.current.refreshToken().then((token) => {
-                  if (token) {
-                    // Retry the pending requests
-                    initializeAxiosInterceptors();
-                    pendingRequests.forEach(({ resolve, reject, config }) => {
-                      axiosClient(config).then(resolve).catch(reject);
-                    });
+                tokenService.current
+                  .refreshToken()
+                  .then((token) => {
+                    if (token) {
+                      // Retry the pending requests
+                      initializeAxiosInterceptors();
+                      pendingRequests.forEach(({ resolve, reject, config }) => {
+                        axiosClient.request(config).then(resolve).catch(reject);
+                      });
 
-                    // Clear the queue after retrying
-                    pendingRequests = [];
-                  } else {
+                      // Clear the queue after retrying
+                      pendingRequests = [];
+                    } else {
+                      resetUserDetails(true);
+                    }
+                  })
+                  .catch((error) => {
                     resetUserDetails(true);
-                  }
-                });
-              }).catch((err) => {
-                resetUserDetails(true);
 
-                return Promise.reject(err);
+                    return Promise.reject(error);
+                  });
               });
             } else {
               // If refresh is in progress, queue the request
@@ -653,9 +671,7 @@ export const AuthProvider = ({
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
         return (
-          <BasicAuthProvider
-            onLoginFailure={handleFailedLogin}
-            onLoginSuccess={handleSuccessfulLogin}>
+          <BasicAuthProvider>
             <BasicAuthAuthenticator ref={authenticatorRef}>
               {childElement}
             </BasicAuthAuthenticator>
@@ -670,9 +686,7 @@ export const AuthProvider = ({
             clientId={authConfig.clientId.toString()}
             domain={authConfig.authority.toString()}
             redirectUri={authConfig.callbackUrl.toString()}>
-            <Auth0Authenticator
-              ref={authenticatorRef}
-              onLogoutSuccess={handleSuccessfulLogout}>
+            <Auth0Authenticator ref={authenticatorRef}>
               {childElement}
             </Auth0Authenticator>
           </Auth0Provider>
@@ -680,19 +694,15 @@ export const AuthProvider = ({
       }
       case AuthProviderEnum.Saml: {
         return (
-          <SamlAuthenticator
-            ref={authenticatorRef}
-            onLogoutSuccess={handleSuccessfulLogout}>
+          <SamlAuthenticator ref={authenticatorRef}>
             {childElement}
           </SamlAuthenticator>
         );
       }
       case AuthProviderEnum.Okta: {
         return (
-          <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
-            <OktaAuthenticator
-              ref={authenticatorRef}
-              onLogoutSuccess={handleSuccessfulLogout}>
+          <OktaAuthProvider>
+            <OktaAuthenticator ref={authenticatorRef}>
               {childElement}
             </OktaAuthenticator>
           </OktaAuthProvider>
@@ -705,10 +715,7 @@ export const AuthProvider = ({
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
-            userConfig={userConfig}
-            onLoginFailure={handleFailedLogin}
-            onLoginSuccess={handleSuccessfulLogin}
-            onLogoutSuccess={handleSuccessfulLogout}>
+            userConfig={userConfig}>
             {childElement}
           </OidcAuthenticator>
         );
@@ -716,11 +723,7 @@ export const AuthProvider = ({
       case AuthProviderEnum.Azure: {
         return msalInstance ? (
           <MsalProvider instance={msalInstance}>
-            <MsalAuthenticator
-              ref={authenticatorRef}
-              onLoginFailure={handleFailedLogin}
-              onLoginSuccess={handleSuccessfulLogin}
-              onLogoutSuccess={handleSuccessfulLogout}>
+            <MsalAuthenticator ref={authenticatorRef}>
               {childElement}
             </MsalAuthenticator>
           </MsalProvider>
@@ -739,32 +742,40 @@ export const AuthProvider = ({
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
 
-    setHelperFunctionsRef({
-      onLoginHandler,
-      onLogoutHandler,
-      handleSuccessfulLogin,
-      handleFailedLogin,
-      updateAxiosInterceptors: initializeAxiosInterceptors,
-    });
-
     return cleanup;
   }, []);
 
-  useEffect(() => {
-    setHelperFunctionsRef({
+  const contextValues = useMemo(() => {
+    return {
       onLoginHandler,
       onLogoutHandler,
       handleSuccessfulLogin,
       handleFailedLogin,
+      handleSuccessfulLogout: resetUserDetails,
       updateAxiosInterceptors: initializeAxiosInterceptors,
-    });
-  }, [handleSuccessfulLogin]);
+    };
+  }, [
+    onLoginHandler,
+    onLogoutHandler,
+    handleSuccessfulLogin,
+    handleFailedLogin,
+    resetUserDetails,
+    initializeAxiosInterceptors,
+  ]);
 
   const isConfigLoading =
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  return <>{isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
+  return (
+    <AuthContext.Provider value={contextValues}>
+      {isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthProvider;
+
+export const useAuthProvider = () => {
+  return useContext(AuthContext);
+};

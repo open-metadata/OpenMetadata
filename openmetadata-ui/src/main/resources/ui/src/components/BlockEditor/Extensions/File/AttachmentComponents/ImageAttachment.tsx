@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 import { NodeViewProps } from '@tiptap/react';
-import { Spin } from 'antd';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../../assets/svg/ic-format-image.svg';
-import Loader from '../../../../common/Loader/Loader';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 
 const ImageAttachment = ({
   node,
@@ -30,8 +28,7 @@ const ImageAttachment = ({
   const { url, alt, isUploading } = node.attrs;
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
-  const needsAuthentication = url?.includes('/api/v1/attachments/');
-  const { t } = useTranslation();
+  const needsAuthentication = url?.includes(UPLOADED_ASSETS_URL);
 
   // Reset states when url changes
   useEffect(() => {
@@ -55,34 +52,25 @@ const ImageAttachment = ({
 
   return (
     <div className="image-wrapper">
-      <Spin
-        indicator={<Loader size="small" />}
-        spinning={showLoadingOverlay}
-        tip={isUploading ? t('label.uploading') : t('label.loading')}>
-        <div
-          className={classNames('image-container', {
-            'loading-state': showLoadingOverlay || imageError,
-          })}>
-          {(showLoadingOverlay || imageError) && (
-            <div className="loading-overlay">
-              <IconFormatImage width={40} />
-            </div>
-          )}
-          {displaySrc && (
-            <img
-              alt={alt ?? ''}
-              data-testid="uploaded-image-node"
-              src={displaySrc}
-              style={{
-                visibility: imageLoaded ? 'visible' : 'hidden',
-                display: 'block',
-              }}
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-            />
-          )}
-        </div>
-      </Spin>
+      <div
+        className={classNames('image-container', {
+          'loading-state': showLoadingOverlay || imageError,
+        })}
+        data-testid="image-container">
+        {displaySrc ? (
+          <img
+            alt={alt ?? ''}
+            data-testid="uploaded-image-node"
+            src={displaySrc}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+          />
+        ) : (
+          <div className="loading-overlay">
+            <IconFormatImage width={40} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -276,9 +276,12 @@ const MetricListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   heading={t('label.metric')}
                   permission={permission.Create}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.metric'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() => history.push(ROUTES.ADD_METRIC)}
                 />

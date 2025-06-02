@@ -19,15 +19,26 @@
   border: 1px solid @border-color-1;
   overflow: hidden;
 
+  .ant-table-body {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
   .custom-column-dropdown-menu {
     margin-right: 10px;
-    padding: 0;
     border: none;
     color: @primary-color;
 
     .ant-dropdown-menu {
       background-color: @white;
-      border-color: @grey-4;
+      border-color: @border-color;
     }
 
     .ant-dropdown-menu-item {
@@ -42,7 +53,7 @@
   }
 
   .pagination-container {
-    border-top: 1px solid @border-color-1;
+    border-top: 1px solid @border-color;
     padding: 16px 0;
   }
 }

@@ -206,10 +206,10 @@ const AddCustomMetricPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-custom-metric-page-container">
+          <div data-testid="add-custom-metric-page-container">
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -262,7 +262,7 @@ const AddCustomMetricPage = () => {
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         flex: 0.5,
         minWidth: 400,
       }}

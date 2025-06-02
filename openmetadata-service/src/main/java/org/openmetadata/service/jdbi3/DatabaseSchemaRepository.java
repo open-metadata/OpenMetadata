@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -210,6 +211,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         tableRepository.listAllForCSV(
             tableRepository.getFields("owners,tags,domain,extension"),
             schema.getFullyQualifiedName());
+    tables.forEach(
+        table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Get stored procedures under this schema
@@ -217,7 +220,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
     List<StoredProcedure> storedProcedures =
         spRepository.listAllForCSV(
-            spRepository.getFields("owners,tags,domain,extension"), schema.getFullyQualifiedName());
+            spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+            schema.getFullyQualifiedName());
     storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Export all entities using a single CSV
@@ -378,6 +382,28 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (recursive) {
         addField(recordList, entityType);
         addField(recordList, entity.getFullyQualifiedName());
+
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+
+        if (STORED_PROCEDURE.equals(entityType)) {
+          StoredProcedure sp = (StoredProcedure) entity;
+          String code =
+              sp.getStoredProcedureCode() != null ? sp.getStoredProcedureCode().getCode() : "";
+          String language =
+              sp.getStoredProcedureCode() != null
+                      && sp.getStoredProcedureCode().getLanguage() != null
+                  ? sp.getStoredProcedureCode().getLanguage().toString()
+                  : "";
+
+          addField(recordList, code);
+          addField(recordList, language);
+        } else {
+          addField(recordList, "");
+          addField(recordList, "");
+        }
       }
       addRecord(csvFile, recordList);
     }
@@ -421,6 +447,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       table
           .withName(csvRecord.get(0))
+          .withFullyQualifiedName(tableFqn)
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
@@ -432,7 +459,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withExtension(getExtension(printer, csvRecord, 10));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, table);
+        createEntity(printer, csvRecord, table, TABLE);
       }
     }
 

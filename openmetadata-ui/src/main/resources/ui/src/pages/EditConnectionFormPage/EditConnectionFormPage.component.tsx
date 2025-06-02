@@ -188,6 +188,10 @@ function EditConnectionFormPage() {
     fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
+  useEffect(() => {
+    serviceUtilClassBase.setEditServiceDetails(serviceDetails);
+  }, [serviceDetails, serviceCategory]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -200,7 +204,7 @@ function EditConnectionFormPage() {
     );
   }
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
@@ -247,7 +251,7 @@ function EditConnectionFormPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   return (
@@ -258,6 +262,8 @@ function EditConnectionFormPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}

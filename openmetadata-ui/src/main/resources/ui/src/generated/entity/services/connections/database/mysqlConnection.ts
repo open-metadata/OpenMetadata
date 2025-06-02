@@ -43,7 +43,7 @@ export interface MysqlConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -72,6 +72,10 @@ export interface MysqlConnection {
      * in Mysql.
      */
     username: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -173,6 +177,8 @@ export interface AzureCredentials {
  *
  * Regex to only fetch entities that matches the pattern.
  *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
  * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
@@ -262,15 +268,6 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**

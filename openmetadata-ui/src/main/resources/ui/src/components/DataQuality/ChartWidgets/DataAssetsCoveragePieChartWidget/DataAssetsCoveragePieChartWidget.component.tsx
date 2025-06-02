@@ -105,7 +105,7 @@ const DataAssetsCoveragePieChartWidget = ({
         notCovered: total - covered,
         total: total,
       });
-    } catch (error) {
+    } catch {
       setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
     } finally {
       setIsLoading(false);
@@ -121,7 +121,7 @@ const DataAssetsCoveragePieChartWidget = ({
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <DataAssetsCoverageIcon height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.data-asset-plural-coverage')}
           </Typography.Text>
         </div>

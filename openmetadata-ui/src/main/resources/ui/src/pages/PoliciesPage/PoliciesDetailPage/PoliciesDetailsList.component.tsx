@@ -13,12 +13,13 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -109,8 +110,8 @@ const PoliciesDetailsList = ({
 
   return (
     <Table
-      className="list-table"
       columns={columns}
+      containerClassName="list-table"
       dataSource={list}
       pagination={false}
       rowKey="id"

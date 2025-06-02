@@ -16,6 +16,7 @@ import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../../generated/entity/type';
+import { TestCase } from '../../../generated/tests/testCase';
 import { ServicesType } from '../../../interface/service.interface';
 import { VersionData } from '../../../pages/EntityVersionPage/EntityVersionPage.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -31,7 +32,8 @@ export interface DataAssetsVersionHeaderProps {
     | ServicesType
     | Database
     | DatabaseSchema
-    | APICollection;
+    | APICollection
+    | TestCase;
   ownerDisplayName: React.ReactNode[];
   domainDisplayName?: React.ReactNode;
   tierDisplayName: React.ReactNode;

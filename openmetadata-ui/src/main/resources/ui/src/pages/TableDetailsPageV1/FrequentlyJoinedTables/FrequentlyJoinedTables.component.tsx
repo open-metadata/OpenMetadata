@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Typography } from 'antd';
-import classNames from 'classnames';
+import { Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,9 +30,9 @@ export type Joined = JoinedWith & {
 };
 
 export const FrequentlyJoinedTables = ({
-  newLook = false,
+  renderAsExpandableCard = true,
 }: {
-  newLook?: boolean;
+  renderAsExpandableCard?: boolean;
 }) => {
   const { t } = useTranslation();
   const { data, filterWidgets } = useGenericContext<Table>();
@@ -52,19 +52,9 @@ export const FrequentlyJoinedTables = ({
     return null;
   }
 
-  const header = (
-    <Typography.Text
-      className={classNames({
-        'right-panel-label': !newLook,
-        'text-sm font-medium': newLook,
-      })}>
-      {t('label.frequently-joined-table-plural')}
-    </Typography.Text>
-  );
-
   const content = joinedTables.map((table) => (
     <Space
-      className="w-full frequently-joint-data justify-between"
+      className="w-full frequently-joint-data justify-between m-t-xss"
       data-testid="related-tables-data"
       key={table.name}
       size={4}>
@@ -78,28 +68,16 @@ export const FrequentlyJoinedTables = ({
     </Space>
   ));
 
-  if (newLook) {
-    return (
-      <Card className="w-full new-header-border-card" title={header}>
-        {content}
-      </Card>
-    );
-  }
-
-  return (
-    <Row
-      className="m-b-lg"
-      data-testid="frequently-joint-table-container"
-      gutter={[0, 8]}>
-      <Col className="m-b" span={24}>
-        {header}
-      </Col>
-      <Col
-        className="frequently-joint-data-container"
-        data-testid="frequently-joint-data-container"
-        span={24}>
-        {content}
-      </Col>
-    </Row>
+  return renderAsExpandableCard ? (
+    <ExpandableCard
+      cardProps={{
+        title: t('label.frequently-joined-table-plural'),
+      }}
+      dataTestId="frequently-joint-data-container"
+      isExpandDisabled={isEmpty(joinedTables)}>
+      {content}
+    </ExpandableCard>
+  ) : (
+    <>{content}</>
   );
 };

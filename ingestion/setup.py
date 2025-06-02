@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@
 Python Dependencies
 """
 
+import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -27,10 +28,11 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
-    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
+    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3.0",
+    "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0",
@@ -49,7 +51,7 @@ VERSIONS = {
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableau-api-lib~=0.1",
+    "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
@@ -65,6 +67,8 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "presidio-analyzer": "presidio-analyzer==2.2.358",
 }
 
 COMMONS = {
@@ -130,7 +134,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.19.0",
+    "google-cloud-secret-manager>=2.19.0,<2.20.1",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -187,7 +191,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2",
+        "clickhouse-sqlalchemy~=0.2.0",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -195,7 +199,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        "dagster_graphql~=1.1",
+        "dagster_graphql>=1.8.0",
     },
     "dbt": {
         "google-cloud",
@@ -249,6 +253,7 @@ plugins: Dict[str, Set[str]] = {
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -330,7 +335,12 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
-    "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
+    "sample-data": {
+        VERSIONS["avro"],
+        VERSIONS["grpc-tools"],
+        VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["presidio-analyzer"],
+    },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
@@ -345,8 +355,9 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.355",
+        VERSIONS["presidio-analyzer"],
     },
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
 }
 
 dev = {
@@ -362,6 +373,17 @@ dev = {
     "twine",
     "build",
     *plugins["sample-data"],
+}
+
+# Dependencies for unit testing in addition to dev dependencies and plugins
+test_unit = {
+    "pytest==7.0.0",
+    "pytest-cov",
+    "pytest-order",
+    "dirty-equals",
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # TODO: Remove once no unit test requires testcontainers
+    "testcontainers",
 }
 
 test = {
@@ -429,7 +451,11 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
 }
+
+if sys.version_info >= (3, 9):
+    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
@@ -437,8 +463,23 @@ e2e_test = {
     "pytest-base-url",
 }
 
-extended_testing = {
-    "Faker",  # For Sample Data Generation
+# Define playwright_dependencies as a set of packages required for Playwright tests
+# These packages correspond to the ingestion connectors used in Playwright tests
+playwright_dependencies = {
+    *plugins["mysql"],
+    *plugins["bigquery"],
+    *plugins["kafka"],
+    *plugins["mlflow"],
+    *plugins["snowflake"],
+    *plugins["superset"],
+    *plugins["postgres"],
+    *plugins["redshift"],
+    *plugins["airflow"],
+    *plugins["datalake-s3"],
+    *plugins["dbt"],
+    *plugins["presidio-analyzer"],
+    *e2e_test
+    # Add other plugins as needed for Playwright tests
 }
 
 
@@ -458,14 +499,21 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 setup(
     install_requires=list(base_requirements),
     extras_require={
-        "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
-        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
+        # FIXME: all-dev-env is a temporary solution to install all dependencies except
+        #   those that might conflict with each other or cause issues in the dev environment
+        #   This covers all development cases where none of the plugins are used
+        "all-dev-env": filter_requirements(
+            {"airflow", "db2", "great-expectations", "pymssql"}
+        ),
+        # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
                 "airflow",

@@ -40,4 +40,6 @@ export interface AsyncSelectListProps {
     search: string,
     page: number
   ) => Promise<PagingResponse<SelectOption[]>>;
+  open?: boolean;
+  hasNoActionButtons?: boolean;
 }

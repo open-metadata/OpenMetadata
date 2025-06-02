@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -71,13 +71,7 @@ const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   return (
     <LeftPanelCard id="domain">
       <GlossaryV1Skeleton loading={domains.length === 0}>
-        <Row className="p-y-xs" gutter={[0, 16]}>
-          <Col className="p-x-sm" span={24}>
-            <Typography.Text strong className="m-b-0">
-              {t('label.domain-plural')}
-            </Typography.Text>
-          </Col>
-
+        <Row gutter={[0, 16]}>
           {createDomainsPermission && (
             <Col className="p-x-sm" span={24}>
               <Button

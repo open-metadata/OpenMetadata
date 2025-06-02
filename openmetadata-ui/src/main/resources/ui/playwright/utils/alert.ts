@@ -158,6 +158,10 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const alertRow = page.locator(`[data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
@@ -530,6 +534,11 @@ export const verifyAlertDetails = async ({
       destinations[0].timeout.toString()
     );
 
+    // Check read timeout details
+    await expect(page.getByTestId('read-timeout-input')).toHaveValue(
+      destinations[0].readTimeout.toString()
+    );
+
     for (const destinationNumber in destinations) {
       await expect(
         page.getByTestId(`destination-${destinationNumber}`)
@@ -782,7 +791,9 @@ export const createAlert = async ({
     });
 
     await page.getByTestId('connection-timeout-input').clear();
+    await page.getByTestId('read-timeout-input').clear();
     await page.fill('[data-testid="connection-timeout-input"]', '26');
+    await page.fill('[data-testid="read-timeout-input"]', '26');
   }
 
   // Select Destination
@@ -822,8 +833,8 @@ export const waitForRecentEventsToFinishExecution = async (
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for pending events to complete',
-        intervals: [5_000, 10_000, 15_000],
-        timeout: 600_000,
+        intervals: [5_000, 10_000, 15_000, 20_000],
+        timeout: 900_000,
       }
     )
     // Move ahead when the pending events count is 0

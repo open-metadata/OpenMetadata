@@ -42,6 +42,8 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.gson.Gson;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,8 +57,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -228,6 +228,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
       entity.setStatus(!nullOrEmpty(parentReviewers) ? Status.DRAFT : Status.APPROVED);
+    }
+    if (!update) {
+      checkDuplicateTerms(entity);
     }
   }
 
@@ -1018,6 +1021,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (GlossaryTerm entity : entities) {
       entity.setChildrenCount(
           termIdCountMap.getOrDefault(entity.getId(), entity.getChildrenCount()));
+    }
+  }
+
+  private void checkDuplicateTerms(GlossaryTerm entity) {
+    int count =
+        daoCollection
+            .glossaryTermDAO()
+            .getGlossaryTermCountIgnoreCase(entity.getGlossary().getName(), entity.getName());
+    if (count > 0) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.duplicateGlossaryTerm(
+              entity.getName(), entity.getGlossary().getName()));
     }
   }
 

@@ -15,7 +15,22 @@ In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
+- [Troubleshooting](/connectors/pipeline/airflow/troubleshooting)
+
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
+
+{% tilesContainer %}
+{% tile
+    title="MWAA"
+    description="Run the ingestion framework externally!"
+    link="/deployment/ingestion/external/mwaa"
+  / %}
+{% tile
+    title="GCS Composer"
+    description="Run the ingestion from GCS Composer."
+    link="/deployment/ingestion/external/gcs-composer"
+  / %}
+{% /tilesContainer %}
 
 ## Requirements
 
@@ -62,5 +77,3 @@ In terms of `connection` we support the following selections:
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

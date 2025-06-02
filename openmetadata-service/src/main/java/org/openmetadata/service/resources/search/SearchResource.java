@@ -26,25 +26,26 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.validation.Valid;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
@@ -408,10 +409,14 @@ public class SearchResource {
       @Parameter(description = "Search Index name, defaults to table_search_index")
           @DefaultValue("table_search_index")
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index);
+    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
   }
 
   @GET
@@ -529,6 +534,9 @@ public class SearchResource {
           @DefaultValue("")
           @QueryParam("value")
           String value,
+      @Parameter(description = "List of fields to fetch from _source per bucket.")
+          @QueryParam("sourceFields")
+          String sourceFieldsParam,
       @Parameter(
               description =
                   "Search Query Text, Pass *text* for substring match; "
@@ -550,10 +558,20 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @DefaultValue("false") @QueryParam("deleted") String deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
       throws IOException {
 
-    return searchRepository.aggregate(index, fieldName, value, query);
+    AggregationRequest aggregationRequest =
+        new AggregationRequest()
+            .withQuery(query)
+            .withSize(size)
+            .withIndex(index)
+            .withFieldName(fieldName)
+            .withFieldValue(value)
+            .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
+            .withDeleted(deleted);
+
+    return searchRepository.aggregate(aggregationRequest);
   }
 
   @POST
@@ -574,12 +592,8 @@ public class SearchResource {
   public Response aggregateSearchRequest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SearchRequest searchRequest)
+      @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(
-        searchRequest.getIndex(),
-        searchRequest.getFieldName(),
-        searchRequest.getFieldValue(),
-        searchRequest.getQuery());
+    return searchRepository.aggregate(aggregationRequest);
   }
 }

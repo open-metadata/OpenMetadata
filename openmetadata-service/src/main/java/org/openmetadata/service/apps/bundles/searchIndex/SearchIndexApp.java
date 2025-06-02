@@ -11,6 +11,7 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
+import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
@@ -99,6 +100,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats());
+    JsonUtils.validateJsonSchema(request, EventPublisherJob.class);
 
     if (request.getEntities().size() == 1 && request.getEntities().contains(ALL)) {
       SearchRepository searchRepo = Entity.getSearchRepo();
@@ -328,11 +330,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public synchronized void updateStats(String entityType, StepStats currentEntityStats) {
     Stats jobDataStats = jobData.getStats();
     if (jobDataStats.getEntityStats() == null) {
-      jobDataStats.setEntityStats(new StepStats());
+      jobDataStats.setEntityStats(new EntityStats());
     }
 
     StepStats existingEntityStats =
-        (StepStats) jobDataStats.getEntityStats().getAdditionalProperties().get(entityType);
+        jobDataStats.getEntityStats().getAdditionalProperties().get(entityType);
     if (existingEntityStats == null) {
       jobDataStats.getEntityStats().getAdditionalProperties().put(entityType, currentEntityStats);
       LOG.debug("Initialized StepStats for entityType '{}': {}", entityType, currentEntityStats);
@@ -372,7 +374,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public synchronized Stats initializeTotalRecords(Set<String> entities) {
     Stats jobDataStats = jobData.getStats();
     if (jobDataStats.getEntityStats() == null) {
-      jobDataStats.setEntityStats(new StepStats());
+      jobDataStats.setEntityStats(new EntityStats());
       LOG.debug("Initialized entityStats map.");
     }
 

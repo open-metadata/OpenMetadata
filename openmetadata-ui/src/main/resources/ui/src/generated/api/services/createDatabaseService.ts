@@ -35,7 +35,7 @@ export interface CreateDatabaseService {
      * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
      * at runtime based on the Ingestion Agent of the service.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -165,7 +165,7 @@ export interface ConfigClass {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: ConfigDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
     /**
      * BigQuery APIs URL.
      *
@@ -228,7 +228,7 @@ export interface ConfigClass {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: SchemaFilterPatternObject;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -591,6 +591,10 @@ export interface ConfigClass {
      */
     sslConfig?: Config;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
@@ -661,6 +665,10 @@ export interface ConfigClass {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -1525,7 +1533,7 @@ export interface GCPCredentials {
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
-export interface ConfigDatabaseFilterPattern {
+export interface FilterPattern {
     /**
      * List of strings/regex patterns to match and exclude only database entities that match.
      */
@@ -1534,7 +1542,6 @@ export interface ConfigDatabaseFilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -1577,7 +1584,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: HiveMetastoreConnectionDetailsDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the source service.
      *
@@ -1593,7 +1600,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -1638,6 +1645,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -1656,27 +1667,6 @@ export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface HiveMetastoreConnectionDetailsDatabaseFilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -1758,15 +1748,6 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum HiveMetastoreConnectionDetailsScheme {
@@ -1810,26 +1791,6 @@ export enum SSLMode {
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-}
-
-/**
  * Service Type
  *
  * Service type.
@@ -1859,27 +1820,6 @@ export interface OracleConnectionType {
      * (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
      */
     oracleTNSConnection?: string;
-    [property: string]: any;
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface SchemaFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
     [property: string]: any;
 }
 
@@ -2175,6 +2115,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

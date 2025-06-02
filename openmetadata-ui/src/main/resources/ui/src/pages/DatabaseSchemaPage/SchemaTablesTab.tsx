@@ -30,6 +30,12 @@ import {
   INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../constants/constants';
+import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS,
+} from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -44,17 +50,26 @@ import {
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
   isVersionView?: boolean;
+  isCustomizationPage?: boolean;
 }
 
 function SchemaTablesTab({
   isVersionView = false,
+  isCustomizationPage = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
   const history = useHistory();
@@ -103,7 +118,7 @@ function SchemaTablesTab({
         }
         const updatedData = {
           ...tableDetails,
-          displayName: data.displayName || undefined,
+          displayName: data.displayName,
         };
         const jsonPatch = compare(tableDetails, updatedData);
         const response = await patchTableDetails(tableDetails.id, jsonPatch);
@@ -129,6 +144,7 @@ function SchemaTablesTab({
       try {
         const res = await getTableList({
           ...params,
+          fields: commonTableFields,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
           include: tableFilters.showDeletedTables
@@ -170,7 +186,7 @@ function SchemaTablesTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 500,
+        width: 300,
         render: (_, record: Table) => {
           return (
             <DisplayName
@@ -192,6 +208,7 @@ function SchemaTablesTab({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 400,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerNew markdown={text} />
@@ -199,6 +216,10 @@ function SchemaTablesTab({
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
+      ...ownerTableObject<Table>(),
+      ...domainTableObject<Table>(),
+      ...dataProductTableObject<Table>(),
+      ...tagTableObject<Table>(),
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
@@ -213,6 +234,12 @@ function SchemaTablesTab({
   };
 
   useEffect(() => {
+    if (isCustomizationPage) {
+      setTableData(DUMMY_DATABASE_SCHEMA_TABLES_DETAILS);
+      setTableDataLoading(false);
+
+      return;
+    }
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       if (pagingCursor?.cursorData?.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
@@ -229,8 +256,8 @@ function SchemaTablesTab({
     tableFilters.showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
-
     pageSize,
+    isCustomizationPage,
   ]);
 
   useEffect(() => {
@@ -251,6 +278,7 @@ function SchemaTablesTab({
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}
+      defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS}
       extraTableFilters={
         !isVersionView && (
           <>
@@ -276,14 +304,16 @@ function SchemaTablesTab({
       locale={{
         emptyText: (
           <ErrorPlaceHolder
-            className="mt-0-important"
+            className="mt-0-important border-none"
             type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
         ),
       }}
       pagination={false}
       rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
       size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
   );
 }

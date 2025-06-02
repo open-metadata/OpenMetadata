@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select } from 'antd';
+import { Badge, Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, lowerCase } from 'lodash';
@@ -24,10 +24,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { ExportTypes } from '../../../constants/Export.constants';
+import {
+  BETA_EXPORT_TYPES,
+  ExportTypes,
+} from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { handleExportFile } from '../../../utils/EntityUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -120,7 +122,13 @@ export const EntityExportModalProvider = ({
       setDownloading(true);
 
       if (exportType !== ExportTypes.CSV) {
-        await handleExportFile(exportType, exportData);
+        await exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          exportData: {
+            ...exportData,
+            name: fileName,
+          },
+        });
 
         handleCancel();
         setDownloading(false);
@@ -176,6 +184,13 @@ export const EntityExportModalProvider = ({
     [isBulkEdit]
   );
 
+  const handleClearCSVExportData = useCallback(() => {
+    setCSVExportData(undefined);
+    setCSVExportJob(undefined);
+    setExportData(null);
+    csvExportJobRef.current = undefined;
+  }, []);
+
   const handleCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
       // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
@@ -222,7 +237,7 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       csvExportData,
-      clearCSVExportData: () => setCSVExportData(undefined),
+      clearCSVExportData: handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit: (exportData: ExportData) => {
         setExportData(exportData);
@@ -262,9 +277,25 @@ export const EntityExportModalProvider = ({
               <Form.Item label={`${t('label.export-type')}:`} name="exportType">
                 <Select
                   data-testid="export-type-select"
-                  disabled={exportData.exportTypes.length === 1}
-                  options={exportTypesOptions}
-                />
+                  disabled={exportData.exportTypes.length === 1}>
+                  {exportTypesOptions.map((type) => (
+                    <Select.Option
+                      key={type.value}
+                      title={type.value}
+                      value={type.value}>
+                      <div className="d-flex items-center">
+                        {type.label}
+                        {BETA_EXPORT_TYPES.includes(type.value) && (
+                          <Badge
+                            className="m-l-xs service-beta-tag"
+                            count={t('label.beta')}
+                            size="small"
+                          />
+                        )}
+                      </div>
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
 
               <Form.Item

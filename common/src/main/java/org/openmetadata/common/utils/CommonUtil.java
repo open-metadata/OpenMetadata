@@ -34,6 +34,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -261,6 +262,24 @@ public final class CommonUtil {
               });
     } catch (Exception e) {
       return false;
+    }
+  }
+
+  public static <T> Set<String> getChildrenNames(
+      List<?> list, String methodName, String parentFqn) {
+    Set<String> result = new HashSet<>();
+    if (list == null || list.isEmpty()) return new HashSet();
+    try {
+      Method getChildren = list.get(0).getClass().getMethod(methodName);
+      Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
+      for (int i = 0; i < list.size(); i++) {
+        result.add(getFQN.invoke(list.get(i)).toString().replace(parentFqn + ".", ""));
+        result.addAll(
+            getChildrenNames((List<?>) getChildren.invoke(list.get(i)), methodName, parentFqn));
+      }
+      return result;
+    } catch (Exception e) {
+      return result;
     }
   }
 }

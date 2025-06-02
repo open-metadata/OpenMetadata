@@ -105,7 +105,7 @@ const APIEndpointPage = () => {
         entityFqn
       );
       setApiEndpointPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -247,7 +247,7 @@ const APIEndpointPage = () => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -273,7 +273,15 @@ const APIEndpointPage = () => {
     );
   }
   if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.api-endpoint'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

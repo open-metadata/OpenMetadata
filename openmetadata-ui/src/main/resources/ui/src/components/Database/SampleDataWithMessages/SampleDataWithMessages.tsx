@@ -60,7 +60,9 @@ const SampleDataWithMessages: FC<{
 
   if (isUndefined(data)) {
     return (
-      <div className="m-t-xlg" data-testid="no-data">
+      <div
+        className="border-default border-radius-sm p-y-lg"
+        data-testid="no-data">
         <ErrorPlaceHolder>
           <Typography.Paragraph>
             <Transi18next

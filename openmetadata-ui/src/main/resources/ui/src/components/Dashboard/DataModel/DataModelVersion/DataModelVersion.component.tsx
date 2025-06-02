@@ -136,7 +136,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         key: EntityTabs.MODEL,
         label: <TabsLabel id={EntityTabs.MODEL} name={t('label.model')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -165,12 +165,14 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     key={tagType}
                     permission={false}
@@ -205,59 +207,56 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   );
 
   return (
-    <>
-      <div data-testid="data-model-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
-                <DataAssetsVersionHeader
-                  breadcrumbLinks={slashedDataModelName}
-                  currentVersionData={currentVersionData}
-                  deleted={deleted}
-                  displayName={displayName}
-                  domainDisplayName={domainDisplayName}
-                  entityType={EntityType.DASHBOARD_DATA_MODEL}
-                  ownerDisplayName={ownerDisplayName}
-                  ownerRef={ownerRef}
-                  serviceName={currentVersionData.service?.name}
-                  tierDisplayName={tierDisplayName}
-                  version={version}
-                  onVersionClick={backHandler}
+    <div data-testid="data-model-version-container">
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')} data-testid="version-data">
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedDataModelName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.DASHBOARD_DATA_MODEL}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.DASHBOARD_DATA_MODEL}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  activeKey={tab}
+                  className="tabs-new"
+                  items={tabItems}
+                  onChange={handleTabChange}
                 />
               </Col>
-              <GenericProvider
-                isVersionView
-                currentVersionData={currentVersionData}
-                data={currentVersionData}
-                permissions={entityPermissions}
-                type={EntityType.DASHBOARD_DATA_MODEL}
-                onUpdate={() => Promise.resolve()}>
-                <Col span={24}>
-                  <Tabs
-                    activeKey={tab}
-                    items={tabItems}
-                    onChange={handleTabChange}
-                  />
-                </Col>
-              </GenericProvider>
-            </Row>
-          </div>
-        )}
+            </GenericProvider>
+          </Row>
+        </div>
+      )}
 
-        <EntityVersionTimeLine
-          currentVersion={version}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
-    </>
+      <EntityVersionTimeLine
+        currentVersion={version}
+        entityType={EntityType.DASHBOARD_DATA_MODEL}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </div>
   );
 };
 

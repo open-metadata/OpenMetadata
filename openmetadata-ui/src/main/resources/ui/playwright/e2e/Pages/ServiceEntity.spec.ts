@@ -12,6 +12,7 @@
  */
 import { test } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { FollowSupportedServices } from '../../constant/service';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -72,7 +73,10 @@ entities.forEach((EntityClass) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
+        EntityDataClass.domain2.responseData,
+        EntityDataClass.dataProduct1.responseData,
+        EntityDataClass.dataProduct2.responseData,
+        EntityDataClass.dataProduct3.responseData
       );
     });
 
@@ -153,6 +157,14 @@ entities.forEach((EntityClass) => {
 
         await entity.cleanupCustomProperty(apiContext);
         await afterAction();
+      });
+    }
+    if (FollowSupportedServices.includes(entity.endpoint)) {
+      test(`Follow & Un-follow entity for Database Entity`, async ({
+        page,
+      }) => {
+        const entityName = entity.entityResponseData?.['displayName'];
+        await entity.followUnfollowEntity(page, entityName);
       });
     }
 

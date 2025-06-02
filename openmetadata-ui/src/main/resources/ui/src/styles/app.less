@@ -18,7 +18,7 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: @body-bg-color;
+  background: @background-primary;
   font-feature-settings: normal !important;
 }
 
@@ -64,10 +64,6 @@ p {
 
 .shadow-none {
   box-shadow: none;
-}
-
-.overflow-y-auto {
-  overflow-y: auto;
 }
 
 .overflow-hidden {
@@ -306,7 +302,7 @@ a[href].link-text-grey,
 }
 
 .bg-body-main {
-  background: @body-bg-color;
+  background: @background-primary;
 }
 
 .bg-primary-lite {
@@ -537,9 +533,6 @@ a[href].link-text-grey,
 
 .service-form-container {
   margin: 0 auto 0;
-  border-radius: @border-radius-sm;
-  background: @white;
-  padding: @padding-md;
 }
 
 // breadcrumb
@@ -627,19 +620,35 @@ a[href].link-text-grey,
 
 // Entity Details Page css
 .entity-details-page-tabs {
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 20px;
+  .ant-tabs-tabpane {
+    height: @entity-details-tab-height;
+    overflow-y: auto;
 
-    .ant-tabs-nav-wrap {
-      overflow: initial;
+    .activity-feed-tab {
+      height: 100%;
+
+      .right-container,
+      .center-container {
+        height: 100%;
+      }
     }
+  }
+
+  /* Lineage tab panel styling */
+  [id*='rc-tabs-'][id*='-panel-lineage'],
+  [id*='rc-tabs-'][id*='-panel-erDiagram'] {
+    background-color: @grey-9;
+  }
+}
+
+.entity-version-page-tabs {
+  .ant-tabs-tabpane {
+    height: @entity-version-page-tabs-height;
+    overflow-y: auto;
   }
 }
 
 .entity-tag-right-panel-container {
-  height: @entity-details-tab-height;
-  overflow-y: auto;
   border-left: @global-border;
   padding: 12px 8px 0 8px;
 }
@@ -650,11 +659,6 @@ a[href].link-text-grey,
 
 .full-height {
   height: calc(100vh - @om-navbar-height); // removing only navbar height
-}
-
-.tab-content-height {
-  height: @entity-details-tab-height;
-  overflow-y: scroll;
 }
 
 /* Diff style */
@@ -845,7 +849,7 @@ a[href].link-text-grey,
 
 .notification-dropdown-list-btn:hover,
 .notification-dropdown-list-btn:focus {
-  background-color: @body-bg-color;
+  background-color: @background-primary;
 }
 
 /* ToastUI Editor style */
@@ -948,12 +952,12 @@ a[href].link-text-grey,
 .placeholder-title {
   color: @text-color;
   text-align: center;
-  font-size: 20px;
+  font-size: 18px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
   letter-spacing: 0.25px;
-  margin-top: 16px;
+  margin-top: @size-md;
 }
 
 .no-data-placeholder-container {
@@ -963,7 +967,7 @@ a[href].link-text-grey,
 .placeholder-text {
   color: @text-color-tertiary;
   text-align: center;
-  font-size: 16px;
+  font-size: @font-size-base;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
@@ -971,13 +975,14 @@ a[href].link-text-grey,
   width: 350px;
 }
 
-// Table icons
+// Pagination styles
 
-.filter-icon {
-  width: 16px;
-  height: 16px;
+.pagination-next-icon {
+  font-size: 12px;
 }
 
-.filter-icon-active {
-  fill: @primary-color;
+.pagination-prev-icon {
+  font-size: 12px;
+  margin-top: -3px;
+  transform: rotate(180deg);
 }

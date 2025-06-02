@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -20,10 +20,17 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { Chart } from '../../../generated/entity/data/chart';
-import { Column } from '../../../generated/entity/data/container';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   ChangeDescription,
   EntityReference,
@@ -31,7 +38,10 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
@@ -139,12 +149,41 @@ export const CommonWidgets = ({
     };
   }, [updatedData, updatedData?.tags]);
 
-  const { columns = [], charts = [] } = data as unknown as {
-    columns: Array<Column>;
-    charts: Array<Chart>;
-  };
+  // To determine if Description is expanded or not
+  // Typically needed when description schema, charts or any other table is empty will expand description by default
+  const isDescriptionExpanded = useMemo(() => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return isEmpty((data as unknown as Table).columns);
+      case EntityType.DASHBOARD:
+        return isEmpty((data as unknown as Dashboard).charts);
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return isEmpty((data as unknown as DashboardDataModel).columns);
+      case EntityType.MLMODEL:
+        return isEmpty((data as unknown as Mlmodel).mlFeatures);
+      case EntityType.PIPELINE:
+        return isEmpty((data as unknown as Pipeline).tasks);
+      case EntityType.TOPIC:
+        return isEmpty((data as unknown as Topic).messageSchema?.schemaFields);
+      case EntityType.SEARCH_INDEX:
+        return isEmpty((data as unknown as SearchIndex).fields);
+      case EntityType.STORED_PROCEDURE:
+        return isEmpty(
+          (data as unknown as StoredProcedure).code ??
+            (data as unknown as StoredProcedure).storedProcedureCode
+        );
+      case EntityType.GLOSSARY:
+        return (data as unknown as Glossary).termCount === 0;
+      case EntityType.DOMAIN:
+      case EntityType.METRIC:
+        return true;
+      default:
+        return false;
+    }
+  }, [data, entityType]);
 
   const {
+    editDataProductPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
@@ -152,6 +191,7 @@ export const CommonWidgets = ({
     viewAllPermission,
   } = useMemo(
     () => ({
+      editDataProductPermission: permissions.EditAll && !deleted,
       editTagsPermission:
         (permissions.EditTags || permissions.EditAll) && !deleted,
       editDescriptionPermission:
@@ -174,6 +214,18 @@ export const CommonWidgets = ({
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
     }),
     [permissions, deleted]
+  );
+
+  const handleDataProductsSave = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      // Create a clean updated list of entity references
+      const updatedDataProducts = dataProducts.map((dataProduct) =>
+        getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+      );
+
+      await onUpdate({ ...data, dataProducts: updatedDataProducts });
+    },
+    [data, onUpdate]
   );
 
   const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
@@ -210,6 +262,18 @@ export const CommonWidgets = ({
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
+
+  const dataProductsWidget = useMemo(() => {
+    return (
+      <DataProductsContainer
+        newLook
+        activeDomain={domain as EntityReference}
+        dataProducts={dataProducts ?? []}
+        hasPermission={editDataProductPermission}
+        onSave={handleDataProductsSave}
+      />
+    );
+  }, [dataProducts, domain, editDataProductPermission, handleDataProductsSave]);
 
   const tagsWidget = useMemo(() => {
     return (
@@ -260,16 +324,15 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
-        newLook
         showSuggestions
         wrapInCard
         description={description}
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
-        isDescriptionExpanded={isEmpty(columns) && isEmpty(charts)}
+        isDescriptionExpanded={isDescriptionExpanded}
         owner={owners}
-        removeBlur={widgetConfig.h > 1}
+        removeBlur={type === EntityType.DOMAIN}
         showActions={!deleted}
         onDescriptionUpdate={async (value: string) => {
           if (value !== description) {
@@ -284,23 +347,15 @@ export const CommonWidgets = ({
     type,
     editDescriptionPermission,
     deleted,
-    columns,
     owners,
-    widgetConfig.h,
+    isDescriptionExpanded,
   ]);
 
   const widget = useMemo(() => {
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
-      return (
-        <DataProductsContainer
-          newLook
-          activeDomain={domain}
-          dataProducts={dataProducts ?? []}
-          hasPermission={false}
-        />
-      );
+      return dataProductsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
       return tagsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
@@ -311,7 +366,6 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -342,17 +396,17 @@ export const CommonWidgets = ({
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 
     return Widget ? <Widget /> : null;
-  }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
+  }, [
+    widgetConfig,
+    descriptionWidget,
+    glossaryWidget,
+    tagsWidget,
+    dataProductsWidget,
+  ]);
 
   return (
     <>
-      <div
-        data-grid={widgetConfig}
-        data-testid={widgetConfig.i}
-        id={widgetConfig.i}
-        key={widgetConfig.i}>
-        {widget}
-      </div>
+      {widget}
       {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={updatedData as unknown as GlossaryTerm}

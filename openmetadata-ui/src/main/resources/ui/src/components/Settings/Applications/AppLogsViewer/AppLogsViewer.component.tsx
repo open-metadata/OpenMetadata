@@ -28,17 +28,14 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
+import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import './app-logs-viewer.less';
-import {
-  AppLogsViewerProps,
-  EntityStats,
-  JobStats,
-} from './AppLogsViewer.interface';
+import { AppLogsViewerProps } from './AppLogsViewer.interface';
 
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
@@ -91,7 +88,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   );
 
   const statsRender = useCallback(
-    (jobStats: JobStats) => (
+    (stepStats: StepStats) => (
       <Card data-testid="stats-component" size="small">
         <Row gutter={[16, 8]}>
           <Col span={24}>
@@ -119,31 +116,31 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     <Badge
                       showZero
                       className="request-badge running"
-                      count={jobStats.totalRecords}
+                      count={stepStats.totalRecords}
                       overflowCount={99999999}
                       title={`${t('label.total-index-sent')}: ${
-                        jobStats.totalRecords
+                        stepStats.totalRecords
                       }`}
                     />
 
                     <Badge
                       showZero
                       className="request-badge success"
-                      count={jobStats.successRecords}
+                      count={stepStats.successRecords}
                       overflowCount={99999999}
                       title={`${t('label.entity-index', {
                         entity: t('label.success'),
-                      })}: ${jobStats.successRecords}`}
+                      })}: ${stepStats.successRecords}`}
                     />
 
                     <Badge
                       showZero
                       className="request-badge failed"
-                      count={jobStats.failedRecords}
+                      count={stepStats.failedRecords}
                       overflowCount={99999999}
                       title={`${t('label.entity-index', {
                         entity: t('label.failed'),
-                      })}: ${jobStats.failedRecords}`}
+                      })}: ${stepStats.failedRecords}`}
                     />
                   </Space>
                 </span>
@@ -241,7 +238,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   }, [successContext, failureContext]);
 
   const entityStatsRenderer = useCallback(
-    (entityStats: EntityStats) => {
+    (entityStats: { [key: string]: StepStats }) => {
       return (
         <Table
           className="m-t-md"

@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, ButtonProps, Tooltip } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
+import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 
 type IconButtonPropsInternal = ButtonProps & {
   newLook?: boolean;
@@ -40,10 +41,11 @@ export const EditIconButton = ({
           {...props}
         />
       ) : (
-        <Icon
+        <Button
           className={className}
-          component={EditIcon}
-          style={{ color: DE_ACTIVE_COLOR }}
+          icon={<EditIcon className="table-action-icon" />}
+          size="small"
+          type="text"
           {...props}
         />
       )}
@@ -69,8 +71,8 @@ export const RequestIconButton = ({
         />
       ) : (
         <Icon
+          className={classNames('table-action-icon', className)}
           component={RequestIcon}
-          style={{ color: DE_ACTIVE_COLOR }}
           {...props}
         />
       )}
@@ -96,11 +98,74 @@ export const CommentIconButton = ({
         />
       ) : (
         <Icon
+          className={classNames('table-action-icon', className)}
           component={CommentIcon}
-          style={{ color: DE_ACTIVE_COLOR }}
           {...props}
         />
       )}
+    </Tooltip>
+  );
+};
+
+export const AlignRightIconButton = ({
+  title,
+  className,
+  size,
+  ...props
+}: IconButtonPropsInternal) => {
+  return (
+    <Tooltip title={title}>
+      <Button
+        className={classNames('border-none tab-expand-icon', className)}
+        data-testid="tab-expand-button"
+        icon={<ExpandIcon />}
+        size={size}
+        type="text"
+        {...props}
+      />
+    </Tooltip>
+  );
+};
+
+export const CardExpandCollapseIconButton = ({
+  title,
+  className,
+  disabled,
+  ...props
+}: IconButtonPropsInternal) => {
+  const button = (
+    <Button
+      className={classNames('bordered', className)}
+      disabled={disabled}
+      icon={<CardExpandCollapseIcon />}
+      type="text"
+      {...props}
+    />
+  );
+
+  return (
+    <Tooltip title={title}>
+      {/* Adding span to fix the issue with className is not being applied for disabled button
+        Refer this comment for more details https://github.com/ant-design/ant-design/issues/21404#issuecomment-586800984 */}
+      {disabled ? <span className={className}>{button}</span> : button}
+    </Tooltip>
+  );
+};
+
+export const PlusIconButton = ({
+  title,
+  className,
+  size,
+  ...props
+}: IconButtonPropsInternal) => {
+  return (
+    <Tooltip title={title}>
+      <Button
+        className={classNames('bordered', className)}
+        icon={<PlusOutlined />}
+        size={size}
+        {...props}
+      />
     </Tooltip>
   );
 };

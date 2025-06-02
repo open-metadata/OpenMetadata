@@ -13,11 +13,19 @@
 @import (reference) '../../../../styles/variables.less';
 
 .agents-tab {
+  background-color: @white;
+  border-radius: @border-radius-sm;
+  border: 1px solid @grey-15;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
   .service-agents-widget {
     height: 100%;
     background-color: @white;
     border-radius: @border-radius-sm;
-    border: 1px solid @grey-12;
+    border: 1px solid @grey-15;
     padding: 20px;
   }
 
@@ -25,8 +33,11 @@
     width: 350px;
   }
 
-  .anticon.reload-button-icon {
-    font-size: 14px;
+  .reload-button {
+    border-color: @grey-15;
+    .anticon.reload-button-icon {
+      font-size: 14px;
+    }
   }
 
   .quick-filter-dropdown-trigger-btn {
@@ -35,7 +46,7 @@
     justify-content: center;
     gap: 8px;
     border-radius: @border-radius-xs;
-    border: 1px solid @border-color;
+    border: 1px solid @grey-15;
     padding: 19px;
     font-size: 14px;
     font-weight: 500;
@@ -47,19 +58,48 @@
     .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
       font-size: 14px;
       font-weight: 500;
-      border-color: @border-color;
     }
     .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
-      background-color: @border-color;
+      background-color: @grey-15;
     }
     .ant-radio-button-wrapper:first-child {
+      border-color: @grey-15;
       border-radius: 8px 0 0 8px;
     }
     .ant-radio-button-wrapper:last-child {
+      border-color: @grey-15;
       border-radius: 0 8px 8px 0;
     }
+    .ant-radio-button-wrapper:hover {
+      .tab-label {
+        color: @primary-color;
+        .ant-typography {
+          color: @primary-color;
+        }
+      }
+    }
     .ant-radio-button-wrapper-checked {
-      background-color: @blue-11;
+      background-color: @primary-button-background;
+      .tab-label {
+        color: @primary-color;
+        .ant-typography {
+          color: @primary-color;
+        }
+      }
+    }
+    .ant-radio-button-wrapper:focus-within {
+      box-shadow: none;
+    }
+    .ant-radio-button-wrapper {
+      box-shadow: none;
+      .tab-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    }
+    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
+      background-color: @primary-button-background;
     }
   }
 }

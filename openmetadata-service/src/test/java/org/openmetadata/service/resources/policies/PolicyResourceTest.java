@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.resources.policies;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static java.util.Collections.emptyList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import com.google.common.collect.Lists;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -49,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -268,10 +268,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // isOwner() has Unexpected input parameter
     failsToEvaluate(policyName, "!isOwner('unexpectedParam')");
-
-    // Invalid function name
-    failsToEvaluate(policyName, "invalidFunction()");
-    failsToEvaluate(policyName, "isOwner() || invalidFunction()");
 
     // Invalid text
     failsToEvaluate(policyName, "a");

@@ -67,3 +67,9 @@ export const ENTITIES_WITHOUT_FOLLOWING_BUTTON = [
   'services/searchServices',
   'apiCollections',
 ];
+
+/**
+ * Timeout for deleting big entities
+ * 5 minutes
+ */
+export const BIG_ENTITY_DELETE_TIMEOUT = 5 * 60 * 1000;

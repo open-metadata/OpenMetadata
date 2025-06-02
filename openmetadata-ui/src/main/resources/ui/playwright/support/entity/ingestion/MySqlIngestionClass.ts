@@ -37,16 +37,34 @@ class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
   defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
+  excludeSchemas: string[];
   profilerTable = 'alert_entity';
-  constructor(tableFilter?: string[]) {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+    tableFilter?: string[];
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+      tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+    } = extraParams ?? {};
+
     const serviceName = `pw-mysql-with-%-${uuid()}`;
-    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
-    this.name = serviceName;
-    this.tableFilter = tableFilter ?? [
+    super(
+      Services.Database,
+      serviceName,
+      'Mysql',
       'bot_entity',
-      'alert_entity',
-      'chart_entity',
-    ];
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
+    );
+    this.name = serviceName;
+    this.tableFilter = tableFilter;
+    this.excludeSchemas = ['openmetadata'];
   }
 
   async createService(page: Page) {
@@ -75,6 +93,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.fill('#root\\/tableFilterPattern\\/includes', filter);
       await page
         .locator('#root\\/tableFilterPattern\\/includes')
+        .press('Enter');
+    }
+    for (const schema of this.excludeSchemas) {
+      await page.fill('#root\\/schemaFilterPattern\\/excludes', schema);
+      await page
+        .locator('#root\\/schemaFilterPattern\\/excludes')
         .press('Enter');
     }
   }
@@ -187,7 +211,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.defaultFilters.concat(this.tableFilter)
+      this.defaultFilters.concat([...this.excludeSchemas, ...this.tableFilter])
     );
   }
 }

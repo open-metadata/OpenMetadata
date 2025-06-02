@@ -10,14 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  DeleteOutlined,
-  DownloadOutlined,
-  FileOutlined,
-} from '@ant-design/icons';
+import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
 import { NodeViewProps } from '@tiptap/react';
 import { Button } from 'antd';
 import React from 'react';
+import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import { bytesToSize } from '../../../../../utils/StringsUtils';
 
 const FileAttachment = ({
@@ -84,8 +81,11 @@ const FileAttachment = ({
         </div>
       </div>
       {!isUploading && (
-        <DeleteOutlined
+        <Icon
           className="delete-icon"
+          component={IconDelete}
+          data-testid="delete-icon"
+          size={14}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

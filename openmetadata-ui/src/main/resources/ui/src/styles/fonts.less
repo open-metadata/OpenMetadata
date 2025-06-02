@@ -79,6 +79,9 @@ pre {
 .text-white {
   color: @white;
 }
+.text-blue {
+  color: @primary-heading-color;
+}
 .text-black {
   color: @black;
 }
@@ -89,7 +92,7 @@ pre {
   color: @grey-3;
 }
 .text-grey-14 {
-  color: @grey-14;
+  color: @grey-400;
 }
 .text-grey-body {
   color: @text-color;
@@ -99,6 +102,9 @@ pre {
 }
 .text-gray-400 {
   color: @grey-7;
+}
+.text-grey-600 {
+  color: @grey-600;
 }
 .text-red-3 {
   color: @red-3;
@@ -113,6 +119,18 @@ pre {
   &:hover {
     color: @text-color;
   }
+}
+
+.generate-text-grey-colors(@n, @i: 100) when (@i =< @n) {
+  &-@{i} {
+    color: ~'@{grey-@{i}}';
+  }
+
+  .generate-text-grey-colors(@n, (@i + 100));
+}
+
+.text-grey {
+  .generate-text-grey-colors(900);
 }
 
 .text-success {
@@ -132,6 +150,19 @@ a.ant-typography,
   font-weight: 500;
   font-size: 14px;
   line-height: 21px;
+  color: @blue-9;
+
+  &:hover {
+    color: @blue-26;
+  }
+
+  &:focus {
+    color: @blue-9;
+  }
+
+  &:disabled {
+    color: @grey-300;
+  }
 }
 
 // font style

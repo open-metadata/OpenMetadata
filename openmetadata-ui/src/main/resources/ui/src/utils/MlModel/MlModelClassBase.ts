@@ -64,7 +64,7 @@ class MlModelDetailsClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.ML_MODEL_FEATURES]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
@@ -170,8 +170,8 @@ class MlModelDetailsClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.RELATED_METRICS,
-        name: i18n.t('label.related-metrics'),
+        fullyQualifiedName: DetailPageWidgetKeys.ML_MODEL_FEATURES,
+        name: i18n.t('label.feature-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

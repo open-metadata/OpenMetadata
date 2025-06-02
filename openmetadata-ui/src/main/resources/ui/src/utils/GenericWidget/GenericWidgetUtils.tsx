@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import React from 'react';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
-import { ExtensionTable } from '../../components/common/CustomPropertyTable/ExtensionTable';
+import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -23,15 +24,19 @@ import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTa
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
+import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import MlModelFeaturesList from '../../components/MlModel/MlModelDetail/MlModelFeaturesList';
+import { PipelineTaskTab } from '../../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
+  WIDGET_CUSTOM_PROPERTIES,
 } from '../../constants/CustomizeWidgets.constants';
 import {
   DetailPageWidgetKeys,
@@ -40,7 +45,10 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, TagSource } from '../../generated/tests/testCase';
 import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
+import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
+import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
@@ -99,14 +107,34 @@ export const WIDGET_COMPONENTS = {
     <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
-    <ExtensionTable
-      extension={{
-        email: 'customproperty@OpenMetadata.com',
-        name: 'OpenMetadata',
-      }}
-      tableClassName="m-0"
-    />
+    <div className="flex gap-2 flex-col">
+      {WIDGET_CUSTOM_PROPERTIES.map((prop, index) => (
+        <div
+          className={classNames(' bordered', {
+            'top-border-radius': index === 0,
+            'bottom-border-radius':
+              index === WIDGET_CUSTOM_PROPERTIES.length - 1,
+          })}
+          key={prop.name}>
+          <PropertyValue
+            extension={{
+              [prop.name]: prop.value,
+            }}
+            hasEditPermissions={false}
+            key={prop.name}
+            property={{
+              name: prop.name,
+              propertyType: prop.propertyType,
+              description: prop.description,
+              displayName: prop.displayName,
+            }}
+            onExtensionUpdate={() => Promise.resolve()}
+          />
+        </div>
+      ))}
+    </div>
   ),
+
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
     <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
   ),
@@ -115,7 +143,7 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.TABLE_SCHEMA]: () => <SchemaTable />,
   [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: () => (
-    <FrequentlyJoinedTables />
+    <FrequentlyJoinedTables renderAsExpandableCard={false} />
   ),
   [DetailPageWidgetKeys.DATA_PRODUCTS]: () => (
     <DataProductsContainer
@@ -127,13 +155,17 @@ export const WIDGET_COMPONENTS = {
   [GlossaryTermDetailPageWidgetKeys.TERMS_TABLE]: () => (
     <GlossaryTermTab isGlossary />
   ),
-  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => <TableConstraints />,
+  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => (
+    <TableConstraints renderAsExpandableCard={false} />
+  ),
   [DetailPageWidgetKeys.TOPIC_SCHEMA]: () => <TopicSchemaFields />,
   [DetailPageWidgetKeys.DATA_MODEL]: () => <ModelTab />,
   [DetailPageWidgetKeys.CONTAINER_CHILDREN]: () => (
     <ContainerChildren isReadOnly />
   ),
-  [DetailPageWidgetKeys.CHARTS_TABLE]: () => <DashboardChartTable />,
+  [DetailPageWidgetKeys.CHARTS_TABLE]: () => (
+    <DashboardChartTable isCustomizationPage />
+  ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
     <OwnerLabel
       hasPermission={false}
@@ -145,5 +177,17 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.API_SCHEMA]: () => <APIEndpointSchema />,
   [DetailPageWidgetKeys.CONTAINER_SCHEMA]: () => <ContainerWidget />,
-  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => <DatabaseSchemaTable />,
+  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => (
+    <DatabaseSchemaTable isCustomizationPage />
+  ),
+  [DetailPageWidgetKeys.TABLES]: () => <SchemaTablesTab isCustomizationPage />,
+  [DetailPageWidgetKeys.ML_MODEL_FEATURES]: () => <MlModelFeaturesList />,
+  [DetailPageWidgetKeys.PIPELINE_TASKS]: () => <PipelineTaskTab />,
+  [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: () => <SearchIndexFieldsTab />,
+  [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: () => (
+    <StoredProcedureCodeCard />
+  ),
+  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
+    <PartitionedKeys renderAsExpandableCard={false} />
+  ),
 } as const;

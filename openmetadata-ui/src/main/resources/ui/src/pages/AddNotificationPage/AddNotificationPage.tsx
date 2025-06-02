@@ -13,6 +13,7 @@
  */
 import {
   Button,
+  Card,
   Col,
   Divider,
   Form,
@@ -224,10 +225,11 @@ const AddNotificationPage = () => {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-containere',
+        className: 'content-resizable-panel-container',
+        allowScroll: true,
         children: (
-          <div className="steps-form-container service-form-container">
-            <Row className="page-container" gutter={[16, 16]}>
+          <Card className="steps-form-container">
+            <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
@@ -344,10 +346,12 @@ const AddNotificationPage = () => {
                 </Form>
               </Col>
             </Row>
-          </div>
+          </Card>
         ),
         minWidth: 700,
         flex: 0.7,
+
+        wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.notification-alert'),

@@ -35,6 +35,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparat
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
+import jakarta.json.JsonPatch;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -49,7 +50,6 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -628,7 +628,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
+    Table table =
+        get(null, tableId, getFields(Set.of(FIELD_OWNERS, FIELD_TAGS)), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -781,18 +782,29 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
-        if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-          List<TagLabel> tags = new ArrayList<>(col.getTags());
-          tags.addAll(suggestion.getTagLabels());
-          col.setTags(tags);
-        } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-          col.setDescription(suggestion.getDescription());
-        } else {
-          throw new SuggestionException("Invalid suggestion Type");
+        applySuggestionToColumn(col, suggestion);
+      }
+      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+        for (Column child : col.getChildren()) {
+          if (child.getFullyQualifiedName().equals(columnFQN)) {
+            applySuggestionToColumn(child, suggestion);
+          }
         }
       }
     }
     return table;
+  }
+
+  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
+    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
+      List<TagLabel> tags = new ArrayList<>(column.getTags());
+      tags.addAll(suggestion.getTagLabels());
+      column.setTags(tags);
+    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
+      column.setDescription(suggestion.getDescription());
+    } else {
+      throw new SuggestionException("Invalid suggestion Type");
+    }
   }
 
   @Override
@@ -1262,6 +1274,7 @@ public class TableRepository extends EntityRepository<Table> {
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
       // if schema definition changes make processed lineage false
       if (origTable.getProcessedLineage().booleanValue()
+          && origTable.getSchemaDefinition() != null
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
       }

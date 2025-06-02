@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React from 'react';
+import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
@@ -78,6 +79,14 @@ jest.mock('../../rest/incidentManagerAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: [] })),
   updateTestCaseIncidentById: jest.fn(),
 }));
+jest.mock('../../rest/miscAPI', () => ({
+  getUserAndTeamSearch: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: [] })),
+}));
+jest.mock('../../rest/userAPI', () => ({
+  getUsers: jest.fn().mockImplementation(() => Promise.resolve({ data: [] })),
+}));
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
@@ -98,12 +107,18 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
       .mockImplementation(() => 1709556624254),
     formatDateTime: jest.fn().mockImplementation(() => 'formatted date'),
     getCurrentMillis: jest.fn().mockImplementation(() => 1710161424255),
+    getStartOfDayInMillis: jest
+      .fn()
+      .mockImplementation((timestamp) => timestamp),
+    getEndOfDayInMillis: jest.fn().mockImplementation((timestamp) => timestamp),
   };
 });
 
 describe('IncidentManagerPage', () => {
   it('should render component', async () => {
-    render(<IncidentManager />);
+    await act(async () => {
+      render(<IncidentManager />);
+    });
 
     expect(await screen.findByTestId('status-select')).toBeInTheDocument();
     expect(
@@ -124,11 +139,13 @@ describe('IncidentManagerPage', () => {
   it('Incident should be fetch with updated time', async () => {
     const mockGetListTestCaseIncidentStatus =
       getListTestCaseIncidentStatus as jest.Mock;
-    render(<IncidentManager />);
+    await act(async () => {
+      render(<IncidentManager />);
+    });
 
     const timeFilterButton = await screen.findByTestId('time-filter');
 
-    act(() => {
+    await act(async () => {
       fireEvent.click(timeFilterButton);
     });
 
@@ -137,17 +154,44 @@ describe('IncidentManagerPage', () => {
       latest: true,
       limit: 10,
       startTs: 1709556624254,
+      include: 'non-deleted',
     });
   });
 
-  it('Should not ender table column if isIncidentManager is false', () => {
-    render(<IncidentManager isIncidentPage={false} />);
+  it('Incident should be fetch with deleted', async () => {
+    const mockGetListTestCaseIncidentStatus =
+      getListTestCaseIncidentStatus as jest.Mock;
+    await act(async () => {
+      render(<IncidentManager tableDetails={{ deleted: true } as Table} />);
+    });
+
+    const timeFilterButton = await screen.findByTestId('time-filter');
+
+    await act(async () => {
+      fireEvent.click(timeFilterButton);
+    });
+
+    expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
+      endTs: 1710161424255,
+      latest: true,
+      limit: 10,
+      startTs: 1709556624254,
+      include: 'deleted',
+    });
+  });
+
+  it('Should not ender table column if isIncidentManager is false', async () => {
+    await act(async () => {
+      render(<IncidentManager isIncidentPage={false} />);
+    });
 
     expect(screen.queryByText('label.table')).not.toBeInTheDocument();
   });
 
-  it('Should render table column if isIncidentManager is true', () => {
-    render(<IncidentManager isIncidentPage />);
+  it('Should render table column if isIncidentManager is true', async () => {
+    await act(async () => {
+      render(<IncidentManager isIncidentPage />);
+    });
 
     expect(screen.getByText('label.table')).toBeInTheDocument();
   });

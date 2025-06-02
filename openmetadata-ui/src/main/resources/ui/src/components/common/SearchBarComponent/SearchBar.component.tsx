@@ -24,6 +24,7 @@ import './search-bar.less';
 
 export type SearchBarProps = {
   inputClassName?: string;
+  containerClassName?: string;
   onSearch: (text: string) => void;
   searchValue?: string;
   typingInterval?: number;
@@ -42,6 +43,7 @@ export type SearchBarProps = {
 
 const Searchbar = ({
   inputClassName = '',
+  containerClassName = '',
   onSearch,
   searchValue,
   typingInterval = 0,
@@ -96,7 +98,7 @@ const Searchbar = ({
 
   return (
     <div
-      className={classNames('page-search-bar', {
+      className={classNames('page-search-bar', containerClassName, {
         'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">

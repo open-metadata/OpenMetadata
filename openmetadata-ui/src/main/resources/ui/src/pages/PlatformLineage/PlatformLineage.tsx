@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Select } from 'antd';
+import { Col, Row, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { debounce, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -27,6 +27,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
 import {
   OperationPermission,
   ResourceEntity,
@@ -34,6 +35,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -45,7 +47,11 @@ import './platform-lineage.less';
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const history = useHistory();
+  const queryParams = new URLSearchParams(location.search);
+  const platformView =
+    queryParams.get('platformView') ?? LineagePlatformView.Service;
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
@@ -57,6 +63,16 @@ const PlatformLineage = () => {
   );
   const [permissions, setPermissions] = useState<OperationPermission>();
 
+  const handleEntitySelect = useCallback(
+    (value: EntityReference) => {
+      history.push(
+        `/lineage/${(value as SourceType).entityType}/${
+          value.fullyQualifiedName
+        }`
+      );
+    },
+    [history]
+  );
   const debouncedSearch = useCallback(
     debounce(async (value: string) => {
       try {
@@ -92,17 +108,6 @@ const PlatformLineage = () => {
       }
     }, 300),
     []
-  );
-
-  const handleEntitySelect = useCallback(
-    (value: EntityReference) => {
-      history.push(
-        `/lineage/${(value as SourceType).entityType}/${
-          value.fullyQualifiedName
-        }`
-      );
-    },
-    [history]
   );
 
   const init = useCallback(async () => {
@@ -169,7 +174,14 @@ const PlatformLineage = () => {
         <Col span={24}>
           <Row className="">
             <Col span={24}>
-              <PageHeader data={PAGE_HEADERS.PLATFORM_LINEAGE} />
+              <PageHeader
+                data={{
+                  ...PAGE_HEADERS.PLATFORM_LINEAGE,
+                  header: t('label.platform-type-lineage', {
+                    platformType: startCase(platformView),
+                  }),
+                }}
+              />
             </Col>
             <Col span={12}>
               <div className="m-t-md w-full">
@@ -193,7 +205,6 @@ const PlatformLineage = () => {
           </Row>
         </Col>
         <Col span={24}>
-          <Divider className="m-0" />
           <div className="platform-lineage-container">{lineageElement}</div>
         </Col>
       </Row>

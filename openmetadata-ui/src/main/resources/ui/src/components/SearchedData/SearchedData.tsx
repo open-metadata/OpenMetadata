@@ -108,7 +108,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div data-testid="search-container">
+        <div className="h-full" data-testid="search-container">
           {totalValue > 0 ? (
             <>
               {children}
@@ -116,7 +116,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
-                  className="text-center m-b-sm"
+                  className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
@@ -127,13 +127,13 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               </div>
             </>
           ) : (
-            <>
+            <div className="flex-center h-full">
               {children}
               <ErrorPlaceHolderES
                 query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
-            </>
+            </div>
           )}
         </div>
       )}
