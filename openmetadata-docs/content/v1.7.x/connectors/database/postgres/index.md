@@ -58,6 +58,44 @@ Then, when extracting usage and lineage data, the query log duration will have n
 GRANT pg_read_all_stats TO your_user;
 ```
 
+### IAM Authentication
+
+In order to be able to connect via IAM, you need to have the following:
+
+1. Database is configured to use IAM authentication
+Ensure that the RDS has IAM DB authentication enabled. Otherwise, you can click on Modify to enable it.
+
+2. The user has the necessary IAM permissions
+Even if you use IAM to connect to postgres, you need to specify a user to prepare the connection. You need to create a user as follows:
+
+```sql
+CREATE USER iam_user WITH LOGIN;
+GRANT rds_iam TO iam_user;
+```
+
+3. The AWS Role has the necessary permissions
+The role that is going to be used to perform the ingestion, needs to have the following permissions:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds-db:connect"
+            ],
+            "Resource": [
+                "arn:aws:rds-db:eu-west-1:<aws_account_number>:dbuser:<rds_db_resource_id>/<postgres_user>"
+            ]
+        }
+    ]
+}
+```
+Otherwise, you might be finding issues such as
+
+PAM authentication failed for user "<user>"
+
+
 ## Stored Procedures
 
 When executing stored procedures in PostgreSQL, lineage extraction relies on capturing the SQL queries executed within the procedure. However, by default, PostgreSQL does not track the internal queries of a stored procedure in `pg_stat_statements`.
