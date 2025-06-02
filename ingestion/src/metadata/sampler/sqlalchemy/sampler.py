@@ -136,6 +136,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             ).cte(f"{self.get_sampler_table_name()}_sample")
 
         table_query = client.query(self.raw_dataset)
+        if self.partition_details:
+            table_query = self.get_partitioned_query(table_query)
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)

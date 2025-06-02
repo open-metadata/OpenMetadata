@@ -15,7 +15,7 @@ for the profiler
 from typing import List, Optional
 
 from sqlalchemy import Column, Table, text
-from sqlalchemy.orm import Query
+from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import TableData, TableType
 from metadata.sampler.sqlalchemy.sampler import ProfileSampleType, SQASampler
@@ -49,13 +49,12 @@ class AzureSQLSampler(SQASampler):
 
         return selectable
 
-    def get_sample_query(self, *, column=None) -> Query:
-        """get query for sample data"""
+    def get_sample_query(self, *, column=None) -> CTE:
+        """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
         rnd = self._base_sample_query(column).cte(
             f"{self.get_sampler_table_name()}_rnd"
         )
-        with self.get_client() as client:
-            query = client.query(rnd)
+        query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
