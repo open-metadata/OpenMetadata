@@ -7,11 +7,8 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
-import jakarta.json.Json;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import java.beans.IntrospectionException;
 import java.io.IOException;
@@ -25,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.json.JSONObject;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
@@ -423,7 +421,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
             hits.ifPresent(
                 hitList -> {
                   for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
-                    JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
+                    Object sourceObj = hit.get("_source");
+                    if (sourceObj == null) {
+                      continue;
+                    }
+                    Map<String, Object> sourceMap =
+                        JsonUtils.readOrConvertValue(sourceObj, Map.class);
+                    Map<String, Object> source = getSourceDocument(sourceMap);
                     T entity =
                         setFieldsInternal(
                             JsonUtils.readOrConvertValue(source, entityClass), fields);
@@ -471,27 +475,24 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return new ArrayList<>();
   }
 
-  private JsonObject getSourceDocument(String hit) {
+  private Map<String, Object> getSourceDocument(Map<String, Object> sourceMap) {
     List<String> includeSearchFields = getIncludeSearchFields();
     List<String> excludeSearchFields = getExcludeSearchFields();
-    JsonObject hitJson = JsonUtils.readJson(hit).asJsonObject();
-    JsonObject source = hitJson.asJsonObject().getJsonObject("_source");
+    JSONObject source = new JSONObject(sourceMap);
     // Aggregation results will return all fields by default,
     // so we need to filter out the fields that are not included
     // in the search fields
-    if (source != null
-        && (!CommonUtil.nullOrEmpty(includeSearchFields)
-            || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
-      JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
-      for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
-        if (includeSearchFields.contains(entry.getKey())
+    if (!CommonUtil.nullOrEmpty(includeSearchFields)
+        || !CommonUtil.nullOrEmpty(excludeSearchFields)) {
+      for (Map.Entry<String, Object> entry : source.toMap().entrySet()) {
+        if (!includeSearchFields.contains(entry.getKey())
             || (CommonUtil.nullOrEmpty(includeSearchFields)
-                && !excludeSearchFields.contains(entry.getKey()))) {
-          sourceCopy.add(entry.getKey(), entry.getValue());
+                && excludeSearchFields.contains(entry.getKey()))) {
+          source.remove(entry.getKey());
         }
       }
-      return sourceCopy.build();
+      return source.toMap();
     }
-    return source;
+    return source.toMap();
   }
 }
