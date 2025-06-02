@@ -26,7 +26,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.algorithms.column_labelers import HeuristicPIILabeler
 from metadata.pii.algorithms.label_extractors import (
     LabelExtractor,
     ProbabilisticLabelExtractor,

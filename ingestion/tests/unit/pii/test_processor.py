@@ -3,8 +3,6 @@ from metadata.pii.algorithms.tags import PIICategoryTag, PIISensitivityTag
 from metadata.pii.processor import get_tag_label
 
 
-
-
 def test_get_general_tag_label_from_pii_tag_category():
     """
     Test that the general tag FQN from a tag category never fails.
