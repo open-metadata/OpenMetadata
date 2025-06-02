@@ -375,6 +375,17 @@ dev = {
     *plugins["sample-data"],
 }
 
+# Dependencies for unit testing in addition to dev dependencies and plugins
+test_unit = {
+    "pytest==7.0.0",
+    "pytest-cov",
+    "pytest-order",
+    "dirty-equals",
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # TODO: Remove once no unit test requires testcontainers
+    "testcontainers",
+}
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.27.0",
@@ -440,7 +451,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
-    "faker==37.1.0",  # Fixed the version to prevent flaky tests!
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
 }
 
 if sys.version_info >= (3, 9):
@@ -471,10 +482,6 @@ playwright_dependencies = {
     # Add other plugins as needed for Playwright tests
 }
 
-extended_testing = {
-    "Faker",  # For Sample Data Generation
-}
-
 
 def filter_requirements(filtered: Set[str]) -> List[str]:
     """Filter out requirements from base_requirements"""
@@ -492,13 +499,19 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 setup(
     install_requires=list(base_requirements),
     extras_require={
-        "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
-        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
+        # FIXME: all-dev-env is a temporary solution to install all dependencies except
+        #   those that might conflict with each other or cause issues in the dev environment
+        #   This covers all development cases where none of the plugins are used
+        "all-dev-env": filter_requirements(
+            {"airflow", "db2", "great-expectations", "pymssql"}
+        ),
+        # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(

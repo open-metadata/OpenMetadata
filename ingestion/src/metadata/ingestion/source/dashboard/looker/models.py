@@ -25,6 +25,7 @@ class LookMlField(BaseModel):
     label: Optional[str] = Field(None, description="Field display name")
     type: Optional[str] = Field(None, description="Field type to be mapped to OM")
     name: str = Field(..., description="Field name")
+    sql: Optional[str] = Field(None, description="Field SQL")
 
 
 class LookMlDerivedTableField(BaseModel):
