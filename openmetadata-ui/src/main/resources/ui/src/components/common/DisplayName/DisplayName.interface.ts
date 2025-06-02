@@ -17,7 +17,7 @@ export interface DisplayNameProps {
   id: string;
   name?: ReactNode;
   displayName?: ReactNode;
-  link: string;
+  link?: string;
   onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
   allowRename?: boolean;
 }
