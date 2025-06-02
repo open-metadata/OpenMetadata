@@ -149,14 +149,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestCaseResult(fields.contains(TEST_CASE_RESULT) ? test.getTestCaseResult() : null);
   }
 
-  public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, JsonPatch patch, String updatedBy) {
-    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    TestCaseResultRepository testCaseResultRepository =
-        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
-    return testCaseResultRepository.patchTestCaseResults(fqn, timestamp, patch, updatedBy);
-  }
-
   @Override
   public void setFullyQualifiedName(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
@@ -337,16 +329,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testSuiteRepository.postUpdate(original, testSuite);
   }
 
-  public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
-      String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
-    TestCaseResultRepository testCaseResultRepository =
-        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    Response response =
-        testCaseResultRepository.addTestCaseResult(updatedBy, uriInfo, fqn, testCaseResult);
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, (TestCaseResult) response.getEntity(), ENTITY_UPDATED);
-  }
-
   @Transaction
   @Override
   protected void deleteChildren(
@@ -371,16 +353,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   protected void entitySpecificCleanup(TestCase entityInterface) {
     deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
-  }
-
-  public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
-      String updatedBy, String fqn, Long timestamp) {
-    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    TestCaseResultRepository testCaseResultRepository =
-        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    Response response = testCaseResultRepository.deleteTestCaseResult(fqn, timestamp).toResponse();
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK, (TestCaseResult) response.getEntity(), ENTITY_DELETED);
   }
 
   private void deleteAllTestCaseResults(String fqn) {
@@ -423,13 +395,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
     }
     return testCaseResult;
-  }
-
-  public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {
-    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    TestCaseResultRepository testCaseResultRepository =
-        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    return testCaseResultRepository.getTestCaseResults(fqn, startTs, endTs);
   }
 
   /**
