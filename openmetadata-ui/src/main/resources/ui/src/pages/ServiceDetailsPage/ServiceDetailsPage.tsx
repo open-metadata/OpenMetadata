@@ -1464,7 +1464,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

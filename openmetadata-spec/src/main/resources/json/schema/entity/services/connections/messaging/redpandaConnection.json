@@ -42,6 +42,12 @@
       "type": "string",
       "format": "password"
     },
+    "schemaRegistryTopicSuffixName": {
+      "title": "Schema Registry Topic Suffix Name",
+      "description": "Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema from registry.",
+      "type": "string",
+      "default": "-value"
+    },
     "securityProtocol": {
       "title": "Security Protocol",
       "description": "security.protocol consumer config property",

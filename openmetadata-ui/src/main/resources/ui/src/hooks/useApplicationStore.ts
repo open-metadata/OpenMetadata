@@ -18,10 +18,7 @@ import { AuthorizerConfiguration } from '../generated/configuration/authorizerCo
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
-import {
-  ApplicationStore,
-  HelperFunctions,
-} from '../interface/store.interface';
+import { ApplicationStore } from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
@@ -51,10 +48,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
-  },
-
-  setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
-    set({ ...helperFunctions });
   },
 
   setSelectedPersona: (persona: EntityReference) => {
@@ -101,25 +94,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ isApplicationLoading: loading });
   },
 
-  onLoginHandler: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  /**
-   * Handler to perform logout within application
-   */
-  onLogoutHandler: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-
-  handleSuccessfulLogin: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  handleFailedLogin: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  updateAxiosInterceptors: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
   updateCurrentUser: (user) => {
     const { personas, defaultPersona } = user;
     const { selectedPersona } = get();

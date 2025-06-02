@@ -183,6 +183,17 @@ Australia and Asia multi-regions are not yet supported.
 $$
 
 $$section
+### Cost Per TiB $(id="costPerTB")
+
+The cost (in USD) per tebibyte (TiB) of data processed during BigQuery usage analysis. This value is used to estimate query costs when analyzing usage metrics from `INFORMATION_SCHEMA.JOBS_BY_PROJECT`.
+
+This setting does **not** affect actual billing—it is only used for internal reporting and visualization of estimated costs.
+
+The default value, if not set, may assume the standard on-demand BigQuery pricing (e.g., $5.00 per TiB), but you should adjust it according to your organization's negotiated rates or flat-rate pricing model.
+
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.

@@ -94,6 +94,7 @@ om_chart_type_dict = {
     "levelTable": ChartType.Table,
     "dist_bar": ChartType.Bar,
     "bar": ChartType.Bar,
+    "vertical_bar": ChartType.Bar,
     "box_plot": ChartType.BoxPlot,
     "box": ChartType.BoxPlot,
     "boxplot": ChartType.BoxPlot,

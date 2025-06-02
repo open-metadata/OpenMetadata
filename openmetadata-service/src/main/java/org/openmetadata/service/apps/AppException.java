@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class AppException extends WebServiceException {
