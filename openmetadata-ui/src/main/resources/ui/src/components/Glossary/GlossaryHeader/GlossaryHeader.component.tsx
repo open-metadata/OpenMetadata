@@ -554,7 +554,7 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <div className="glossary-header flex gap-2 justify-between no-wrap ">
+      <div className="glossary-header flex gap-4 justify-between no-wrap ">
         <div className="flex w-min-0 flex-auto">
           <EntityHeader
             badge={statusBadge}
