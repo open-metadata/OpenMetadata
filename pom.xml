@@ -78,8 +78,8 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
-    <dropwizard.version>4.0.11</dropwizard.version>
-    <dropwizard-jdbi3.version>4.0.11</dropwizard-jdbi3.version>
+    <dropwizard.version>4.0.14</dropwizard.version>
+    <dropwizard-jdbi3.version>4.0.14</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>3.1.5</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
@@ -115,7 +115,7 @@
     <spring.version>6.1.14</spring.version>
     <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
-    <dropwizard-health.version>4.0.11</dropwizard-health.version>
+    <dropwizard-health.version>4.0.14</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
@@ -148,8 +148,8 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.13</logback-core.version>
-    <logback-classic.version>1.5.13</logback-classic.version>
+    <logback-core.version>1.5.18</logback-core.version>
+    <logback-classic.version>1.5.18</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
