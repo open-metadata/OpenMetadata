@@ -112,7 +112,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must be greater than or equal to 1]");
+        "[query param partitions must be greater than or equal to 1]");
   }
 
   @Test
