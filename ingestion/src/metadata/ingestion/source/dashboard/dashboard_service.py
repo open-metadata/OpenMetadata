@@ -362,7 +362,31 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            yield from self.yield_lineage_request(lineage)
+
+        # yield datamodel lineage with tables from db services
+        db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details) or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+        for db_service_name in db_service_names or []:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details, db_service_name)
+                or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+
+    def yield_lineage_request(
+        self, lineage: Optional[Either[AddLineageRequest]] = None
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Method to yield lineage request
+        """
+        if lineage:
             if lineage.right is not None:
                 yield Either(
                     right=OMetaLineageRequest(
@@ -372,14 +396,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
             else:
                 yield lineage
-
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
 
     def yield_bulk_tags(
         self, *args, **kwargs
