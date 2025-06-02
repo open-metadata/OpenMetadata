@@ -17,6 +17,8 @@ from typing import Any
 from metadata.generated.schema.entity.applications.configuration.internal.helloPipelinesConfiguration import (
     HelloPipelinesAppConfiguration,
 )
+from metadata.generated.schema.entity.applications.configuration.private.external.helloPipelinesPrivateConfig import \
+    HelloPipelinesAppPrivateConfiguration
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
@@ -54,6 +56,9 @@ class HelloPipelines(AppRunner):
         try:
             self.app_config: HelloPipelinesAppConfiguration = (
                 HelloPipelinesAppConfiguration.model_validate(self.app_config)
+            )
+            self.private_config = HelloPipelinesAppPrivateConfiguration.model_validate(
+                self.private_config
             )
         except Exception as e:
             raise InvalidAppConfiguration(
