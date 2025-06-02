@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -433,7 +435,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withDatabaseSchema(schema.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
@@ -445,6 +447,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      // Handle certification field
+      String certificationTag = csvRecord.size() > 7 ? csvRecord.get(7) : null;
+      if (!nullOrEmpty(certificationTag)) {
+        TagLabel certificationLabel = new TagLabel()
+                .withTagFQN(certificationTag)
+                .withSource(TagLabel.TagSource.CLASSIFICATION);
+        table.setCertification(new AssetCertification()
+                .withTagLabel(certificationLabel)
+                .withAppliedDate(new Date().getTime())
+                .withExpiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000).getTime()));
+      }
       table
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(tableFqn)
@@ -452,11 +466,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table, TABLE);
