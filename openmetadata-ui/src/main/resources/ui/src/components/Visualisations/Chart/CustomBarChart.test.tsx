@@ -42,6 +42,11 @@ jest.mock('../../../utils/DataInsightUtils', () => {
   });
 });
 
+const mockData = Array.from({ length: 301 }, (_, index) => ({
+  name: `test ${index}`,
+  value: index,
+}));
+
 describe('CustomBarChart component test', () => {
   it('Component should render', async () => {
     render(<CustomBarChart {...mockCustomBarChartProp} />);
@@ -55,6 +60,21 @@ describe('CustomBarChart component test', () => {
     expect(XAxis).toBeInTheDocument();
     expect(YAxis).toBeInTheDocument();
     expect(noData).not.toBeInTheDocument();
+    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+  });
+
+  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+    render(
+      <CustomBarChart
+        {...mockCustomBarChartProp}
+        chartCollection={{
+          data: mockData,
+          information: mockCustomBarChartProp.chartCollection.information,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Brush')).toBeInTheDocument();
   });
 
   it('If there is no data, placeholder should be visible', async () => {

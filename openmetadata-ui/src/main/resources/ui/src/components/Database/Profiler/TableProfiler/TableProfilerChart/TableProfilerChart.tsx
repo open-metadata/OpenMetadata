@@ -26,7 +26,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
@@ -104,7 +104,8 @@ const TableProfilerChart = ({
   );
   const [operationDateMetrics, setOperationDateMetrics] =
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isTableProfilerLoading, setIsTableProfilerLoading] = useState(true);
+  const [isSystemProfilerLoading, setIsSystemProfilerLoading] = useState(true);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
@@ -163,53 +164,115 @@ const TableProfilerChart = ({
     }
   };
 
-  const fetchTableProfiler = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    try {
-      const { data } = await getTableProfilesList(fqn, dateRangeObj);
-      const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
-      setRowCountMetrics(rowMetricsData);
-      setProfileMetrics(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-  const fetchSystemProfiler = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    try {
-      const { data } = await getSystemProfileList(fqn, dateRangeObj);
-      const { operationMetrics: metricsData, operationDateMetrics } =
-        calculateSystemMetrics(data, operationMetrics);
+  const fetchTableProfiler = useCallback(
+    async (fqn: string, dateRangeObj: DateRangeObject) => {
+      setIsTableProfilerLoading(true);
+      try {
+        const { data } = await getTableProfilesList(fqn, dateRangeObj);
+        const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
+        setRowCountMetrics(rowMetricsData);
+        setProfileMetrics(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsTableProfilerLoading(false);
+      }
+    },
+    [rowCountMetrics, profileMetrics]
+  );
+  const fetchSystemProfiler = useCallback(
+    async (fqn: string, dateRangeObj: DateRangeObject) => {
+      setIsSystemProfilerLoading(true);
+      try {
+        const { data } = await getSystemProfileList(fqn, dateRangeObj);
+        const { operationMetrics: metricsData, operationDateMetrics } =
+          calculateSystemMetrics(data, operationMetrics);
 
-      setOperationDateMetrics(operationDateMetrics);
-      setOperationMetrics(metricsData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+        setOperationDateMetrics(operationDateMetrics);
+        setOperationMetrics(metricsData);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsSystemProfilerLoading(false);
+      }
+    },
+    [operationMetrics, operationDateMetrics]
+  );
 
-  const fetchProfilerData = async (
-    fqn: string,
-    dateRangeObj: DateRangeObject
-  ) => {
-    const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
-    setIsLoading(true);
-    await fetchTableProfiler(fqn, dateRange);
-    await fetchSystemProfiler(fqn, dateRange);
-    setIsLoading(false);
-  };
+  const fetchProfilerData = useCallback(
+    (fqn: string, dateRangeObj: DateRangeObject) => {
+      const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
+      fetchTableProfiler(fqn, dateRange);
+      fetchSystemProfiler(fqn, dateRange);
+    },
+    [fetchSystemProfiler, fetchTableProfiler]
+  );
 
   useEffect(() => {
     if (datasetFQN || entityFqn) {
       fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
-      setIsLoading(false);
+      setIsTableProfilerLoading(false);
+      setIsSystemProfilerLoading(false);
     }
-  }, [datasetFQN, dateRangeObject]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
+
+  const operationDateMetricsCard = useMemo(() => {
+    return (
+      <Card
+        className="shadow-none global-border-radius"
+        data-testid="operation-date-metrics"
+        loading={isSystemProfilerLoading}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Typography.Title level={5}>
+              {t('label.table-update-plural')}
+            </Typography.Title>
+          </Col>
+          <Col span={4}>
+            <ProfilerLatestValue
+              stringValue
+              information={operationDateMetrics.information}
+            />
+          </Col>
+          <Col span={20}>
+            <OperationDateBarChart
+              chartCollection={operationDateMetrics}
+              name="operationDateMetrics"
+              noDataPlaceholderText={noProfilerMessage}
+            />
+          </Col>
+        </Row>
+      </Card>
+    );
+  }, [isSystemProfilerLoading, operationDateMetrics]);
+
+  const operationMetricsCard = useMemo(() => {
+    return (
+      <Card
+        className="shadow-none global-border-radius"
+        data-testid="operation-metrics"
+        loading={isSystemProfilerLoading}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Typography.Title level={5}>
+              {t('label.volume-change')}
+            </Typography.Title>
+          </Col>
+          <Col span={4}>
+            <ProfilerLatestValue information={operationMetrics.information} />
+          </Col>
+          <Col span={20}>
+            <CustomBarChart
+              chartCollection={operationMetrics}
+              name="operationMetrics"
+              noDataPlaceholderText={noProfilerMessage}
+            />
+          </Col>
+        </Row>
+      </Card>
+    );
+  }, [isSystemProfilerLoading, operationMetrics]);
 
   return (
     <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
@@ -290,68 +353,19 @@ const TableProfilerChart = ({
         <ProfilerDetailsCard
           chartCollection={rowCountMetrics}
           curveType="stepAfter"
-          isLoading={isLoading}
+          isLoading={isTableProfilerLoading}
           name="rowCount"
           noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-volume')}
         />
       </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-date-metrics"
-          loading={isLoading}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title level={5}>
-                {t('label.table-update-plural')}
-              </Typography.Title>
-            </Col>
-            <Col span={4}>
-              <ProfilerLatestValue
-                stringValue
-                information={operationDateMetrics.information}
-              />
-            </Col>
-            <Col span={20}>
-              <OperationDateBarChart
-                chartCollection={operationDateMetrics}
-                name="operationDateMetrics"
-                noDataPlaceholderText={noProfilerMessage}
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-metrics"
-          loading={isLoading}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title level={5}>
-                {t('label.volume-change')}
-              </Typography.Title>
-            </Col>
-            <Col span={4}>
-              <ProfilerLatestValue information={operationMetrics.information} />
-            </Col>
-            <Col span={20}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-                noDataPlaceholderText={noProfilerMessage}
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
+      <Col span={24}>{operationDateMetricsCard}</Col>
+      <Col span={24}>{operationMetricsCard}</Col>
       <Col span={24}>
         <CustomMetricGraphs
           customMetrics={customMetrics}
           customMetricsGraphData={tableCustomMetricsProfiling}
-          isLoading={isLoading || isSummaryLoading}
+          isLoading={isTableProfilerLoading || isSummaryLoading}
         />
       </Col>
     </Row>
