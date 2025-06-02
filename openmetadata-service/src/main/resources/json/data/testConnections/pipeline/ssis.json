@@ -1,0 +1,44 @@
+{
+    "name": "SSIS",
+    "displayName": "SSIS Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the database is reachable to fetch the DAG details.",
+            "errorMessage": "Failed to connect to ssis, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "SSISDBExist",
+            "description":  "Check if the SSISDB database exists and is accessible.",
+            "errorMessage": "SSISDB database does not exist or is not accessible.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "SSISDBProjectsExist",
+            "description":  "Check if there are any projects present in the SSISDB database.",
+            "errorMessage": "No projects found in SSISDB database.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "SSISDBPackagesExist",
+            "description":  "Check if there are any packages present in the SSISDB database.",
+            "errorMessage": "No packages found in SSISDB database.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "CheckS3Access",
+            "description":  "Check storage access",
+            "errorMessage": "Unable to connect to storage service",
+            "shortCircuit": true,
+            "mandatory": false
+        }
+
+
+    ]
+}
