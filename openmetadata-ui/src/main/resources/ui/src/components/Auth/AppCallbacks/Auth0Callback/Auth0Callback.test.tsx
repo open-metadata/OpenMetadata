@@ -52,10 +52,15 @@ jest.mock('../../../../hooks/useApplicationStore', () => {
   return {
     useApplicationStore: jest.fn(() => ({
       authConfig: {},
-      handleSuccessfulLogin: mockHandleSuccessfulLogin,
     })),
   };
 });
+
+jest.mock('../../AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    handleSuccessfulLogin: mockHandleSuccessfulLogin,
+  })),
+}));
 
 jest.mock('../../../../utils/LocalStorageUtils', () => ({
   setOidcToken: jest.fn(),

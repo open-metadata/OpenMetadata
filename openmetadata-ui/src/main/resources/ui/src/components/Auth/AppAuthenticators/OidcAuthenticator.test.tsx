@@ -28,6 +28,7 @@ import OidcAuthenticator from './OidcAuthenticator';
 const mockOnLoginSuccess = jest.fn();
 const mockOnLoginFailure = jest.fn();
 const mockOnLogoutSuccess = jest.fn();
+const mockUpdateAxiosInterceptors = jest.fn();
 
 // Mock dependencies
 jest.mock('../../../utils/LocalStorageUtils');
@@ -55,8 +56,16 @@ jest.mock('react-helmet-async', () => ({
   Helmet: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('../AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    handleSuccessfulLogout: mockOnLogoutSuccess,
+    handleFailedLogin: mockOnLoginFailure,
+    handleSuccessfulLogin: mockOnLoginSuccess,
+    updateAxiosInterceptors: mockUpdateAxiosInterceptors,
+  })),
+}));
+
 describe('OidcAuthenticator - Silent SignIn Tests', () => {
-  const mockUpdateAxiosInterceptors = jest.fn();
   const mockTokenServiceInstance = {
     clearRefreshInProgress: jest.fn(),
   };
@@ -80,10 +89,7 @@ describe('OidcAuthenticator - Silent SignIn Tests', () => {
       <MemoryRouter initialEntries={[ROUTES.SILENT_CALLBACK]}>
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>
@@ -110,10 +116,7 @@ describe('OidcAuthenticator - Silent SignIn Tests', () => {
       <MemoryRouter initialEntries={[ROUTES.SILENT_CALLBACK]}>
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>
@@ -126,22 +129,16 @@ describe('OidcAuthenticator - Silent SignIn Tests', () => {
     });
 
     // Verify the failure flow
-    expect(mockTokenServiceInstance.clearRefreshInProgress).toHaveBeenCalled();
     expect(mockOnLogoutSuccess).toHaveBeenCalled();
-    expect(mockHistoryPush).toHaveBeenCalledWith(ROUTES.SIGNIN);
   });
 });
 
 describe('OidcAuthenticator - Login Tests', () => {
-  const mockUpdateAxiosInterceptors = jest.fn();
   const mockSetIsSigningUp = jest.fn();
-  const mockOnLoginSuccess = jest.fn();
-  const mockOnLoginFailure = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      updateAxiosInterceptors: mockUpdateAxiosInterceptors,
       setIsSigningUp: mockSetIsSigningUp,
     });
   });
@@ -159,10 +156,7 @@ describe('OidcAuthenticator - Login Tests', () => {
       <MemoryRouter initialEntries={[ROUTES.CALLBACK]}>
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>
@@ -186,10 +180,7 @@ describe('OidcAuthenticator - Login Tests', () => {
       <MemoryRouter initialEntries={[ROUTES.CALLBACK]}>
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>
@@ -213,10 +204,7 @@ describe('OidcAuthenticator - Login Tests', () => {
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
           ref={ref}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>
@@ -243,10 +231,7 @@ describe('OidcAuthenticator - Login Tests', () => {
       <MemoryRouter initialEntries={[ROUTES.SIGNIN]}>
         <OidcAuthenticator
           childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
+          userConfig={{}}>
           <div>Protected Content</div>
         </OidcAuthenticator>
       </MemoryRouter>

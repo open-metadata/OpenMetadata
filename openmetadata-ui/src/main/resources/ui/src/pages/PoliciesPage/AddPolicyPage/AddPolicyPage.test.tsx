@@ -68,6 +68,10 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
+
 describe('Test Add Policy Page', () => {
   it('Should Render the Add Policy page component', async () => {
     render(<AddPolicyPage />, { wrapper: MemoryRouter });

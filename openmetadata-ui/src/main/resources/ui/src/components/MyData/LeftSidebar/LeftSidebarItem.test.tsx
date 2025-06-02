@@ -19,6 +19,12 @@ import {
 } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    onLogoutHandler: jest.fn(),
+  })),
+}));
+
 describe('LeftSidebar Items', () => {
   it('should renders sidebar items data', () => {
     render(
