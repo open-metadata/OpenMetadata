@@ -14,7 +14,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
-  OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
@@ -31,14 +30,6 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
-
-export interface HelperFunctions {
-  onLoginHandler: () => void;
-  onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
-  handleFailedLogin: () => void;
-  updateAxiosInterceptors: () => void;
-}
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
@@ -74,7 +65,6 @@ export interface ApplicationStore
   setJwtPrincipalClaimsMapping: (
     claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
-  setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
   updateCachedEntityData: (data: {
     id: string;
