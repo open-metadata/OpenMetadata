@@ -79,9 +79,9 @@ class ProbabilisticLabelExtractor(LabelExtractor[T], Generic[T]):
         prob_threshold: float,
     ) -> None:
 
-        if not (0 <= score_threshold <= 1):
+        if not (0 <= score_threshold <= 1):  # pylint: disable=superfluous-parens
             raise ValueError("score_threshold must be between 0 and 1")
-        if not (0 <= prob_threshold <= 1):
+        if not (0 <= prob_threshold <= 1):  # pylint: disable=superfluous-parens
             raise ValueError("prob_threshold must be between 0 and 1")
         if k < 1:
             raise ValueError("k must be at least 1")
