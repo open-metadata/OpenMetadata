@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -26,6 +27,7 @@ import static org.openmetadata.service.Entity.TABLE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -443,7 +446,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
                 .withService(database.getService());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification, retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
       List<TagLabel> tagLabels =
@@ -454,6 +457,19 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      // Handle certification field
+      String certificationTag = csvRecord.size() > 7 ? csvRecord.get(7) : null;
+      if (!nullOrEmpty(certificationTag)) {
+        TagLabel certificationLabel = new TagLabel()
+                .withTagFQN(certificationTag)
+                .withSource(TagLabel.TagSource.CLASSIFICATION);
+        schema.setCertification(new AssetCertification()
+                .withTagLabel(certificationLabel)
+                .withAppliedDate(new Date().getTime())
+                .withExpiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000).getTime()));
+      }
+
       schema
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(schemaFqn)
@@ -461,10 +477,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
