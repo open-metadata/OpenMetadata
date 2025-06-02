@@ -91,6 +91,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -106,6 +107,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -124,7 +126,7 @@ public class SearchRepository {
   private final List<String> inheritableFields =
       List.of(
           FIELD_OWNERS,
-          Entity.FIELD_DOMAIN,
+          FIELD_DOMAIN,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -440,7 +442,7 @@ public class SearchRepository {
           doc = elasticSearchIndex.buildSearchIndexDoc();
         }
         searchClient.updateEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
+            "openmetadata_"+indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(
             entityType, entityId, changeDescription, indexMapping, entity);
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
@@ -529,19 +531,58 @@ public class SearchRepository {
   }
 
   public void propagateCertificationTags(
-      String entityType, EntityInterface entity, ChangeDescription changeDescription) {
-    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.TAG)) {
-      Tag tagEntity = (Tag) entity;
-      if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("name", entity.getName());
-        paramMap.put("description", entity.getDescription());
-        paramMap.put("tagFQN", entity.getFullyQualifiedName());
-        paramMap.put("style", entity.getStyle());
-        searchClient.updateChildren(
+          String entityType, EntityInterface entity, ChangeDescription changeDescription) {
+    if (changeDescription != null) {
+      // Check if this is a tag entity being updated
+      if (entityType.equalsIgnoreCase(Entity.TAG)) {
+        Tag tagEntity = (Tag) entity;
+        if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
+          updateCertificationInSearch(tagEntity);
+        }
+      }
+      // For all other entity types, check if certification was updated
+      else {
+        checkForCertificationUpdate(entity, changeDescription);
+      }
+    }
+  }
+
+  private void updateCertificationInSearch(Tag tagEntity) {
+    Map<String, Object> paramMap = new HashMap<>();
+    paramMap.put("name", tagEntity.getName());
+    paramMap.put("description", tagEntity.getDescription());
+    paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
+    paramMap.put("style", tagEntity.getStyle());
+    searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("certification.tagLabel.tagFQN", entity.getFullyQualifiedName()),
+            new ImmutablePair<>("certification.tagLabel.tagFQN", tagEntity.getFullyQualifiedName()),
             new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private void checkForCertificationUpdate(EntityInterface entity, ChangeDescription change) {
+    // Check if certification was updated in the change description
+    boolean certificationUpdated = change.getFieldsUpdated().stream()
+            .anyMatch(fieldChange -> "certification".equals(fieldChange.getName()));
+
+    if (certificationUpdated) {
+      // Get the new certification from the entity
+      AssetCertification certification = (AssetCertification)
+              EntityUtil.getEntityField(entity, "certification");
+
+      if (certification != null && certification.getTagLabel() != null) {
+        // Update search index with the new certification
+        // Update the entity in the search index
+        // Prepare the update document
+        Map<String, Object> doc = new HashMap<>();
+        doc.put("certification", JsonUtils.getMap(certification));
+
+        // Get the entity type and index name
+        IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
+        String indexName = indexMapping.getIndexName(clusterAlias);
+        String docId = entity.getId().toString();
+        String script = "ctx._source.certification = params.certification";
+        // Update the entity in the search index
+        searchClient.updateEntity("openmetadata_"+indexName, docId, doc, script);
       }
     }
   }
@@ -622,7 +663,7 @@ public class SearchRepository {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
-        if (field.getName().equalsIgnoreCase(Entity.FIELD_DISPLAY_NAME)) {
+        if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
           Map<String, Object> updates = new HashMap<>();
           updates.put("displayName", field.getNewValue().toString());
           paramMap.put("tagFQN", oldFQN);
@@ -692,7 +733,7 @@ public class SearchRepository {
             if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
               scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
               fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
-            } else if (field.getName().equals(Entity.FIELD_DISPLAY_NAME)) {
+            } else if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());
               fieldData.put(field.getName(), field.getNewValue().toString());
@@ -732,7 +773,7 @@ public class SearchRepository {
             }
             scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
-            if (field.getName().equals(Entity.FIELD_DISPLAY_NAME)) {
+            if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());
               fieldData.put(field.getName(), field.getNewValue().toString());
