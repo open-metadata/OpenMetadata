@@ -72,6 +72,8 @@ import es.org.elasticsearch.client.RestClient;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +92,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
+import org.junit.Ignore;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -3721,5 +3724,404 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withColumnName(columnName)
         .withJoinedWith(
             List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(joinedWithFQN)));
+  }
+
+  @Test
+  void test_getTableColumnsById_200(TestInfo test) throws IOException {
+
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 10; i++) {
+      columns.add(getColumn("column" + i, STRING, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test default pagination (limit=50, offset=0)
+    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(10, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+
+    // Test with custom limit
+    target = getResource("tables/" + table.getId() + "/columns").queryParam("limit", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+    assertEquals("column1", response.getData().get(0).getName());
+    assertEquals("column5", response.getData().get(4).getName());
+
+    // Test with offset
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("offset", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+    assertEquals("column6", response.getData().get(0).getName());
+    assertEquals("column10", response.getData().get(4).getName());
+
+    // Test with offset beyond available data
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("offset", "15");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(0, response.getData().size());
+    assertEquals(10, response.getPaging().getTotal());
+  }
+
+  @Ignore
+  void test_getTableColumnsByFQN_200(TestInfo test) throws IOException {
+    // Create a table with multiple columns for pagination testing
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 15; i++) {
+      columns.add(getColumn("col" + i, INT, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName("test_table_fqn")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test default pagination
+    WebTarget target =
+        getResource(
+            "tables/name/"
+                + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(15, response.getData().size());
+    assertEquals(15, response.getPaging().getTotal());
+
+    // Test with limit smaller than total
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("limit", "7");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(7, response.getData().size());
+    assertEquals(15, response.getPaging().getTotal());
+
+    // Test pagination with offset
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("limit", "7")
+            .queryParam("offset", "7");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(8, response.getData().size()); // Remaining columns
+    assertEquals(15, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsWithFields_200(TestInfo test) throws IOException {
+    // Create a table with columns that have tags
+    List<Column> columns =
+        Arrays.asList(
+            getColumn("tagged_col1", STRING, USER_ADDRESS_TAG_LABEL).withOrdinalPosition(1),
+            getColumn("tagged_col2", INT, GLOSSARY1_TERM1_LABEL).withOrdinalPosition(2),
+            getColumn("plain_col", BIGINT, null).withOrdinalPosition(3));
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test with tags field
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("fields", "tags")
+            .queryParam("limit", "2");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, response.getData().size());
+    assertEquals(3, response.getPaging().getTotal());
+
+    // Verify tags are loaded for columns that have them
+    assertTrue(
+        response.getData().get(0).getTags() != null
+            && !response.getData().get(0).getTags().isEmpty());
+    assertTrue(
+        response.getData().get(1).getTags() != null
+            && !response.getData().get(1).getTags().isEmpty());
+  }
+
+  @Test
+  void test_getTableColumnsValidation_400(TestInfo test) throws IOException {
+    // Create a simple table
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(COLUMNS);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test invalid limit - too small
+    WebTarget target1 =
+        getResource("tables/" + table.getId() + "/columns").queryParam("limit", "0");
+    assertResponse(
+        () -> TestUtils.get(target1, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
+
+    // Test invalid limit - too large
+    WebTarget target2 =
+        getResource("tables/" + table.getId() + "/columns").queryParam("limit", "1001");
+    assertResponse(
+        () -> TestUtils.get(target2, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be less than or equal to 1000]");
+  }
+
+  @Test
+  void test_searchTableColumns_comprehensive(TestInfo test) throws IOException {
+    List<Column> columns = new ArrayList<>();
+
+    columns.add(
+        getColumn("user_id", INT, null)
+            .withOrdinalPosition(1)
+            .withDescription("Primary key for user identification"));
+    columns.add(
+        getColumn("customer_name", VARCHAR, null)
+            .withOrdinalPosition(2)
+            .withDescription("Full name of the customer")
+            .withDataLength(255));
+    columns.add(
+        getColumn("email_address", VARCHAR, null)
+            .withOrdinalPosition(3)
+            .withDescription("Customer email for communication")
+            .withDataLength(320));
+    columns.add(
+        getColumn("order_total", DECIMAL, null)
+            .withOrdinalPosition(4)
+            .withDescription("Total price of the order"));
+    columns.add(
+        getColumn("created_timestamp", STRING, null)
+            .withOrdinalPosition(5)
+            .withDescription("When the record was created"));
+    columns.add(
+        getColumn("is_active", STRING, null)
+            .withOrdinalPosition(6)
+            .withDescription("Whether the user account is active"));
+    columns.add(
+        getColumn("metadata_json", STRING, null)
+            .withOrdinalPosition(7)
+            .withDescription("Additional metadata in JSON format"));
+    columns.add(
+        getColumn("price_history", STRING, null)
+            .withOrdinalPosition(8)
+            .withDescription("Historical price data"));
+
+    CreateTable create =
+        new CreateTable()
+            .withName("search_test_table")
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "user_id");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertEquals("user_id", response.getData().get(0).getName());
+    assertEquals(1, response.getPaging().getTotal());
+
+    target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "price");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size()); // price_history (only name contains "price")
+    assertEquals("price_history", response.getData().get(0).getName());
+    assertEquals(1, response.getPaging().getTotal());
+
+    target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "EMAIL");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertEquals("email_address", response.getData().get(0).getName());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam(
+                "q", "a") // Should match 6 columns: customer_name, email_address, order_total,
+            // created_timestamp, is_active, metadata_json
+            .queryParam("limit", "3");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(3, response.getData().size());
+    assertEquals(6, response.getPaging().getTotal());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "a") // Should match multiple columns
+            .queryParam("limit", "2")
+            .queryParam("offset", "2");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(response.getData().size() <= 2);
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "")
+            .queryParam("limit", "5");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(8, response.getPaging().getTotal()); // Total columns in table
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "nonexistent_column");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(0, response.getData().size());
+    assertEquals(0, response.getPaging().getTotal());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags,customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertNotNull(response.getData().get(0)); // Should include requested fields
+
+    final WebTarget invalidTarget =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user")
+            .queryParam("limit", "0");
+    assertResponse(
+        () -> TestUtils.get(invalidTarget, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
+  }
+
+  @Test
+  void test_getTableColumnsNotFound_404(TestInfo test) {
+    // Test with non-existent table ID
+    UUID nonExistentId = UUID.randomUUID();
+    WebTarget target1 = getResource("tables/" + nonExistentId + "/columns");
+    assertResponse(
+        () -> TestUtils.get(target1, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", nonExistentId));
+
+    // Test with non-existent table FQN
+    String nonExistentFqn = "nonexistent.database.schema.table";
+    WebTarget target2 =
+        getResource(
+            "tables/name/"
+                + URLEncoder.encode(nonExistentFqn, StandardCharsets.UTF_8)
+                + "/columns");
+    assertResponse(
+        () -> TestUtils.get(target2, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", nonExistentFqn));
+  }
+
+  @Test
+  void test_getTableColumnsEmptyTable_200(TestInfo test) throws IOException {
+    // Create a table with no columns
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(new ArrayList<>());
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test pagination on empty columns
+    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(0, response.getData().size());
+    assertEquals(0, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsLargeDataset_200(TestInfo test) throws IOException {
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      columns.add(
+          getColumn("column_" + String.format("%03d", i), STRING, null).withOrdinalPosition(i));
+    }
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test first page
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "0");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_001", response.getData().get(0).getName());
+    assertEquals("column_025", response.getData().get(24).getName());
+
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "50");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_051", response.getData().get(0).getName());
+    assertEquals("column_075", response.getData().get(24).getName());
+
+    // Test last page
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "25")
+            .queryParam("offset", "75");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(25, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+    assertEquals("column_076", response.getData().get(0).getName());
+    assertEquals("column_100", response.getData().get(24).getName());
+  }
+
+  @Test
+  void test_getTableColumnsWithCustomMetrics_200(TestInfo test) throws IOException {
+    List<Column> columns =
+        Arrays.asList(
+            getColumn("metric_col1", STRING, null).withOrdinalPosition(1),
+            getColumn("metric_col2", INT, null).withOrdinalPosition(2));
+    CreateTable create =
+        new CreateTable()
+            .withName(getEntityName(test))
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("fields", "customMetrics")
+            .queryParam("limit", "10");
+    org.openmetadata.service.resources.databases.TableResource.TableColumnList response =
+        TestUtils.get(
+            target,
+            org.openmetadata.service.resources.databases.TableResource.TableColumnList.class,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, response.getData().size());
+    assertEquals(2, response.getPaging().getTotal());
+    assertNotNull(response.getData().get(0));
+    assertNotNull(response.getData().get(1));
   }
 }

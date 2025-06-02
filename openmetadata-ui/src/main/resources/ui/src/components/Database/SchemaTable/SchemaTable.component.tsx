@@ -25,7 +25,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -53,6 +53,10 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  getTableColumnsById,
+  searchTableColumnsById,
+} from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
@@ -63,7 +67,6 @@ import {
   getFrequentlyJoinedColumns,
   highlightSearchArrayElement,
   highlightSearchText,
-  searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -105,12 +108,21 @@ const SchemaTable = () => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-
   const [editColumn, setEditColumn] = useState<Column>();
+
+  // Pagination state for columns
+  const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
+  const [columnsPaging, setColumnsPaging] = useState({
+    currentPage: 1,
+    pageSize: 50,
+    total: 0,
+  });
+  const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
 
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+
   const {
     permissions: tablePermissions,
     data: table,
@@ -118,16 +130,65 @@ const SchemaTable = () => {
     onThreadLinkSelect,
   } = useGenericContext<TableType>();
 
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, pageSize = 50, searchQuery?: string) => {
+      if (!table?.id) {
+        return;
+      }
+
+      // Extract the actual ID string - it might be table.id.id or just table.id
+      const tableId =
+        typeof table.id === 'string' ? table.id : table.id?.id || table.id;
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchTableColumnsById(tableId, {
+              q: searchQuery,
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            })
+          : await getTableColumnsById(tableId, {
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            });
+
+        setPaginatedColumns(response.data || []);
+        setColumnsPaging({
+          currentPage: page,
+          pageSize: pageSize,
+          total: response.paging?.total ?? 0,
+        });
+      } catch (error) {
+        // Set empty state if API fails
+        setPaginatedColumns([]);
+        setColumnsPaging({
+          currentPage: 1,
+          pageSize: pageSize,
+          total: 0,
+        });
+      }
+      setColumnsLoading(false);
+    },
+    [table?.id]
+  );
+
   const { testCaseCounts, tableColumns, joins, tableConstraints, deleted } =
     useMemo(
       () => ({
         testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
-        tableColumns: table?.columns ?? [],
+        tableColumns: paginatedColumns, // Always use paginated columns, never table.columns
         joins: table?.joins?.columnJoins ?? [],
         tableConstraints: table?.tableConstraints,
         deleted: table?.deleted,
       }),
-      [table, testCaseSummary]
+      [table, testCaseSummary, paginatedColumns]
     );
 
   const tableFqn = useMemo(
@@ -204,6 +265,21 @@ const SchemaTable = () => {
   useEffect(() => {
     fetchTestCaseSummary();
   }, [tableFqn]);
+
+  // Fetch columns when table changes
+  useEffect(() => {
+    if (table?.id) {
+      fetchPaginatedColumns(1, 50);
+    }
+  }, [table?.id, fetchPaginatedColumns]);
+
+  // Fetch columns when search changes
+  useEffect(() => {
+    if (table?.id) {
+      // Reset to first page when search changes
+      fetchPaginatedColumns(1, columnsPaging.pageSize, searchText || undefined);
+    }
+  }, [searchText]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -344,14 +420,10 @@ const SchemaTable = () => {
     [expandedRowKeys]
   );
 
+  // Set searched columns to always use paginated results
   useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(sortByOrdinalPosition);
-    } else {
-      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, sortByOrdinalPosition]);
+    setSearchedColumns(sortByOrdinalPosition);
+  }, [sortByOrdinalPosition]);
 
   const handleEditDisplayNameClick = (record: Column) => {
     setEditColumnDisplayName(record);
@@ -601,7 +673,10 @@ const SchemaTable = () => {
 
   const searchProps = useMemo(
     () => ({
-      placeholder: t('message.find-in-table'),
+      placeholder: searchText
+        ? 'Searching columns...'
+        : t('message.find-in-table') ||
+          'Search columns by name, description, or data type',
       value: searchText,
       onSearch: (value: string) => setSearchText(value),
       onClear: () => setSearchText(''),
@@ -623,10 +698,31 @@ const SchemaTable = () => {
             tablePermissions.EditAll && !deleted,
             handleEditTable
           )}
+          loading={columnsLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
-          pagination={false}
+          pagination={{
+            current: columnsPaging.currentPage,
+            pageSize: columnsPaging.pageSize,
+            total: columnsPaging.total,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '25', '50', '100'],
+            showTotal: (total, range) =>
+              searchText
+                ? `${range[0]}-${range[1]} of ${total} matching columns`
+                : `${range[0]}-${range[1]} of ${total} columns`,
+            onChange: (page, pageSize) => {
+              fetchPaginatedColumns(
+                page,
+                pageSize ?? columnsPaging.pageSize,
+                searchText || undefined
+              );
+            },
+            onShowSizeChange: (current, size) => {
+              fetchPaginatedColumns(1, size, searchText || undefined);
+            },
+          }}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           searchProps={searchProps}
