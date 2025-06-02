@@ -130,7 +130,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -683,7 +683,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponseContains(
         () -> createEntity(createTestSuite, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestSuite createTestSuite1 = createRequest("", "description", "displayName", null);

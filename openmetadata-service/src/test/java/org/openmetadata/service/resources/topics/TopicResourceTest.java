@@ -100,13 +100,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must not be null]");
+        "[query param partitions must not be null]");
 
     // Partitions must be >= 1
     assertResponse(
