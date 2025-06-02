@@ -89,8 +89,11 @@ Ensure that the RDS has IAM DB authentication enabled. Otherwise, you can click 
 2. The user has the necessary IAM permissions
 Even if you use IAM to connect to postgres, you need to specify a user to prepare the connection. You need to create a user as follows:
 
+```sql
 CREATE USER iam_user WITH LOGIN;
 GRANT rds_iam TO iam_user;
+```
+
 3. The AWS Role has the necessary permissions
 The role that is going to be used to perform the ingestion, needs to have the following permissions:
 
