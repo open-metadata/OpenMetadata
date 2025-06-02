@@ -75,7 +75,7 @@ GRANT rds_iam TO iam_user;
 
 3. The AWS Role has the necessary permissions
 The role that is going to be used to perform the ingestion, needs to have the following permissions:
-
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -90,6 +90,7 @@ The role that is going to be used to perform the ingestion, needs to have the fo
         }
     ]
 }
+```
 Otherwise, you might be finding issues such as
 
 PAM authentication failed for user "<user>"
