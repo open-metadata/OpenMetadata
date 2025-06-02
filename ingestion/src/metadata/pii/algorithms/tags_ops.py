@@ -42,7 +42,6 @@ def get_sensitivity_for_pii_category(
         PIICategoryTag.NRP,
         PIICategoryTag.DATE_TIME,
         PIICategoryTag.LOCATION,
-        # FIXME: Do we really want to consider PHONE_NUMBER as non-sensitive?
         PIICategoryTag.PHONE_NUMBER,
         PIICategoryTag.URL,
     )
@@ -78,7 +77,8 @@ def get_sensitivity_for_pii(pii_tag: PIITag) -> PIISensitivityTag:
 _P = PIICategoryTag
 _C = PIITag
 
-# Define the PIITag's a PIICategoryTag contains
+# Define the PIITag's a PIICategoryTag contains to map Presidio PII
+# tags to PIICategoryTag.
 _CATEGORY_MAP: Dict[PIICategoryTag, Set[PIITag]] = {
     _P.PASSWORD: set(),
     _P.BANK_NUMBER: {_C.US_BANK_NUMBER},

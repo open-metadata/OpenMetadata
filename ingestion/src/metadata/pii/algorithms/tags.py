@@ -17,8 +17,12 @@ from typing import List
 
 
 class PIIClassificationName(enum.Enum):
-    # FIXME: Not sure what the purpose of General vs PII is here.
-    """Classification name for PII tags"""
+    """
+    Classification name for PII related tags:
+    - PII: means is PIISensitive or PIINonSensitive.
+    - General: means PII Category (e.g., PERSON, EMAIL, etc.).
+    """
+
     PII = "PII"
     GENERAL = "General"
 
