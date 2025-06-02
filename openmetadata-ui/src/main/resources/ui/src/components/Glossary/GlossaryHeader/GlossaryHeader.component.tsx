@@ -77,7 +77,7 @@ import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangePare
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
-
+import './glossery-header.less';
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -554,7 +554,11 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <Row gutter={[0, 16]} justify="space-between" wrap={false}>
+      <Row
+        className="glossary-header"
+        gutter={[0, 16]}
+        justify="space-between"
+        wrap={false}>
         <Col className="d-flex" flex="auto">
           <EntityHeader
             badge={statusBadge}
@@ -566,7 +570,7 @@ const GlossaryHeader = ({
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
         </Col>
-        <Col className="flex items-center">
+        <div className="flex items-center">
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
@@ -642,7 +646,7 @@ const GlossaryHeader = ({
               )}
             </ButtonGroup>
           </div>
-        </Col>
+        </div>
       </Row>
       {selectedData && (
         <EntityDeleteModal
