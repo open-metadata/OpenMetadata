@@ -555,7 +555,7 @@ const GlossaryHeader = ({
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col className="d-flex" flex="1">
+        <Col className="d-flex" flex="auto">
           <EntityHeader
             badge={statusBadge}
             breadcrumb={breadcrumb}
