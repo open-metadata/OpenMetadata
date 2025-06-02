@@ -100,6 +100,8 @@ Once you have the template, you can fill in the following details:
 
 - **name** (required): This field contains the name of the database.
 
+- **fullyQualifiedName** (required): This field contains the fully qualified name of the database.
+
 - **displayName**: This field holds the display name of the database.
 
 - **description**: This field contains a detailed description or information about the database.
@@ -175,6 +177,8 @@ Once you have the template, you can fill in the following details:
 
 - **name** (required): This field contains the name of the database schema.
 
+- **fullyQualifiedName** (required): This field contains the fully qualified name of the database schema.
+
 - **displayName**: This field holds the display name of the database schema.
 
 - **description**: This field contains a detailed description or information about the database schema.
@@ -248,6 +252,8 @@ caption="Import a Table"
 Once you have the template, you can fill in the following details:
 
 - **name**: This field contains the name of the table.
+
+- **fullyQualifiedName** (required): This field contains the fully qualified name of the table.
 
 - **displayName**: This field holds the display name of the table.
 
