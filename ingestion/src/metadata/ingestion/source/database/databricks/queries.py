@@ -52,6 +52,10 @@ DATABRICKS_GET_TABLE_COMMENTS = (
     "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}`"
 )
 
+DATABRICKS_GET_SCHEMA_COMMENTS = (
+    "DESCRIBE SCHEMA EXTENDED `{database_name}`.`{schema_name}`"
+)
+
 DATABRICKS_GET_CATALOGS = "SHOW CATALOGS"
 
 DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent(
