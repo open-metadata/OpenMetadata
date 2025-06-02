@@ -86,6 +86,7 @@ export enum EntityField {
   MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
   EXPERTS = 'experts',
   FIELDS = 'fields',
+  PARAMETER_VALUES = 'parameterValues',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

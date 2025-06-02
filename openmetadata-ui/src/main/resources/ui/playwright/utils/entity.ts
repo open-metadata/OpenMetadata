@@ -25,6 +25,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from './common';
 import {
   customFormatDateTime,
@@ -1422,4 +1423,15 @@ export const getFirstRowColumnLink = (page: Page) => {
     .getByTestId('databaseSchema-tables')
     .locator('[data-testid="column-name"] a')
     .first();
+};
+
+export const generateEntityChildren = (entityName: string, count = 25) => {
+  return Array.from({ length: count }, (_, i) => {
+    const id = uuid();
+
+    return {
+      name: `pw-${entityName}-${i + 1}-${id}`,
+      displayName: `pw-${entityName}-${i + 1}-${id}`,
+    };
+  });
 };
