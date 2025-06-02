@@ -42,7 +42,7 @@ jest.mock('../../../../utils/DataInsightUtils', () => ({
 }));
 jest.mock('../../../../constants/profiler.constant', () => {
   return {
-    PROFILER_CHART_DATA_SIZE: 300,
+    PROFILER_CHART_DATA_SIZE: 500,
   };
 });
 
@@ -55,7 +55,7 @@ const mockProps: ProfilerDetailsCardProps = {
   name: 'rowCount',
 };
 
-const mockData = Array.from({ length: 301 }, (_, index) => ({
+const mockData = Array.from({ length: 501 }, (_, index) => ({
   name: `test ${index}`,
   value: index,
 }));

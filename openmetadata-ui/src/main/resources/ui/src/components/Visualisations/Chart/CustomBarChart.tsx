@@ -116,7 +116,6 @@ const CustomBarChart = ({
         {showBrush && (
           <Brush
             data={data}
-            dataKey="name"
             endIndex={endIndex}
             gap={5}
             height={30}

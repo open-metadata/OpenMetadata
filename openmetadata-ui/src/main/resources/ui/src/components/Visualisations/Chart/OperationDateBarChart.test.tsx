@@ -42,7 +42,7 @@ jest.mock('../../../utils/DataInsightUtils', () => {
   });
 });
 
-const mockData = Array.from({ length: 301 }, (_, index) => ({
+const mockData = Array.from({ length: 501 }, (_, index) => ({
   name: `test ${index}`,
   value: index,
 }));
