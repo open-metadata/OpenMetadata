@@ -42,6 +42,21 @@ jest.mock('../../../utils/DataInsightUtils', () => {
   });
 });
 
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>),
+}));
+
+jest.mock('../../../utils/ChartUtils', () => ({
+  axisTickFormatter: jest.fn(),
+  tooltipFormatter: jest.fn(),
+  updateActiveChartFilter: jest.fn(),
+}));
+
 describe('CustomBarChart component test', () => {
   it('Component should render', async () => {
     render(<CustomBarChart {...mockCustomBarChartProp} />);
@@ -68,7 +83,7 @@ describe('CustomBarChart component test', () => {
       />
     );
 
-    const noData = await screen.findByTestId('no-data-placeholder');
+    const noData = await screen.findByText('ErrorPlaceHolder');
 
     expect(noData).toBeInTheDocument();
   });

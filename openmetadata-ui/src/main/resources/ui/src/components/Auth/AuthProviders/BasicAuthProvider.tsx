@@ -39,7 +39,6 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
@@ -47,12 +46,9 @@ import {
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/LocalStorageUtils';
-import { OidcUser } from './AuthProvider.interface';
-
+import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
-  onLoginFailure: () => void;
 }
 
 interface InitialContext {
@@ -84,13 +80,11 @@ const initialContext = {
  */
 export const BasicAuthContext = createContext<InitialContext>(initialContext);
 
-const BasicAuthProvider = ({
-  children,
-  onLoginSuccess,
-  onLoginFailure,
-}: BasicAuthProps) => {
+const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
+    useAuthProvider();
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -104,7 +98,7 @@ const BasicAuthProvider = ({
           setRefreshToken(response.refreshToken);
           setOidcToken(response.accessToken);
 
-          onLoginSuccess({
+          handleSuccessfulLogin({
             id_token: response.accessToken,
             profile: {
               email: toLower(email),
@@ -122,7 +116,7 @@ const BasicAuthProvider = ({
         const err = error as AxiosError<{ code: number; message: string }>;
 
         showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
-        onLoginFailure();
+        handleFailedLogin();
       }
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unauthorized-user'));
@@ -177,12 +171,11 @@ const BasicAuthProvider = ({
     if (token && !isExpired) {
       try {
         await logoutUser({ token, refreshToken });
-        setOidcToken('');
-        setRefreshToken('');
-        TokenService.getInstance().clearRefreshInProgress();
-        history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
       }
     }
   };
