@@ -6,7 +6,7 @@ collate: true
 
 # Collate Automations
 
-{% youtube videoId="ug08aLUyTyE" start="0:00" end="14:52" width="800px" height="450px" /%}
+{% youtube videoId="Q0gPpHQWe3w" start="0:00" end="14:52" width="800px" height="450px" /%}
 
 ## Overview
 
