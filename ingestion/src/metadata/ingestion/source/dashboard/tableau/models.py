@@ -187,7 +187,7 @@ class TableauDashboard(TableauBaseModel):
     tags: Optional[Set] = []
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
-    dataModels: Optional[List[DataSource]] = None
+    dataModels: Optional[List[DataSource]] = []
     custom_sql_queries: Optional[List[str]] = None
     user_views: Optional[int] = None
 
