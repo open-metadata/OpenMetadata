@@ -132,7 +132,9 @@
         },
         "required": [
           "entity_type",
-          "fqn"
+          "fqn",
+          "upstream_depth",
+          "downstream_depth"
         ]
       }
     }
