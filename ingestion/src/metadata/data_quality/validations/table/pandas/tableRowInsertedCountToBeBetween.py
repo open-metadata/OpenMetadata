@@ -34,7 +34,7 @@ class TableRowInsertedCountToBeBetweenValidator(
     """Validator for table row inserted count to be between test case"""
 
     @staticmethod
-    def _get_threshold_date(range_type: str, range_interval: int):
+    def get_threshold_date_dt(range_type: str, range_interval: int):
         """returns the threshold datetime in utc to count the numbers of rows inserted
 
         Args:
@@ -55,7 +55,19 @@ class TableRowInsertedCountToBeBetweenValidator(
             threshold_date = threshold_date.replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
-        return threshold_date.strftime("%Y%m%d%H%M%S")
+        return threshold_date
+
+    @staticmethod
+    def _get_threshold_date(range_type: str, range_interval: int):
+        """returns the threshold datetime in utc to count the numbers of rows inserted
+
+        Args:
+            range_type (str): type of range (i.e. HOUR, DAY, MONTH, YEAR)
+            range_interval (int): interval of range (i.e. 1, 2, 3, 4)
+        """
+        TableRowInsertedCountToBeBetweenValidator.get_threshold_date_dt(
+            range_type, range_interval
+        ).strftime("%Y%m%d%H%M%S")
 
     def _get_column_name(self):
         """returns the column name to be validated"""

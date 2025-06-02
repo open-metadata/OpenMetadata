@@ -42,6 +42,10 @@ export interface DatabaseServiceProfilerPipeline {
      */
     includeViews?: boolean;
     /**
+     * Select the processing engine for the profiler pipeline. If not set, defaults to Native.
+     */
+    processingEngine?: ProcessingEngine;
+    /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      */
@@ -107,6 +111,28 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Select the processing engine for the profiler pipeline. If not set, defaults to Native.
+ *
+ * Processing engine for the profiler pipeline.
+ */
+export interface ProcessingEngine {
+    type: Type;
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    config?: { [key: string]: any };
+    /**
+     * Spark master URL (e.g., local[*], yarn, spark://host:port, etc.)
+     */
+    master?: string;
+}
+
+export enum Type {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**
