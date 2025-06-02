@@ -176,6 +176,9 @@ public class McpServer {
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, securityContext, params);
           break;
+        case "get_entity_lineage":
+          result = EntityUtil.getEntityLineage(params);
+          break;
         default:
           result = Map.of("error", "Unknown function: " + toolName);
           break;
