@@ -529,6 +529,10 @@ site_menu:
     url: /connectors/pipeline/spline/yaml
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
+  - category: Connectors / Pipeline / SSIS
+    url: /connectors/pipeline/SSIS
+  - category: Connectors / Pipeline / SSIS / Run Externally
+    url: /connectors/pipeline/SSIS/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -719,6 +723,8 @@ site_menu:
   - category: Collate AI
     url: /collateai
 
+  - category: Collate AI / Autopilot
+    url: /collateai/collate-ai-autopilot-workflows
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
   - category: Collate AI / Collate AI Tier Agent

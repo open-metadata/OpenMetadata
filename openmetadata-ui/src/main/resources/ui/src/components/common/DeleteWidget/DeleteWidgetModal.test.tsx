@@ -57,6 +57,11 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
+  })),
+}));
+
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
     onLogoutHandler: mockOnLogoutHandler,
   })),
 }));
