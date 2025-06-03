@@ -34,6 +34,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -52,10 +53,11 @@ import {
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  getTableColumnsById,
-  searchTableColumnsById,
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -84,6 +86,7 @@ import {
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -110,13 +113,18 @@ const SchemaTable = () => {
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
 
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+
   // Pagination state for columns
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
-  const [columnsPaging, setColumnsPaging] = useState({
-    currentPage: 1,
-    pageSize: 50,
-    total: 0,
-  });
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
 
   const { fqn: decodedEntityFqn } = useFqn();
@@ -129,55 +137,6 @@ const SchemaTable = () => {
     onUpdate,
     onThreadLinkSelect,
   } = useGenericContext<TableType>();
-
-  // Function to fetch paginated columns or search results
-  const fetchPaginatedColumns = useCallback(
-    async (page = 1, pageSize = 50, searchQuery?: string) => {
-      if (!table?.id) {
-        return;
-      }
-
-      // Extract the actual ID string - it might be table.id.id or just table.id
-      const tableId =
-        typeof table.id === 'string' ? table.id : table.id?.id || table.id;
-
-      setColumnsLoading(true);
-      try {
-        const offset = (page - 1) * pageSize;
-
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
-          ? await searchTableColumnsById(tableId, {
-              q: searchQuery,
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            })
-          : await getTableColumnsById(tableId, {
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            });
-
-        setPaginatedColumns(response.data || []);
-        setColumnsPaging({
-          currentPage: page,
-          pageSize: pageSize,
-          total: response.paging?.total ?? 0,
-        });
-      } catch (error) {
-        // Set empty state if API fails
-        setPaginatedColumns([]);
-        setColumnsPaging({
-          currentPage: 1,
-          pageSize: pageSize,
-          total: 0,
-        });
-      }
-      setColumnsLoading(false);
-    },
-    [table?.id]
-  );
 
   const { testCaseCounts, tableColumns, joins, tableConstraints, deleted } =
     useMemo(
@@ -242,6 +201,59 @@ const SchemaTable = () => {
     [tableColumns]
   );
 
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchTableColumnsByFQN(tableFqn, {
+              q: searchQuery,
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            })
+          : await getTableColumnsByFQN(tableFqn, {
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags,customMetrics',
+            });
+
+        setPaginatedColumns(response.data || []);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        // Set empty state if API fails
+        setPaginatedColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: PAGE_SIZE_LARGE,
+          total: 0,
+        });
+      }
+      setColumnsLoading(false);
+    },
+    [decodedEntityFqn, pageSize]
+  );
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage, cursorType }: PagingHandlerParams) => {
+      if (searchText) {
+        fetchPaginatedColumns(currentPage, searchText);
+      } else if (cursorType) {
+        fetchPaginatedColumns(currentPage, searchText);
+      }
+      handlePageChange(currentPage);
+    },
+    [paging, fetchPaginatedColumns, searchText]
+  );
+
   const fetchTestCaseSummary = async () => {
     try {
       const response = await getTestCaseExecutionSummary(table?.testSuite?.id);
@@ -266,20 +278,13 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when table changes
-  useEffect(() => {
-    if (table?.id) {
-      fetchPaginatedColumns(1, 50);
-    }
-  }, [table?.id, fetchPaginatedColumns]);
-
   // Fetch columns when search changes
   useEffect(() => {
-    if (table?.id) {
+    if (tableFqn) {
       // Reset to first page when search changes
-      fetchPaginatedColumns(1, columnsPaging.pageSize, searchText || undefined);
+      fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [searchText]);
+  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -673,15 +678,38 @@ const SchemaTable = () => {
 
   const searchProps = useMemo(
     () => ({
-      placeholder: searchText
-        ? 'Searching columns...'
-        : t('message.find-in-table') ||
-          'Search columns by name, description, or data type',
+      placeholder: t('message.find-in-table'),
       value: searchText,
-      onSearch: (value: string) => setSearchText(value),
+      onSearch: (value: string) => {
+        setSearchText(value);
+        handlePageChange(1);
+      },
       onClear: () => setSearchText(''),
     }),
-    [searchText]
+    [searchText, handlePageChange]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: columnsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      columnsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleColumnsPageChange,
+      handlePageSizeChange,
+    ]
   );
 
   return (
@@ -690,6 +718,7 @@ const SchemaTable = () => {
         <Table
           className="align-table-filter-left"
           columns={columns}
+          customPaginationProps={paginationProps}
           data-testid="entity-table"
           dataSource={data}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
@@ -702,27 +731,7 @@ const SchemaTable = () => {
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
-          pagination={{
-            current: columnsPaging.currentPage,
-            pageSize: columnsPaging.pageSize,
-            total: columnsPaging.total,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '25', '50', '100'],
-            showTotal: (total, range) =>
-              searchText
-                ? `${range[0]}-${range[1]} of ${total} matching columns`
-                : `${range[0]}-${range[1]} of ${total} columns`,
-            onChange: (page, pageSize) => {
-              fetchPaginatedColumns(
-                page,
-                pageSize ?? columnsPaging.pageSize,
-                searchText || undefined
-              );
-            },
-            onShowSizeChange: (current, size) => {
-              fetchPaginatedColumns(1, size, searchText || undefined);
-            },
-          }}
+          pagination={false}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           searchProps={searchProps}
