@@ -23,6 +23,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -40,6 +41,7 @@ import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -126,8 +128,12 @@ const GlossaryV1 = ({
         selectedData?.id as string
       );
       setGlossaryPermission(response);
+
+      return response;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      throw error;
     }
   };
 
@@ -138,8 +144,12 @@ const GlossaryV1 = ({
         selectedData?.id as string
       );
       setGlossaryTermPermission(response);
+
+      return response;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      throw error;
     }
   };
 
@@ -298,21 +308,33 @@ const GlossaryV1 = ({
 
     try {
       if (isVersionsView) {
-        isGlossaryActive
-          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION);
+        const permission = isGlossaryActive
+          ? VERSION_VIEW_GLOSSARY_PERMISSION
+          : VERSION_VIEW_GLOSSARY_PERMISSION;
+        setGlossaryPermission(permission);
+        setGlossaryTermPermission(permission);
+
+        return permission;
       } else {
-        await permissionFetch();
+        return await permissionFetch();
       }
     } finally {
       setIsPermissionLoading(false);
     }
   };
 
+  const initializeGlossary = async () => {
+    const permission = await initPermissions();
+    if (permission?.ViewAll || permission?.ViewBasic) {
+      loadGlossaryTerms();
+    } else {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (id && !action) {
-      loadGlossaryTerms();
-      initPermissions();
+      initializeGlossary();
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
@@ -349,15 +371,28 @@ const GlossaryV1 = ({
           !isPermissionLoading &&
           !isEmpty(selectedData) &&
           (isGlossaryActive ? (
-            <GlossaryDetails
-              handleGlossaryDelete={onGlossaryDelete}
-              isTabExpanded={isTabExpanded}
-              isVersionView={isVersionsView}
-              permissions={glossaryPermission}
-              toggleTabExpanded={toggleTabExpanded}
-              updateGlossary={handleGlossaryUpdate}
-              updateVote={updateVote}
-            />
+            !(glossaryPermission.ViewAll || glossaryPermission.ViewBasic) ? (
+              <div className="d-flex justify-center items-center full-height">
+                <ErrorPlaceHolder
+                  className="mt-0-important border-none"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.glossary'),
+                  })}
+                  size={SIZE.X_LARGE}
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
+              </div>
+            ) : (
+              <GlossaryDetails
+                handleGlossaryDelete={onGlossaryDelete}
+                isTabExpanded={isTabExpanded}
+                isVersionView={isVersionsView}
+                permissions={glossaryPermission}
+                toggleTabExpanded={toggleTabExpanded}
+                updateGlossary={handleGlossaryUpdate}
+                updateVote={updateVote}
+              />
+            )
           ) : (
             <GlossaryTermsV1
               glossaryTerm={selectedData as GlossaryTerm}
