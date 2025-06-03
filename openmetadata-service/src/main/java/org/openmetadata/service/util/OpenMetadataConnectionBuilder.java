@@ -166,9 +166,6 @@ public class OpenMetadataConnectionBuilder {
   }
 
   public OpenMetadataConnection build() {
-    // Initialize the bot user while building to update any
-    // changes done on the bot like updating jwt token
-    initializeBotUser(Entity.INGESTION_BOT_NAME);
     return new OpenMetadataConnection()
         .withAuthProvider(authProvider)
         .withHostPort(openMetadataURL)
