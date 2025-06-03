@@ -420,3 +420,10 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
 
   return user;
 };
+
+export const requiredAuthFields = [
+  'authority',
+  'clientId',
+  'callbackUrl',
+  'provider',
+];

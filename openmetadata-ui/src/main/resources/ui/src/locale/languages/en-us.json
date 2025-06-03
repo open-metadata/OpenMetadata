@@ -1698,6 +1698,7 @@
     "email-configuration-message": "Configure the SMTP Settings for sending Emails.",
     "email-is-invalid": "Invalid Email.",
     "email-verification-token-expired": "Email Verification Token Expired",
+    "empty-authentication-value-found": "Empty authentication value found: {{field}}",
     "enable-access-control-description": "Enable to imply access control to search results. Disable to allow all users to view search results.",
     "enable-classification-description": "By enabling classification, you will be able to search by, or assign associated tags to any entity.",
     "enable-column-profile": "Enable column profile",
