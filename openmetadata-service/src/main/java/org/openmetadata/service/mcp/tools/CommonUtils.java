@@ -18,19 +18,19 @@ public class CommonUtils {
 
   public static <T extends CreateEntity> void setOwners(T entity, Map<String, Object> params) {
 
-    List<EntityReference> owners = getTeamsOrUsers(params);
+    List<EntityReference> owners = getTeamsOrUsers(params.get("owners"));
 
     if (!owners.isEmpty()) {
       entity.setOwners(owners);
     }
   }
 
-  public static List<EntityReference> getTeamsOrUsers(Map<String, Object> params) {
+  public static List<EntityReference> getTeamsOrUsers(Object teamsOrUsersParam) {
     UserRepository userRepository = Entity.getUserRepository();
     TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
     List<EntityReference> teamsOrUsers = new java.util.ArrayList<>();
 
-    for (String owner : JsonUtils.readOrConvertValues(params.get("owners"), String.class)) {
+    for (String owner : JsonUtils.readOrConvertValues(teamsOrUsersParam, String.class)) {
       try {
         User user = userRepository.findByNameOrNull(owner, Include.NON_DELETED);
         if (user == null) {

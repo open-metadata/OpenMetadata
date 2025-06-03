@@ -74,7 +74,7 @@ public class GlossaryTool implements McpTool {
   }
 
   public static void setReviewers(CreateGlossary entity, Map<String, Object> params) {
-    List<EntityReference> reviewers = CommonUtils.getTeamsOrUsers(params);
+    List<EntityReference> reviewers = CommonUtils.getTeamsOrUsers(params.get("reviewers"));
     if (!reviewers.isEmpty()) {
       entity.setReviewers(reviewers);
     }
