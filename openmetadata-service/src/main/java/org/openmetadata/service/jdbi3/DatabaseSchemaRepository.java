@@ -369,6 +369,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
+      addField(recordList, entity.getCertification() != null && entity.getCertification().getTagLabel() != null ?
+              entity.getCertification().getTagLabel().getTagFQN() : "" );
       Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
@@ -457,11 +459,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(9))
-          .withSourceUrl(csvRecord.get(10))
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 11, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 12));
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table, TABLE);
@@ -473,8 +475,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
-      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : TABLE;
-      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
+      String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;
+      String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
 
       if (TABLE.equals(entityType)) {
         createTableEntity(printer, csvRecord, entityFQN);

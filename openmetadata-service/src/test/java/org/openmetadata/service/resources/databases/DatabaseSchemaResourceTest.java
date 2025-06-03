@@ -166,11 +166,10 @@ public class DatabaseSchemaResourceTest
     tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
-    // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,Certification.Bronze,P23DT23H,http://test.com,%s,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
@@ -212,12 +211,12 @@ public class DatabaseSchemaResourceTest
     modified.add(header);
 
     for (String line : csvLines.subList(1, csvLines.size())) {
-      if (line.contains("t1") && line.contains("table")) {
-        line = line.replace("Initial Table Description", "Updated Table Description");
-      } else if (line.contains("column")) {
-        line = line.replace("Initial Column Description", "Updated Column Description");
-      }
-      modified.add(line);
+        if (line.contains("t1") && line.contains("table")) {
+            line = line.replace("Initial Table Description", "Updated Table Description");
+        } else if (line.contains("column")) {
+            line = line.replace("Initial Column Description", "Updated Column Description");
+        }
+        modified.add(line);
     }
 
     String newCsv = String.join(CsvUtil.LINE_SEPARATOR, modified) + CsvUtil.LINE_SEPARATOR;
@@ -226,7 +225,7 @@ public class DatabaseSchemaResourceTest
 
     // Validate updated table
     Table updated =
-        tableTest.getEntityByName(table.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+        tableTest.getEntityByName(table.getFullyQualifiedName(), "description,certification", ADMIN_AUTH_HEADERS);
     assertEquals("Updated Table Description", updated.getDescription());
 
     // Validate updated column
