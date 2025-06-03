@@ -64,6 +64,7 @@ export const PROFILER_METRIC = [
   'histogram',
   'customMetricsProfile',
 ];
+export const PROFILER_CHART_DATA_SIZE = 500;
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
