@@ -75,7 +75,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[serviceType must not be null]");
+        "[query param serviceType must not be null]");
   }
 
   @Test
