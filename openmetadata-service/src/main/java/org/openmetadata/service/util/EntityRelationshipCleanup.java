@@ -83,7 +83,6 @@ public class EntityRelationshipCleanup {
     }
   }
 
-
   public CleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
@@ -294,7 +293,6 @@ public class EntityRelationshipCleanup {
     return deletedCount;
   }
 
-
   private void displayOrphanedRelationships(CleanupResult result) {
     if (result.getOrphanedRelationships().isEmpty()) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
@@ -353,7 +351,6 @@ public class EntityRelationshipCleanup {
       printToAsciiTable(relationColumns, relationRows, "No relation type statistics");
     }
   }
-
 
   private String getRelationshipName(int relation) {
     // Map common relationship types to names
