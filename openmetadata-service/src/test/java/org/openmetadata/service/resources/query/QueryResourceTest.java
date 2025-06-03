@@ -145,7 +145,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         Response.Status.BAD_REQUEST,
-        "[query must not be null]");
+        "[query param query must not be null]");
   }
 
   @Test

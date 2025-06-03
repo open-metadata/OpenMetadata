@@ -885,7 +885,8 @@ public final class TestUtils {
       // Try javax.validation.constraints.Size first
       Size size = field.getAnnotation(Size.class);
       if (size != null) {
-        return String.format("[name size must be between %d and %d]", size.min(), size.max());
+        return String.format(
+            "[query param name size must be between %d and %d]", size.min(), size.max());
       }
 
       // Try jakarta.validation.constraints.Size
@@ -893,12 +894,13 @@ public final class TestUtils {
           field.getAnnotation(jakarta.validation.constraints.Size.class);
       if (jakartaSize != null) {
         return String.format(
-            "[name size must be between %d and %d]", jakartaSize.min(), jakartaSize.max());
+            "[query param name size must be between %d and %d]",
+            jakartaSize.min(), jakartaSize.max());
       }
 
       // Fallback if no Size annotation found
       LOG.warn("No Size annotation found for name field in {}", clazz.getSimpleName());
-      return "[name size must be between 1 and 256]"; // Default values
+      return "[query param name size must be between 1 and 256]"; // Default values
     } catch (NoSuchFieldException e) {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }

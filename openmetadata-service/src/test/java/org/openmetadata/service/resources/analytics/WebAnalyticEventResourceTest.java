@@ -59,12 +59,12 @@ public class WebAnalyticEventResourceTest
     assertResponseContains(
         () -> createEntity(createRequest(test).withEventType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "eventType must not be null");
+        "query param eventType must not be null");
 
     assertResponseContains(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name must not be null");
+        "query param name must not be null");
   }
 
   @Test

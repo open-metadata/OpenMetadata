@@ -107,7 +107,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
