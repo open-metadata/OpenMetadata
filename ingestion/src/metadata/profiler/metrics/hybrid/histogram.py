@@ -269,7 +269,7 @@ class Histogram(HybridMetric):
             return {"boundaries": bins_label, "frequencies": frequencies.tolist()}
         return None
 
-    def spark_fn(self, df, res: dict):
+    def spark_fn(self, res: dict, df):
         """Spark DataFrame function for histogram metric"""
         import numpy as np
         from pyspark.sql import functions as F

@@ -217,13 +217,13 @@ class SparkSampler(SamplerInterface):
                 column_name = field.name
                 sqalike_columns.append(
                     SQALikeColumn(
-                        column_name, self._spark_type_to_omdatatype(str(field.dataType))
+                        column_name, self.spark_type_to_omdatatype(str(field.dataType))
                     )
                 )
         return sqalike_columns
 
     @staticmethod
-    def _spark_type_to_omdatatype(spark_type: str) -> DataType:
+    def spark_type_to_omdatatype(spark_type: str) -> DataType:
         """
         Map Spark SQL type string to OpenMetadata DataType enum.
         """
