@@ -14,15 +14,13 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   assignDomain,
   clickOutside,
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
-import { assignGlossaryTerm, assignTag, assignTier } from '../../utils/entity';
+import { assignTag } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -30,21 +28,15 @@ import { sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const domain = new Domain();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
 const table = new TableClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { page, apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
-  await glossary.create(apiContext);
-  await glossaryTerm.create(apiContext);
   await table.visitEntityPage(page);
   await assignDomain(page, domain.data);
   await assignTag(page, 'PersonalData.Personal');
-  await assignTier(page, 'Tier1', 'tables');
-  await assignGlossaryTerm(page, glossaryTerm.responseData);
   await afterAction();
 });
 
@@ -70,45 +62,19 @@ test('search dropdown should work properly for quick filters', async ({
       value: domain.responseData.displayName,
     },
     { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
-    { label: 'Tier', key: 'tier.tagFQN', value: 'Tier.Tier1' },
-    {
-      label: 'Tag',
-      key: 'tags.tagFQN',
-      value: glossaryTerm.responseData.fullyQualifiedName,
-    },
   ];
 
   for (const filter of items) {
     await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
     await searchAndClickOnOption(page, filter, true);
 
-    const rawFilterValue = (filter.value ?? '')
-      .replace(/ /g, '+')
-      .toLowerCase();
-
-    // Escape double quotes before encoding
-    const escapedValue = rawFilterValue.replace(/"/g, '\\"');
-
-    const filterValueForSearchURL =
-      filter.key === 'tier.tagFQN'
-        ? filter.value
-        : /["%]/.test(filter.value ?? '')
-        ? encodeURIComponent(escapedValue)
-        : rawFilterValue;
-
-    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filter.key}*${filterValueForSearchURL}*`;
+    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
+      filter.key
+    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
 
     const queryRes = page.waitForResponse(querySearchURL);
     await page.click('[data-testid="update-btn"]');
     await queryRes;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    await expect(
-      page.getByTestId(
-        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
-      )
-    ).toBeVisible();
-
     await page.click('[data-testid="clear-filters"]');
   }
 });

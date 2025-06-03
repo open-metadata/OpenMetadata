@@ -96,7 +96,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(page, 'Tier1', 'Tier5');
+      await entity.tier(page, 'Tier1', 'Tier5', entity);
     });
 
     test('Update description', async ({ page }) => {
@@ -104,14 +104,15 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
-        EntityDataClass.glossaryTerm2.responseData
+        EntityDataClass.glossaryTerm2.responseData,
+        entity
       );
     });
 
