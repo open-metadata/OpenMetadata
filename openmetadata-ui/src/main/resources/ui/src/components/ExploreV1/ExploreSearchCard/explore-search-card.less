@@ -52,6 +52,9 @@
     border-radius: 6px;
     display: flex;
   }
+  .ProseMirror-hideselection *::selection {
+    background: inherit !important;
+  }
 }
 
 .assets-checkbox .ant-checkbox-inner {
@@ -68,12 +71,5 @@
 
   .score {
     color: @primary-heading-color;
-  }
-}
-
-.explore-search-card,
-.om-table-cell.selectedCell {
-  .ProseMirror-hideselection *::selection {
-    background: inherit;
   }
 }
