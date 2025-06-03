@@ -25,10 +25,10 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -42,7 +42,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 
 @Slf4j
-@TestMethodOrder(OrderAnnotation.class)
+@Execution(ExecutionMode.CONCURRENT)
 class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
 
   private static TableResourceTest tableTest;
@@ -83,6 +83,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupWithValidRelationships_shouldFindNoOrphans() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true); // dry-run mode
     EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(100);
@@ -91,6 +92,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupAfterDeletingEntity_shouldDetectOrphans() {
     Table tableToDelete = testTables.get(0);
     UUID tableId = tableToDelete.getId();
@@ -115,6 +117,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_actualCleanup_shouldDeleteOrphanedRelationships() {
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
@@ -146,6 +149,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_paginationWithLargeBatchSize() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(10000);
@@ -154,6 +158,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_paginationWithSmallBatchSize() {
     cleanup = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(10);
@@ -162,6 +167,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_createOrphanedRelationshipScenario() {
     UUID nonExistentId1 = UUID.randomUUID();
     UUID nonExistentId2 = UUID.randomUUID();
@@ -198,6 +204,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_validationOfExistingRelationships() {
     long relationshipCountBefore = collectionDAO.relationshipDAO().getTotalRelationshipCount();
     cleanup = new EntityRelationshipCleanup(collectionDAO, false);
@@ -229,6 +236,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_dryRun() {
     EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(500);
@@ -237,6 +245,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_withOrphanedData() {
     UUID nonExistentEntityId = UUID.randomUUID();
 
@@ -264,6 +273,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_noOrphanedData() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, false);
     EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(100);
@@ -275,6 +285,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_smallBatchSize() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(10);
@@ -284,6 +295,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_largeBatchSize() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(10000);
@@ -293,6 +305,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_multipleOrphanedRelationships() {
     for (int i = 0; i < 5; i++) {
       UUID nonExistentId1 = UUID.randomUUID();
@@ -319,6 +332,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_relationshipCleanupCommand_validationOfParameters() {
 
     EntityRelationshipCleanup minBatchCleanup = new EntityRelationshipCleanup(collectionDAO, true);
@@ -332,6 +346,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_commandIntegrationValidation() {
     EntityRelationshipCleanup cleanup1 = new EntityRelationshipCleanup(collectionDAO, true);
     EntityRelationshipCleanup.CleanupResult result = cleanup1.performCleanup(100);
@@ -341,6 +356,7 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_emptyDatabaseScenario() {
     // Test cleanup behavior when there are minimal relationships
 
@@ -350,5 +366,108 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
 
     assertNotNull(result);
     assertTrue(result.getTotalRelationshipsScanned() >= 0);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_commandBehavior_defaultDryRunWithNoOrphans() {
+    EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    boolean wouldReturnOne = result.getOrphanedRelationshipsFound() > 0;
+    assertFalse(
+        wouldReturnOne || result.getOrphanedRelationshipsFound() < 0,
+        "Default dry-run with no orphans should indicate success (exit code 0)");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_commandBehavior_defaultDryRunWithOrphans() {
+    UUID nonExistentId1 = UUID.randomUUID();
+    UUID nonExistentId2 = UUID.randomUUID();
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            nonExistentId1,
+            nonExistentId2,
+            "table",
+            "databaseSchema",
+            Relationship.CONTAINS.ordinal(),
+            null);
+
+    EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.CleanupResult result = dryRunCleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    boolean wouldReturnOne = result.getOrphanedRelationshipsFound() > 0;
+    assertTrue(
+        wouldReturnOne, "Default dry-run with orphans found should indicate failure (exit code 1)");
+
+    assertTrue(result.getOrphanedRelationshipsFound() > 0, "Should find the orphaned relationship");
+    assertEquals(0, result.getRelationshipsDeleted(), "Should not delete in dry-run mode");
+
+    EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    actualCleanup.performCleanup(100);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_commandBehavior_explicitDeleteFlag() {
+    UUID nonExistentId1 = UUID.randomUUID();
+    UUID nonExistentId2 = UUID.randomUUID();
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            nonExistentId1,
+            nonExistentId2,
+            "table",
+            "databaseSchema",
+            Relationship.CONTAINS.ordinal(),
+            null);
+
+    EntityRelationshipCleanup deleteCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    EntityRelationshipCleanup.CleanupResult result = deleteCleanup.performCleanup(100);
+
+    assertNotNull(result);
+    assertTrue(result.getRelationshipsDeleted() > 0, "Should have deleted orphaned relationships");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_commandBehavior_batchSizeParameter() {
+    int customBatchSize = 50;
+
+    EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(customBatchSize);
+
+    assertNotNull(result);
+    assertTrue(result.getTotalRelationshipsScanned() >= 0);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_commandBehavior_flagSemantics() {
+    EntityRelationshipCleanup defaultBehavior = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.CleanupResult defaultResult = defaultBehavior.performCleanup(100);
+
+    EntityRelationshipCleanup deleteBehavior = new EntityRelationshipCleanup(collectionDAO, false);
+    EntityRelationshipCleanup.CleanupResult deleteResult = deleteBehavior.performCleanup(100);
+
+    assertNotNull(defaultResult);
+    assertNotNull(deleteResult);
+
+    assertEquals(
+        0,
+        defaultResult.getRelationshipsDeleted(),
+        "Default behavior (dry-run) should not delete any relationships");
+
+    assertTrue(
+        deleteResult.getRelationshipsDeleted() >= 0,
+        "Delete mode should delete 0 or more relationships");
   }
 }

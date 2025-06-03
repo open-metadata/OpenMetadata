@@ -713,20 +713,21 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "relationshipCleanup",
       description =
-          "Cleans up orphaned entity relationships where referenced entities no longer exist.")
+          "Cleans up orphaned entity relationships where referenced entities no longer exist. By default, runs in dry-run mode to only identify orphaned relationships.")
   public Integer cleanupOrphanedRelationships(
       @Option(
-              names = {"--dry-run"},
+              names = {"--delete"},
               description =
-                  "Run in dry-run mode to only identify orphaned relationships without deleting them",
-              defaultValue = "true")
-          boolean dryRun,
+                  "Actually delete the orphaned relationships. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
       @Option(
               names = {"-b", "--batch-size"},
               defaultValue = "1000",
               description = "Number of relationships to process in each batch.")
           int batchSize) {
     try {
+      boolean dryRun = !delete;
       LOG.info(
           "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
       parseConfig();
@@ -740,10 +741,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
 
       if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
-        LOG.info("To actually delete these orphaned relationships, run with --dry-run=false");
+        LOG.info("To actually delete these orphaned relationships, run with --delete");
+        return 1;
       }
 
-      return result.getOrphanedRelationshipsFound() > 0 && !dryRun ? 1 : 0;
+      return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned relationships due to ", e);
       return 1;
