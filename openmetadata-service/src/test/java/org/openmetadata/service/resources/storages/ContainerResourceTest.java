@@ -134,7 +134,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertResponse(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test

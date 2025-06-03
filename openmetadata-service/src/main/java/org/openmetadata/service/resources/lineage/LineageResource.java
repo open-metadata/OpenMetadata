@@ -125,13 +125,13 @@ public class LineageResource {
           String id,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("upstreamDepth")
           int upstreamDepth,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
@@ -171,13 +171,13 @@ public class LineageResource {
           String fqn,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("upstreamDepth")
           int upstreamDepth,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
