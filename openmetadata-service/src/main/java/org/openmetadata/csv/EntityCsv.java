@@ -394,18 +394,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
             .withExpiryDate(System.currentTimeMillis());
   }
 
-  private static Long parseEpochMillis(String epochMillisStr) {
-    if (nullOrEmpty(epochMillisStr)) {
-      return null;
-    }
-    try {
-      return Long.parseLong(epochMillisStr.trim());
-    } catch (NumberFormatException e) {
-      LOG.warn("Invalid epoch timestamp: {}", epochMillisStr);
-      return null;
-    }
-  }
-
   public Map<String, Object> getExtension(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     String extensionString = csvRecord.get(fieldNumber);
@@ -1259,7 +1247,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-    String languageStr = csvRecord.get(19);
+    String languageStr = csvRecord.get(20);
     StoredProcedureLanguage language = null;
 
     if (languageStr != null && !languageStr.isEmpty()) {
@@ -1271,7 +1259,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     StoredProcedureCode storedProcedureCode =
-        new StoredProcedureCode().withCode(csvRecord.get(17)).withLanguage(language);
+        new StoredProcedureCode().withCode(csvRecord.get(18)).withLanguage(language);
 
     sp.withDisplayName(csvRecord.get(1))
         .withDescription(csvRecord.get(2))
@@ -1349,7 +1337,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer)
       throws IOException {
     String columnFqn = csvRecord.get(0);
-    String columnFullyQualifiedName = csvRecord.get(12);
+    String columnFullyQualifiedName = csvRecord.get(13);
     Column column = null;
     boolean columnExists = false;
     try {
