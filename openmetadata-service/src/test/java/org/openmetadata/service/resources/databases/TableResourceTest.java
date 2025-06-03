@@ -3385,7 +3385,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public Table getLatestTableProfile(String fqn, boolean includeColumnProfile, Map<String, String> authHeaders)
+  public Table getLatestTableProfile(
+      String fqn, boolean includeColumnProfile, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/tableProfile/latest");
     target = target.queryParam("includeColumnProfile", includeColumnProfile);

@@ -953,7 +953,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
-        .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
+        .entity(
+            JsonUtils.pojoToJson(
+                repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
         .build();
   }
 

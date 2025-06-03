@@ -564,7 +564,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public Table getLatestTableProfile(String fqn, boolean authorizePII, boolean includeColumnProfile) {
+  public Table getLatestTableProfile(
+      String fqn, boolean authorizePII, boolean includeColumnProfile) {
     Table table = findByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
