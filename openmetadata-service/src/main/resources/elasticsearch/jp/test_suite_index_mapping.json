@@ -144,25 +144,15 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
           }
         }
       },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "href": {
         "type": "text"
@@ -230,7 +220,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -278,7 +268,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -301,16 +291,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -326,7 +316,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -349,16 +339,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -374,7 +364,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -397,10 +387,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -422,12 +412,16 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
           }
         }
+      },
+      "serviceType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

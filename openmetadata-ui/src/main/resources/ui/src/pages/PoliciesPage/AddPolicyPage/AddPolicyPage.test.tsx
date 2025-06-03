@@ -22,6 +22,19 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock('../../../rest/rolesAPIV1', () => ({
   addPolicy: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -54,6 +67,10 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
 
 describe('Test Add Policy Page', () => {
   it('Should Render the Add Policy page component', async () => {

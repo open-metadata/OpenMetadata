@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -18,6 +18,7 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -55,6 +56,7 @@ const entities = [
   ContainerClass,
   SearchIndexClass,
   DashboardDataModelClass,
+  MetricClass,
 ] as const;
 
 // use the admin user to login
@@ -63,8 +65,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
+  const entityName = entity.getType();
 
-  test.describe(entity.getType(), () => {
+  test.describe(entityName, () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -82,13 +85,16 @@ entities.forEach((EntityClass) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
+        EntityDataClass.domain2.responseData,
+        EntityDataClass.dataProduct1.responseData,
+        EntityDataClass.dataProduct2.responseData,
+        EntityDataClass.dataProduct3.responseData
       );
     });
 
     test('Domain Propagation', async ({ page }) => {
       const serviceCategory = entity.serviceCategory;
-      if (serviceCategory) {
+      if (serviceCategory && 'service' in entity) {
         await visitServiceDetailsPage(
           page,
           {
@@ -113,7 +119,7 @@ entities.forEach((EntityClass) => {
           },
           false
         );
-        await removeDomain(page);
+        await removeDomain(page, EntityDataClass.domain1.responseData);
       }
     });
 
@@ -190,15 +196,29 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
+      test(`${entityName} page should show the project name`, async ({
+        page,
+      }) => {
+        await expect(
+          page.getByText((entity.entity as { project: string }).project)
+        ).toBeVisible();
+      });
+    }
+
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tag(page, 'PersonalData.Personal', 'PII.None');
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
@@ -243,10 +263,7 @@ entities.forEach((EntityClass) => {
     }
 
     test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(
-        page,
-        entity.entityResponseData?.['fullyQualifiedName']
-      );
+      await entity.announcement(page);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {
@@ -259,6 +276,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });
@@ -305,6 +324,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await createNewPage(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);

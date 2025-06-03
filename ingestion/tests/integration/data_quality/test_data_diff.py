@@ -1,6 +1,8 @@
 import sys
+from datetime import datetime
 
 import pytest
+from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
 from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
@@ -14,7 +16,11 @@ from sqlalchemy.sql import sqltypes
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+    Table,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -39,6 +45,7 @@ class TestParameters(BaseModel):
     test_case_defintion: TestCaseDefinition
     table2_fqn: str
     expected: TestCaseResult
+    table_profile_config: TableProfilerConfig = None
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -67,9 +74,59 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     passedRows=599,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_percentage_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    # we use approximations becuase the sampling is not deterministic
+                    passedRows=IsApprox(59, delta=60) & IsPositiveInt,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_row_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    # we use approximations around the 99.5 confidence interval since the
+                    # sampling in data diff uses hash based partitioning
+                    passedRows=IsApprox(10, delta=15) & IsPositiveInt,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.ROWS,
+                    profileSample=10,
                 ),
             ),
             (
@@ -85,6 +142,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -99,6 +157,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -114,6 +173,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=321,
                 ),
@@ -128,6 +188,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                 ),
@@ -146,6 +207,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -158,6 +220,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
@@ -179,6 +242,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -208,6 +272,7 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -220,6 +285,63 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Failed,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_fail",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="true"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="1"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_success",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="false"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="table_from_another_db",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[],
+                ),
+                "POSTGRES_SERVICE.other_db.public.customer",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
@@ -240,7 +362,7 @@ def test_happy_paths(
     cleanup_fqns,
 ):
     metadata = patched_metadata
-    table1 = metadata.get_by_name(
+    table1: Table = metadata.get_by_name(
         Table,
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
@@ -265,9 +387,13 @@ def test_happy_paths(
             ),
         ]
     )
+    if parameters.table_profile_config:
+        metadata.create_or_update_table_profiler_config(
+            table1.fullyQualifiedName.root, parameters.table_profile_config
+        )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
@@ -278,18 +404,24 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
+    metadata.create_or_update_table_profiler_config(
+        table1.fullyQualifiedName.root, TableProfilerConfig()
+    )
     test_case_entity = metadata.get_by_name(
         TestCase,
         f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",
         fields=["*"],
     )
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
+    parameters.expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
 
 
@@ -313,6 +445,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Aborted,
                 result="Unsupported dialect in param table2.serviceUrl: mongodb",
             ),
@@ -331,6 +464,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
                 result="Tables have 1 different columns:"
                 "\n  Changed columns:"
@@ -385,7 +519,7 @@ def test_error_paths(
             )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
@@ -405,11 +539,24 @@ def test_error_paths(
     test_case_entity: TestCase = metadata.get_or_create_test_case(
         f"{table1.fullyQualifiedName.root}.{parameters.name}"
     )
+    expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
 
 
 def add_changed_tables(connection: Connection):
     connection.execute("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
+    connection.execute(
+        "CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"
+    )
+    connection.execute(
+        'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+    )
+    # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
+    # connection.execute(
+    #     "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    # )
     connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
     connection.execute(
         "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
@@ -431,21 +578,28 @@ def add_changed_tables(connection: Connection):
 
 @pytest.fixture(scope="module")
 def prepare_data(postgres_container, mysql_container):
-    postgres_engine = create_engine(
-        make_url(postgres_container.get_connection_url()).set(database="dvdrental")
+    dvdrental = create_engine(
+        make_url(postgres_container.get_connection_url()).set(database="dvdrental"),
+        isolation_level="AUTOCOMMIT",
     )
-    with postgres_engine.connect() as conn:
+    dvdrental.execute("CREATE DATABASE other_db")
+    with dvdrental.connect() as conn:
         add_changed_tables(conn)
+    other = create_engine(
+        make_url(postgres_container.get_connection_url()).set(database="other_db"),
+        isolation_level="AUTOCOMMIT",
+    )
+    copy_table_between_postgres(dvdrental, other, "customer", 10)
     mysql_container = create_engine(
         make_url(mysql_container.get_connection_url()).set(
             database=mysql_container.dbname
         )
     )
-    postgres_engine = create_engine(
+    dvdrental = create_engine(
         make_url(postgres_container.get_connection_url()).set(database="dvdrental")
     )
-    copy_table(postgres_engine, mysql_container, "customer")
-    copy_table(postgres_engine, mysql_container, "changed_customer")
+    copy_table(dvdrental, mysql_container, "customer")
+    copy_table(dvdrental, mysql_container, "changed_customer")
 
 
 def copy_table(source_engine, destination_engine, table_name):
@@ -520,3 +674,28 @@ def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypat
     )
 
     return metadata
+
+
+def copy_table_between_postgres(
+    source_conn: Connection, dest_conn: Connection, table_name: str, limit: int
+):
+    # Reflect the source table
+    source_metadata = MetaData()
+    source_table = SQATable(table_name, source_metadata, autoload_with=source_conn)
+
+    # Create the destination table
+    dest_metadata = MetaData()
+    dest_table = SQATable(table_name, dest_metadata)
+
+    for column in source_table.columns:
+        dest_table.append_column(column.copy())
+
+    dest_metadata.create_all(dest_conn)
+
+    # Fetch data from the source table
+    query = source_table.select().limit(limit)
+    data = source_conn.execute(query).fetchall()
+
+    # Insert data into the destination table
+    if data:
+        dest_conn.execute(dest_table.insert(), [dict(row) for row in data])

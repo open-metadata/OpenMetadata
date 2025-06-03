@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -36,6 +36,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
+  const menuRef = useRef<Menu>(null);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -70,16 +71,47 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     history.push(getGlossaryPath(event.key));
   };
 
+  useEffect(() => {
+    if (menuRef.current && glossaryFqn) {
+      const items = document?.querySelectorAll(
+        `[data-testid="glossary-left-panel"] > li > span`
+      );
+      const menuItem = glossaries.find(
+        (item) => item.fullyQualifiedName === glossaryFqn
+      );
+
+      const itemToScroll = Array.from(items).find(
+        (item) =>
+          item.textContent === menuItem?.name ||
+          item.textContent === menuItem?.displayName
+      );
+
+      if (itemToScroll) {
+        const rect = itemToScroll.getBoundingClientRect();
+        const isVisible =
+          rect.top >= 0 &&
+          rect.bottom <=
+            (window.innerHeight || document.documentElement.clientHeight);
+
+        if (!isVisible) {
+          const itemIndex = Array.from(items).findIndex(
+            (item) => item === itemToScroll
+          );
+          const blockPosition =
+            itemIndex > Array.from(items).length - 10 ? 'nearest' : 'center';
+          itemToScroll.scrollIntoView({
+            behavior: 'smooth',
+            block: blockPosition,
+          });
+        }
+      }
+    }
+  }, [glossaryFqn]);
+
   return (
     <LeftPanelCard id="glossary">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
-        <Row className="p-y-xs" gutter={[0, 16]}>
-          <Col className="p-x-sm" span={24}>
-            <Typography.Text strong className="m-b-0">
-              {t('label.glossary')}
-            </Typography.Text>
-          </Col>
-
+        <Row gutter={[0, 16]}>
           {createGlossaryPermission && (
             <Col className="p-x-sm" span={24}>
               <Button
@@ -102,6 +134,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 data-testid="glossary-left-panel"
                 items={menuItems}
                 mode="inline"
+                ref={menuRef}
                 selectedKeys={[selectedKey]}
                 onClick={handleMenuClick}
               />

@@ -47,6 +47,10 @@
   },
   "mappings": {
     "properties": {
+      "originEntityFQN": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "id": {
         "type": "text"
       },
@@ -189,21 +193,12 @@
       "dataQualityDimension": {
         "type": "keyword"
       },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
       "tags": {
         "type": "nested",
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -261,7 +256,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -308,7 +303,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -352,7 +347,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -400,7 +395,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -457,11 +452,14 @@
       "updatedBy": {
         "type": "text"
       },
+      "createdBy": {
+        "type": "text"
+      },
       "href": {
         "type": "text"
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "table": {
         "properties": {
@@ -504,7 +502,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -527,16 +525,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -552,7 +550,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -575,16 +573,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -600,7 +598,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -623,10 +621,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -648,7 +646,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"

@@ -27,6 +27,7 @@ public record DashboardServiceIndex(DashboardService dashboardService) implement
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(dashboardService, Entity.DASHBOARD_SERVICE);
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardService.getEntityReference()));
     return doc;
   }
 }

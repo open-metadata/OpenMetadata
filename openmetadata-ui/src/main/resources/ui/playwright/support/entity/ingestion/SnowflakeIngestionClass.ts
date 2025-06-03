@@ -21,12 +21,25 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class SnowflakeIngestionClass extends ServiceBaseClass {
   schema: string;
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       `pw-snowflake-with-%-${uuid()}`,
       'Snowflake',
-      'CUSTOMER'
+      'CUSTOMER',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
     this.schema = 'TPCH_SF1000';
     const database = process.env.PLAYWRIGHT_SNOWFLAKE_DATABASE ?? '';
@@ -43,17 +56,23 @@ class SnowflakeIngestionClass extends ServiceBaseClass {
     const account = process.env.PLAYWRIGHT_SNOWFLAKE_ACCOUNT ?? '';
     const database = process.env.PLAYWRIGHT_SNOWFLAKE_DATABASE ?? '';
     const warehouse = process.env.PLAYWRIGHT_SNOWFLAKE_WAREHOUSE ?? '';
+    const passphrase = process.env.PLAYWRIGHT_SNOWFLAKE_PASSPHRASE ?? '';
 
     await page.fill('#root\\/username', username);
     await checkServiceFieldSectionHighlighting(page, 'username');
-    await page.fill('#root\\/password', password);
-    await checkServiceFieldSectionHighlighting(page, 'password');
+    await page.fill('#root\\/privateKey', password);
+    await checkServiceFieldSectionHighlighting(page, 'privateKey');
     await page.fill('#root\\/account', account);
     await checkServiceFieldSectionHighlighting(page, 'account');
     await page.fill('#root\\/database', database);
     await checkServiceFieldSectionHighlighting(page, 'database');
     await page.fill('#root\\/warehouse', warehouse);
     await checkServiceFieldSectionHighlighting(page, 'warehouse');
+    await page.fill('#root\\/snowflakePrivatekeyPassphrase', passphrase);
+    await checkServiceFieldSectionHighlighting(
+      page,
+      'snowflakePrivatekeyPassphrase'
+    );
   }
 
   async fillIngestionDetails(page: Page) {

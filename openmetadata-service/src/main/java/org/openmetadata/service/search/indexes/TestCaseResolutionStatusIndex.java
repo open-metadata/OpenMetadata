@@ -33,6 +33,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
+    doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
     return doc;
   }
@@ -45,13 +46,28 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
   private void setParentRelationships(Map<String, Object> doc) {
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
-    TestCase testCase = Entity.getEntityOrNull(testCaseReference, "testSuite", Include.ALL);
+    TestCase testCase =
+        Entity.getEntityOrNull(testCaseReference, "testSuite,domain,tags,owners", Include.ALL);
     if (testCase == null) return;
-    doc.put("testCase", testCase.getEntityReference());
+    testCase =
+        new TestCase()
+            .withId(testCase.getId())
+            .withName(testCase.getName())
+            .withFullyQualifiedName(testCase.getFullyQualifiedName())
+            .withDescription(testCase.getDescription())
+            .withDisplayName(testCase.getDisplayName())
+            .withDeleted(testCase.getDeleted())
+            .withDomain(testCase.getDomain())
+            .withTags(testCase.getTags())
+            .withEntityFQN(testCase.getEntityFQN())
+            .withOwners(testCase.getOwners());
+    doc.put("testCase", testCase);
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
-    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
+    if (testSuite.getBasicEntityReference() != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

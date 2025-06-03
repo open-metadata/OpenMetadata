@@ -36,11 +36,13 @@ import {
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   mode,
+  autoFocus = true,
   onChange,
   debounceTimeout = 800,
   initialOptions,
   searchIndex = SearchIndex.ALL,
   value: selectedValue,
+  filterFqns = [],
   ...props
 }) => {
   const {
@@ -125,49 +127,55 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   );
 
   const optionList = useMemo(() => {
-    return options.map((option) => {
-      const { value, reference, displayName } = option;
+    return options
+      .filter(
+        (op) => !filterFqns.includes(op.reference.fullyQualifiedName ?? '')
+      )
+      .map((option) => {
+        const { value, reference, displayName } = option;
 
-      let label;
-      if (
-        searchIndex === SearchIndex.USER ||
-        searchIndex === SearchIndex.TEAM ||
-        reference.type === EntityType.USER ||
-        reference.type === EntityType.TEAM
-      ) {
-        label = (
-          <Space>
-            <ProfilePicture
-              className="d-flex"
-              isTeam={reference.type === EntityType.TEAM}
-              name={option.name ?? ''}
-              type="circle"
-              width="24"
-            />
-            <span className="m-l-xs" data-testid={getEntityName(option)}>
-              {getEntityName(option)}
-            </span>
-          </Space>
-        );
-      } else {
-        label = (
-          <div
-            className="d-flex items-center gap-2"
-            data-testid={`option-${value}`}>
-            <div className="flex-center data-asset-icon">
-              {searchClassBase.getEntityIcon(reference.type)}
+        let label;
+        if (
+          searchIndex === SearchIndex.USER ||
+          searchIndex === SearchIndex.TEAM ||
+          reference.type === EntityType.USER ||
+          reference.type === EntityType.TEAM
+        ) {
+          label = (
+            <Space>
+              <ProfilePicture
+                className="d-flex"
+                isTeam={reference.type === EntityType.TEAM}
+                name={option.name ?? ''}
+                type="circle"
+                width="24"
+              />
+              <span className="m-l-xs" data-testid={getEntityName(option)}>
+                {getEntityName(option)}
+              </span>
+            </Space>
+          );
+        } else {
+          label = (
+            <div
+              className="d-flex items-center gap-2"
+              data-testid={`option-${value}`}>
+              <div className="flex-center data-asset-icon">
+                {searchClassBase.getEntityIcon(reference.type)}
+              </div>
+              <div className="d-flex flex-col">
+                <span className="text-grey-muted text-xs">
+                  {reference.type}
+                </span>
+                <span className="font-medium truncate w-56">{displayName}</span>
+              </div>
             </div>
-            <div className="d-flex flex-col">
-              <span className="text-grey-muted text-xs">{reference.type}</span>
-              <span className="font-medium truncate w-56">{displayName}</span>
-            </div>
-          </div>
-        );
-      }
+          );
+        }
 
-      return { label, value, reference, displayName };
-    });
-  }, [options, searchIndex]);
+        return { label, value, reference, displayName };
+      });
+  }, [options, searchIndex, filterFqns]);
 
   const debounceFetcher = useMemo(
     () => debounce(loadOptions, debounceTimeout),
@@ -235,8 +243,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   return (
     <Select
       allowClear
-      autoFocus
       showSearch
+      autoFocus={autoFocus}
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}
       filterOption={false}

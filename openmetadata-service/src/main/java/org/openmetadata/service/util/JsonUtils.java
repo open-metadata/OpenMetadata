@@ -15,9 +15,12 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -26,42 +29,48 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.json.JsonReader;
-import javax.json.JsonStructure;
-import javax.json.JsonValue;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -72,6 +81,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper OBJECT_MAPPER_LENIENT;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory =
@@ -80,10 +90,18 @@ public final class JsonUtils {
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
+    OBJECT_MAPPER
+        .getFactory()
+        .setStreamReadConstraints(
+            StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build());
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+
+    // Lenient ObjectMapper to ignore unknown properties
+    OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
+    OBJECT_MAPPER_LENIENT.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   static {
@@ -115,8 +133,31 @@ public final class JsonUtils {
     }
   }
 
+  public static String pojoToJsonIgnoreNull(Object o) {
+    if (o == null) {
+      return null;
+    }
+    try {
+      ObjectMapper objectMapperIgnoreNull = OBJECT_MAPPER.copy();
+      objectMapperIgnoreNull.setSerializationInclusion(
+          JsonInclude.Include.NON_NULL); // Ignore null values
+      return objectMapperIgnoreNull.writeValueAsString(o);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
   public static JsonStructure getJsonStructure(Object o) {
-    return OBJECT_MAPPER.convertValue(o, JsonStructure.class);
+    try {
+      // Convert object to JSON string using Jackson
+      String jsonString = OBJECT_MAPPER.writeValueAsString(o);
+      // Parse the JSON string using Jakarta JSON API to get a JsonStructure
+      try (JsonReader reader = Json.createReader(new java.io.StringReader(jsonString))) {
+        return reader.read();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert object to JsonStructure", e);
+    }
   }
 
   public static Map<String, Object> getMap(Object o) {
@@ -127,6 +168,10 @@ public final class JsonUtils {
 
   public static <T> T readOrConvertValue(Object obj, Class<T> clz) {
     return obj instanceof String str ? readValue(str, clz) : convertValue(obj, clz);
+  }
+
+  public static <T> T readOrConvertValueLenient(Object obj, Class<T> clz) {
+    return obj instanceof String str ? readValueLenient(str, clz) : convertValueLenient(obj, clz);
   }
 
   public static <T> List<T> readOrConvertValues(Object obj, Class<T> clz) {
@@ -145,12 +190,33 @@ public final class JsonUtils {
     }
   }
 
+  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
+    try {
+      DocumentContext documentContext = JsonPath.parse(json);
+      return Optional.ofNullable(documentContext.read(path, clazz));
+    } catch (Exception e) {
+      LOG.error("Failed to read value at path {}", path, e);
+      return Optional.empty();
+    }
+  }
+
   public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {
       return null;
     }
     try {
       return OBJECT_MAPPER.readValue(json, clz);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static <T> T readValueLenient(String json, Class<T> clz) {
+    if (json == null) {
+      return null;
+    }
+    try {
+      return OBJECT_MAPPER_LENIENT.readValue(json, clz);
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
@@ -205,6 +271,10 @@ public final class JsonUtils {
     return object == null ? null : OBJECT_MAPPER.convertValue(object, clz);
   }
 
+  public static <T> T convertValueLenient(Object object, Class<T> clz) {
+    return object == null ? null : OBJECT_MAPPER_LENIENT.convertValue(object, clz);
+  }
+
   public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
     return object == null ? null : OBJECT_MAPPER.convertValue(object, toValueTypeRef);
   }
@@ -249,19 +319,63 @@ public final class JsonUtils {
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
-    return OBJECT_MAPPER.convertValue(value, clz);
+    // Convert Jakarta JSON JsonValue to Jackson JsonNode
+    try {
+      String jsonString = value.toString();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
+      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+    }
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonNode source = readTree(v1);
     JsonNode dest = readTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
-    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
+  }
+
+  private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
+      throws JsonPatchException, IOException {
+    // Convert jakarta.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
+    String patchString = patch.toString();
+    JsonNode patchNode;
+    try {
+      patchNode = OBJECT_MAPPER.readTree(patchString);
+    } catch (JsonProcessingException e) {
+      LOG.error("Failed to parse JsonPatch string: {}", patchString, e);
+      throw new RuntimeException("Invalid JsonPatch format", e);
+    }
+    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
+        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
+    return jacksonPatch.apply(targetNode);
+  }
+
+  public static <T extends EntityInterface> T applyJsonPatch(
+      T original, JsonPatch patch, Class<T> clz) {
+    try {
+      // Convert original entity to JsonNode
+      JsonNode originalNode = OBJECT_MAPPER.valueToTree(original);
+
+      // Apply the JSON Patch
+      JsonNode patchedNode = applyJsonPatch(patch, originalNode);
+
+      // Deserialize the patched JsonNode back to the entity class
+      return OBJECT_MAPPER.treeToValue(patchedNode, clz);
+    } catch (JsonPatchException | JsonProcessingException e) {
+      LOG.error("Failed to apply JSON Patch: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to apply JSON Patch", e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static JsonValue readJson(String s) {
@@ -495,6 +609,10 @@ public final class JsonUtils {
     return list;
   }
 
+  public static ObjectMapper getObjectMapper() {
+    return OBJECT_MAPPER;
+  }
+
   static class SortedNodeFactory extends JsonNodeFactory {
     @Override
     public ObjectNode objectNode() {
@@ -504,14 +622,17 @@ public final class JsonUtils {
 
   public static <T> T extractValue(String jsonResponse, String... keys) {
     JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
-
-    // Traverse the JSON structure using keys
     for (String key : keys) {
       jsonNode = jsonNode.path(key);
     }
-
-    // Extract the final value
-    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    if (jsonNode.isMissingNode() || jsonNode.isNull()) {
+      return null;
+    }
+    try {
+      return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   public static <T> T extractValue(JsonNode jsonNode, String... keys) {
@@ -557,5 +678,41 @@ public final class JsonUtils {
       case STRING -> String.class;
       case MISSING, NULL, POJO -> Object.class;
     };
+  }
+
+  public static JsonNode pojoToJsonNode(Object obj) {
+    try {
+      return OBJECT_MAPPER.valueToTree(obj);
+    } catch (Exception e) {
+      LOG.error("Failed to convert POJO to JsonNode", e);
+      throw new RuntimeException("POJO to JsonNode conversion failed", e);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> getMapFromJson(String json) {
+    return (Map<String, Object>) (JsonUtils.readValue(json, Map.class));
+  }
+
+  @SuppressWarnings("unused")
+  public static <T> T convertObjectWithFilteredFields(
+      Object input, Set<String> fields, Class<T> clazz) {
+    Map<String, Object> inputMap = JsonUtils.getMap(input);
+    Map<String, Object> result = new HashMap<>();
+    for (String field : fields) {
+      if (inputMap.containsKey(field)) {
+        result.put(field, inputMap.get(field));
+      }
+    }
+    return JsonUtils.convertValue(result, clazz);
+  }
+
+  public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {
+    String jsonString = fgeJsonPatch.toString();
+
+    try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
+      JsonArray patchArray = reader.readArray();
+      return Json.createPatch(patchArray);
+    }
   }
 }

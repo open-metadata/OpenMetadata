@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources.bots;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -31,6 +33,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.apps.AppsResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.util.DeleteEntityMessage;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -87,6 +90,24 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     for (Bot bot : bots) {
       assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
     }
+  }
+
+  @Override
+  @Test
+  public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
+    // Create a separate bot user for this test
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User testUser = new UserResourceTest().createUser("test-delete-bot-user", true);
+    CreateBot create = createRequest(test).withBotUser(testUser.getName());
+    Bot bot = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test async delete with recursive and hard delete flags
+    DeleteEntityMessage deleteMessage = receiveDeleteEntityMessage(bot.getId(), true, true);
+
+    assertEquals("COMPLETED", deleteMessage.getStatus());
+    assertEquals(bot.getName(), deleteMessage.getEntityName());
+    assertNull(deleteMessage.getError());
+    assertEntityDeleted(bot.getId(), true);
   }
 
   @Test

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { capitalize, toLower } from 'lodash';
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { capitalize, get, toLower } from 'lodash';
+import { ServiceTypes } from 'Models';
+import MetricIcon from '../assets/svg/metric.svg';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -23,7 +28,9 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  CASSANDRA,
   CLICKHOUSE,
+  COCKROACH,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -40,6 +47,7 @@ import {
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
+  EXASOL,
   FIVETRAN,
   FLINK,
   GCS,
@@ -56,6 +64,7 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MICROSTRATEGY,
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
@@ -83,6 +92,7 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
@@ -98,6 +108,7 @@ import {
   VERTICA,
 } from '../constants/Services.constant';
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
   ApiServiceTypeSmallCaseType,
@@ -110,6 +121,8 @@ import {
   SearchServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -119,7 +132,9 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -128,6 +143,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -140,6 +156,10 @@ class ServiceUtilClassBase {
     MetadataServiceType.Alation,
     APIServiceType.Webhook,
     MlModelServiceType.VertexAI,
+    PipelineServiceType.Matillion,
+    PipelineServiceType.DataFactory,
+    PipelineServiceType.Stitch,
+    DashboardServiceType.PowerBIReportServer,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -193,6 +213,63 @@ class ServiceUtilClassBase {
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  private serviceDetails?: ServicesType;
+
+  public setEditServiceDetails(serviceDetails?: ServicesType) {
+    this.serviceDetails = serviceDetails;
+  }
+
+  public getEditServiceDetails() {
+    return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigClass },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
+  }
+
+  public getServiceConfigData(data: {
+    serviceName: string;
+    serviceType: string;
+    description: string;
+    userId: string;
+    configData: ConfigData;
+  }) {
+    const { serviceName, serviceType, description, userId, configData } = data;
+
+    return {
+      name: serviceName,
+      serviceType: serviceType,
+      description: description,
+      owners: [
+        {
+          id: userId,
+          type: 'user',
+        },
+      ],
+      connection: {
+        config: configData,
+      },
+    };
+  }
+
+  public getServiceExtraInfo(_data?: ServicesType): any {
+    return null;
   }
 
   public getSupportedServiceFromList() {
@@ -307,6 +384,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.DynamoDB:
         return DYNAMODB;
 
+      case this.DatabaseServiceTypeSmallCase.Exasol:
+        return EXASOL;
+
       case this.DatabaseServiceTypeSmallCase.SingleStore:
         return SINGLESTORE;
 
@@ -334,11 +414,17 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return MONGODB;
 
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return CASSANDRA;
+
       case this.DatabaseServiceTypeSmallCase.SAS:
         return SAS;
 
       case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
+
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return COCKROACH;
 
       case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
@@ -366,6 +452,7 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.CustomDashboard:
         return DASHBOARD_DEFAULT;
+
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -401,6 +488,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Lightdash:
         return LIGHT_DASH;
+
+      case this.DashboardServiceTypeSmallCase.Sigma:
+        return SIGMA;
 
       case this.PipelineServiceTypeSmallCase.CustomPipeline:
         return PIPELINE_DEFAULT;
@@ -455,6 +545,7 @@ class ServiceUtilClassBase {
 
       case this.MlModelServiceTypeSmallCase.Sklearn:
         return SCIKIT;
+
       case this.MlModelServiceTypeSmallCase.SageMaker:
         return SAGEMAKER;
 
@@ -491,6 +582,9 @@ class ServiceUtilClassBase {
       case this.ApiServiceTypeSmallCase.REST:
         return REST_SERVICE;
 
+      case this.DashboardServiceTypeSmallCase.MicroStrategy:
+        return MICROSTRATEGY;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -519,7 +613,13 @@ class ServiceUtilClassBase {
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
-    const type = searchSource?.serviceType ?? '';
+    const type = get(searchSource, 'serviceType', '');
+    const entityType = get(searchSource, 'entityType', '');
+
+    // metric entity does not have service so we need to handle it separately
+    if (entityType === EntityType.METRIC) {
+      return MetricIcon;
+    }
 
     return this.getServiceLogo(type);
   }
@@ -593,6 +693,8 @@ class ServiceUtilClassBase {
         return 'MariaDB';
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return 'MongoDB';
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return 'Cassandra';
       case this.DatabaseServiceTypeSmallCase.PinotDB:
         return 'pinotdb';
       case this.DatabaseServiceTypeSmallCase.SapHana:
@@ -643,6 +745,16 @@ class ServiceUtilClassBase {
         return 'ElasticSearch';
       case this.SearchServiceTypeSmallCase.CustomSearch:
         return 'Custom Search';
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return 'Cockroach';
+      case this.DatabaseServiceTypeSmallCase.SapERP:
+        return 'SAP ERP';
+      case this.DatabaseServiceTypeSmallCase.Mssql:
+        return 'MSSQL';
+      case this.MlModelServiceTypeSmallCase.Mlflow:
+        return 'MLflow';
+      case this.StorageServiceTypeSmallCase.Adls:
+        return 'ADLS';
 
       default:
         return capitalize(serviceType);
@@ -683,6 +795,58 @@ class ServiceUtilClassBase {
 
   public getAPIServiceConfig(type: APIServiceType) {
     return getAPIConfig(type);
+  }
+
+  public getInsightsTabWidgets(_: ServiceTypes) {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      PlatformInsightsWidget,
+    };
+
+    return widgets;
+  }
+
+  public getExtraInfo(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: '',
+      additionalFieldContent: null,
+    };
+  }
+
+  public getEditConfigData(
+    serviceData?: ServicesType,
+    data?: ConfigData
+  ): ServicesType {
+    if (!serviceData || !data) {
+      return serviceData as ServicesType;
+    }
+    const updatedData = { ...serviceData };
+    if (updatedData.connection) {
+      const connection = updatedData.connection as {
+        config: Record<string, unknown>;
+      };
+      updatedData.connection = {
+        ...connection,
+        config: {
+          ...connection.config,
+          ...data,
+        },
+      } as typeof updatedData.connection;
+    }
+
+    return updatedData;
+  }
+
+  public getAgentsTabWidgets() {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      MetadataAgentsWidget,
+    };
+
+    return widgets;
   }
 
   /**

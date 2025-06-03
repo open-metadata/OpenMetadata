@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,14 +15,21 @@ To be used by OpenMetadata class
 """
 import hashlib
 import json
+from functools import lru_cache
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createQueryCostRecord import (
+    CreateQueryCostRecordRequest,
+)
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.queryCostRecord import QueryCostRecord
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tableUsageCount import QueryCostWrapper
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 
@@ -41,6 +48,8 @@ class OMetaQueryMixin:
         return str(result.hexdigest())
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:
+        if query.query.root is None:
+            return None
         query_hash = self._get_query_hash(query=query.query.root)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
@@ -60,6 +69,9 @@ class OMetaQueryMixin:
         """
         for create_query in queries:
             if not create_query.exclude_usage:
+                create_query.query.root = mask_query(
+                    create_query.query.root, create_query.dialect
+                )
                 query = self._get_or_create_query(create_query)
                 if query:
                     # Add Query Usage
@@ -109,3 +121,40 @@ class OMetaQueryMixin:
         if res and res.get("data"):
             return [Query(**query) for query in res.get("data")]
         return None
+
+    @lru_cache(maxsize=5000)
+    def __get_query_by_hash(
+        self, query_hash: str, service_name: str
+    ) -> Optional[Query]:
+        return self.get_by_name(entity=Query, fqn=f"{service_name}.{query_hash}")
+
+    def publish_query_cost(self, query_cost_data: QueryCostWrapper, service_name: str):
+        """
+        Create Query Cost Record
+
+        Args:
+            query_cost_record: QueryCostWrapper
+        """
+
+        masked_query = mask_query(query_cost_data.query, query_cost_data.dialect)
+
+        query_hash = self._get_query_hash(masked_query)
+
+        query = self.__get_query_by_hash(
+            query_hash=query_hash, service_name=service_name
+        )
+        if not query:
+            return None
+
+        create_request = CreateQueryCostRecordRequest(
+            timestamp=int(query_cost_data.date),
+            jsonSchema="queryCostRecord",
+            queryReference=EntityReference(id=query.id.root, type="query"),
+            cost=query_cost_data.cost,
+            count=query_cost_data.count,
+            totalDuration=query_cost_data.totalDuration,
+        )
+
+        return self.client.post(
+            self.get_suffix(QueryCostRecord), data=create_request.model_dump_json()
+        )

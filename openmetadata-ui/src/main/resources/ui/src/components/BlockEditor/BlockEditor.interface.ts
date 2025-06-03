@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Editor } from '@tiptap/react';
 import { SuggestionKeyDownProps } from '@tiptap/suggestion';
+import { EntityType } from '../../enums/entity.enum';
+
+export type MenuType = 'bubble' | 'bar';
 
 export interface SuggestionItem {
   id: string;
@@ -27,4 +31,45 @@ export interface ExtensionRef {
 
 export interface EditorSlotsRef {
   onMouseDown: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  onLinkToggle: () => void;
+}
+
+export interface BlockEditorRef {
+  editor: Editor | null;
+}
+export interface BlockEditorProps {
+  content?: string;
+  editable?: boolean;
+  onChange?: (htmlContent: string) => void;
+  menuType?: MenuType;
+  autoFocus?: boolean;
+  placeholder?: string;
+  showInlineAlert?: boolean;
+}
+
+export interface BlockEditorAttachmentProps {
+  allowImageUpload?: boolean;
+  onImageUpload?: (
+    file: File,
+    entityType?: EntityType,
+    entityFqn?: string
+  ) => Promise<string>;
+}
+
+export interface EditorSlotsProps {
+  editor: Editor | null;
+  menuType: MenuType;
+}
+
+export interface BarMenuProps {
+  editor: Editor;
+  onLinkToggle?: () => void;
+}
+
+export enum FileType {
+  TEXT_HTML = 'text/html',
+  FILE = 'file',
+  IMAGE = 'image',
+  VIDEO = 'video',
+  AUDIO = 'audio',
 }

@@ -10,13 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type EntityName = { name: string; displayName: string };
+import { Rule } from 'antd/lib/form';
+import { Constraint } from '../../../generated/entity/data/table';
 
-export interface EntityNameModalProps {
+export type EntityName = { name: string; displayName?: string; id?: string };
+
+export type EntityNameWithAdditionFields = EntityName & {
+  constraint: Constraint;
+};
+
+export interface EntityNameModalProps<
+  T extends { name: string; displayName?: string }
+> {
   visible: boolean;
   allowRename?: boolean;
   onCancel: () => void;
-  onSave: (obj: EntityName) => void | Promise<void>;
-  entity: Partial<EntityName>;
+  onSave: (obj: T) => void | Promise<void>;
+  entity: T;
   title: string;
+  nameValidationRules?: Rule[];
+  additionalFields?: React.ReactNode;
 }

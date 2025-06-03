@@ -18,9 +18,10 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../constants/CustomProperty.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
+  Config,
   CustomProperty,
-  EnumConfig,
 } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -28,11 +29,14 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import Banner from '../../../common/Banner/Banner';
+import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface FormData {
   description: string;
   customPropertyConfig: string[];
   multiSelect?: boolean;
+  displayName?: string;
 }
 
 interface EditCustomPropertyModalProps {
@@ -72,6 +76,17 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const formFields: FieldProp[] = [
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'description',
       required: true,
       label: t('label.description'),
@@ -95,11 +110,11 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
-        const enumConfig = customProperty.customPropertyConfig
-          ?.config as EnumConfig;
-        const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
+        const updatedValues = uniq([...value]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -150,25 +165,29 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     props: {
       'data-testid': 'multiSelect',
     },
+    formItemProps: {
+      style: { marginBottom: '0px' },
+    },
     id: 'root/multiSelect',
     formItemLayout: FormItemLayout.HORIZONTAL,
   };
 
   const initialValues = useMemo(() => {
     if (hasEnumConfig) {
-      const enumConfig = customProperty.customPropertyConfig
-        ?.config as EnumConfig;
+      const enumConfig = customProperty.customPropertyConfig?.config as Config;
 
       return {
         description: customProperty.description,
         customPropertyConfig: enumConfig?.values ?? [],
         multiSelect: Boolean(enumConfig?.multiSelect),
+        displayName: customProperty.displayName,
       };
     }
 
     return {
       description: customProperty.description,
       customPropertyConfig: customProperty.customPropertyConfig?.config,
+      displayName: customProperty.displayName,
     };
   }, [customProperty, hasEnumConfig]);
 
@@ -205,7 +224,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
           })}
         </Typography.Text>
       }
-      width={750}
+      width={800}
       onCancel={onCancel}>
       <Form
         form={form}
@@ -213,14 +232,24 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         initialValues={initialValues}
         layout="vertical"
         onFinish={handleSubmit}>
-        {generateFormFields(formFields)}
+        <EntityAttachmentProvider
+          entityFqn={customProperty?.name}
+          entityType={EntityType.TYPE}>
+          {generateFormFields(formFields)}
+        </EntityAttachmentProvider>
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (
               <>
-                {generateFormFields([enumConfigField])}
-                {note}
-                {generateFormFields([multiSelectField])}
+                {generateFormFields([enumConfigField, multiSelectField])}
+                {isSaving && (
+                  <Banner
+                    className="border-radius"
+                    isLoading={isSaving}
+                    message={t('message.enum-property-update-message')}
+                    type="success"
+                  />
+                )}
               </>
             )}
 

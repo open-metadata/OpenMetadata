@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/workflowInstance.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowInstance",
+  "description": "Defines a workflow instance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.workflows.WorkflowInstance",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "workflowStatus": {
+      "type": "string",
+      "enum": [
+        "RUNNING",
+        "FINISHED",
+        "FAILURE",
+        "EXCEPTION"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow instance state.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowDefinitionId": {
+      "description": "Workflow Definition Id.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "startedAt": {
+      "description": "Timestamp on which the workflow instance started.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endedAt": {
+      "description": "Timestamp on which the workflow instance ended.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "variables": {
+      "type": "object",
+      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+    },
+    "timestamp": {
+      "description": "Timestamp on which the workflow instance state was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "$ref": "#/definitions/workflowStatus"
+    },
+    "exception": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

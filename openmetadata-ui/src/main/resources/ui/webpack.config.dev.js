@@ -12,17 +12,14 @@
  */
 
 const path = require('path');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const WebpackBar = require('webpackbar');
-const webpack = require('webpack');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const Dotenv = require('dotenv-webpack');
+const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
-const subPath = process.env.APP_SUB_PATH ?? '';
+const devServerTarget =
+  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
@@ -36,24 +33,15 @@ module.exports = {
     path: outputPath,
     filename: '[name].js',
     chunkFilename: '[name].js',
-    publicPath: `${subPath}/`,
+    // Clean the output directory before emit.
+    clean: true,
     // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: `/`,
   },
 
   // Loaders
   module: {
     rules: [
-      // .js and .jsx files to be handled by babel-loader
-      {
-        test: /\.(js|jsx)$/,
-        include: path.resolve(__dirname, 'src'),
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env', '@babel/preset-react'],
-          },
-        },
-      },
       // .mjs files to be handled
       {
         test: /\.m?js/,
@@ -73,51 +61,20 @@ module.exports = {
         },
         include: path.resolve(__dirname, 'src'), // Just the source code
       },
-      // .css and .scss files to be handled by sass-loader
-      // include scss rule and sass-loader if injecting scss/sass file
+      // .css files to be handled by style-loader & css-loader
       {
-        test: /\.(css|s[ac]ss)$/,
-        use: [
-          'style-loader',
-          'css-loader',
-          {
-            loader: 'sass-loader',
-            options: {
-              // Prefer `dart-sass`
-              implementation: require.resolve('sass'),
-            },
-          },
-          'postcss-loader',
-        ],
-        include: [
-          path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
-          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
-          path.resolve(__dirname, 'node_modules/reactflow'),
-          path.resolve(__dirname, 'node_modules/codemirror'),
-          path.resolve(__dirname, 'node_modules/react-toastify'),
-          path.resolve(__dirname, 'node_modules/quill-emoji'),
-          path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
-          path.resolve(__dirname, 'node_modules/katex'),
-          path.resolve(__dirname, 'node_modules/react-resizable'),
-          path.resolve(__dirname, 'node_modules/react-antd-column-resize'),
-        ],
-        // May need to handle files outside the source code
-        // (from node_modules)
+        test: /\.(css)$/,
+        use: ['style-loader', 'css-loader'],
       },
-      // .less files to be handled by sass-loader
+      // .less files to be handled by less-loader
       {
         test: /\.less$/,
         use: [
-          {
-            loader: 'style-loader',
-          },
-          {
-            loader: 'css-loader', // translates CSS into CommonJS
-          },
+          'style-loader',
+          'css-loader',
           'postcss-loader',
           {
-            loader: 'less-loader', // compiles Less to CSS
+            loader: 'less-loader',
             options: {
               lessOptions: {
                 javascriptEnabled: true,
@@ -129,38 +86,21 @@ module.exports = {
       // .svg files to be handled by @svgr/webpack
       {
         test: /\.svg$/,
-        use: ['@svgr/webpack'],
+        use: ['@svgr/webpack', 'url-loader'],
         include: path.resolve(__dirname, 'src'), // Just the source code
       },
-      // different urls to be handled by url-loader
+      // images files to be handled by file-loader
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
+        test: /\.png$/,
         use: [
           {
-            loader: 'url-loader',
+            loader: 'file-loader',
             options: {
-              limit: 8192,
-              name: `[name].[ext]`,
+              name: '[name].[ext]',
+              outputPath: 'images/',
             },
           },
         ],
-        include: [
-          path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/quill-emoji'),
-        ], // Just the source code
-      },
-      // Font files to be handled by asset-modules, see https://webpack.js.org/guides/asset-modules/
-      {
-        test: /\.(ttf|eot|woff|woff2)$/i,
-        type: 'asset/resource',
-        generator: {
-          filename: 'fonts/[name][ext]',
-        },
-        include: [
-          path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
-          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
-        ], // Just the source code
       },
     ],
   },
@@ -168,23 +108,19 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg'],
+    extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg'],
     fallback: {
       https: require.resolve('https-browserify'),
-      path: require.resolve('path-browserify'),
       fs: false,
       'process/browser': require.resolve('process/browser'),
     },
     alias: {
       process: 'process/browser',
+      Quill: path.resolve(__dirname, 'node_modules/quill'), // Alias for the 'quill' library in node_modules
     },
   },
 
   plugins: [
-    // Clean webpack output directory
-    new CleanWebpackPlugin({
-      verbose: true,
-    }),
     // In development mode, fork TypeScript checking to run in another thread and not block main
     // transpilation
     new ForkTsCheckerWebpackPlugin({
@@ -197,6 +133,7 @@ module.exports = {
       favicon: path.join(__dirname, 'public/favicon.png'),
       template: path.join(__dirname, 'public/index.html'),
       scriptLoading: 'defer',
+      hash: true,
     }),
     // Copy favicon, logo and manifest for index.html
     new CopyWebpackPlugin({
@@ -206,7 +143,27 @@ module.exports = {
           to: outputPath,
         },
         {
+          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
+          to: outputPath,
+        },
+        {
           from: path.join(__dirname, 'public/logo192.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/BronzeCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/SilverCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
         {
@@ -223,20 +180,6 @@ module.exports = {
         },
       ],
     }),
-    // Build progress bar
-    new WebpackBar({
-      name: '@openmetadata [dev]',
-      color: '#54BAC9',
-    }),
-    new MiniCssExtractPlugin({
-      filename: '[name].bundle.css',
-      chunkFilename: '[id].css',
-    }),
-    new webpack.ProvidePlugin({
-      process: 'process/browser',
-      Buffer: ['buffer', 'Buffer'],
-    }),
-    new Dotenv(),
   ],
 
   // webpack-dev-server
@@ -255,17 +198,12 @@ module.exports = {
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
       disableDotRule: true,
-      ...(subPath
-        ? {
-            index: `${subPath}/index.html`,
-          }
-        : {}),
     },
     // Proxy configuration
     proxy: [
       {
         context: '/api/',
-        target: 'http://localhost:8585/',
+        target: devServerTarget,
         changeOrigin: true,
       },
     ],

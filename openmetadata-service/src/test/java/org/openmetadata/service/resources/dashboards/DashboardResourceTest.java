@@ -13,11 +13,12 @@
 
 package org.openmetadata.service.resources.dashboards;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -197,8 +198,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         dashboard.getOwners(),
         dashboard.getCharts(),
         dashboard.getFollowers(),
-        dashboard.getTags(),
         dashboard.getUsageSummary());
+    assertTrue(dashboard.getTags().isEmpty());
 
     fields = "owners,charts,followers,tags,usageSummary";
     dashboard =

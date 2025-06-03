@@ -66,7 +66,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
@@ -156,8 +156,8 @@ describe('ServiceVersionMainTabContent tests', () => {
 
     const entityTable = screen.getByTestId('service-children-table');
     const entityName = screen.getByText('ecommerce_db');
-    const entityOwnerName = screen.getByText('Adam Rodriguez');
-    const entityDescription = screen.getByText('RichTextEditorPreviewer');
+    const entityOwner = screen.getByText('ProfilePicture');
+    const entityDescription = screen.getByTestId('viewer-container');
 
     expect(entityTable).toBeInTheDocument();
     expect(screen.getByText('DescriptionV1')).toBeInTheDocument();
@@ -165,10 +165,10 @@ describe('ServiceVersionMainTabContent tests', () => {
     expect(screen.queryByText('NextPrevious')).toBeNull();
     expect(screen.getAllByText('TagsContainerV2')).toHaveLength(2);
     expect(entityName).toBeInTheDocument();
-    expect(entityOwnerName).toBeInTheDocument();
+    expect(entityOwner).toBeInTheDocument();
     expect(entityDescription).toBeInTheDocument();
     expect(entityTable.contains(entityName)).toBe(true);
-    expect(entityTable.contains(entityOwnerName)).toBe(true);
+    expect(entityTable.contains(entityOwner)).toBe(true);
     expect(entityTable.contains(entityDescription)).toBe(true);
   });
 

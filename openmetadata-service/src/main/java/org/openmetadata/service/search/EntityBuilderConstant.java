@@ -9,6 +9,9 @@ public class EntityBuilderConstant {
   public static final String ES_MESSAGE_SCHEMA_FIELD = "messageSchema.schemaFields.name";
   public static final String ES_MESSAGE_SCHEMA_FIELD_KEYWORD =
       "messageSchema.schemaFields.name.keyword";
+  public static final String API_RESPONSE_SCHEMA_FIELD = "responseSchema.schemaFields.name";
+  public static final String API_RESPONSE_SCHEMA_FIELD_KEYWORD =
+      "responseSchema.schemaFields.name.keyword";
   public static final String ES_TAG_FQN_FIELD = "tags.tagFQN";
 
   public static final String COLUMNS_NAME_KEYWORD = "columns.name.keyword";
@@ -23,8 +26,9 @@ public class EntityBuilderConstant {
   public static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
   public static final String PRE_TAG = "<span class=\"text-highlighter\">";
   public static final String POST_TAG = "</span>";
-  public static final Integer MAX_AGGREGATE_SIZE = 50;
+  public static final Integer MAX_AGGREGATE_SIZE = 10000;
   public static final Integer MAX_RESULT_HITS = 10000;
+  public static final Integer MAX_ANALYZED_OFFSET = 1000;
   public static final String QUERY = "query";
   public static final String QUERY_NGRAM = "query.ngram";
 

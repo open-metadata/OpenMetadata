@@ -36,7 +36,6 @@ public class QueryIndex implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
     Map<String, Object> commonAttributes = getCommonAttributesMap(query, Entity.QUERY);
     doc.putAll(commonAttributes);
-    doc.put("displayName", query.getDisplayName() != null ? query.getDisplayName() : "");
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     return doc;

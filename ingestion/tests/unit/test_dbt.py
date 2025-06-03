@@ -8,7 +8,11 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from collate_dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+)
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -51,7 +55,9 @@ mock_dbt_config = {
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
+                    "dbtSourcesFilePath": "sample/dbt_files/sources.json",
                 },
+                "dbtUpdateOwners": True,
             }
         },
     },
@@ -78,6 +84,8 @@ MOCK_SAMPLE_MANIFEST_V4_V5_V6 = "resources/datasets/manifest_v4_v5_v6.json"
 MOCK_SAMPLE_MANIFEST_V7 = "resources/datasets/manifest_v7.json"
 
 MOCK_SAMPLE_MANIFEST_V8 = "resources/datasets/manifest_v8.json"
+
+MOCK_SAMPLE_MANIFEST_VERSIONLESS = "resources/datasets/manifest_versionless.json"
 
 MOCK_SAMPLE_MANIFEST_NULL_DB = "resources/datasets/manifest_null_db.json"
 
@@ -127,6 +135,14 @@ EXPECTED_DATA_MODELS = [
             ),
             TagLabel(
                 tagFQN="dbtTags.model_tag_two",
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
                 description=None,
                 source="Classification",
                 labelType="Automated",
@@ -183,7 +199,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
                 )
             ]
         ),
-        tags=None,
+        tags=[],
         columns=[
             Column(
                 name="customer_id",
@@ -195,6 +211,92 @@ EXPECTED_DATA_MODEL_NULL_DB = [
         ],
         generatedAt=None,
     ),
+]
+
+EXPECTED_DATA_MODEL_VERSIONLESS = [
+    DataModel(
+        modelType="DBT",
+        resourceType="model",
+        description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
+        path="models/customers.sql",
+        rawSql="sample customers raw code",
+        sql="sample customers compile code",
+        upstream=[
+            "dbt_test.dev.dbt_jaffle.customers",
+            "dbt_test.dev.dbt_jaffle.customers",
+            "dbt_test.dev.dbt_jaffle.customers",
+        ],
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    fullyQualifiedName="aaron_johnson0",
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538"
+                    ),
+                )
+            ]
+        ),
+        tags=[
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+            ),
+        ],
+        columns=[
+            Column(
+                name="customer_id",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="This is a unique identifier for a customer",
+            ),
+            Column(
+                name="first_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's first name. PII.",
+            ),
+            Column(
+                name="last_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's last name. PII.",
+            ),
+            Column(
+                name="first_order",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Date (UTC) of a customer's first order",
+            ),
+            Column(
+                name="most_recent_order",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Date (UTC) of a customer's most recent order",
+            ),
+            Column(
+                name="number_of_orders",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Count of the number of orders a customer has placed",
+            ),
+            Column(
+                name="total_order_amount",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Total value (AUD) of a customer's orders",
+            ),
+        ],
+    )
 ]
 
 MOCK_OWNER = EntityReferenceList(
@@ -338,11 +440,45 @@ class DbtUnitTest(TestCase):
                 state=State.Suggested.value,
                 source=TagSource.Classification.value,
             ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
         ]
         self.execute_test(
             MOCK_SAMPLE_MANIFEST_V8,
             expected_records=2,
             expected_data_models=EXPECTED_DATA_MODELS,
+        )
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_manifest_versionless(
+        self, get_tag_label, es_search_from_fqn, get_dbt_owner
+    ):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_VERSIONLESS,
+            expected_records=9,
+            expected_data_models=EXPECTED_DATA_MODEL_VERSIONLESS,
         )
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
@@ -470,6 +606,16 @@ class DbtUnitTest(TestCase):
         result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
+        # Test the raw queries with versionless manifest
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        )
+        result = get_dbt_raw_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
     @patch(
         "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
     )
@@ -502,6 +648,7 @@ class DbtUnitTest(TestCase):
         mock_file_path = Path(__file__).parent / mock_manifest
         with open(mock_file_path) as file:
             mock_data: dict = json.load(file)
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=mock_data)
         dbt_files = DbtFiles(dbt_manifest=mock_data)
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
@@ -533,12 +680,56 @@ class DbtUnitTest(TestCase):
                     data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
+                self.check_process_dbt_owners(data_model_link.right)
                 data_model_list.append(data_model_link.right.datamodel)
 
         for _, (expected, original) in enumerate(
             zip(expected_data_models, data_model_list)
         ):
             self.assertEqual(expected, original)
+
+    def check_process_dbt_owners(self, data_model_link):
+        process_dbt_owners = self.dbt_source_obj.process_dbt_owners(data_model_link)
+        for entity in process_dbt_owners:
+            entity_owner = entity.right.new_entity.owners
+            self.assertEqual(entity_owner, MOCK_OWNER)
+
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_upstream_nodes_for_lineage(self, es_search_from_fqn):
+        expected_upstream_nodes = [
+            "model.jaffle_shop.stg_customers",
+            "model.jaffle_shop.stg_orders",
+            "model.jaffle_shop.stg_payments",
+        ]
+        es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
+
+        # Test the raw queries with V4 V5 V6 manifest
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_V4_V5_V6
+        )
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        ).depends_on.nodes
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
+
+        # Test the raw queries with V7 manifest
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_V7
+        )
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        ).depends_on.nodes
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
+
+        # Test the raw queries with VERSIONLESS manifest
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS
+        )
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        ).depends_on.nodes
+
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
 
     @patch("metadata.utils.tag_utils.get_tag_label")
     def test_dbt_glossary_tiers(self, get_tag_label):

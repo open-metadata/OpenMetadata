@@ -1,9 +1,9 @@
 package org.openmetadata.service.security.auth;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
@@ -12,6 +12,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,6 +32,7 @@ import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
 import freemarker.template.TemplateException;
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
@@ -42,7 +45,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
@@ -82,9 +84,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private RoleRepository roleRepository;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private LoginAttemptCache loginAttemptCache;
   private LdapConfiguration ldapConfiguration;
   private LDAPConnectionPool ldapLookupConnectionPool;
+  private boolean isSelfSignUpEnabled;
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
@@ -99,7 +101,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache();
+    this.isSelfSignUpEnabled = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -138,10 +140,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    checkIfLoginBlocked(loginRequest.getEmail());
-    User storedUser = lookUserInProvider(loginRequest.getEmail());
-    validatePassword(storedUser.getEmail(), storedUser, loginRequest.getPassword());
-    User omUser = checkAndCreateUser(storedUser.getEmail(), storedUser.getName());
+    String email = loginRequest.getEmail();
+    checkIfLoginBlocked(email);
+    User omUser = lookUserInProvider(email, loginRequest.getPassword());
+    Entity.getUserRepository().updateUserLastLoginTime(omUser, System.currentTimeMillis());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
@@ -149,39 +151,44 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * Check if the user exists in database by userName, if user exist, reassign roles for user according to it's ldap
    * group else, create a new user and assign roles according to it's ldap group
    *
-   * @param email email address of user
-   * @param name userName of user
+   * @param userDn userDn from LDAP
+   * @param email Email of the User
    * @return user info
    * @author Eric Wen@2023-07-16 17:06:43
    */
-  private User checkAndCreateUser(String email, String name) throws IOException {
+  private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
     // Check if the user exists in OM Database
     try {
       User omUser =
-          userRepository.getByName(null, name, userRepository.getFields("id,name,email,roles"));
-      getRoleForLdap(omUser, Boolean.TRUE);
+          userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
+      getRoleForLdap(userDn, omUser, Boolean.TRUE);
       return omUser;
     } catch (EntityNotFoundException ex) {
-      // User does not exist
-      return userRepository.create(null, getUserForLdap(email, name));
+      if (isSelfSignUpEnabled) {
+        return userRepository.create(null, getUserForLdap(userDn, email, userName));
+      } else {
+        throw new CustomExceptionMessage(
+            INTERNAL_SERVER_ERROR, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
+      }
     }
   }
 
   @Override
   public void checkIfLoginBlocked(String email) {
-    if (loginAttemptCache.isLoginBlocked(email)) {
+    if (LoginAttemptCache.getInstance().isLoginBlocked(email)) {
       throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
     }
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User storedUser)
+  public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(providedIdentity);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
+    LoginAttemptCache.getInstance().recordFailedLogin(email);
+    int failedLoginAttempt = LoginAttemptCache.getInstance().getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
-          storedUser,
+          userName,
+          email,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is tried accessing your account. Login is Blocked for %s seconds.",
@@ -190,12 +197,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  public void validatePassword(String userDn, String reqPassword, User dummy)
       throws TemplateException, IOException {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
-      bindingResult = ldapLookupConnectionPool.bind(storedUser.getName(), reqPassword);
+      bindingResult = ldapLookupConnectionPool.bind(userDn, reqPassword);
       if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
         return;
       }
@@ -203,7 +210,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       if (bindingResult != null
           && Objects.equals(
               bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(providedIdentity, storedUser);
+        recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
         throw new CustomExceptionMessage(
             UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
@@ -218,7 +225,20 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User lookUserInProvider(String email) {
+  public User lookUserInProvider(String email, String pwd) throws TemplateException, IOException {
+    String userDN = getUserDnFromLdap(email);
+
+    if (!nullOrEmpty(userDN)) {
+      User dummy = getUserForLdap(email);
+      validatePassword(userDN, pwd, dummy);
+      return checkAndCreateUser(userDN, email, dummy.getName());
+    }
+
+    throw new CustomExceptionMessage(
+        INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+  }
+
+  private String getUserDnFromLdap(String email) {
     try {
       Filter emailFilter =
           Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
@@ -237,8 +257,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         Attribute emailAttr =
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
-        if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN.toLowerCase());
+        if (!CommonUtil.nullOrEmpty(userDN)
+            && emailAttr != null
+            && email.equalsIgnoreCase(emailAttr.getValue())) {
+          return userDN;
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
@@ -247,7 +269,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
       } else {
         throw new CustomExceptionMessage(
-            INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, INVALID_EMAIL_PASSWORD);
+            INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
     } catch (LDAPException ex) {
       throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, "LDAP_ERROR", ex.getMessage());
@@ -262,14 +284,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         .withAuthenticationMechanism(null);
   }
 
-  private User getUserForLdap(String email, String userName) {
+  private User getUserForLdap(String ldapUserDn, String email, String userName) {
     User user =
         UserUtil.getUser(
                 userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
             .withIsEmailVerified(false)
             .withAuthenticationMechanism(null);
     try {
-      getRoleForLdap(user, false);
+      getRoleForLdap(ldapUserDn, user, false);
     } catch (JsonProcessingException e) {
       LOG.error(
           "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
@@ -286,7 +308,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * @param reAssign flag to decide whether to reassign roles
    * @author Eric Wen@2023-07-16 17:23:57
    */
-  private void getRoleForLdap(User user, Boolean reAssign) throws JsonProcessingException {
+  private void getRoleForLdap(String userDn, User user, Boolean reAssign)
+      throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =
@@ -294,8 +317,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
       Filter groupMemberAttr =
-          Filter.createEqualityFilter(
-              ldapConfiguration.getGroupMemberAttributeName(), user.getName());
+          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(

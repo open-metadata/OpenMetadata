@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateDomainEnfor
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithm;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -32,16 +33,23 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.Provider;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -68,9 +76,11 @@ public class JwtFilter implements ContainerRequestFilter {
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
+  private Set<String> allowedDomains;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
+  private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
       Arrays.asList(
@@ -88,9 +98,9 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
-          "v1/users/refresh");
+          "v1/users/refresh",
+          "v1/collate/apps/support/login");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -121,8 +131,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.allowedDomains = authorizerConfiguration.getAllowedDomains();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
+    this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
   }
 
   @VisibleForTesting
@@ -159,6 +171,7 @@ public class JwtFilter implements ContainerRequestFilter {
     checkValidationsForToken(claims, tokenFromHeader, userName);
 
     // Setting Security Context
+    // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
@@ -182,6 +195,7 @@ public class JwtFilter implements ContainerRequestFilter {
         jwtPrincipalClaims,
         claims,
         principalDomain,
+        allowedDomains,
         enforcePrincipalDomain);
 
     // Validate Bot token matches what was created in OM
@@ -212,23 +226,25 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      throw new AuthenticationException("Invalid token", e);
+      throw AuthenticationException.getInvalidTokenException("Unable to decode the token.");
     }
 
     // Check if expired
     // If expiresAt is set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      throw new AuthenticationException("Expired token!");
+      throw AuthenticationException.getExpiredTokenException();
     }
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+    Algorithm algorithm =
+        getAlgorithm(tokenValidationAlgorithm, (RSAPublicKey) jwk.getPublicKey(), null);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthenticationException("Invalid token", runtimeException);
+      throw AuthenticationException.getInvalidTokenException(
+          "Token verification failed. Public key mismatch.", runtimeException);
     }
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -266,7 +282,8 @@ public class JwtFilter implements ContainerRequestFilter {
     if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
-    throw AuthenticationException.getInvalidTokenException();
+    throw AuthenticationException.getInvalidTokenException(
+        "The given token does not match the current bot's token!");
   }
 
   private void validatePersonalAccessToken(
@@ -282,7 +299,7 @@ public class JwtFilter implements ContainerRequestFilter {
       if (userTokens != null && userTokens.contains(tokenFromHeader)) {
         return;
       }
-      throw AuthenticationException.getInvalidTokenException();
+      throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");
     }
   }
 
@@ -292,8 +309,21 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw new AuthenticationException("Expired token!");
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
+  }
+
+  public CatalogSecurityContext getCatalogSecurityContext(String token) {
+    Map<String, Claim> claims = validateJwtAndGetClaims(token);
+    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String email =
+        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    return new CatalogSecurityContext(
+        catalogPrincipal,
+        "https",
+        SecurityContext.DIGEST_AUTH,
+        getUserRolesFromClaims(claims, isBot(claims)));
   }
 }

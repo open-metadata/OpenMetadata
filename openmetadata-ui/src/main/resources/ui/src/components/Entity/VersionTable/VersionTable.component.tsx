@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,8 +32,9 @@ import {
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../common/Table/Table';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
@@ -119,10 +120,10 @@ function VersionTable<T extends Column | SearchIndexField>({
           <div className="d-inline-flex">
             {deletedConstraintIcon}
             {addedConstraintIcon}
-            <RichTextEditorPreviewer markdown={name} />
+            <RichTextEditorPreviewerV1 markdown={name} />
           </div>
           {!isEmpty(record.displayName) ? (
-            <RichTextEditorPreviewer markdown={record.displayName ?? ''} />
+            <RichTextEditorPreviewerV1 markdown={record.displayName ?? ''} />
           ) : null}
         </div>
       );
@@ -158,13 +159,13 @@ function VersionTable<T extends Column | SearchIndexField>({
           return dataTypeDisplay ? (
             <Tooltip
               title={
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
               }>
               <div className="cursor-pointer">
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                 />
               </div>
@@ -183,7 +184,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         render: (description: T['description']) =>
           description ? (
             <>
-              <RichTextEditorPreviewer markdown={description} />
+              <RichTextEditorPreviewerNew markdown={description} />
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins ?? [],
@@ -229,6 +230,16 @@ function VersionTable<T extends Column | SearchIndexField>({
     setSearchText(searchValue);
   };
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      typingInterval: 500,
+      onSearch: handleSearchAction,
+    }),
+    [searchText, handleSearchAction]
+  );
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(columns);
@@ -239,36 +250,25 @@ function VersionTable<T extends Column | SearchIndexField>({
   }, [searchText, columns]);
 
   return (
-    <Row>
-      <Col>
-        <Searchbar
-          placeholder={`${t('message.find-in-table')}...`}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
-      </Col>
-      <Col>
-        <Table
-          bordered
-          columns={versionTableColumns}
-          data-testid="entity-table"
-          dataSource={data}
-          expandable={{
-            ...getTableExpandableConfig<T>(),
-            defaultExpandAllRows: true,
-          }}
-          key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="name"
-          scroll={TABLE_SCROLL_VALUE}
-          size="small"
-        />
-      </Col>
-    </Row>
+    <Table
+      columns={versionTableColumns}
+      containerClassName="m-b-sm"
+      data-testid="entity-table"
+      dataSource={data}
+      expandable={{
+        ...getTableExpandableConfig<T>(),
+        defaultExpandAllRows: true,
+      }}
+      key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
+      locale={{
+        emptyText: <FilterTablePlaceHolder />,
+      }}
+      pagination={false}
+      rowKey="name"
+      scroll={TABLE_SCROLL_VALUE}
+      searchProps={searchProps}
+      size="small"
+    />
   );
 }
 

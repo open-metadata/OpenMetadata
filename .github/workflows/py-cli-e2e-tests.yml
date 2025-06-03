@@ -20,12 +20,12 @@ on:
         required: True
         default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
-        default: "false"
+        default: "default"
 
 env:
-  DEBUG: ${{ inputs.debug || 'false' }}
+  DEBUG: "${{ (inputs.debug == 'default' && github.ref == 'refs/heads/main' && 'false') || (inputs.debug == 'default' && github.ref != 'refs/heads/main' && 'true') || inputs.debug  || 'false' }}"
 
 permissions:
   id-token: write
@@ -38,7 +38,7 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "null"
+      - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, GITHUB_REF=${{ github.ref }}, DEBUG=$DEBUG"
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
@@ -61,11 +61,11 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
@@ -74,7 +74,7 @@ jobs:
     - name: Setup Openmetadata Test Environment
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        python-version: 3.9
+        python-version: '3.10'
 
 
     - name: Run Python Tests & record coverage
@@ -164,21 +164,21 @@ jobs:
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
       if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tests-${{ matrix.e2e-test }}
         path: ingestion/junit/test-results-*.xml
@@ -188,15 +188,15 @@ jobs:
         cd ./docker/development
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
-
+    
     - name: Slack on Failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
-          }
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"         
+          }          
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
@@ -215,12 +215,12 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
 
       - name: Install Ubuntu dependencies
         run: |

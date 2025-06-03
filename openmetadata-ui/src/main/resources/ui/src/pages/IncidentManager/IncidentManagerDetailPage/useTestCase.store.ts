@@ -11,29 +11,53 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { EntityLineageResponse } from '../../../components/Lineage/Lineage.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
 
 export interface UseTestCaseStoreInterface {
   testCase: TestCase | undefined;
   isLoading: boolean;
+  isPermissionLoading: boolean;
   showAILearningBanner: boolean;
+  testCasePermission: OperationPermission | undefined;
+  setTestCasePermission: (
+    testCasePermission: OperationPermission | undefined
+  ) => void;
+  setIsPermissionLoading: (isPermissionLoading: boolean) => void;
   setTestCase: (testCase: TestCase) => void;
   setIsLoading: (isLoading: boolean) => void;
   setShowAILearningBanner: (showBanner: boolean) => void;
   reset: () => void;
+  dqLineageData: EntityLineageResponse | undefined;
+  setDqLineageData: (data: EntityLineageResponse | undefined) => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
+  dqLineageData: undefined,
   isLoading: true,
+  isPermissionLoading: true,
   showAILearningBanner: false,
+  testCasePermission: undefined,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
+  },
+  setTestCasePermission: (
+    testCasePermission: OperationPermission | undefined
+  ) => {
+    set({ testCasePermission });
+  },
+  setIsPermissionLoading: (isPermissionLoading: boolean) => {
+    set({ isPermissionLoading });
   },
   setIsLoading: (isLoading: boolean) => {
     set({ isLoading });
   },
   setShowAILearningBanner: (showAILearningBanner: boolean) => {
     set({ showAILearningBanner });
+  },
+  setDqLineageData: (data: EntityLineageResponse | undefined) => {
+    set({ dqLineageData: data });
   },
   reset: () => {
     set({ testCase: undefined, isLoading: true, showAILearningBanner: false });

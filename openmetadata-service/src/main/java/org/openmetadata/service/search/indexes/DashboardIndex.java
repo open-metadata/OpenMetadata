@@ -48,17 +48,13 @@ public class DashboardIndex implements SearchIndex {
     }
     Map<String, Object> commonAttributes = getCommonAttributesMap(dashboard, Entity.DASHBOARD);
     doc.putAll(commonAttributes);
-
-    doc.put(
-        "displayName",
-        dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("chart_suggest", chartSuggest);
     doc.put("data_model_suggest", dataModelSuggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("serviceType", dashboard.getServiceType());
-    doc.put("lineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
     doc.put("service", getEntityWithDisplayName(dashboard.getService()));
     return doc;
   }

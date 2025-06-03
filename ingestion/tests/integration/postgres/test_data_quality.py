@@ -1,3 +1,4 @@
+# Test cases for data quality workflow
 import sys
 from dataclasses import dataclass
 from typing import List
@@ -8,6 +9,7 @@ from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_ob
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    ServiceConnections,
     TestSuiteConfigType,
     TestSuitePipeline,
 )
@@ -19,7 +21,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.generated.schema.tests.basic import TestCaseStatus
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
@@ -32,7 +38,7 @@ if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def run_data_quality_workflow(
     run_workflow,
     ingestion_config,
@@ -44,15 +50,20 @@ def run_data_quality_workflow(
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
+            type="postgres",
             serviceName="MyTestSuite",
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
                     entityFullyQualifiedName=f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+                    serviceConnections=[
+                        ServiceConnections(
+                            serviceName=db_service.name.root,
+                            serviceConnection=db_service.connection,
+                        )
+                    ],
                 )
             ),
-            serviceConnection=db_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",
@@ -66,6 +77,7 @@ def run_data_quality_workflow(
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"}
                             ],
+                            "computePassedFailedRowCount": True,
                         },
                         {
                             "name": "first_name_includes_tom_and_jerry",
@@ -73,7 +85,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": ""},
+                                {"name": "matchEnum", "value": "false"},
                             ],
                         },
                         {
@@ -82,7 +94,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": "True"},
+                                {"name": "matchEnum", "value": "true"},
                             ],
                         },
                         {
@@ -90,6 +102,104 @@ def run_data_quality_workflow(
                             "testDefinitionName": "columnValuesToBeBetween",
                             "columnName": "customer_id",
                             "parameterValues": [],
+                        },
+                        {
+                            "name": "column_values_not_match_regex",
+                            "testDefinitionName": "columnValuesToNotMatchRegex",
+                            "columnName": "email",
+                            "parameterValues": [
+                                {"name": "forbiddenRegex", "value": ".*@example\\.com$"}
+                            ],
+                        },
+                        {
+                            "name": "table_column_count_between",
+                            "testDefinitionName": "tableColumnCountToBeBetween",
+                            "parameterValues": [
+                                {"name": "minColValue", "value": "8"},
+                                {"name": "maxColValue", "value": "12"},
+                            ],
+                        },
+                        {
+                            "name": "table_column_count_equal",
+                            "testDefinitionName": "tableColumnCountToEqual",
+                            "parameterValues": [{"name": "columnCount", "value": "11"}],
+                        },
+                        {
+                            "name": "table_column_name_exists",
+                            "testDefinitionName": "tableColumnNameToExist",
+                            "parameterValues": [
+                                {"name": "columnName", "value": "customer_id"}
+                            ],
+                        },
+                        {
+                            "name": "table_column_names_match_set",
+                            "testDefinitionName": "tableColumnToMatchSet",
+                            "parameterValues": [
+                                {
+                                    "name": "columnNames",
+                                    "value": "customer_id, store_id, first_name, last_name, email, address_id, activebool, create_date, last_update, active, json_field",
+                                },
+                                {"name": "ordered", "value": "false"},
+                            ],
+                        },
+                        {
+                            "name": "custom_sql_query_count",
+                            "testDefinitionName": "tableCustomSQLQuery",
+                            "parameterValues": [
+                                {
+                                    "name": "sqlExpression",
+                                    "value": "SELECT CASE WHEN COUNT(*) > 0 THEN 0 ELSE 1 END FROM customer WHERE active = 1",
+                                },
+                                {"name": "strategy", "value": "COUNT"},
+                                {"name": "threshold", "value": "0"},
+                            ],
+                        },
+                        {
+                            "name": "custom_sql_query_rows",
+                            "testDefinitionName": "tableCustomSQLQuery",
+                            "parameterValues": [
+                                {
+                                    "name": "sqlExpression",
+                                    "value": "SELECT * FROM customer WHERE active = 1",
+                                },
+                                {"name": "strategy", "value": "ROWS"},
+                                {"name": "threshold", "value": "10"},
+                            ],
+                        },
+                        {
+                            "name": "table_row_count_between",
+                            "testDefinitionName": "tableRowCountToBeBetween",
+                            "parameterValues": [
+                                {"name": "minValue", "value": "100"},
+                                {"name": "maxValue", "value": "1000"},
+                            ],
+                        },
+                        {
+                            "name": "table_row_count_equal",
+                            "testDefinitionName": "tableRowCountToEqual",
+                            "parameterValues": [{"name": "value", "value": "599"}],
+                        },
+                        {
+                            "name": "table_row_inserted_count_between_fail",
+                            "testDefinitionName": "tableRowInsertedCountToBeBetween",
+                            "parameterValues": [
+                                {"name": "min", "value": "10"},
+                                {"name": "max", "value": "50"},
+                                {"name": "columnName", "value": "create_date"},
+                                {"name": "rangeType", "value": "DAY"},
+                                {"name": "rangeInterval", "value": "1"},
+                            ],
+                        },
+                        {
+                            "name": "table_row_inserted_count_between_success",
+                            "testDefinitionName": "tableRowInsertedCountToBeBetween",
+                            "parameterValues": [
+                                {"name": "min", "value": "590"},
+                                {"name": "max", "value": "600"},
+                                {"name": "columnName", "value": "last_update"},
+                                {"name": "rangeType", "value": "YEAR"},
+                                {"name": "rangeInterval", "value": "50"},
+                            ],
                         },
                     ],
                 }
@@ -112,23 +222,116 @@ def run_data_quality_workflow(
 @pytest.mark.parametrize(
     "test_case_name,expected_status",
     [
-        ("first_name_includes_tom_and_jerry_wo_enum", TestCaseStatus.Success),
-        ("first_name_includes_tom_and_jerry", TestCaseStatus.Success),
-        ("first_name_is_tom_or_jerry", TestCaseStatus.Failed),
-        ("id_no_bounds", TestCaseStatus.Success),
+        (
+            "first_name_includes_tom_and_jerry_wo_enum",
+            TestCaseResult(
+                timestamp=0,
+                testCaseStatus=TestCaseStatus.Success,
+                passedRows=2,
+                failedRows=597,
+            ),
+        ),
+        (
+            "first_name_includes_tom_and_jerry",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "first_name_is_tom_or_jerry",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Failed),
+        ),
+        (
+            "id_no_bounds",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "column_values_not_match_regex",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "table_column_count_between",
+            TestCaseResult(
+                timestamp=0,
+                testCaseStatus=TestCaseStatus.Success,
+                testResultValue=[TestResultValue(name="columnCount", value="11")],
+            ),
+        ),
+        (
+            "table_column_count_equal",
+            TestCaseResult(
+                timestamp=0,
+                testCaseStatus=TestCaseStatus.Success,
+                testResultValue=[TestResultValue(name="columnCount", value="11")],
+            ),
+        ),
+        (
+            "table_column_name_exists",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "table_column_names_match_set",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "custom_sql_query_count",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "custom_sql_query_rows",
+            TestCaseResult(
+                timestamp=0,
+                testCaseStatus=TestCaseStatus.Failed,
+                testResultValues=[{"name": "resultRowCount", "value": "599"}],
+            ),
+        ),
+        (
+            "table_row_count_between",
+            TestCaseResult(
+                timestamp=0,
+                testCaseStatus=TestCaseStatus.Success,
+                testResultValue=[TestResultValue(name="rowCount", value="599")],
+            ),
+        ),
+        (
+            "table_row_count_equal",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
+        (
+            "table_row_inserted_count_between_fail",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Failed),
+        ),
+        (
+            "table_row_inserted_count_between_success",
+            TestCaseResult(timestamp=0, testCaseStatus=TestCaseStatus.Success),
+        ),
     ],
+    ids=lambda *x: x[0],
 )
 def test_data_quality(
-    run_data_quality_workflow, metadata: OpenMetadata, test_case_name, expected_status
+    run_data_quality_workflow,
+    metadata: OpenMetadata,
+    test_case_name,
+    expected_status,
+    db_service,
 ):
     test_cases: List[TestCase] = metadata.list_entities(
         TestCase, fields=["*"], skip_on_failure=True
     ).entities
     test_case: TestCase = next(
-        (t for t in test_cases if t.name.root == test_case_name), None
+        (
+            t
+            for t in test_cases
+            if t.name.root == test_case_name
+            and "dvdrental.public.customer" in t.entityFQN
+        ),
+        None,
     )
     assert test_case is not None
-    assert test_case.testCaseResult.testCaseStatus == expected_status
+    assert_equal_pydantic_objects(
+        expected_status.model_copy(
+            update={"timestamp": test_case.testCaseResult.timestamp}
+        ),
+        test_case.testCaseResult,
+    )
 
 
 @pytest.fixture()
@@ -136,7 +339,7 @@ def get_incompatible_column_type_config(workflow_config, sink_config):
     def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
         return {
             "source": {
-                "type": "TestSuite",
+                "type": "postgres",
                 "serviceName": "MyTestSuite",
                 "sourceConfig": {
                     "config": {

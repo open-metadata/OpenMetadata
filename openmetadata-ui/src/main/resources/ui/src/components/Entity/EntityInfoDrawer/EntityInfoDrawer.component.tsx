@@ -13,40 +13,16 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, get } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { Container } from '../../../generated/entity/data/container';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { SearchIndex } from '../../../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityTags,
-} from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import APIEndpointSummary from '../../Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
-import ContainerSummary from '../../Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
-import DashboardSummary from '../../Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
-import DataModelSummary from '../../Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
-import MlModelSummary from '../../Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
-import PipelineSummary from '../../Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
-import SearchIndexSummary from '../../Explore/EntitySummaryPanel/SearchIndexSummary/SearchIndexSummary.component';
-import StoredProcedureSummary from '../../Explore/EntitySummaryPanel/StoredProcedureSummary/StoredProcedureSummary.component';
-import TableSummary from '../../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
-import TopicSummary from '../../Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
+import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 import './entity-info-drawer.less';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
@@ -70,119 +46,16 @@ const EntityInfoDrawer = ({
     [selectedNode]
   );
 
-  const icon = useMemo(
-    () =>
-      selectedNode?.serviceType ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            selectedNode as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [selectedNode]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(selectedNode, 'serviceType', '');
 
-  const tags = useMemo(
-    () =>
-      getEntityTags(selectedNode.entityType ?? EntityType.TABLE, entityDetail),
-    [entityDetail, selectedNode]
-  );
-
-  const summaryComponent = useMemo(() => {
-    switch (selectedNode.entityType) {
-      case EntityType.TABLE:
-        return (
-          <TableSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Table}
-            tags={tags}
-          />
-        );
-
-      case EntityType.TOPIC:
-        return (
-          <TopicSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Topic}
-            tags={tags}
-          />
-        );
-
-      case EntityType.DASHBOARD:
-        return (
-          <DashboardSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Dashboard}
-            tags={tags}
-          />
-        );
-
-      case EntityType.PIPELINE:
-        return (
-          <PipelineSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Pipeline}
-            tags={tags}
-          />
-        );
-
-      case EntityType.MLMODEL:
-        return (
-          <MlModelSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Mlmodel}
-            tags={tags}
-          />
-        );
-      case EntityType.CONTAINER:
-        return (
-          <ContainerSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as Container}
-            tags={tags}
-          />
-        );
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return (
-          <DataModelSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as DashboardDataModel}
-            tags={tags}
-          />
-        );
-
-      case EntityType.STORED_PROCEDURE:
-        return (
-          <StoredProcedureSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as StoredProcedure}
-            tags={tags}
-          />
-        );
-
-      case EntityType.SEARCH_INDEX:
-        return (
-          <SearchIndexSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as SearchIndex}
-            tags={tags}
-          />
-        );
-
-      case EntityType.API_ENDPOINT:
-        return (
-          <APIEndpointSummary
-            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-            entityDetails={entityDetail as APIEndpoint}
-          />
-        );
-
-      default:
-        return null;
-    }
-  }, [entityDetail, tags, selectedNode]);
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(selectedNode)}
+      />
+    ) : null;
+  }, [selectedNode]);
 
   useEffect(() => {
     const node = cloneDeep(selectedNode);
@@ -221,7 +94,8 @@ const EntityInfoDrawer = ({
 
           <Col span={24}>
             <EntityHeaderTitle
-              className="w-max-300"
+              showOnlyDisplayName
+              className="w-max-350"
               deleted={selectedNode.deleted}
               displayName={selectedNode.displayName}
               icon={icon}
@@ -236,7 +110,11 @@ const EntityInfoDrawer = ({
           </Col>
         </Row>
       }>
-      <div className="m-t-md">{summaryComponent}</div>
+      <DataAssetSummaryPanel
+        isDomainVisible
+        dataAsset={entityDetail}
+        entityType={selectedNode.entityType as EntityType}
+      />
     </Drawer>
   );
 };

@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/edge.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EdgeDefinition",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.EdgeDefinition",
+  "description": "Governance Workflow Edge.",
+  "type": "object",
+  "properties": {
+    "from": {
+      "description": "Element from which the edge will start.",
+      "type": "string"
+    },
+    "to": {
+      "description": "Element on which the edge will end.",
+      "type": "string"
+    },
+    "condition": {
+      "description": "Defines if the edge will follow a path depending on the source node result.",
+      "type": "string"
+    }
+  },
+  "required": ["to", "from"],
+  "additionalProperties": false
+}

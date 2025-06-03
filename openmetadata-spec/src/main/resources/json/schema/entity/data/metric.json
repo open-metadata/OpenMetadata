@@ -1,0 +1,209 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/metrics.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metric",
+  "description": "This schema defines the Metrics entity. `Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Metric",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "metricExpression": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "javaType": "org.openmetadata.schema.type.MetricExpressionLanguage",
+          "description": "This schema defines the type of the language used for Metric Expression Code.",
+          "type": "string",
+          "enum": [
+            "SQL",
+            "Java",
+            "JavaScript",
+            "Python",
+            "External"
+          ],
+          "javaEnums": [
+            {
+              "name": "SQL"
+            },
+            {
+              "name": "Java"
+            },
+            {
+              "name": "JavaScript"
+            },
+            {
+              "name": "Python"
+            },
+            {
+              "name": "External"
+            }
+          ]
+        },
+        "code": {
+          "javaType": "org.openmetadata.schema.type.MetricExpressionCode",
+          "description": "This schema defines the type of the language used for Metric Formula's Code.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metricType": {
+      "javaType": "org.openmetadata.schema.type.MetricType",
+      "description": "This schema defines the type of Metric.",
+      "type": "string",
+      "enum": [
+            "COUNT",
+            "SUM",
+            "AVERAGE",
+            "RATIO",
+            "PERCENTAGE",
+            "MIN",
+            "MAX",
+            "MEDIAN",
+            "MODE",
+            "STANDARD_DEVIATION",
+            "VARIANCE",
+            "OTHER"
+        ]
+    },
+    "unitOfMeasurement": {
+      "javaType": "org.openmetadata.schema.type.MetricUnitOfMeasurement",
+      "description": "This schema defines the type of Metric's unit of measurement.",
+      "type": "string",
+      "enum": [
+            "COUNT",
+            "DOLLARS",
+            "PERCENTAGE",
+            "TIMESTAMP",
+            "SIZE",
+            "REQUESTS",
+            "EVENTS",
+            "TRANSACTIONS"
+        ]
+    },
+    "metricGranularity": {
+      "javaType": "org.openmetadata.schema.type.MetricGranularity",
+      "description": "This schema defines the type of Metric's granularity.",
+      "type": "string",
+      "enum": [
+        "SECOND",
+        "MINUTE",
+        "HOUR",
+        "DAY",
+        "WEEK",
+        "MONTH",
+        "QUARTER",
+        "YEAR"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this Metric instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this Metric instance uniquely.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "A unique name that identifies a metric in the format 'ServiceName.MetricName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this metric.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of metrics instance, what it is, and how to use it.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "metricExpression": {
+      "description": "Expression used to compute the metric.",
+      "$ref": "#/definitions/metricExpression"
+    },
+    "metricType": {
+      "description": "Type of the metric.",
+      "$ref": "#/definitions/metricType"
+    },
+    "unitOfMeasurement": {
+      "description": "Unit of measurement for the metric.",
+      "$ref": "#/definitions/unitOfMeasurement"
+    },
+    "granularity": {
+      "description": "Metric's granularity.",
+      "$ref": "#/definitions/metricGranularity"
+    },
+    "relatedMetrics": {
+      "description": "Related Metrics.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this metrics.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this API Collection.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this chart.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domain": {
+      "description": "Domain the Glossary belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

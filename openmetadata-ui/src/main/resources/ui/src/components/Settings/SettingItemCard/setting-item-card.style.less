@@ -10,45 +10,72 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+@import (reference) url('../../../styles/variables.less');
 
 .setting-card-item {
-  height: 100%;
-  border: 1px solid @grey-bg-with-alpha;
-  border-radius: 10px;
-  transition: 0.3s ease-in-out;
+  border: 1px solid @grey-15;
+  background-color: @white;
+  border-radius: 12px;
+  width: 100%;
   cursor: pointer;
+  height: 100%;
 
   &:hover {
-    border: 1px solid @primary-color;
+    border: 1px solid @blue-20;
   }
 
   .ant-card-body {
-    padding: 60px 20px 40px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 4px;
+  }
 
-    .setting-card-icon-container {
-      .setting-card-icon {
-        svg {
-          font-size: 50px;
-          fill: transparent;
-        }
-      }
+  .setting-card-icon {
+    position: relative;
+    flex: 0 0 auto;
+
+    svg {
+      font-size: 90px;
+      fill: transparent;
     }
 
-    .setting-card-item-content {
-      margin-top: 24px;
-      .setting-card-title {
-        font-size: 18px;
-        font-weight: 600;
-      }
+    .service-beta-tag {
+      position: absolute;
+      top: 10%;
+      right: -15%;
 
-      .setting-card-description {
-        margin-top: 5px;
-        font-size: 14px;
-        font-weight: 400;
-        color: @text-grey-muted;
+      sup {
+        font-size: 10px;
+        height: auto;
+        font-weight: 500;
+        background: @grey-200;
+        color: @text-color-tertiary;
+        box-shadow: none;
+        border: none;
+        border-radius: 16px;
+        padding: 0 8px;
       }
     }
   }
+
+  .setting-card-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .ant-typography-ellipsis {
+      color: @grey-600;
+      margin-bottom: 0;
+    }
+  }
+}
+
+.setting-card-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0;
 }

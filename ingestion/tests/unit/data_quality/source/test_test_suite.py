@@ -5,7 +5,11 @@ import pytest
 
 from metadata.data_quality.source.test_suite import TestSuiteSource
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -72,6 +76,19 @@ def test_source_config(parameters, expected, monkeypatch):
         },
     }
     monkeypatch.setattr(TestSuiteSource, "test_connection", Mock())
+    monkeypatch.setattr(
+        TestSuiteSource,
+        "_get_table_service_connection",
+        Mock(
+            return_value=DatabaseConnection(
+                config=PostgresConnection(
+                    username="foo",
+                    hostPort="localhost:5432",
+                    database="postgres",
+                )
+            )
+        ),
+    )
 
     mock_metadata = Mock(spec=OpenMetadata)
     mock_metadata.get_by_name.return_value = Table(
@@ -98,11 +115,11 @@ def test_source_config(parameters, expected, monkeypatch):
         ),
     ]
     mock_metadata.get_by_id.return_value = TestSuite(
-        name="test_suite", executable=True, id=UUID(int=0)
+        name="test_suite", basic=True, id=UUID(int=0)
     )
 
     source = TestSuiteSource(
-        OpenMetadataWorkflowConfig.parse_obj(workflow_config), mock_metadata
+        OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata
     )
     test_cases = list(source._iter())[0].right.test_cases
     assert [t.name.root for t in test_cases] == expected

@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { get } from 'lodash';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { resetTokenFromBotPage } from '../../utils/bot';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -39,13 +43,21 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Incident Manager', () => {
+test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     // since we need to poll for the pipeline status, we need to increase the timeout
-    test.setTimeout(90000);
+    test.slow();
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
+
+    for (const user of users) {
+      await user.create(apiContext);
+    }
     const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
@@ -64,10 +76,6 @@ test.describe('Incident Manager', () => {
       pipeline,
       apiContext,
     });
-
-    for (const user of users) {
-      await user.create(apiContext);
-    }
 
     await afterAction();
   });
@@ -135,7 +143,7 @@ test.describe('Incident Manager', () => {
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
 
       const searchUserResponse = page.waitForResponse(
-        `/api/v1/search/suggest?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
+        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
       );
 
       await page.getByTestId('select-assignee').locator('div').click();
@@ -165,9 +173,9 @@ test.describe('Incident Manager', () => {
 
         await testCaseResponse;
 
-        const listUserResponse = page.waitForResponse('/api/v1/users?*');
+        await clickOutside(page);
+
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
-        listUserResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -192,8 +200,8 @@ test.describe('Incident Manager', () => {
         );
 
         await expect(
-          page.locator('[data-testid="assignee"] [data-testid="owner-link"]')
-        ).toContainText(assignee2.displayName);
+          page.locator(`[data-testid=${assignee2.displayName}]`)
+        ).toBeVisible();
       }
     );
 
@@ -230,7 +238,7 @@ test.describe('Incident Manager', () => {
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -246,7 +254,7 @@ test.describe('Incident Manager', () => {
       );
 
       const incidentDetailsRes = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
       );
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
       await incidentDetailsRes;
@@ -276,7 +284,7 @@ test.describe('Incident Manager', () => {
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -372,7 +380,7 @@ test.describe('Incident Manager', () => {
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -387,5 +395,164 @@ test.describe('Incident Manager', () => {
         'Assigned'
       );
     });
+  });
+
+  test('Validate Incident Tab in Entity details page', async ({ page }) => {
+    const testCases = table1.testCasesResponseData;
+    await visitProfilerTab(page, table1);
+
+    const incidentListResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+    );
+
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Incidents')
+      .click();
+    await incidentListResponse;
+
+    for (const testCase of testCases) {
+      await expect(
+        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
+      ).toBeVisible();
+    }
+    const lineageResponse = page.waitForResponse(
+      `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
+    );
+
+    await page.click('[data-testid="lineage"]');
+    await lineageResponse;
+
+    const incidentCountResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
+    );
+    const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
+    await incidentCountResponse;
+
+    await page.waitForSelector("[role='dialog']", { state: 'visible' });
+
+    await expect(page.getByTestId('Incidents-label')).toBeVisible();
+    await expect(page.getByTestId('Incidents-value')).toContainText('3');
+
+    const incidentResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+    );
+    await page.getByTestId('Incidents-value').click();
+    await incidentResponse;
+
+    for (const testCase of testCases) {
+      await expect(
+        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
+      ).toBeVisible();
+    }
+  });
+
+  test("Verify filters in Incident Manager's page", async ({ page }) => {
+    const assigneeTestCase = {
+      username: user1.data.email.split('@')[0].toLocaleLowerCase(),
+      userDisplayName: user1.getUserName(),
+      testCaseName: table1.testCasesResponseData[2]?.['name'],
+    };
+    const testCase1 = table1.testCasesResponseData[0]?.['name'];
+    const incidentDetailsRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+    );
+    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+    await incidentDetailsRes;
+
+    await page.click('[data-testid="select-assignee"]');
+    const searchUserResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user_search_index*`
+    );
+    await page
+      .getByTestId('select-assignee')
+      .locator('input')
+      .fill(assigneeTestCase.userDisplayName);
+    await searchUserResponse;
+
+    const assigneeFilterRes = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*assignee=${assigneeTestCase.username}*`
+    );
+    await page.click(`[data-testid="${assigneeTestCase.username}"]`);
+    await assigneeFilterRes;
+
+    await expect(
+      page.locator(`[data-testid="test-case-${assigneeTestCase.testCaseName}"]`)
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-testid="test-case-${testCase1}"]`)
+    ).not.toBeVisible();
+
+    const nonAssigneeFilterRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+    );
+    await page
+      .getByTestId('select-assignee')
+      .getByLabel('close-circle')
+      .click();
+    await nonAssigneeFilterRes;
+
+    await page.click(`[data-testid="status-select"]`);
+    const statusFilterRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*testCaseResolutionStatusType=Assigned*'
+    );
+    await page.click(`[title="Assigned"]`);
+    await statusFilterRes;
+
+    await expect(
+      page.locator(`[data-testid="test-case-${assigneeTestCase.testCaseName}"]`)
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-testid="test-case-${testCase1}"]`)
+    ).not.toBeVisible();
+
+    const nonStatusFilterRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+    );
+    await page.getByTestId('status-select').getByLabel('close-circle').click();
+    await nonStatusFilterRes;
+
+    await page.click('[data-testid="test-case-select"]');
+    const testCaseResponse = page.waitForResponse(
+      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+    );
+    await page.getByTestId('test-case-select').locator('input').fill(testCase1);
+    await testCaseResponse;
+
+    const testCaseFilterRes = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*testCaseFQN=*${testCase1}*`
+    );
+    await page.click(`[title="${testCase1}"]`);
+    await testCaseFilterRes;
+
+    await expect(
+      page.locator(`[data-testid="test-case-${assigneeTestCase.testCaseName}"]`)
+    ).not.toBeVisible();
+    await expect(
+      page.locator(`[data-testid="test-case-${testCase1}"]`)
+    ).toBeVisible();
+
+    const nonTestCaseFilterRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+    );
+    await page
+      .getByTestId('test-case-select')
+      .getByLabel('close-circle')
+      .click();
+    await nonTestCaseFilterRes;
+
+    await page.click('[data-testid="date-picker-menu"]');
+    const timeSeriesFilterRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+    );
+    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
+    await timeSeriesFilterRes;
+
+    for (const testCase of table1.testCasesResponseData) {
+      await expect(
+        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
+      ).toBeVisible();
+    }
   });
 });

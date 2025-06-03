@@ -22,6 +22,8 @@ export type ExploreTreeNode = {
   icon?: JSX.Element | SvgComponent;
   data?: TreeNodeData;
   count?: number;
+  totalCount?: number;
+  type?: string | null;
 };
 
 export type ExploreTreeProps = {
@@ -44,5 +46,5 @@ export type TreeNodeData = {
 export type DatabaseFields =
   | EntityFields.SERVICE_TYPE
   | EntityFields.SERVICE
-  | EntityFields.DATABASE
-  | EntityFields.DATABASE_SCHEMA;
+  | EntityFields.DATABASE_DISPLAY_NAME
+  | EntityFields.DATABASE_SCHEMA_DISPLAY_NAME;

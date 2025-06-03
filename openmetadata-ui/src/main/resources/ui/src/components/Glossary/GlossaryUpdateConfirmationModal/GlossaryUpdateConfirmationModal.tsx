@@ -174,7 +174,6 @@ export const GlossaryUpdateConfirmationModal = ({
               {failedStatus && (
                 <>
                   <Table
-                    bordered
                     columns={tagsColumn}
                     dataSource={failedStatus?.failedRequest ?? []}
                     pagination={{

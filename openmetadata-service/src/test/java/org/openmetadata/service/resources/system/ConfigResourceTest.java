@@ -22,10 +22,11 @@ import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
-import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
-import javax.validation.Validator;
-import javax.ws.rs.client.WebTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -49,11 +50,12 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
   static void setup() throws IOException, ConfigurationException {
     // Get config object from test yaml file
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+    ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
+    Validator validator = validatorFactory.getValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> configFactory =
         new YamlConfigurationFactory<>(
             OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
-    config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
+    config = configFactory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
   @Test
@@ -124,7 +126,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     LoginConfiguration loginConfiguration =
         TestUtils.get(target, LoginConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(3, loginConfiguration.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfiguration.getAccessBlockTime());
+    assertEquals(30, loginConfiguration.getAccessBlockTime());
     assertEquals(3600, loginConfiguration.getJwtTokenExpiryTime());
   }
 

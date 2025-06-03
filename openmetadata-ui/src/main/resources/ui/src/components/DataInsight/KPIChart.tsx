@@ -219,9 +219,15 @@ const KPIChart: FC<Props> = ({
     }
   }, [kpiList, chartFilter]);
 
+  const hasAtLeastOneData = useMemo(() => {
+    return kpiNames.some(
+      (key) => kpiResults[key] && kpiResults[key].length > 0
+    );
+  }, [kpiNames, kpiResults]);
+
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading || isKpiLoading}
@@ -235,7 +241,7 @@ const KPIChart: FC<Props> = ({
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          {!isEmpty(kpiResults) ? (
+          {hasAtLeastOneData ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer
@@ -258,7 +264,7 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
-                      tickFormatter={formatDate}
+                      tickFormatter={(value) => formatDate(value)}
                       type="category"
                     />
                     <YAxis dataKey="count" />
@@ -313,7 +319,13 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+                <ErrorPlaceHolder
+                  className="border-none"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })}
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
               )}
             </Col>
           )}
@@ -334,8 +346,11 @@ const KPIChart: FC<Props> = ({
                 })}
               </Button>
             }
-            className="m-0"
+            className="m-0 border-none"
             permission={createKPIPermission}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
             size={SIZE.MEDIUM}
             type={
               createKPIPermission

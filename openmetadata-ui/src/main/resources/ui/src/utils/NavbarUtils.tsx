@@ -16,18 +16,15 @@ import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
-import {
-  HELP_ITEMS,
-  HELP_ITEMS_ENUM,
-  SupportItem,
-} from '../constants/Navbar.constants';
+import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
+import navbarUtilClassBase from './NavbarUtilClassBase';
 
 const getHelpDropdownLabelContentRenderer = (
   item: SupportItem,
   version?: string
 ) => {
   return (
-    <Row className="cursor-pointer">
+    <Row className="cursor-pointer" onClick={item.handleSupportItemClick}>
       <Col span={4}>
         <Icon
           className="align-middle"
@@ -77,7 +74,7 @@ const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
 };
 
 export const getHelpDropdownItems = (version?: string) =>
-  HELP_ITEMS.map((item) => ({
+  navbarUtilClassBase.getHelpItems().map((item) => ({
     label: getHelpDropdownLabel(item, version),
     key: item.key,
   }));

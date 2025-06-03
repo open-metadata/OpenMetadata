@@ -19,7 +19,8 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
 
 const mockTestCaseData: TestCase = {
@@ -69,7 +70,18 @@ const mockUseTestCaseStore = {
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
   showAILearningBanner: false,
+  isPermissionLoading: false,
+  testCasePermission: MOCK_PERMISSIONS,
+  setTestCasePermission: jest.fn(),
+  setIsPermissionLoading: jest.fn(),
 };
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    version: undefined,
+  })),
+}));
 
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -104,9 +116,6 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
     </div>
   ));
 });
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-}));
 
 describe('TestCaseResultTab', () => {
   it('Should render component', async () => {
@@ -129,6 +138,15 @@ describe('TestCaseResultTab', () => {
     render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+  });
+
+  it("EditTestCaseModal should be rendered when 'Edit SQL expression' button is clicked", async () => {
+    render(<TestCaseResultTab />);
+
+    const editButton = await screen.findByTestId('edit-sql-param-icon');
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -165,12 +183,14 @@ describe('TestCaseResultTab', () => {
   });
 
   it("Should not show edit icon if user doesn't have edit permission", () => {
-    (checkPermission as jest.Mock).mockReturnValueOnce(false);
+    mockUseTestCaseStore.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     const { container } = render(<TestCaseResultTab />);
 
     const editButton = queryByTestId(container, 'edit-parameter-icon');
 
     expect(editButton).not.toBeInTheDocument();
+
+    mockUseTestCaseStore.testCasePermission = MOCK_PERMISSIONS;
   });
 
   it('Should show useDynamicAssertion if enabled', async () => {

@@ -17,7 +17,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route } from 'react-router-dom';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
 import AddIngestionPage from './AddIngestionPage.component';
 const mockShowErrorToast = jest.fn();
@@ -33,7 +33,7 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
-jest.mock('../../hooks/useAirflowStatus', () => ({
+jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     fetchAirflowStatus: jest.fn().mockImplementation(() => Promise.resolve()),
   })),
@@ -72,6 +72,19 @@ jest.mock(
   '../../components/Settings/Services/AddIngestion/AddIngestion.component',
   () => jest.fn().mockImplementation(() => <div>AddIngestion</div>)
 );
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   addIngestionPipeline: jest.fn().mockReturnValue(() => Promise.resolve({})),

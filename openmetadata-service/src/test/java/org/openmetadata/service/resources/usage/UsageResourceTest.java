@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.usage;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -29,17 +29,17 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -126,7 +126,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+        "[query param count must be greater than or equal to 0]");
   }
 
   @Test
@@ -135,7 +135,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+        "[query param count must be greater than or equal to 0]");
   }
 
   @Test
@@ -144,7 +144,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[date must not be null]");
+        "[query param date must not be null]");
   }
 
   @Test
@@ -153,7 +153,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[date must not be null]");
+        "[query param date must not be null]");
   }
 
   @Test
@@ -200,7 +200,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     Table table =
         tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport =
-        usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
+        usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     reportUsageByNameAndCheckPut(
         TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, authHeaders);
     // a put request updates the data again
@@ -221,7 +221,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     // and monthly usage percentile rank is correct.
 
     // Publish usage for DAYS_OF_USAGE number of days starting from today
-    String today = RestUtil.DATE_FORMAT.format(new Date()); // today
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now()); // today
 
     // Add table usages of each table - 0, 1 to TABLE_COUNT - 1 to get database usage
     final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1) / 2;
@@ -348,7 +348,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
 
   public DailyCount usageReport() {
     Random random = new Random();
-    String today = RestUtil.DATE_FORMAT.format(new Date());
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now());
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 

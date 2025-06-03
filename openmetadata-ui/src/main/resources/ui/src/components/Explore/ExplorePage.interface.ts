@@ -12,7 +12,6 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -24,6 +23,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
@@ -65,7 +65,8 @@ export type ExploreSearchIndex =
   | SearchIndex.STORED_PROCEDURE
   | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.API_COLLECTION_INDEX
-  | SearchIndex.API_ENDPOINT_INDEX;
+  | SearchIndex.API_ENDPOINT_INDEX
+  | SearchIndex.METRIC_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
@@ -106,22 +107,6 @@ export interface ExploreQuickFilterField {
   value: SearchDropdownOption[] | undefined;
 }
 
-export interface ExploreQuickFilterProps {
-  index: SearchIndex;
-  field: ExploreQuickFilterField;
-  onFieldRemove: (value: string) => void;
-  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-}
-
-export interface SearchInputProps {
-  options: DefaultOptionType[];
-  value: string | undefined;
-  handleChange: (value: string) => void;
-  handleSearch: (value: string) => void;
-  handleSelect: (value: string) => void;
-  handleClear: () => void;
-}
-
 // Type for all the explore tab entities
 export type EntityUnion =
   | Table
@@ -147,7 +132,8 @@ export type EntityUnion =
   | SearchService
   | APIEndpoint
   | APIService
-  | APICollection;
+  | APICollection
+  | Metric;
 
 export type EntityWithServices =
   | Topic

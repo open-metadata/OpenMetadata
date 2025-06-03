@@ -71,3 +71,5 @@ export const LINK_INPUT_REGEX =
 
 export const LINK_PASTE_REGEX =
   /(?:^|\s)\[([^\]]*)?\]\((\S+)(?: ["“](.+)["”])?\)/gi;
+
+export const UPLOADED_ASSETS_URL = '/api/v1/attachments/';

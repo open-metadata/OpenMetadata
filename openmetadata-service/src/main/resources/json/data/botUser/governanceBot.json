@@ -1,0 +1,9 @@
+{
+  "name": "governance-bot",
+  "roles": [
+    {
+      "name": "GovernanceBotRole",
+      "type": "role"
+    }
+  ]
+}

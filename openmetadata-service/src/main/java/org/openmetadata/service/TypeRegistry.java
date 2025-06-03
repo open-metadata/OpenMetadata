@@ -14,15 +14,22 @@
 package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.resources.types.TypeResource.PROPERTIES_FIELD;
 
 import com.networknt.schema.JsonSchema;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -49,6 +56,35 @@ public class TypeRegistry {
     return INSTANCE;
   }
 
+  public final void initialize(TypeRepository repository) {
+    // Load types defined in OpenMetadata schemas
+    long now = System.currentTimeMillis();
+    List<Type> types = JsonUtils.getTypes();
+    types.forEach(
+        type -> {
+          type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
+          LOG.debug("Loading type {}", type.getName());
+          try {
+            EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+            try {
+              Type storedType = repository.getByName(null, type.getName(), fields);
+              type.setId(storedType.getId());
+              // If entity type already exists, then carry forward custom properties
+              if (storedType.getCategory().equals(Category.Entity)) {
+                type.setCustomProperties(storedType.getCustomProperties());
+              }
+            } catch (Exception e) {
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
+            }
+            repository.addToRegistry(type);
+          } catch (Exception e) {
+            LOG.error("Error loading type {}", type.getName(), e);
+          }
+        });
+  }
+
   public void addType(Type type) {
     TYPES.put(type.getName(), type);
 
@@ -69,10 +105,17 @@ public class TypeRegistry {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
-    JsonSchema jsonSchema =
-        JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
-    CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
-    LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
+    try {
+      JsonSchema jsonSchema =
+          JsonUtils.getJsonSchema(
+              TYPES.get(customProperty.getPropertyType().getName()).getSchema());
+      CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
+      LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
+
+    } catch (Exception e) {
+      CUSTOM_PROPERTIES.remove(customPropertyFQN);
+      LOG.info("Failed to add custom property {}: {}", customPropertyFQN, e.getMessage());
+    }
   }
 
   public JsonSchema getSchema(String entityType, String propertyName) {
@@ -104,27 +147,25 @@ public class TypeRegistry {
   }
 
   public static String getCustomPropertyType(String entityType, String propertyName) {
-    Type type = TypeRegistry.TYPES.get(entityType);
-    if (type != null && type.getCustomProperties() != null) {
-      for (CustomProperty property : type.getCustomProperties()) {
-        if (property.getName().equals(propertyName)) {
-          return property.getPropertyType().getName();
-        }
-      }
+    String fqn = getCustomPropertyFQN(entityType, propertyName);
+    CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (property == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(propertyName, entityType));
     }
-    return null;
+    return property.getPropertyType().getName();
   }
 
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
-    Type type = TypeRegistry.TYPES.get(entityType);
-    if (type != null && type.getCustomProperties() != null) {
-      for (CustomProperty property : type.getCustomProperties()) {
-        if (property.getName().equals(propertyName)
-            && property.getCustomPropertyConfig() != null
-            && property.getCustomPropertyConfig().getConfig() != null) {
-          return property.getCustomPropertyConfig().getConfig().toString();
-        }
-      }
+    String fqn = getCustomPropertyFQN(entityType, propertyName);
+    CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (property != null
+        && property.getCustomPropertyConfig() != null
+        && property.getCustomPropertyConfig().getConfig() != null) {
+      Object config = property.getCustomPropertyConfig().getConfig();
+      return (config instanceof String || config instanceof Integer)
+          ? config.toString() // for simple type config return as string
+          : JsonUtils.pojoToJson(config); // for complex object in config return as JSON string
     }
     return null;
   }

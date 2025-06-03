@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.tags;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -25,11 +25,11 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -78,7 +78,7 @@ public class ClassificationResourceTest
     assertResponseContains(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 1 and 256");
+        "query param name size must be between 1 and 256");
   }
 
   @Test

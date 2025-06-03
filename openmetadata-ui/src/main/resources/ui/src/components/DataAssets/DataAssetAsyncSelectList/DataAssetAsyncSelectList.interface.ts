@@ -27,6 +27,7 @@ export interface FetchOptionsResponse {
 
 export interface DataAssetAsyncSelectListProps {
   mode?: 'multiple';
+  autoFocus?: boolean;
   id?: string;
   className?: string;
   placeholder?: string;
@@ -36,4 +37,5 @@ export interface DataAssetAsyncSelectListProps {
   initialOptions?: DataAssetOption[];
   searchIndex?: SearchIndex;
   onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
+  filterFqns?: string[];
 }

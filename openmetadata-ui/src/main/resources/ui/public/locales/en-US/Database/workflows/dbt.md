@@ -336,6 +336,16 @@ $$section
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
 
+
+$$section
+### Search Tables Across Databases $(id="searchAcrossDatabases")
+
+Option to search across database services for tables or not for processing dbt metadata ingestion.
+If this option is enabled, OpenMetadata will first search for tables within the same database service if tables are not found it will search across all database services.
+
+If the option is disabled, the search will be limited to the tables within the same database service.
+$$
+
 $$section
 ### Update Descriptions $(id="dbtUpdateDescriptions")
 
@@ -344,6 +354,16 @@ This options updates the table and column descriptions in OpenMetadata with desc
 If the option is disabled, only tables and columns without any existing descriptions will have their descriptions updated based on the dbt manifest. 
 
 However, if the option is enabled, descriptions for all tables and columns in the dbt manifest will be updated in OpenMetadata.
+$$
+
+$$section
+### Update Owners $(id="dbtUpdateOwners")
+
+This options updates the table owner in OpenMetadata with owners from dbt.
+
+If the option is disabled, only tables without any existing owners will have their owners updated based on the dbt manifest. 
+
+However, if the option is enabled, owners for all tables and columns in the dbt manifest will be updated in OpenMetadata.
 $$
 
 $$section
@@ -365,4 +385,10 @@ $$section
 ### Number of Retries $(id="retries")
 
 Times to retry the workflow in case it ends with a failure.
+$$
+
+$$section
+### Raise on Error $(id="raiseOnError")
+
+Mark the workflow as failed or avoid raising exceptions.
 $$

@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +36,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import './service-page.less';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
@@ -87,14 +88,15 @@ const ServicesPage = () => {
 
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={serviceName}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
-        <Col span={24}>
+        <Col className="h-full" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={search as string}
+            className="tabs-new services-tabs"
             items={[
               ...(serviceName === 'dataObservabilityServices'
                 ? []
@@ -105,8 +107,7 @@ const ServicesPage = () => {
                       label: 'Services',
                     },
                   ]),
-              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
-              ...(isAdminUser && serviceName !== 'apiServices'
+              ...(isAdminUser
                 ? [
                     {
                       key: 'pipelines',
@@ -134,7 +135,13 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: startCase(serviceName),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </Col>
     </Row>
   );

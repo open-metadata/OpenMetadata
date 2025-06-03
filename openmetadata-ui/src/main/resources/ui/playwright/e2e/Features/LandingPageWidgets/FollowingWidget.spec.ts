@@ -15,6 +15,7 @@ import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
+import { MetricClass } from '../../../support/entity/MetricClass';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
@@ -40,6 +41,7 @@ const entities = [
   ApiEndpointClass,
   DashboardDataModelClass,
   StoredProcedureClass,
+  MetricClass,
 ] as const;
 
 const adminUser = new UserClass();

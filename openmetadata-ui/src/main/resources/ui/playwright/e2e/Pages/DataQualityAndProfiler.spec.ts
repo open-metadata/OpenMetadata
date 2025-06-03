@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
-import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -25,6 +25,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
@@ -44,7 +45,7 @@ test.beforeAll(async ({ browser }) => {
   );
   await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
-    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::email>`,
+    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
@@ -65,7 +66,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Table test case', async ({ page }) => {
+test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
   const NEW_TABLE_TEST_CASE = {
@@ -89,7 +90,7 @@ test('Table test case', async ({ page }) => {
       '#tableTestForm_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
-    await page.fill(descriptionBox, NEW_TABLE_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
     await page.click('[data-testid="submit-test"]');
 
     await page.waitForSelector('[data-testid="success-line"]');
@@ -110,13 +111,9 @@ test('Table test case', async ({ page }) => {
     const deploy = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/deploy/*'
     );
-    const status = page.waitForResponse(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     await page.click('[data-testid="deploy-button"]');
     await ingestionPipelines;
     await deploy;
-    await status;
 
     // check success
     await page.waitForSelector('[data-testid="success-line"]', {
@@ -129,7 +126,7 @@ test('Table test case', async ({ page }) => {
     ).toBeVisible();
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -164,12 +161,12 @@ test('Table test case', async ({ page }) => {
   });
 });
 
-test('Column test case', async ({ page }) => {
+test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
   const NEW_COLUMN_TEST_CASE = {
     name: 'email_column_value_lengths_to_be_between',
-    column: 'email',
+    column: table1.entity?.columns[3].name,
     type: 'columnValueLengthsToBeBetween',
     label: 'Column Value Lengths To Be Between',
     min: '3',
@@ -190,7 +187,7 @@ test('Column test case', async ({ page }) => {
     await testDefinitionResponse;
     await page.fill('#tableTestForm_testName', NEW_COLUMN_TEST_CASE.name);
     await page.click('#tableTestForm_testTypeId');
-    await page.click(`[title="${NEW_COLUMN_TEST_CASE.label}"]`);
+    await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#tableTestForm_params_minLength',
       NEW_COLUMN_TEST_CASE.min
@@ -199,7 +196,7 @@ test('Column test case', async ({ page }) => {
       '#tableTestForm_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
-    await page.fill(descriptionBox, NEW_COLUMN_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
 
     await page.click('[data-testid="submit-test"]');
     await page.waitForSelector('[data-testid="success-line"]');
@@ -209,7 +206,7 @@ test('Column test case', async ({ page }) => {
     await page.waitForSelector('[data-testid="view-service-button"]');
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -249,314 +246,396 @@ test('Column test case', async ({ page }) => {
   });
 });
 
-test('Profiler matrix and test case graph should visible', async ({ page }) => {
-  const DATA_QUALITY_TABLE = {
-    term: 'dim_address',
-    serviceName: 'sample_data',
-    testCaseName: 'column_value_max_to_be_between',
-  };
+test(
+  'Profiler matrix and test case graph should visible',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    const DATA_QUALITY_TABLE = {
+      term: 'dim_address',
+      serviceName: 'sample_data',
+      testCaseName: 'column_value_max_to_be_between',
+    };
 
-  await visitEntityPage({
-    page,
-    searchTerm: DATA_QUALITY_TABLE.term,
-    dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
-  });
-  await page.waitForSelector(`[data-testid="entity-header-display-name"]`);
+    await visitEntityPage({
+      page,
+      searchTerm: DATA_QUALITY_TABLE.term,
+      dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
+    });
+    await page.waitForSelector(`[data-testid="entity-header-name"]`);
 
-  await expect(
-    page.locator(`[data-testid="entity-header-display-name"]`)
-  ).toContainText(DATA_QUALITY_TABLE.term);
+    await expect(
+      page.locator(`[data-testid="entity-header-name"]`)
+    ).toContainText(DATA_QUALITY_TABLE.term);
 
-  const profilerResponse = page.waitForResponse(
-    `/api/v1/tables/*/tableProfile/latest`
-  );
-  await page.click('[data-testid="profiler"]');
-  await profilerResponse;
-  await page.waitForTimeout(1000);
-  await page
-    .getByRole('menuitem', {
-      name: 'Column Profile',
-    })
-    .click();
-  const getProfilerInfo = page.waitForResponse(
-    '/api/v1/tables/*/columnProfile?*'
-  );
-  await page.locator('[data-row-key="shop_id"]').getByText('shop_id').click();
-  await getProfilerInfo;
+    const profilerResponse = page.waitForResponse(
+      `/api/v1/tables/*/tableProfile/latest`
+    );
+    await page.click('[data-testid="profiler"]');
+    await profilerResponse;
+    await page.waitForTimeout(1000);
+    await page
+      .getByRole('menuitem', {
+        name: 'Column Profile',
+      })
+      .click();
+    const getProfilerInfo = page.waitForResponse(
+      '/api/v1/tables/*/columnProfile?*'
+    );
+    await page.locator('[data-row-key="shop_id"]').getByText('shop_id').click();
+    await getProfilerInfo;
 
-  await expect(page.locator('#count_graph')).toBeVisible();
-  await expect(page.locator('#proportion_graph')).toBeVisible();
-  await expect(page.locator('#math_graph')).toBeVisible();
-  await expect(page.locator('#sum_graph')).toBeVisible();
+    await expect(page.locator('#count_graph')).toBeVisible();
+    await expect(page.locator('#proportion_graph')).toBeVisible();
+    await expect(page.locator('#math_graph')).toBeVisible();
+    await expect(page.locator('#sum_graph')).toBeVisible();
 
-  await page
-    .getByRole('menuitem', {
-      name: 'Data Quality',
-    })
-    .click();
+    await page
+      .getByRole('menuitem', {
+        name: 'Data Quality',
+      })
+      .click();
 
-  await page.waitForSelector(
-    `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
-  );
-  const getTestCaseDetails = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/name/*?fields=*'
-  );
-  const getTestResult = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/*/testCaseResult?*'
-  );
-  await page
-    .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
-    .getByText(DATA_QUALITY_TABLE.testCaseName)
-    .click();
+    await page.waitForSelector(
+      `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
+    );
+    const getTestCaseDetails = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/name/*?fields=*'
+    );
+    const getTestResult = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/*/testCaseResult?*'
+    );
+    await page
+      .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
+      .getByText(DATA_QUALITY_TABLE.testCaseName)
+      .click();
 
-  await getTestCaseDetails;
-  await getTestResult;
+    await getTestCaseDetails;
+    await getTestResult;
 
-  await expect(
-    page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
-  ).toBeVisible();
-});
+    await expect(
+      page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
+    ).toBeVisible();
+  }
+);
 
-test('TestCase with Array params value', async ({ page }) => {
-  test.slow();
+test(
+  'TestCase with Array params value',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    test.slow();
 
-  const testCase = table2.testCasesResponseData[0];
-  const testCaseName = testCase?.['name'];
-  await visitDataQualityTab(page, table2);
+    const testCase = table2.testCasesResponseData[0];
+    const testCaseName = testCase?.['name'];
+    await visitDataQualityTab(page, table2);
 
-  await test.step(
-    'Array params value should be visible while editing the test case',
-    async () => {
-      await expect(
-        page.locator(`[data-testid="${testCaseName}"]`)
-      ).toBeVisible();
-      await expect(
-        page.locator(`[data-testid="edit-${testCaseName}"]`)
-      ).toBeVisible();
+    await test.step(
+      'Array params value should be visible while editing the test case',
+      async () => {
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
+        await expect(
+          page.locator(`[data-testid="edit-${testCaseName}"]`)
+        ).toBeVisible();
 
-      await page.click(`[data-testid="edit-${testCaseName}"]`);
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-      await expect(
-        page.locator('#tableTestForm_params_allowedValues_0_value')
-      ).toHaveValue('gmail');
-      await expect(
-        page.locator('#tableTestForm_params_allowedValues_1_value')
-      ).toHaveValue('yahoo');
-      await expect(
-        page.locator('#tableTestForm_params_allowedValues_2_value')
-      ).toHaveValue('collate');
-    }
-  );
-
-  await test.step('Validate patch request for edit test case', async () => {
-    await page.fill(
-      '#tableTestForm_displayName',
-      'Table test case display name'
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_0_value')
+        ).toHaveValue('gmail');
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_1_value')
+        ).toHaveValue('yahoo');
+        await expect(
+          page.locator('#tableTestForm_params_allowedValues_2_value')
+        ).toHaveValue('collate');
+      }
     );
 
-    await expect(page.locator('#tableTestForm_table')).toHaveValue(
-      table2.entityResponseData?.['name']
-    );
-    await expect(page.locator('#tableTestForm_column')).toHaveValue('email');
-    await expect(page.locator('#tableTestForm_name')).toHaveValue(testCaseName);
-    await expect(page.locator('#tableTestForm_testDefinition')).toHaveValue(
-      'Column Values To Be In Set'
-    );
-
-    // Edit test case display name
-    const updateTestCaseResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/') &&
-        response.request().method() === 'PATCH'
-    );
-    await page.click('.ant-modal-footer >> text=Submit');
-    const updateResponse1 = await updateTestCaseResponse;
-    const body1 = await updateResponse1.request().postData();
-
-    expect(body1).toEqual(
-      JSON.stringify([
-        {
-          op: 'add',
-          path: '/displayName',
-          value: 'Table test case display name',
-        },
-      ])
-    );
-
-    // Edit test case description
-    await page.click(`[data-testid="edit-${testCaseName}"]`);
-    await page.fill(descriptionBox, 'Test case description');
-    const updateTestCaseResponse2 = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/') &&
-        response.request().method() === 'PATCH'
-    );
-    await page.click('.ant-modal-footer >> text=Submit');
-    const updateResponse2 = await updateTestCaseResponse2;
-    const body2 = await updateResponse2.request().postData();
-
-    expect(body2).toEqual(
-      JSON.stringify([
-        { op: 'add', path: '/description', value: 'Test case description' },
-      ])
-    );
-
-    // Edit test case parameter values
-    await page.click(`[data-testid="edit-${testCaseName}"]`);
-    await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
-    const updateTestCaseResponse3 = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/') &&
-        response.request().method() === 'PATCH'
-    );
-    await page.click('.ant-modal-footer >> text=Submit');
-    const updateResponse3 = await updateTestCaseResponse3;
-    const body3 = await updateResponse3.request().postData();
-
-    expect(body3).toEqual(
-      JSON.stringify([
-        {
-          op: 'replace',
-          path: '/parameterValues/0/value',
-          value: '["test","yahoo","collate"]',
-        },
-      ])
-    );
-  });
-
-  await test.step(
-    'Update test case display name from Data Quality page',
-    async () => {
-      const getTestCase = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*'
-      );
-      await sidebarClick(page, SidebarItem.DATA_QUALITY);
-      await page.click('[data-testid="by-test-cases"]');
-      await getTestCase;
-      const searchTestCaseResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
-      );
+    await test.step('Validate patch request for edit test case', async () => {
       await page.fill(
-        '[data-testid="test-case-container"] [data-testid="searchbar"]',
-        testCaseName
-      );
-      await searchTestCaseResponse;
-      await page.waitForSelector('.ant-spin', {
-        state: 'detached',
-      });
-      await page.click(`[data-testid="edit-${testCaseName}"]`);
-      await page.waitForSelector('.ant-modal-title');
-
-      await expect(page.locator('#tableTestForm_displayName')).toHaveValue(
+        '#tableTestForm_displayName',
         'Table test case display name'
       );
 
-      await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', 'Updated display name');
-      await page.click('.ant-modal-footer >> text=Submit');
-      await toastNotification(page, 'Test case updated successfully.');
-
-      await expect(page.locator(`[data-testid="${testCaseName}"]`)).toHaveText(
-        'Updated display name'
+      await expect(page.locator('#tableTestForm_table')).toHaveValue(
+        table2.entityResponseData?.['name']
       );
-    }
-  );
-});
+      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+        table2.entity?.columns[3].name
+      );
+      await expect(page.locator('#tableTestForm_name')).toHaveValue(
+        testCaseName
+      );
+      await expect(page.locator('#tableTestForm_testDefinition')).toHaveValue(
+        'Column Values To Be In Set'
+      );
 
-test('Update profiler setting modal', async ({ page }) => {
-  const profilerSetting = {
-    profileSample: '60',
-    sampleDataCount: '100',
-    profileQuery: 'select * from table',
-    excludeColumns: 'user_id',
-    includeColumns: 'shop_id',
-    partitionColumnName: 'name',
-    partitionIntervalType: 'COLUMN-VALUE',
-    partitionValues: 'test',
-  };
+      // Edit test case display name
+      const updateTestCaseResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.click('.ant-modal-footer >> text=Submit');
+      const updateResponse1 = await updateTestCaseResponse;
+      const body1 = await updateResponse1.request().postData();
 
-  await table1.visitEntityPage(page);
-  await page.getByTestId('profiler').click();
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Table Profile')
-    .click();
+      expect(body1).toEqual(
+        JSON.stringify([
+          {
+            op: 'add',
+            path: '/displayName',
+            value: 'Table test case display name',
+          },
+        ])
+      );
 
-  await page.click('[data-testid="profiler-setting-btn"]');
-  await page.waitForSelector('.ant-modal-body');
-  await page.locator('[data-testid="slider-input"]').clear();
-  await page
-    .locator('[data-testid="slider-input"]')
-    .fill(profilerSetting.profileSample);
+      // Edit test case description
+      await page.click(`[data-testid="edit-${testCaseName}"]`);
+      await page.locator(descriptionBox).fill('Test case description');
+      const updateTestCaseResponse2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.click('.ant-modal-footer >> text=Submit');
+      const updateResponse2 = await updateTestCaseResponse2;
+      const body2 = await updateResponse2.request().postData();
 
-  await page.locator('[data-testid="sample-data-count-input"]').clear();
-  await page
-    .locator('[data-testid="sample-data-count-input"]')
-    .fill(profilerSetting.sampleDataCount);
-  await page.locator('[data-testid="exclude-column-select"]').click();
-  await page.keyboard.type(`${profilerSetting.excludeColumns}`);
-  await page.keyboard.press('Enter');
-  await page.locator('.CodeMirror-scroll').click();
-  await page.keyboard.type(profilerSetting.profileQuery);
+      expect(body2).toEqual(
+        JSON.stringify([
+          {
+            op: 'add',
+            path: '/description',
+            value: '<p>Test case description</p>',
+          },
+        ])
+      );
 
-  await page.locator('[data-testid="include-column-select"]').click();
-  await page
-    .locator('.ant-select-dropdown')
-    .locator(
-      `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
-    )
-    .last()
-    .click();
-  await page.locator('[data-testid="enable-partition-switch"]').click();
-  await page.locator('[data-testid="interval-type"]').click();
-  await page
-    .locator('.ant-select-dropdown')
-    .locator(
-      `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
-    )
-    .click();
+      // Edit test case parameter values
+      await page.click(`[data-testid="edit-${testCaseName}"]`);
+      await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
+      const updateTestCaseResponse3 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.click('.ant-modal-footer >> text=Submit');
+      const updateResponse3 = await updateTestCaseResponse3;
+      const body3 = await updateResponse3.request().postData();
 
-  await page.locator('#includeColumnsProfiler_partitionColumnName').click();
-  await page
-    .locator('.ant-select-dropdown')
-    .locator(
-      `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
-    )
-    .last()
-    .click();
-  await page
-    .locator('[data-testid="partition-value"]')
-    .fill(profilerSetting.partitionValues);
+      expect(body3).toEqual(
+        JSON.stringify([
+          {
+            op: 'replace',
+            path: '/parameterValues/0/value',
+            value: '["test","yahoo","collate"]',
+          },
+        ])
+      );
+    });
 
-  const updateTableProfilerConfigResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/tables/') &&
-      response.url().includes('/tableProfilerConfig') &&
-      response.request().method() === 'PUT'
-  );
-  await page.getByRole('button', { name: 'Save' }).click();
-  const updateResponse = await updateTableProfilerConfigResponse;
-  const requestBody = await updateResponse.request().postData();
+    await test.step(
+      'Update test case display name from Data Quality page',
+      async () => {
+        const getTestCase = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await sidebarClick(page, SidebarItem.DATA_QUALITY);
+        await page.click('[data-testid="by-test-cases"]');
+        await getTestCase;
+        const searchTestCaseResponse = page.waitForResponse(
+          `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
+        );
+        await page.fill(
+          '[data-testid="test-case-container"] [data-testid="searchbar"]',
+          testCaseName
+        );
+        await searchTestCaseResponse;
+        await page.waitForSelector('.ant-spin', {
+          state: 'detached',
+        });
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
+        await page.waitForSelector('.ant-modal-title');
 
-  expect(requestBody).toEqual(
-    JSON.stringify({
-      excludeColumns: ['user_id'],
+        await expect(page.locator('#tableTestForm_displayName')).toHaveValue(
+          'Table test case display name'
+        );
+
+        await page.locator('#tableTestForm_displayName').clear();
+        await page.fill('#tableTestForm_displayName', 'Updated display name');
+        await page.click('.ant-modal-footer >> text=Submit');
+        await toastNotification(page, 'Test case updated successfully.');
+
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toHaveText('Updated display name');
+      }
+    );
+  }
+);
+
+test(
+  'Update profiler setting modal',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    const profilerSetting = {
+      profileSample: '60',
+      sampleDataCount: '100',
       profileQuery: 'select * from table',
-      profileSample: 60,
-      profileSampleType: 'PERCENTAGE',
-      includeColumns: [{ columnName: 'shop_id' }],
-      partitioning: {
-        partitionColumnName: 'name',
-        partitionIntervalType: 'COLUMN-VALUE',
-        partitionValues: ['test'],
-        enablePartitioning: true,
-      },
-      sampleDataCount: 100,
-    })
-  );
-});
+      excludeColumns: table1.entity?.columns[0].name,
+      includeColumns: table1.entity?.columns[1].name,
+      partitionColumnName: table1.entity?.columns[2].name,
+      partitionIntervalType: 'COLUMN-VALUE',
+      partitionValues: 'test',
+    };
 
-test('TestCase filters', async ({ page }) => {
+    await table1.visitEntityPage(page);
+    await page.getByTestId('profiler').click();
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Data Quality')
+      .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await test.step('Update profiler setting', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await page.locator('[data-testid="slider-input"]').clear();
+      await page
+        .locator('[data-testid="slider-input"]')
+        .fill(profilerSetting.profileSample);
+
+      await page.locator('[data-testid="sample-data-count-input"]').clear();
+      await page
+        .locator('[data-testid="sample-data-count-input"]')
+        .fill(profilerSetting.sampleDataCount);
+      await page.locator('[data-testid="exclude-column-select"]').click();
+      await page.keyboard.type(`${profilerSetting.excludeColumns}`);
+      await page.keyboard.press('Enter');
+      await page.locator('.CodeMirror-scroll').click();
+      await page.keyboard.type(profilerSetting.profileQuery);
+
+      await page.locator('[data-testid="include-column-select"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page.locator('[data-testid="enable-partition-switch"]').click();
+      await page.locator('[data-testid="interval-type"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .click();
+
+      await page.locator('#includeColumnsProfiler_partitionColumnName').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page
+        .locator('[data-testid="partition-value"]')
+        .fill(profilerSetting.partitionValues);
+
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: 60,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+    });
+
+    await test.step('Reset profile sample type', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+
+      await page.getByTestId('clear-slider-input').click();
+
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: null,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+
+      await page.waitForSelector('.ant-modal-body', {
+        state: 'detached',
+      });
+
+      // Validate the profiler setting is updated
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+      await expect(
+        page.getByTestId('profile-sample').locator('div')
+      ).toBeVisible();
+    });
+  }
+);
+
+test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.setTimeout(360000);
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -615,7 +694,7 @@ test('TestCase filters', async ({ page }) => {
   await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
+      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
     });
 
   const testCaseResult = {
@@ -781,6 +860,8 @@ test('TestCase filters', async ({ page }) => {
     // Test case filter by Tier
 
     await page.click('#tier');
+    await page.fill('#tier', 'Tier2');
+    await page.waitForLoadState('domcontentloaded');
     const getTestCaseByTier = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*tier=Tier.Tier2*'
     );
@@ -917,10 +998,12 @@ test('TestCase filters', async ({ page }) => {
     await expect(page.locator('[value="tier"]')).not.toBeVisible();
 
     // Apply domain globally
-    await page.locator('[data-testid="domain-dropdown"]').click();
+    await page.getByTestId('domain-dropdown').click();
+
     await page
-      .locator(`li[data-menu-id*='${domain.responseData?.['name']}']`)
+      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const getTestCaseList = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'

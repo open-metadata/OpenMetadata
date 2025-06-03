@@ -71,6 +71,7 @@
           "fields": {
             "keyword": {
               "type": "keyword",
+              "normalizer": "lowercase_normalizer",
               "ignore_above": 256
             },
             "ngram": {
@@ -98,6 +99,9 @@
         },
         "deleted": {
           "type": "text"
+        },
+        "disabled": {
+          "type": "boolean"
         },
         "classification": {
           "properties": {
@@ -136,16 +140,6 @@
             }
           }
         },
-        "suggest": {
-          "type": "completion",
-          "contexts": [
-            {
-              "name": "deleted",
-              "type": "category",
-              "path": "deleted"
-            }
-          ]
-      },
       "entityType": {
         "type": "keyword"
       },

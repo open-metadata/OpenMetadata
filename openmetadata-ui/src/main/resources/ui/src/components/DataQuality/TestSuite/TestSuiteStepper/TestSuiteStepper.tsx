@@ -38,6 +38,7 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 import IngestionStepper from '../../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import RightPanel from '../../AddDataQualityTest/components/RightPanel';
 import { getRightPanelForAddTestSuitePage } from '../../AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from '../../AddDataQualityTest/TestSuiteIngestion';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
@@ -47,6 +48,7 @@ const TestSuiteStepper = () => {
   const { currentUser } = useApplicationStore();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
+  const [addIngestion, setAddIngestion] = useState(false);
 
   const handleViewTestSuiteClick = () => {
     history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
@@ -114,9 +116,10 @@ const TestSuiteStepper = () => {
     } else if (activeServiceStep === 3) {
       return (
         <SuccessScreen
+          showIngestionButton
+          handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
           name={testSuiteResponse?.name || ''}
-          showIngestionButton={false}
           state={FormSubmitType.ADD}
           viewServiceText="View Test Suite"
         />
@@ -136,31 +139,39 @@ const TestSuiteStepper = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="test-suite-stepper-container">
+          <div data-testid="test-suite-stepper-container">
             <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
             <Space className="m-t-md" direction="vertical" size="middle">
-              <Row className="p-sm" gutter={[16, 16]}>
-                <Col span={24}>
-                  <Typography.Title
-                    className="heading"
-                    data-testid="header"
-                    level={5}>
-                    {t('label.add-entity', {
-                      entity: t('label.test-suite'),
-                    })}
-                  </Typography.Title>
-                </Col>
-                <Col span={24}>
-                  <IngestionStepper
-                    activeStep={activeServiceStep}
-                    steps={STEPS_FOR_ADD_TEST_SUITE}
-                  />
-                </Col>
-                <Col span={24}>{RenderSelectedTab()}</Col>
-              </Row>
+              {addIngestion ? (
+                <TestSuiteIngestion
+                  testSuite={testSuiteResponse as TestSuite}
+                  onCancel={() => setAddIngestion(false)}
+                  onViewServiceClick={handleViewTestSuiteClick}
+                />
+              ) : (
+                <Row className="p-sm" gutter={[16, 16]}>
+                  <Col span={24}>
+                    <Typography.Title
+                      className="heading"
+                      data-testid="header"
+                      level={5}>
+                      {t('label.add-entity', {
+                        entity: t('label.test-suite'),
+                      })}
+                    </Typography.Title>
+                  </Col>
+                  <Col span={24}>
+                    <IngestionStepper
+                      activeStep={activeServiceStep}
+                      steps={STEPS_FOR_ADD_TEST_SUITE}
+                    />
+                  </Col>
+                  <Col span={24}>{RenderSelectedTab()}</Col>
+                </Row>
+              )}
             </Space>
           </div>
         ),
@@ -179,7 +190,7 @@ const TestSuiteStepper = () => {
             )}
           />
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

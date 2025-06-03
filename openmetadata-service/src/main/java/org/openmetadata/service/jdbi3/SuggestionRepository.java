@@ -12,14 +12,16 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
@@ -39,11 +42,13 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.SuggestionsResource;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -172,8 +177,7 @@ public class SuggestionRepository {
             entity, entityLink.getFullyQualifiedFieldValue(), suggestion);
       } else {
         if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-          List<TagLabel> tags = new ArrayList<>(entity.getTags());
-          tags.addAll(suggestion.getTagLabels());
+          List<TagLabel> tags = mergeTags(entity.getTags(), suggestion.getTagLabels());
           entity.setTags(tags);
           return entity;
         } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
@@ -184,6 +188,50 @@ public class SuggestionRepository {
         }
       }
     }
+  }
+
+  private static List<TagLabel> mergeTags(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    if (incomingTags == null || incomingTags.isEmpty()) {
+      return existingTags;
+    }
+    // Throw an error if incoming tags are mutually exclusive
+    TagLabelUtil.checkMutuallyExclusive(incomingTags);
+
+    ArrayList<TagLabel> tags = new ArrayList<>();
+    Set<String> incomingClassification =
+        incomingTags.stream()
+            .map(t -> FullyQualifiedName.getParentFQN(t.getTagFQN()))
+            .collect(Collectors.toSet());
+
+    // We'll give priority to incoming tags over existing tags
+    // so we'll skip any existing tag that is mutually exclusive and clashing with incoming
+    // classification
+    for (TagLabel tag : existingTags) {
+      if (TagLabelUtil.mutuallyExclusive(tag)
+          && incomingClassification.contains(FullyQualifiedName.getParentFQN(tag.getTagFQN()))) {
+        LOG.debug(
+            String.format(
+                "Incoming tags are mutually exclusive with existing tag [%s]", tag.getTagFQN()));
+      } else {
+        tags.add(tag);
+      }
+    }
+    return naiveMergeTags(tags, incomingTags);
+  }
+
+  // Add all tags without repeats
+  private static List<TagLabel> naiveMergeTags(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    List<TagLabel> tags = new ArrayList<>(existingTags);
+    Set<String> existingTagFQNs =
+        existingTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+    for (TagLabel incomingTag : incomingTags) {
+      if (!existingTagFQNs.contains(incomingTag.getTagFQN())) {
+        tags.add(incomingTag);
+      }
+    }
+    return tags;
   }
 
   public RestUtil.PutResponse<Suggestion> acceptSuggestion(
@@ -233,7 +281,7 @@ public class SuggestionRepository {
         securityContext,
         operationContext,
         new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch);
+    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
     suggestion.setStatus(SuggestionStatus.Accepted);
     update(suggestion, user);
   }
@@ -283,7 +331,7 @@ public class SuggestionRepository {
         securityContext,
         operationContext,
         new ResourceContext<>(repository.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch);
+    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
 
     // Only mark the suggestions as accepted after the entity has been successfully updated
     for (Suggestion suggestion : suggestions) {
@@ -394,6 +442,9 @@ public class SuggestionRepository {
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor = null;
     String afterCursor;
+    if (nullOrEmpty(suggestions)) {
+      return new ResultList<>(suggestions, null, null, total);
+    }
     if (suggestions.size() > limit) {
       suggestions.remove(0);
       beforeCursor = suggestions.get(0).getUpdatedAt().toString();
@@ -415,6 +466,9 @@ public class SuggestionRepository {
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor;
     String afterCursor = null;
+    if (nullOrEmpty(suggestions)) {
+      return new ResultList<>(suggestions, null, null, total);
+    }
     beforeCursor = after == null ? null : suggestions.get(0).getUpdatedAt().toString();
     if (suggestions.size() > limit) {
       suggestions.remove(limit);

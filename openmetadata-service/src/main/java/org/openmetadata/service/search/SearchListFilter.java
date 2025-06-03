@@ -24,13 +24,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   @Override
   public String getCondition(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
-    conditions.add(getIncludeCondition());
+    conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
     conditions.add(getOwnerCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
+      conditions.add(
+          entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -87,7 +89,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return String.format("\"_source\": {%s}", addCondition(conditions));
   }
 
-  private String getIncludeCondition() {
+  private String getDomainCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
       return String.format(
@@ -96,9 +98,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return "";
   }
 
-  private String getDomainCondition() {
+  private String getIncludeCondition(String entityType) {
+    boolean supportsDeleted = true;
+    if (entityType != null) {
+      Class<?> clazz = Entity.getEntityClassFromType(entityType);
+      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
+      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    }
     String deleted = "";
-    if (include != Include.ALL) {
+    if (include != Include.ALL && supportsDeleted) {
       deleted = String.format("{\"term\": {\"deleted\": \"%s\"}}", include == Include.DELETED);
     }
     return deleted;
@@ -169,33 +177,19 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
-              ? String.format(
-                  "{\"bool\":{\"should\": ["
-                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
-                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
-                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
+              ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
 
-    if (testSuiteId != null) {
-      conditions.add(String.format("{\"term\": {\"testSuite.id\": \"%s\"}}", testSuiteId));
-    }
+    if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
 
     if (status != null) {
       conditions.add(
           String.format("{\"term\": {\"testCaseResult.testCaseStatus\": \"%s\"}}", status));
     }
 
-    if (type != null) {
-      conditions.add(
-          switch (type) {
-            case Entity
-                .TABLE -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
-            case "column" -> "{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}";
-            default -> "";
-          });
-    }
+    if (type != null) conditions.add(getTestCaseTypeCondition(type, "entityLink"));
 
     if (testPlatform != null) {
       String platforms =
@@ -210,11 +204,48 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
     }
 
-    if (dataQualityDimension != null) {
+    if (dataQualityDimension != null)
       conditions.add(
-          String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
-    }
+          getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
 
+    return addCondition(conditions);
+  }
+
+  private String getTestCaseResultCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String entityFQN = getQueryParam("entityFQN");
+    String dataQualityDimension = getQueryParam("dataQualityDimension");
+    String type = getQueryParam("testCaseType");
+    String startTimestamp = getQueryParam("startTimestamp");
+    String endTimestamp = getQueryParam("endTimestamp");
+    String testCaseFQN = getQueryParam("testCaseFQN");
+    String testCaseStatus = getQueryParam("testCaseStatus");
+    String testSuiteId = getQueryParam("testSuiteId");
+
+    if (entityFQN != null)
+      conditions.add(getTestCaseForEntityCondition(entityFQN, "testCase.entityFQN"));
+
+    if (startTimestamp != null && endTimestamp != null) {
+      conditions.add(getTimestampFilter("timestamp", "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter("timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+    if (testCaseFQN != null) {
+      conditions.add(
+          String.format(
+              "{\"bool\":{\"should\": ["
+                  + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
+                  + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
+              escapeDoubleQuotes(testCaseFQN)));
+    }
+    if (testCaseStatus != null)
+      conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
+    if (type != null) conditions.add(getTestCaseTypeCondition(type, "testCase.entityLink"));
+    if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
+    if (dataQualityDimension != null)
+      conditions.add(
+          getDataQualityDimensionCondition(
+              dataQualityDimension, "testDefinition.dataQualityDimension"));
     return addCondition(conditions);
   }
 
@@ -223,14 +254,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     String testSuiteType = getQueryParam("testSuiteType");
     String fullyQualifiedName = getQueryParam("fullyQualifiedName");
-    Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
+    boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
-      Boolean executable = true;
-      if (testSuiteType.equals("logical")) {
-        executable = false;
-      }
-      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      boolean basic = !testSuiteType.equals("logical");
+      conditions.add(String.format("{\"term\": {\"basic\": \"%s\"}}", basic));
     }
 
     if (!includeEmptyTestSuites) {
@@ -249,5 +277,36 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
+  }
+
+  private String getTestSuiteIdCondition(String testSuiteId) {
+    return String.format(
+        "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}",
+        testSuiteId);
+  }
+
+  private String getTestCaseTypeCondition(String type, String field) {
+    return switch (type) {
+      case Entity.TABLE -> String.format(
+          "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
+      case "column" -> String.format("{\"regexp\": {\"%s\": \".*::columns::.*\"}}", field);
+      default -> "";
+    };
+  }
+
+  private String getTestCaseForEntityCondition(String entityFQN, String field) {
+    return String.format(
+        "{\"bool\":{\"should\": ["
+            + "{\"prefix\": {\"%s\": \"%s%s\"}},"
+            + "{\"term\": {\"%s\": \"%s\"}}]}}",
+        field,
+        escapeDoubleQuotes(entityFQN),
+        Entity.SEPARATOR,
+        field,
+        escapeDoubleQuotes(entityFQN));
+  }
+
+  private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
+    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
   }
 }

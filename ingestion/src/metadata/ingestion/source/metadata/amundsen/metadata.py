@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,6 +56,9 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -67,7 +70,7 @@ from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_USER_QUERY,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -113,6 +116,7 @@ class AmundsenSource(Source):
 
     dashboard_service: DashboardService
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -245,9 +249,11 @@ class AmundsenSource(Source):
                 table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=table_name
-                if hasattr(service_entity.connection.config, "supportsDatabase")
-                else "default",
+                name=(
+                    table_name
+                    if hasattr(service_entity.connection.config, "supportsDatabase")
+                    else "default"
+                ),
                 service=service_entity.fullyQualifiedName,
             )
             yield Either(right=database_request)
@@ -460,4 +466,7 @@ class AmundsenSource(Source):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

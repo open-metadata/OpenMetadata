@@ -1,0 +1,122 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/workflowDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowDefinition",
+  "description": "Defines a workflow, having all the different pieces and attributes.",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaType": "org.openmetadata.schema.governance.workflows.WorkflowDefinition",
+  "type": "object",
+  "definitions": {
+    "type": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
+      "enum": [
+        "eventBasedEntity",
+        "noOp",
+        "periodicBatchEntity"
+      ]
+    },
+    "workflowConfiguration": {
+      "type": "object",
+      "properties": {
+        "storeStageStatus": {
+          "title": "Storage Workflow Stage Status",
+          "description": "If True, all the stage status will be stored in the database.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": ["storeStageStatus"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow definition.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this workflow definition.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this workflow definition.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the workflow definition.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this workflow definition.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "deployed": {
+      "description": "When `true` indicates the workflow is deployed.",
+      "type": "boolean"
+    },
+    "config": {
+      "$ref": "#/definitions/workflowConfiguration"
+    },
+    "trigger": {
+      "description": "Workflow Trigger.",
+      "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/type"
+        }
+      }
+    },
+    "nodes": {
+      "description": "List of nodes used on the workflow.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+      }
+    },
+    "edges": {
+      "description": "List of edges that connect the workflow elements and guide its flow.",
+      "type": "array",
+      "items": {
+        "$ref": "./elements/edge.json"
+      }
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

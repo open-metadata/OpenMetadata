@@ -27,12 +27,12 @@ export const clickOnLogo = async (page: Page) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  const items = SIDEBAR_LIST_ITEMS[id];
+  const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.hover('[data-testid="left-sidebar"]');
+    await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
     await page.click(`[data-testid="app-bar-item-${items[1]}"]`);
-    await page.click(`[data-testid="${items[0]}"]`);
   } else {
     await page.click(`[data-testid="app-bar-item-${id}"]`);
   }
@@ -45,10 +45,14 @@ export const settingClick = async (
   dataTestId: SettingOptionsType,
   isCustomProperty?: boolean
 ) => {
-  let paths = SETTINGS_OPTIONS_PATH[dataTestId];
+  let paths =
+    SETTINGS_OPTIONS_PATH[dataTestId as keyof typeof SETTINGS_OPTIONS_PATH];
 
   if (isCustomProperty) {
-    paths = SETTING_CUSTOM_PROPERTIES_PATH[dataTestId];
+    paths =
+      SETTING_CUSTOM_PROPERTIES_PATH[
+        dataTestId as keyof typeof SETTING_CUSTOM_PROPERTIES_PATH
+      ];
   }
 
   await sidebarClick(page, SidebarItem.SETTINGS);
@@ -56,4 +60,6 @@ export const settingClick = async (
   for (const path of paths ?? []) {
     await page.click(`[data-testid="${path}"]`);
   }
+
+  await page.waitForLoadState('networkidle');
 };

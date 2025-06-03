@@ -212,8 +212,8 @@ const AccessTokenCard: FC<MockProps> = ({
   const tokenCard = (
     <Card
       className={classNames(
-        'm-t-md access-token-card',
-        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto',
+        'access-token-card',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
         { disabled }
       )}
       data-testid="center-panel">

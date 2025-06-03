@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceAutoClassificationPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceAutoClassificationPipeline",
+  "description": "DatabaseService AutoClassification & Auto Classification Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "autoClassificationConfigType": {
+      "description": "Profiler Source Config Pipeline type",
+      "type": "string",
+      "enum": ["AutoClassification"],
+      "default": "AutoClassification"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/autoClassificationConfigType",
+      "default": "AutoClassification"
+    },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Schema Filter Pattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Table Filter Pattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Database Filter Pattern"
+    },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Views"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "storeSampleData": {
+      "description": "Option to turn on/off storing sample data. If enabled, we will ingest sample data for each table.",
+      "type": "boolean",
+      "default": false,
+      "title": "Store Sample Data"
+    },
+    "enableAutoClassification": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+      "type": "boolean",
+      "default": true,
+      "title": "Enable Auto Classification"
+    },
+    "confidence": {
+      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will yield less false positives but more false negatives. A lower number will yield more false positives but less false negatives.",
+      "type": "number",
+      "default": 80,
+      "title": "Auto Classification Inference Confidence Level"
+    },
+    "sampleDataCount": {
+      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
+      "type": "integer",
+      "default": 50,
+      "title": "Sample Data Rows Count"
+    }
+  },
+  "additionalProperties": false
+}

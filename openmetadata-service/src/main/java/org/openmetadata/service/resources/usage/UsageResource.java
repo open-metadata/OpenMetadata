@@ -19,22 +19,22 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Date;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.time.LocalDate;
 import java.util.UUID;
-import javax.validation.Valid;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
@@ -105,7 +105,7 @@ public class UsageResource {
     ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
-    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
+    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(LocalDate.now()) : date;
     return addHref(uriInfo, dao.get(entity, id, actualDate, actualDays));
   }
 
@@ -155,7 +155,7 @@ public class UsageResource {
     ResourceContext<?> resourceContext = new ResourceContext<>(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
-    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
+    String actualDate = date == null ? RestUtil.DATE_FORMAT.format(LocalDate.now()) : date;
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
   }
 

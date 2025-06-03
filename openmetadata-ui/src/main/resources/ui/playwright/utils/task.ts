@@ -60,8 +60,9 @@ export const createDescriptionTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
+
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
 
@@ -69,7 +70,7 @@ export const createDescriptionTask = async (
     const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
-    await page.click('body');
+    await clickOutside(page);
   }
 
   if (addDescription) {
@@ -110,8 +111,9 @@ export const createTagTask = async (
       '[data-testid="select-assignee"] > .ant-select-selector #assignees'
     );
     await assigneeField.click();
+
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -138,7 +140,7 @@ export const createTagTask = async (
     await querySearchResponse;
 
     // select value from dropdown
-    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
+    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`).first();
     await dropdownValue.hover();
     await dropdownValue.click();
     await clickOutside(page);
@@ -149,16 +151,24 @@ export const createTagTask = async (
   await toastNotification(page, /Task created successfully./);
 };
 
-export const checkTaskCount = async (
+export const checkTaskCountInActivityFeed = async (
   page: Page,
   openTask = 0,
   closedTask = 0
 ) => {
-  const openTaskElement = await page.getByTestId('open-task').textContent();
+  await page.waitForSelector('.ant-skeleton-element ', {
+    state: 'detached',
+  });
+  await page.getByTestId('user-profile-page-task-filter-icon').click();
+  const openTaskItem = page
+    .locator('.task-tab-custom-dropdown .task-count-text')
+    .first();
 
-  expect(openTaskElement).toContain(`${openTask} Open`);
+  expect(await openTaskItem.textContent()).toBe(String(openTask));
 
-  const closedTaskElement = await page.getByTestId('closed-task').textContent();
+  const closedTaskItem = page
+    .locator('.task-tab-custom-dropdown .task-count-text')
+    .last();
 
-  expect(closedTaskElement).toContain(`${closedTask} Closed`);
+  expect(await closedTaskItem.textContent()).toBe(String(closedTask));
 };

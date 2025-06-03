@@ -18,44 +18,27 @@ import {
   EntityUrlMapType,
   ENTITY_URL_MAP,
 } from '../../../../constants/Feeds.constants';
-import { getSearchedUsers, getUserSuggestions } from '../../../../rest/miscAPI';
+import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
-    if (!query) {
-      const data = await getSearchedUsers('', 1, 5);
-      const hits = data.data.hits.hits;
+    const data = await getUserAndTeamSearch(query, false, 5);
+    const hits = data.data.hits.hits;
 
-      return hits.map((hit) => ({
-        id: hit._id,
-        name: hit._source.name,
-        label: hit._source.displayName ?? hit._source.name,
-        fqn: hit._source.fullyQualifiedName,
-        href: buildMentionLink(
-          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
-          hit._source.name
-        ),
-        type: hit._source.entityType,
-      }));
-    } else {
-      const data = await getUserSuggestions(query);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-
-      return hits.map((hit) => ({
-        id: hit._id,
-        name: hit._source.name,
-        label: hit._source.displayName ?? hit._source.name,
-        fqn: hit._source.fullyQualifiedName,
-        href: buildMentionLink(
-          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
-          hit._source.name
-        ),
-        type: hit._source.entityType,
-      }));
-    }
+    return hits.map((hit) => ({
+      id: hit._id,
+      name: hit._source.name,
+      label: hit._source.displayName ?? hit._source.name,
+      fqn: hit._source.fullyQualifiedName,
+      href: buildMentionLink(
+        ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
+        hit._source.name
+      ),
+      type: hit._source.entityType,
+    }));
   },
 
   render: () => {

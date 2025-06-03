@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,8 @@ import traceback
 from copy import deepcopy
 from typing import List, Optional
 
+from pydantic import RootModel
+
 from metadata.data_quality.api.models import (
     TableAndTests,
     TestCaseDefinition,
@@ -23,10 +25,8 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
     TestSuiteProcessorConfig,
 )
+from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRunner
 from metadata.data_quality.runner.core import DataTestsRunner
-from metadata.data_quality.runner.test_suite_source_factory import (
-    test_suite_source_factory,
-)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -95,12 +95,8 @@ class TestCaseRunner(Processor):
             record.table, openmetadata_test_cases
         )
 
-        test_suite_runner = test_suite_source_factory.create(
-            record.service_type.lower(),
-            self.config,
-            self.metadata,
-            record.table,
-        ).get_data_quality_runner()
+        self.config.source.serviceConnection = RootModel(record.service_connection)
+        test_suite_runner = self.get_test_suite_runner(record.table)
 
         logger.debug(
             f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
@@ -357,3 +353,8 @@ class TestCaseRunner(Processor):
             else:
                 result.append(tc)
         return result
+
+    def get_test_suite_runner(self, table: Table):
+        return BaseTestSuiteRunner(
+            self.config, self.metadata, table
+        ).get_data_quality_runner()

@@ -68,6 +68,12 @@
       "description": "Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.",
       "type": "string"
     },
+    "accountUsageSchema": {
+      "title": "Account Usage Schema Name",
+      "description": "Full name of the schema where the account usage data is stored.",
+      "type": "string",
+      "default": "SNOWFLAKE.ACCOUNT_USAGE"
+    },
     "privateKey": {
       "title": "Private Key",
       "description": "Connection to Snowflake instance via Private Key",
@@ -84,7 +90,13 @@
       "title": "Include Transient Tables",
       "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
       "type": "boolean",
-      "default": true
+      "default": false
+    },
+    "includeStreams": {
+      "title": "Include Streams",
+      "description": "Optional configuration for ingestion of streams, By default, it will skip the streams.",
+      "type": "boolean",
+      "default": false
     },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
@@ -100,9 +112,36 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^snowflake$"]
+      }
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsIncrementalMetadataExtraction": {
+      "title": "Supports Incremental Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
@@ -125,9 +164,23 @@
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
+    "supportsSystemProfile": {
+      "title": "Supports System Profile",
+      "$ref": "../connectionBasicType.json#/definitions/supportsSystemProfile"
+    },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsDataDiff": {
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "creditCost": {
+      "title": "Cost of Credit",
+      "description": "Cost of credit for the Snowflake account.",
+      "type": "number",
+      "default": 3.3
     }
   },
   "additionalProperties": false,

@@ -36,19 +36,19 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
                 new File("/bootstrap/sql/migrations/native/1.1.0"),
                 null,
                 ConnectionType.MYSQL,
-                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getOpenMetadataApplicationConfig(),
                 false),
             new MigrationFile(
                 new File("/bootstrap/sql/migrations/native/1.2.0"),
                 null,
                 ConnectionType.MYSQL,
-                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getOpenMetadataApplicationConfig(),
                 false),
             new MigrationFile(
                 new File("/bootstrap/sql/migrations/native/1.2.1"),
                 null,
                 ConnectionType.MYSQL,
-                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getOpenMetadataApplicationConfig(),
                 false));
 
     collateMigrationList =
@@ -57,13 +57,13 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
                 new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"),
                 null,
                 ConnectionType.MYSQL,
-                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getOpenMetadataApplicationConfig(),
                 true),
             new MigrationFile(
                 new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"),
                 null,
                 ConnectionType.MYSQL,
-                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getOpenMetadataApplicationConfig(),
                 true));
   }
 
@@ -82,8 +82,8 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
         migrationWorkflow.getMigrationFiles(
             "nativePath",
             ConnectionType.MYSQL,
-            "extensionPath",
-            migrationWorkflow.getPipelineServiceClientConfiguration());
+            migrationWorkflow.getOpenMetadataApplicationConfig(),
+            "extensionPath");
 
     assertEquals(
         List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate"),

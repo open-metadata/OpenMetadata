@@ -4,9 +4,9 @@
   "editor.formatOnSave": true,
 
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true, // eslint --fix on save
-    "source.fixAll.stylelint": true, // stylelint --fix on save
-    "source.organizeImports": true // Organize imports on save
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.stylelint": "explicit",
+    "source.organizeImports": "explicit"
   },
 
   // Indentations purely based on linters and file formatters, not based on existing occurrences
@@ -15,6 +15,9 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }

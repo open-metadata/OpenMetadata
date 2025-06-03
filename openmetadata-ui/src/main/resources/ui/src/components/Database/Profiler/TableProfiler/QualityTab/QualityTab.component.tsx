@@ -11,14 +11,26 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../../../constants/constants';
+import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
@@ -26,15 +38,24 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { TestCaseType } from '../../../../../rest/testAPI';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
+import {
+  ListTestCaseParamsBySearch,
+  TestCaseType,
+} from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getEntityDetailsPath,
+} from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -57,6 +78,7 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    onSettingButtonClick,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
 
@@ -69,22 +91,53 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const editTest = permissions.EditAll || permissions.EditTests;
+  const { editTest, editDataProfile } = useMemo(() => {
+    return {
+      editTest: permissions?.EditAll || permissions?.EditTests,
+      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+    };
+  }, [permissions]);
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
+  const location = useCustomLocation();
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<TestCaseStatus>('' as TestCaseStatus);
   const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
   const [searchValue, setSearchValue] = useState<string>();
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const testSuite = useMemo(() => table?.testSuite, [table]);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
+
+  const fetchIngestionPipelineCount = async () => {
+    try {
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuite?.fullyQualifiedName ?? '',
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
+    } catch (error) {
+      // do nothing for count error
+    }
+  };
+
+  useEffect(() => {
+    if (testSuite?.fullyQualifiedName) {
+      fetchIngestionPipelineCount();
+    }
+  }, [testSuite?.fullyQualifiedName]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
     currentPage,
   }) => {
     if (currentPage) {
       fetchAllTests({
+        ...sortOptions,
         testCaseType: selectedTestType,
         testCaseStatus: isEmpty(selectedTestCaseStatus)
           ? undefined
@@ -104,6 +157,12 @@ export const QualityTab = () => {
         : selectedTestCaseStatus,
       q: value,
     });
+  };
+
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const tableBreadcrumb = useMemo(() => {
@@ -126,7 +185,13 @@ export const QualityTab = () => {
   const tabs = useMemo(
     () => [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
@@ -147,6 +212,8 @@ export const QualityTab = () => {
                     (await getResourceLimit('dataQuality', true, true));
                 }}
                 breadcrumbData={tableBreadcrumb}
+                fetchTestCases={handleSortTestCase}
+                isEditAllowed={editTest}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}
@@ -159,6 +226,7 @@ export const QualityTab = () => {
                 <NextPrevious
                   isNumberBased
                   currentPage={currentPage}
+                  isLoading={isTestsLoading}
                   pageSize={pageSize}
                   paging={paging}
                   pagingHandler={handleTestCasePageChange}
@@ -170,7 +238,13 @@ export const QualityTab = () => {
         ),
       },
       {
-        label: t('label.pipeline'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
@@ -184,6 +258,7 @@ export const QualityTab = () => {
       getResourceLimit,
       tableBreadcrumb,
       testCasePaging,
+      ingestionPipelineCount,
     ]
   );
 
@@ -211,6 +286,14 @@ export const QualityTab = () => {
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
     history.push(getAddDataQualityTableTestPath(type, datasetFQN));
+  };
+
+  const handleTabChange = () => {
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: undefined,
+    });
   };
 
   const addButtonContent = useMemo(
@@ -275,6 +358,19 @@ export const QualityTab = () => {
                     </LimitWrapper>
                   </Form.Item>
                 )}
+
+                {editDataProfile && (
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.setting-plural')}>
+                    <Button
+                      className="flex-center"
+                      data-testid="profiler-setting-btn"
+                      onClick={onSettingButtonClick}>
+                      <SettingIcon />
+                    </Button>
+                  </Tooltip>
+                )}
               </Space>
             </Form>
           </Col>
@@ -284,7 +380,7 @@ export const QualityTab = () => {
         <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
-        <Tabs items={tabs} />
+        <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
       </Col>
     </Row>
   );

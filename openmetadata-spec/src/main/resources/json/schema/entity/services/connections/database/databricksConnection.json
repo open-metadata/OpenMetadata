@@ -9,13 +9,17 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Databricks"],
+      "enum": [
+        "Databricks"
+      ],
       "default": "Databricks"
     },
     "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["databricks+connector"],
+      "enum": [
+        "databricks+connector"
+      ],
       "default": "databricks+connector"
     }
   },
@@ -64,6 +68,12 @@
       "type": "integer",
       "default": 120
     },
+    "queryHistoryTable": {
+      "title": "Query History Table",
+      "description": "Table name to fetch the query history.",
+      "type": "string",
+      "default": "system.query.history"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -71,6 +81,33 @@
     "connectionArguments": {
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$"
+        ]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^system$"
+        ]
+      }
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
@@ -103,5 +140,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "token"]
+  "required": [
+    "hostPort",
+    "token",
+    "httpPath"
+  ]
 }

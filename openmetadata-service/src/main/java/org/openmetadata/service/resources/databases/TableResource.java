@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,30 +25,30 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -89,6 +91,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
+  private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
@@ -122,11 +125,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.VIEW_DATA_PROFILE,
         MetadataOperation.VIEW_SAMPLE_DATA,
         MetadataOperation.VIEW_USAGE,
+        MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION,
         MetadataOperation.EDIT_TESTS,
         MetadataOperation.EDIT_QUERIES,
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
-        MetadataOperation.EDIT_LINEAGE);
+        MetadataOperation.EDIT_LINEAGE,
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -189,8 +194,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean includeEmptyTestSuite,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -364,7 +369,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table);
   }
 
@@ -388,7 +393,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
   }
 
@@ -416,8 +421,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+          JsonPatch patch,
+      @Parameter(
+              description =
+                  "Optional source of the change. If the change is made by a user use 'Manual'.",
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
   }
 
   @PATCH
@@ -445,8 +456,37 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+          JsonPatch patch,
+      @Parameter(
+              description = "Context of the change",
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTable",
+      summary = "Export table in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with columns from the table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -471,7 +511,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -504,7 +544,39 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTableAsync",
+      summary = "Import columns from CSV to update table asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 
   @DELETE
@@ -532,6 +604,33 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTableAsync",
+      summary = "Asynchronously delete a table by Id",
+      description = "Asynchronously delete a table by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -1073,8 +1172,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/customMetric")
   @Operation(
       operationId = "addCustomMetric",
-      summary = "Add column custom metrics",
-      description = "Add column custom metrics.",
+      summary = "Add custom metrics",
+      description = "Add custom metrics. For columns, add columnName.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1093,7 +1192,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
+    CustomMetric customMetric =
+        mapper.createCustomMetricToEntity(
+            createCustomMetric, securityContext.getUserPrincipal().getName());
     Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
@@ -1193,7 +1294,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the table.",
+      description = "Remove the user identified `userId` as a follower of the entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1206,7 +1307,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user being removed as follower",
@@ -1218,42 +1319,39 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .toResponse();
   }
 
-  public static Table validateNewTable(Table table) {
-    table.setId(UUID.randomUUID());
-    DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
-    DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
-    DatabaseUtil.validateColumns(table.getColumns());
-    return table;
-  }
+  @GET
+  @Path("/entityRelationship")
+  @Operation(
+      operationId = "searchEntityRelationship",
+      summary = "Search Entity Relationship",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchEntityRelationship(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted)
+      throws IOException {
 
-  private Table getTable(CreateTable create, String user) {
-    return validateNewTable(
-            repository
-                .copy(new Table(), create, user)
-                .withColumns(create.getColumns())
-                .withSourceUrl(create.getSourceUrl())
-                .withTableConstraints(create.getTableConstraints())
-                .withTablePartition(create.getTablePartition())
-                .withTableType(create.getTableType())
-                .withFileFormat(create.getFileFormat())
-                .withSchemaDefinition(create.getSchemaDefinition())
-                .withTableProfilerConfig(create.getTableProfilerConfig())
-                .withDatabaseSchema(
-                    getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
-  }
-
-  private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {
-    return new CustomMetric()
-        .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withColumnName(create.getColumnName())
-        .withOwners(create.getOwners())
-        .withExpression(create.getExpression())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+    return Entity.getSearchRepository()
+        .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 }

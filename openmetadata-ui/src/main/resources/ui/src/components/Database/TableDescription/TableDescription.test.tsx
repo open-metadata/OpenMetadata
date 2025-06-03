@@ -20,9 +20,23 @@ jest.mock('../../../pages/TasksPage/EntityTasks/EntityTasks.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTasks</p>);
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewNew</p>);
 });
+
+jest.mock('../../Suggestions/SuggestionsAlert/SuggestionsAlert', () => {
+  return jest.fn().mockReturnValue(<p>SuggestionsAlert</p>);
+});
+
+jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
+  useSuggestionsContext: jest.fn().mockImplementation(() => ({
+    selectedUserSuggestions: {
+      description: [],
+    },
+  })),
+  __esModule: true,
+  default: 'SuggestionsProvider',
+}));
 
 describe('TableDescription Component', () => {
   const mockProps = {
@@ -45,7 +59,7 @@ describe('TableDescription Component', () => {
 
     expect(descriptionElement).toBeInTheDocument();
     expect(descriptionElement).toHaveTextContent(
-      'RichTextEditorPreviewerEntityTasks'
+      'RichTextEditorPreviewNewEntityTasks'
     );
   });
 

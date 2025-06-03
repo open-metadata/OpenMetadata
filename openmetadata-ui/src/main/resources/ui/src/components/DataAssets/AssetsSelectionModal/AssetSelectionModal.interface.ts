@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
@@ -20,12 +21,14 @@ import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
@@ -71,7 +74,8 @@ export type AssetsUnion =
   | EntityType.SEARCH_SERVICE
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
-  | EntityType.API_ENDPOINT;
+  | EntityType.API_ENDPOINT
+  | EntityType.METRIC;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -99,4 +103,7 @@ export type MapPatchAPIResponse = {
   [EntityType.API_SERVICE]: APIService;
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
+  [EntityType.METRIC]: Metric;
+  [EntityType.TAG]: Tag;
+  [EntityType.DOMAIN]: Domain;
 };

@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/stitchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StitchConnection",
+  "description": "Stitch Connection",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.StitchConnection",
+  "definitions": {
+    "stitchType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Stitch"],
+      "default": "Stitch"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/stitchType",
+      "default": "Stitch"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Stitch API host",
+      "type": "string",
+      "default": "https://api.stitchdata.com/v4"
+    },
+    "token": {
+      "title": "JWT Token",
+      "description": "Token to connect to Stitch api doc",
+      "type": "string",
+      "format": "password"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "token"]
+}

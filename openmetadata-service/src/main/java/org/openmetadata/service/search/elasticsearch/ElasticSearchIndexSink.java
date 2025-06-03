@@ -28,10 +28,10 @@ import org.openmetadata.service.workflows.interfaces.Sink;
 public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
-  private final int maxPayLoadSizeInBytes;
+  private final long maxPayLoadSizeInBytes;
 
   public ElasticSearchIndexSink(
-      SearchRepository searchRepository, int total, int maxPayLoadSizeInBytes) {
+      SearchRepository searchRepository, int total, long maxPayLoadSizeInBytes) {
     this.searchRepository = searchRepository;
     this.maxPayLoadSizeInBytes = maxPayLoadSizeInBytes;
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);

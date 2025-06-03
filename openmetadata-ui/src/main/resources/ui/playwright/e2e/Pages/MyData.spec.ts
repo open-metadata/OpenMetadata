@@ -31,11 +31,11 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('My Data page', () => {
+test.describe.serial('My Data page', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    for (const table of TableEntities) {
+    const tablePromises = TableEntities.map(async (table) => {
       await table.create(apiContext);
       await table.patch({
         apiContext,
@@ -56,16 +56,18 @@ test.describe('My Data page', () => {
         ],
       });
       await table.followTable(apiContext, user.responseData.id);
-    }
+    });
+
+    await Promise.all(tablePromises);
+
     await afterAction();
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.delete(apiContext);
-    for (const table of TableEntities) {
-      await table.delete(apiContext);
-    }
+
+    await Promise.all(TableEntities.map((table) => table.delete(apiContext)));
     await afterAction();
   });
 
@@ -75,6 +77,11 @@ test.describe('My Data page', () => {
   });
 
   test('Verify my data widget', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Verify total count
     await expect(
       page.locator('[data-testid="my-data-total-count"]')
@@ -84,10 +91,15 @@ test.describe('My Data page', () => {
       .locator('[data-testid="my-data-widget"] [data-testid="view-all-link"]')
       .click();
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*&index=all&from=0&size=25*',
       TableEntities
     );
   });
@@ -103,7 +115,7 @@ test.describe('My Data page', () => {
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25*',
       TableEntities
     );
   });

@@ -16,7 +16,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("changeDescription", "failedRowsSample");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
@@ -42,7 +43,11 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     TestCase testCase =
-        Entity.getEntityByName(Entity.TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCaseResult.getTestCaseFQN(),
+            "owners,testSuites,testDefinition,domain,tags",
+            Include.ALL);
     TestDefinition testDefinition =
         Entity.getEntityByName(
             Entity.TEST_DEFINITION,
@@ -62,6 +67,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testCaseResult",
                 "testDefinition")); // remove testCase fields not needed
     esDoc.put("testCase", testCaseMap);
+    esDoc.put("@timestamp", testCaseResult.getTimestamp());
     esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
     setParentRelationships(testCase, esDoc);
     return esDoc;
@@ -79,7 +85,12 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   private void setTableEntityParentRelations(
       MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
-    Table table = Entity.getEntityByName(Entity.TABLE, entityLink.getEntityFQN(), "*", Include.ALL);
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE,
+            entityLink.getEntityFQN(),
+            "owners,columns,tags,followers,schemaDefinition,dataModel,extension,domain,dataProducts",
+            Include.ALL);
     EntityReference databaseSchemaReference = table.getDatabaseSchema();
     EntityReference databaseReference = table.getDatabase();
     EntityReference serviceReference = table.getService();

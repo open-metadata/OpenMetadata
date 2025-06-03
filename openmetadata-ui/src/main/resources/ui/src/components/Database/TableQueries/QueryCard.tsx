@@ -24,7 +24,6 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import {
-  getEntityDetailsPath,
   ONE_MINUTE_IN_MILLISECOND,
   PIPE_SYMBOL,
 } from '../../../constants/constants';
@@ -40,7 +39,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
-import { getQueryPath } from '../../../utils/RouterUtils';
+import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
@@ -130,7 +129,7 @@ const QueryCard: FC<QueryCardProp> = ({
             return (
               existingTable ?? {
                 id: (option.value as string) ?? '',
-                displayName: option.label as string,
+                displayName: option.labelName as string,
                 type: EntityType.TABLE,
               }
             );
@@ -191,11 +190,13 @@ const QueryCard: FC<QueryCardProp> = ({
           }
           title={
             <Space className="font-normal p-y-xs" size={8}>
-              <Text>{queryDate}</Text>
+              <Text className="text-sm">{queryDate}</Text>
               {duration && (
                 <>
                   <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text data-testid="query-run-duration">{duration}</Text>
+                  <Text className="text-sm" data-testid="query-run-duration">
+                    {duration}
+                  </Text>
                 </>
               )}
             </Space>

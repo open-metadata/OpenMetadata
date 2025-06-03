@@ -31,6 +31,20 @@
         {"name": "Severity4"},
         {"name": "Severity5"}
       ]
+    },
+    "metric": {
+      "description": "Representation of a metric.",
+      "javaType": "org.openmetadata.schema.tests.type.Metric",
+      "properties": {
+        "name": {
+          "description": "Name of the metric.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value of the metric.",
+          "type": "number"
+        }
+      }
     }
   },
   "properties": {
@@ -74,6 +88,13 @@
     "severity": {
       "description": "Severity failure for the test associated with the resolution.",
       "$ref": "#/definitions/severities"
+    },
+    "metrics": {
+      "description": "List of metrics associated with the test case resolution.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metric"
+      }
     }
   },
   "required": ["testCaseResolutionStatusType"],

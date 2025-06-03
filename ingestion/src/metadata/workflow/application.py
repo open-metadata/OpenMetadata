@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,10 +14,6 @@ Generic Workflow entrypoint to execute Applications
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -25,13 +21,11 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.api.step import Step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow
-from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
 
 logger = ingestion_logger()
 
@@ -84,29 +78,24 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     config: OpenMetadataApplicationConfig
     runner: Optional[AppRunner]
 
-    def __init__(self, config_dict: dict):
+    def __init__(self, config: OpenMetadataApplicationConfig):
         self.runner = None  # Will be passed in post-init
-        # TODO: Create a parse_gracefully method
-        self.config = OpenMetadataApplicationConfig.model_validate(config_dict)
+        self.config = config
 
         # Applications are associated to the OpenMetadata Service
         self.service_type: ServiceType = ServiceType.Metadata
 
-        metadata_config: OpenMetadataConnection = (
-            self.config.workflowConfig.openMetadataServerConfig
-        )
-        log_level: LogLevels = self.config.workflowConfig.loggerLevel
-
         super().__init__(
             config=self.config,
-            log_level=log_level,
-            metadata_config=metadata_config,
+            workflow_config=config.workflowConfig,
             service_type=self.service_type,
         )
 
     @classmethod
     def create(cls, config_dict: dict):
-        return cls(config_dict)
+        # TODO: Create a parse_gracefully method
+        config = OpenMetadataApplicationConfig.model_validate(config_dict)
+        return cls(config)
 
     def post_init(self) -> None:
         """
@@ -134,26 +123,8 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         """Workflow-specific logic to execute safely"""
         self.runner.run()
 
-    def calculate_success(self) -> float:
-        return self.runner.get_status().calculate_success()
-
     def get_failures(self) -> List[StackTraceError]:
         return self.workflow_steps()[0].get_status().failures
 
     def workflow_steps(self) -> List[Step]:
         return [self.runner]
-
-    def raise_from_status_internal(self, raise_warnings=False):
-        """Check failed status in the runner"""
-        if (
-            self.runner.get_status().failures
-            and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
-        ):
-            raise WorkflowExecutionError(
-                f"{self.runner.name} reported errors: {Summary.from_step(self.runner)}"
-            )
-
-        if raise_warnings and self.runner.get_status().warnings:
-            raise WorkflowExecutionError(
-                f"{self.runner.name} reported warning: {Summary.from_step(self.runner)}"
-            )

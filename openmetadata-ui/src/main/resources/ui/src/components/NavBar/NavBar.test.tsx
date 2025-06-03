@@ -10,35 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { ONE_HOUR_MS } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import NavBar from './NavBar';
+import NavBarComponent from './NavBar';
 
-const mockHandleSearchBoxOpen = jest.fn();
-const mockHandleSearchChange = jest.fn();
-const mockHandleOnClick = jest.fn();
-const mockHandleKeyDown = jest.fn();
-const mockHandleClear = jest.fn();
-const mockProps = {
-  searchValue: 'searchValue',
-  isTourRoute: false,
-  pathname: '',
-  isSearchBoxOpen: false,
-  handleSearchBoxOpen: mockHandleSearchBoxOpen,
-  handleSearchChange: mockHandleSearchChange,
-  handleOnClick: mockHandleOnClick,
-  handleClear: mockHandleClear,
-  handleKeyDown: mockHandleKeyDown,
-};
+// Place these at the very top of your test file, before any imports!
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
+
+jest.mock('cookie-storage', () => ({
+  CookieStorage: class {
+    getItem(...args: any[]) {
+      return mockGetItem(...args);
+    }
+    setItem(...args: any[]) {
+      return mockSetItem(...args);
+    }
+    constructor() {
+      // Do nothing
+    }
+  },
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
   })),
+}));
+
+jest.mock('../GlobalSearchBar/GlobalSearchBar', () => ({
+  GlobalSearchBar: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="global-search-bar">GlobalSearchBar</div>
+    )),
 }));
 
 jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
@@ -107,15 +117,6 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../common/CmdKIcon/CmdKIcon.component', () => {
-  return jest.fn().mockReturnValue(<div data-testid="cmd">CmdKIcon</div>);
-});
-jest.mock('../AppBar/SearchOptions', () => {
-  return jest.fn().mockReturnValue(<div data-testid="cmd">SearchOptions</div>);
-});
-jest.mock('../AppBar/Suggestions', () => {
-  return jest.fn().mockReturnValue(<div data-testid="cmd">Suggestions</div>);
-});
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
 
@@ -128,16 +129,6 @@ jest.mock('antd', () => ({
   }),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  getVersion: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        version: '0.5.0-SNAPSHOT',
-      },
-    })
-  ),
-}));
-
 jest.mock('../../utils/NavbarUtils', () => ({
   getHelpDropdownItems: jest.fn().mockReturnValue([
     {
@@ -147,18 +138,17 @@ jest.mock('../../utils/NavbarUtils', () => ({
   ]),
 }));
 
+jest.mock('../../rest/miscAPI', () => ({
+  getVersion: jest.fn().mockResolvedValue({
+    version: '0.5.0-SNAPSHOT',
+  }),
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
-    render(<NavBar {...mockProps} />);
+    render(<NavBarComponent />);
 
-    expect(
-      await screen.findByTestId('navbar-search-container')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('global-search-selector')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('searchBox')).toBeInTheDocument();
-    expect(await screen.findByTestId('cmd')).toBeInTheDocument();
+    expect(await screen.findByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -175,56 +165,61 @@ describe('Test NavBar Component', () => {
   });
 
   it('should call getVersion onMount', () => {
-    render(<NavBar {...mockProps} />);
+    render(<NavBarComponent />);
 
     expect(getVersion).toHaveBeenCalled();
   });
 
-  it('should handle search box open', () => {
-    render(<NavBar {...mockProps} />);
-    const searchBox = screen.getByTestId('searchBox');
-    fireEvent.click(searchBox);
-
-    expect(mockHandleSearchBoxOpen).toHaveBeenCalled();
-  });
-
-  it('should handle search change', () => {
-    render(<NavBar {...mockProps} />);
-    const searchBox = screen.getByTestId('searchBox');
-    fireEvent.change(searchBox, { target: { value: 'test' } });
-
-    expect(mockHandleSearchChange).toHaveBeenCalledWith('test');
-  });
-
-  it('should handle key down', () => {
-    render(<NavBar {...mockProps} />);
-    const searchBox = screen.getByTestId('searchBox');
-    fireEvent.keyDown(searchBox, { key: 'Enter', code: 'Enter' });
-
-    expect(mockHandleKeyDown).toHaveBeenCalled();
-  });
-
-  it('should render cancel icon', () => {
-    render(<NavBar {...mockProps} />);
-    const searchBox = screen.getByTestId('searchBox');
-    fireEvent.keyDown(searchBox, { key: 'Enter', code: 'Enter' });
-
-    expect(mockHandleKeyDown).toHaveBeenCalled();
-  });
-
-  it('should call function on icon search', async () => {
-    render(<NavBar {...mockProps} searchValue="" />);
-    const searchBox = await screen.findByTestId('search-icon');
-    await act(async () => {
-      fireEvent.click(searchBox);
-    });
-
-    expect(mockHandleOnClick).toHaveBeenCalled();
-  });
-
   it('should call getHelpDropdownItems function', async () => {
-    render(<NavBar {...mockProps} searchValue="" />);
+    render(<NavBarComponent />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
+  });
+});
+
+// --- Additional tests for fetchOMVersion one hour threshold ---
+describe('fetchOMVersion one hour threshold', () => {
+  const OLD_DATE_NOW = Date.now;
+
+  beforeEach(() => {
+    jest.resetModules();
+
+    global.Date.now = jest.fn();
+  });
+
+  afterEach(() => {
+    global.Date.now = OLD_DATE_NOW;
+  });
+
+  it('should NOT call getVersion if less than one hour since last fetch', async () => {
+    const now = 2000000;
+    const lastFetch = now - (ONE_HOUR_MS - 1000); // less than 1 hour ago
+    mockGetItem.mockReturnValue(String(lastFetch));
+    jest.spyOn(global.Date, 'now').mockReturnValue(now);
+
+    render(<NavBarComponent />);
+    await screen.findByTestId('global-search-bar');
+
+    expect(getVersion).not.toHaveBeenCalled();
+  });
+
+  it('should call getVersion and setItem if more than one hour since last fetch', async () => {
+    const now = 3000000;
+    const lastFetch = now - (ONE_HOUR_MS + 1000); // more than 1 hour ago
+    mockGetItem.mockReturnValue(String(lastFetch));
+    (global.Date.now as jest.Mock).mockReturnValue(now);
+
+    render(<NavBarComponent />);
+    await Promise.resolve();
+
+    await act(async () => {
+      expect(getVersion).toHaveBeenCalled();
+    });
+
+    expect(mockSetItem).toHaveBeenCalledWith(
+      'versionFetchTime',
+      '3000000',
+      expect.objectContaining({ expires: expect.any(Date) })
+    );
   });
 });

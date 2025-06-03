@@ -39,7 +39,9 @@ const mockProps = {
   ],
 };
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
+  formatDateTimeLong: jest
+    .fn()
+    .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
 }));
 
 jest.mock('../../../../utils/TasksUtils', () => ({
@@ -48,6 +50,9 @@ jest.mock('../../../../utils/TasksUtils', () => ({
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
+}));
+jest.mock('../../../../utils/CommonUtils', () => ({
+  formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
 }));
 
 describe('Test AddServicePage component', () => {

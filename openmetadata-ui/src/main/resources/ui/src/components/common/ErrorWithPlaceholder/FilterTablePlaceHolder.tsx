@@ -21,7 +21,7 @@ const FilterTablePlaceHolder = ({
 }: FilterTablePlaceHolderProps) => {
   return (
     <ErrorPlaceHolder
-      className="mt-0-important p-y-lg"
+      className="mt-0-important p-y-lg border-none"
       placeholderText={placeholderText}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.FILTER}

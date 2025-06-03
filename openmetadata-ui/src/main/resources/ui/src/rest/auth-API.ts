@@ -45,14 +45,6 @@ export const basicAuthSignIn = async (payload: LoginRequest) => {
   return response.data;
 };
 
-export const checkEmailInUse = async (email: string) => {
-  const response = await axiosClient.post(`${apiPath}/checkEmailInUse`, {
-    email,
-  });
-
-  return response.data;
-};
-
 export const generatePasswordResetLink = async (email: string) => {
   const response = await axiosClient.post(
     `${apiPath}/generatePasswordResetLink`,
@@ -74,12 +66,6 @@ export const confirmRegistration = async (token: string) => {
   );
 
   return response.data;
-};
-
-export const resendRegistrationToken = async () => {
-  const response = await axiosClient.put(`${apiPath}/resendRegistrationToken`);
-
-  return response;
 };
 
 export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {

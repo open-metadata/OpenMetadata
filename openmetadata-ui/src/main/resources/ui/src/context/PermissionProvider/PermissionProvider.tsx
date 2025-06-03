@@ -98,7 +98,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPermissions, redirectToStoredPath]);
+  }, [redirectToStoredPath]);
 
   const fetchEntityPermission = useCallback(
     async (resource: ResourceEntity, entityId: string) => {

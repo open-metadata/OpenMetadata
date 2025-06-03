@@ -76,14 +76,12 @@ public class TopicIndex implements SearchIndex {
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     Map<String, Object> commonAttributes = getCommonAttributesMap(topic, Entity.TOPIC);
     doc.putAll(commonAttributes);
-    doc.put(
-        "displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("field_suggest", fieldSuggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("serviceType", topic.getServiceType());
-    doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put("service", getEntityWithDisplayName(topic.getService()));
     return doc;

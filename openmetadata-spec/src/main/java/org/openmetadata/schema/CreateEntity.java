@@ -66,6 +66,8 @@ public interface CreateEntity {
     /* no-op implementation to be overridden */
   }
 
+  default void setReviewers(List<EntityReference> reviewers) {}
+
   default <K extends CreateEntity> K withExtension(Object extension) {
     return (K) this;
   }

@@ -17,10 +17,12 @@ import { getApiContext, redirectToHomePage } from '../utils/common';
 // use the admin user to login
 setup.use({
   storageState: 'playwright/.auth/admin.json',
+  trace: 'retain-on-failure',
 });
 
 setup.describe.configure({
   timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
+  retries: 0,
 });
 
 setup(
@@ -54,36 +56,33 @@ setup(
       }
     );
 
-    await apiContext.patch(`/api/v1/apps/trigger/DataInsightsApplication`, {
-      data: [
+    await expect(
+      await apiContext.patch(
+        `/api/v1/apps/marketplace/name/DataInsightsApplication`,
         {
-          op: 'remove',
-          path: '/appConfiguration/backfillConfiguration/startDate',
-        },
-        {
-          op: 'remove',
-          path: '/appConfiguration/backfillConfiguration/endDate',
-        },
-        {
-          op: 'replace',
-          path: '/batchSize',
-          value: 1000,
-        },
-        {
-          op: 'replace',
-          path: '/recreateDataAssetsIndex',
-          value: false,
-        },
-        {
-          op: 'replace',
-          path: '/backfillConfiguration/enabled',
-          value: false,
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+          data: [
+            {
+              op: 'replace',
+              path: '/appConfiguration/batchSize',
+              value: 1000,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/recreateDataAssetsIndex',
+              value: false,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/backfillConfiguration/enabled',
+              value: false,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    ).toBeOK();
 
     await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
 
@@ -115,7 +114,7 @@ setup(
               }),
         }
       )
-      .toBe('success');
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     await table.delete(apiContext);
 

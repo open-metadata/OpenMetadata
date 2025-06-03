@@ -14,12 +14,13 @@
 package org.openmetadata.service.resources;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.dropwizard.setup.Environment;
+import io.dropwizard.core.setup.Environment;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.Path;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -30,10 +31,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.ws.rs.Path;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
@@ -43,16 +42,19 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.util.ReflectionUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
  * that anchor all the collections as follows: - .../api/v1 Provides information about all the collections in the
  * catalog - .../api/v1/collection-name provides sub collections or resources in that collection
  */
-@Slf4j
 public final class CollectionRegistry {
+  public static final List<String> PACKAGES = List.of("org.openmetadata", "io.collate");
   private static CollectionRegistry instance = null;
   private static volatile boolean initialized = false;
+  private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
@@ -110,7 +112,8 @@ public final class CollectionRegistry {
    * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph().enableAllInfo().acceptPackages(PACKAGES.toArray(new String[0])).scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
         List<Method> methods =
             ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
@@ -203,9 +206,9 @@ public final class CollectionRegistry {
       if (a instanceof Path path) {
         // Use @Path annotation to compile href
         collectionInfo.withHref(URI.create(path.value()));
-      } else if (a instanceof Api api) {
-        // Use @Api annotation to get documentation about the collection
-        collectionInfo.withDocumentation(api.value());
+      } else if (a instanceof Tag tag) {
+        // Use @Tag annotation to get documentation about the collection
+        collectionInfo.withDocumentation(tag.description());
       } else if (a instanceof Collection collection) {
         // Use @Collection annotation to get initialization information for the class
         collectionInfo.withName(collection.name());
@@ -220,7 +223,11 @@ public final class CollectionRegistry {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
       List<Class<?>> collectionClasses = classList.loadClasses();
       List<CollectionDetails> collections = new ArrayList<>();
@@ -273,10 +280,10 @@ public final class CollectionRegistry {
               resource =
                   clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
                       .newInstance(jdbi, authorizer);
-            } catch (NoSuchMethodException execp) {
+            } catch (NoSuchMethodException except) {
               try {
                 resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
-              } catch (NoSuchMethodException except) {
+              } catch (NoSuchMethodException exception) {
                 resource = Class.forName(resourceClass).getConstructor().newInstance();
               }
             }

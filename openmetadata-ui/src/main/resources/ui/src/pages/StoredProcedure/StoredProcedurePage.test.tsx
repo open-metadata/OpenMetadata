@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -133,7 +134,13 @@ jest.mock('../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
-jest.useFakeTimers();
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <p>GenericTab</p>),
+}));
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
@@ -244,6 +251,7 @@ describe('StoredProcedure component', () => {
       include: 'all',
     });
 
-    expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+    expect(GenericTab).toHaveBeenCalledWith({ type: 'StoredProcedure' }, {});
   });
 });

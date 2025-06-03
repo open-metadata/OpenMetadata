@@ -22,4 +22,5 @@ export interface TestSummaryGraphProps {
   testCaseResults: TestCaseResult[];
   selectedTimeRange: string;
   minHeight?: number;
+  testDefinitionName?: string;
 }

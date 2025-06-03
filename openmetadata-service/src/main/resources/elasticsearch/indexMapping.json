@@ -101,7 +101,7 @@
     "indexName": "test_case_result_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_result_index_mapping.json",
     "alias": "testCaseResult",
-    "parentAliases": ["testSuite", "testCase", "all"],
+    "parentAliases": ["testSuite", "testCase"],
     "childAliases": []
   },
   "testSuite": {
@@ -122,8 +122,15 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": [],
+    "parentAliases": ["all"],
     "childAliases": ["dataProduct"]
+  },
+  "metric": {
+    "indexName": "metric_search_index",
+    "indexMappingFile": "/elasticsearch/%s/metric_index_mapping.json",
+    "alias": "metric",
+    "parentAliases": ["all", "dataAsset"],
+    "childAliases": []
   },
   "glossary": {
     "indexName": "glossary_search_index",
@@ -143,7 +150,7 @@
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",
     "alias": "tag",
-    "parentAliases": ["classification","all", "dataAsset"],
+    "parentAliases": ["classification", "all", "dataAsset"],
     "childAliases": []
   },
   "classification": {
@@ -151,7 +158,7 @@
     "indexMappingFile": "/elasticsearch/%s/classification_index_mapping.json",
     "alias": "classification",
     "parentAliases": ["all"],
-    "childAliases": []
+    "childAliases": ["tag"]
   },
   "user": {
     "indexName": "user_search_index",
@@ -206,42 +213,42 @@
     "indexName": "database_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/database_service_index_mapping.json",
     "alias": "databaseService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["database", "databaseSchema", "storedProcedure", "table", "testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
   },
   "messagingService": {
     "indexName": "messaging_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/messaging_service_index_mapping.json",
     "alias": "messagingService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["topic"]
   },
   "pipelineService": {
     "indexName": "pipeline_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/pipeline_service_index_mapping.json",
     "alias": "pipelineService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["pipeline"]
   },
   "dashboardService": {
     "indexName": "dashboard_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_service_index_mapping.json",
     "alias": "dashboardService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["dashboard", "dashboardDataModel", "chart"]
   },
   "searchService": {
     "indexName": "search_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/search_service_index_mapping.json",
     "alias": "searchService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["searchIndex"]
   },
   "storageService": {
     "indexName": "storage_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/storage_service_index_mapping.json",
     "alias": "storageService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["container"]
   },
   "metadataService": {
@@ -255,14 +262,14 @@
     "indexName": "mlmodel_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["mlmodel"]
   },
   "apiService": {
     "indexName": "api_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/api_service_index_mapping.json",
     "alias": "apiService",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "service"],
     "childAliases": ["apiCollection", "apiEndpoint"]
   },
   "apiCollection": {
@@ -290,7 +297,14 @@
     "indexName": "ingestion_pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
     "alias": "ingestionPipeline",
-    "parentAliases": ["all", "dataAsset"],
+    "parentAliases": [],
+    "childAliases": []
+  },
+  "queryCostRecord": {
+    "indexName": "query_cost_record_search_index",
+    "indexMappingFile": "/elasticsearch/%s/query_cost_record_index_mapping.json",
+    "alias": "queryCostRecord",
+    "parentAliases": [],
     "childAliases": []
   }
 }

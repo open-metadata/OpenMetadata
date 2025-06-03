@@ -2,12 +2,12 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.openmetadata.sdk.PipelineServiceClientInterface.HEALTHY_STATUS;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.STATUS_KEY;
-import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler.JOB_CONTEXT_CLUSTER_NAME;
-import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler.JOB_CONTEXT_METER_REGISTRY;
-import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler.JOB_CONTEXT_PIPELINE_SERVICE_CLIENT;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.JOB_CONTEXT_CLUSTER_NAME;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.JOB_CONTEXT_METER_REGISTRY;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.JOB_CONTEXT_PIPELINE_SERVICE_CLIENT;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.quartz.Job;

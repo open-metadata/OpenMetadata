@@ -12,6 +12,7 @@
  */
 
 import {
+  AuthenticationResult,
   BrowserCacheLocation,
   Configuration,
   PopupRequest,
@@ -33,13 +34,15 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
+import { getBasePath } from './HistoryUtils';
+import { setOidcToken } from './LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+const subPath = getBasePath();
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -290,26 +293,7 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email };
-};
-
-export const isProtectedRoute = (pathname: string) => {
-  return (
-    [
-      ROUTES.SIGNUP,
-      ROUTES.SIGNIN,
-      ROUTES.FORGOT_PASSWORD,
-      ROUTES.CALLBACK,
-      ROUTES.SILENT_CALLBACK,
-      ROUTES.SAML_CALLBACK,
-      ROUTES.REGISTER,
-      ROUTES.RESET_PASSWORD,
-      ROUTES.ACCOUNT_ACTIVATION,
-      ROUTES.HOME,
-      ROUTES.AUTH_CALLBACK,
-      ROUTES.NOT_FOUND,
-    ].indexOf(pathname) === -1
-  );
+  return { name: userName, email: email, picture: user.picture };
 };
 
 export const isTourRoute = (pathname: string) => {
@@ -337,6 +321,7 @@ export const extractDetailsFromToken = (token: string) => {
         return {
           exp,
           isExpired: false,
+          timeoutExpiry: 0,
         };
       }
       const threshouldMillis = EXPIRY_THRESHOLD_MILLES;
@@ -359,7 +344,6 @@ export const extractDetailsFromToken = (token: string) => {
   return {
     exp: 0,
     isExpired: true,
-
     timeoutExpiry: 0,
   };
 };
@@ -413,4 +397,26 @@ export const prepareUserProfileFromClaims = ({
   } as OidcUser;
 
   return newUser;
+};
+
+// Responsible for parsing the response from MSAL AuthenticationResult
+export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
+  // Call your API with the access token and return the data you need to save in state
+  const { idToken, scopes, account } = response;
+
+  const user = {
+    id_token: idToken,
+    scope: scopes.join(),
+    profile: {
+      email: get(account, 'idTokenClaims.email', ''),
+      name: account?.name ?? '',
+      picture: '',
+      preferred_username: get(account, 'idTokenClaims.preferred_username', ''),
+      sub: get(account, 'idTokenClaims.sub', ''),
+    } as UserProfile,
+  };
+
+  setOidcToken(idToken);
+
+  return user;
 };

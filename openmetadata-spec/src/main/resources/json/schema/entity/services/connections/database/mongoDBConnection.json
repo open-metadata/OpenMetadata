@@ -51,7 +51,7 @@
         },
         "hostPort": {
             "title": "Host and Port",
-            "description": "Host and port of the MongoDB service.",
+            "description": "Host and port of the MongoDB service when using the `mongodb` connection scheme. Only host when using the `mongodb+srv` scheme.",
             "type": "string"
         },
         "connectionOptions": {
@@ -63,6 +63,21 @@
             "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
             "type": "string"
         },
+        "schemaFilterPattern":{
+            "title": "Default Schema Filter Pattern",
+            "description": "Regex to only include/exclude schemas that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
+          "tableFilterPattern": {
+            "title": "Default Table Filter Pattern",
+            "description": "Regex to only include/exclude tables that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
+          "databaseFilterPattern": {
+            "title": "Default Database Filter Pattern",
+            "description": "Regex to only include/exclude databases that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
         "supportsMetadataExtraction": {
             "title": "Supports Metadata Extraction",
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
@@ -70,6 +85,12 @@
         "supportsProfiler": {
             "title": "Supports Profiler",
             "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+        },
+        "sslMode": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+        },
+        "sslConfig": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
         }
     },
     "required": ["hostPort"],

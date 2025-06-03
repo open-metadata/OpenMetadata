@@ -13,27 +13,32 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -50,6 +55,10 @@ import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -58,6 +67,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.Edge;
@@ -66,17 +79,23 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
+import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -323,14 +342,14 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+        "Invalid column name invalidColumn");
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
     assertResponse(
         () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+        "Invalid column name invalidColumn");
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
@@ -382,7 +401,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid field name %s", f3FQN));
+        String.format("Invalid column name %s", f3FQN));
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -399,7 +418,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid fully qualified column name %s", f2c3FQN));
+        String.format("Invalid column name %s", f2c3FQN));
 
     LineageDetails containerToTable = new LineageDetails();
     List<ColumnLineage> containerToTableLineage = containerToTable.getColumnsLineage();
@@ -424,7 +443,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid feature name %s", m3f3));
+        String.format("Invalid column name %s", m3f3));
 
     LineageDetails tableToDashboard = new LineageDetails();
     String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
@@ -452,6 +471,144 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), lineageDetails, ADMIN_AUTH_HEADERS);
     Edge edge = getEdge(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
     assertEquals(lineageDetails.getDescription(), edge.getLineageDetails().getDescription());
+  }
+
+  @Order(6)
+  @Test
+  void get_dataQualityLineage(TestInfo test)
+      throws IOException, URISyntaxException, ParseException {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
+
+    addEdge(TABLES.get(4), TABLES.get(5));
+    addEdge(TABLES.get(5), TABLES.get(6));
+    addEdge(TABLES.get(0), TABLES.get(4));
+    addEdge(TABLES.get(0), TABLES.get(2));
+    addEdge(TABLES.get(2), TABLES.get(1));
+    addEdge(TABLES.get(2), TABLES.get(7));
+    addEdge(TABLES.get(6), TABLES.get(7));
+
+    Map<String, String> queryParams =
+        Map.of("fqn", TABLES.get(7).getFullyQualifiedName(), "upstreamDepth", "3");
+    Map<String, Object> lineage = getDataQualityLineage(queryParams, ADMIN_AUTH_HEADERS);
+
+    // we have no failures in the lineage, hence no
+    assertEquals(0, ((List) lineage.get("nodes")).size());
+    assertEquals(0, ((List) lineage.get("edges")).size());
+
+    // Create test cases with failures for table 4 and table 6
+    TestDefinition testDefinition =
+        testDefinitionResourceTest.getEntityByName(
+            "columnValuesToBeNotNull", "owners", ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuite4 =
+        testSuiteResourceTest.createRequest(test).withName(TABLES.get(4).getFullyQualifiedName());
+    CreateTestSuite createTestSuite6 =
+        testSuiteResourceTest.createRequest(test).withName(TABLES.get(6).getFullyQualifiedName());
+    TestSuite testSuite4 =
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite4, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite6 =
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite6, ADMIN_AUTH_HEADERS);
+
+    MessageParser.EntityLink TABLE4_LINK =
+        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(4).getFullyQualifiedName());
+    MessageParser.EntityLink TABLE6_LINK =
+        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(6).getFullyQualifiedName());
+    CreateTestCase create4 = testCaseResourceTest.createRequest(test);
+    CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
+    create4
+        .withEntityLink(TABLE4_LINK.getLinkString())
+        .withTestSuite(testSuite4.getFullyQualifiedName())
+        .withTestDefinition(testDefinition.getFullyQualifiedName());
+    create6
+        .withEntityLink(TABLE6_LINK.getLinkString())
+        .withTestSuite(testSuite6.getFullyQualifiedName())
+        .withTestDefinition(testDefinition.getFullyQualifiedName());
+    TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
+    TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp(String.format("2024-09-11")));
+    testCaseResourceTest.postTestCaseResult(
+        testCase4.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    testCaseResourceTest.postTestCaseResult(
+        testCase6.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    lineage = getDataQualityLineage(queryParams, ADMIN_AUTH_HEADERS);
+    List<Map<String, Object>> edges = ((List<Map<String, Object>>) lineage.get("edges"));
+    List<Map<String, Object>> nodes = ((List<Map<String, Object>>) lineage.get("nodes"));
+    // We should have 2 nodes (4 and 6) and 3 edges (4->5, 5->6, 6->7)
+    assertEquals(3, edges.size());
+    assertEquals(2, nodes.size());
+
+    assertTrue(
+        nodes.stream()
+            .allMatch(
+                n ->
+                    TABLES.get(4).getId().toString().equals(n.get("id"))
+                        || TABLES.get(6).getId().toString().equals(n.get("id"))));
+    // our lineage is 0 -> 4 -> 5 -> 6 -> 7
+    for (Map<String, Object> edge : edges) {
+      Map<String, String> toEntity = ((Map<String, String>) edge.get("toEntity"));
+      Map<String, String> fromEntity = ((Map<String, String>) edge.get("fromEntity"));
+      if (toEntity.get("id").equals(TABLES.get(6).getId().toString())) {
+        assertEquals(TABLES.get(5).getId().toString(), fromEntity.get("id"));
+      } else if (fromEntity.get("id").equals(TABLES.get(4).getId().toString())) {
+        assertEquals(TABLES.get(5).getId().toString(), toEntity.get("id"));
+      } else if (fromEntity.get("id").equals(TABLES.get(6).getId().toString())) {
+        assertEquals(TABLES.get(7).getId().toString(), toEntity.get("id"));
+      } else {
+        fail(String.format("Unexpected edge: %s", edge));
+      }
+    }
+
+    deleteEdge(TABLES.get(4), TABLES.get(5));
+    deleteEdge(TABLES.get(5), TABLES.get(6));
+    deleteEdge(TABLES.get(0), TABLES.get(4));
+    deleteEdge(TABLES.get(0), TABLES.get(2));
+    deleteEdge(TABLES.get(2), TABLES.get(1));
+    deleteEdge(TABLES.get(2), TABLES.get(7));
+    deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(7)
+  @Test
+  void get_SearchLineage(TestInfo testInfo) throws HttpResponseException {
+    // our lineage is
+    //                  0
+    //            +-----+-----+
+    //            v           v
+    //            2           4
+    //        +---+---+       v
+    //        v       |       5
+    //        1       |       v
+    //                |       6
+    //                |       v
+    //                +-----> 7
+
+    addEdge(TABLES.get(4), TABLES.get(5));
+    addEdge(TABLES.get(5), TABLES.get(6));
+    addEdge(TABLES.get(0), TABLES.get(4));
+    addEdge(TABLES.get(0), TABLES.get(2));
+    addEdge(TABLES.get(2), TABLES.get(1));
+    addEdge(TABLES.get(2), TABLES.get(7));
+    addEdge(TABLES.get(6), TABLES.get(7));
+
+    SearchLineageResult searchLineageResult =
+        searchLineage(TABLES.get(5).getEntityReference(), 1, 1);
+    assertSearchLineageResponseFields(searchLineageResult);
+
+    deleteEdge(TABLES.get(4), TABLES.get(5));
+    deleteEdge(TABLES.get(5), TABLES.get(6));
+    deleteEdge(TABLES.get(0), TABLES.get(4));
+    deleteEdge(TABLES.get(0), TABLES.get(2));
+    deleteEdge(TABLES.get(2), TABLES.get(1));
+    deleteEdge(TABLES.get(2), TABLES.get(7));
+    deleteEdge(TABLES.get(6), TABLES.get(7));
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -623,6 +780,33 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(lineageById, lineageByName);
   }
 
+  private void assertSearchLineageResponseFields(SearchLineageResult searchLineageResult) {
+    JsonUtils.getMap(searchLineageResult);
+    Map<String, NodeInformation> entities = searchLineageResult.getNodes();
+    Set<String> nodesFields =
+        Set.of("id", "name", "displayName", "fullyQualifiedName", "upstreamLineage");
+    Set<String> nodesColumnsFields = Set.of("name", "fullyQualifiedName");
+    for (Map.Entry<String, NodeInformation> entry : entities.entrySet()) {
+      Map<String, Object> entity = entry.getValue().getEntity();
+      Set<String> keys = entity.keySet();
+      Set<String> missingKeys = new HashSet<>(nodesFields);
+      missingKeys.removeAll(keys);
+      String err = String.format("Nodes keys not found in the response: %s", missingKeys);
+      assertTrue(keys.containsAll(nodesFields), err);
+
+      List<Map<String, Object>> columns = (List<Map<String, Object>>) entity.get("columns");
+      columns.forEach(
+          c -> {
+            Set<String> columnsKeys = c.keySet();
+            Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
+            missingColumnKeys.removeAll(columnsKeys);
+            String columnErr =
+                String.format("Column nodes keys not found in the response: %s", missingColumnKeys);
+            assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
+          });
+    }
+  }
+
   public EntityLineage getLineage(
       String entity,
       UUID id,
@@ -637,6 +821,21 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     EntityLineage lineage = TestUtils.get(target, EntityLineage.class, authHeaders);
     validateLineage((lineage));
     return lineage;
+  }
+
+  public SearchLineageResult searchLineage(
+      @NonNull EntityReference entityReference,
+      @NonNull int upstreamDepth,
+      @NonNull int downstreamDepth)
+      throws HttpResponseException {
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", entityReference.getFullyQualifiedName());
+    target = target.queryParam("type", entityReference.getType());
+    target = target.queryParam("upstreamDepth", upstreamDepth);
+    target = target.queryParam("downstreamDepth", downstreamDepth);
+    SearchLineageResult searchLineageResult =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    return searchLineageResult;
   }
 
   public EntityLineage getLineageByName(
@@ -655,12 +854,33 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     return lineage;
   }
 
+  public Map<String, Object> getDataQualityLineage(
+      Map<String, String> queryParams, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("lineage/getDataQualityLineage");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+
+    return TestUtils.get(target, Map.class, authHeaders);
+  }
+
   public void assertEdge(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
     if (downstream) {
-      assertTrue(lineage.getDownstreamEdges().contains(expectedEdge));
+      assertTrue(assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedEdge));
     } else {
-      assertTrue(lineage.getUpstreamEdges().contains(expectedEdge));
+      assertTrue(assertEdgeFromLineage(lineage.getUpstreamEdges(), expectedEdge));
     }
+  }
+
+  public boolean assertEdgeFromLineage(List<Edge> actualEdges, Edge expectedEdge) {
+    for (Edge actualEdge : actualEdges) {
+      if (actualEdge.getFromEntity().equals(expectedEdge.getFromEntity())
+          && actualEdge.getToEntity().equals(expectedEdge.getToEntity())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public void assertDeleted(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
@@ -675,11 +895,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
     assertEquals(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
     for (Edge expectedUpstreamEdge : expectedUpstreamEdges) {
-      assertTrue(lineage.getUpstreamEdges().contains(expectedUpstreamEdge));
+      assertEdgeFromLineage(lineage.getUpstreamEdges(), expectedUpstreamEdge);
     }
     assertEquals(lineage.getDownstreamEdges().size(), expectedDownstreamEdges.length);
     for (Edge expectedDownstreamEdge : expectedDownstreamEdges) {
-      assertTrue(lineage.getDownstreamEdges().contains(expectedDownstreamEdge));
+      assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedDownstreamEdge);
     }
   }
 }

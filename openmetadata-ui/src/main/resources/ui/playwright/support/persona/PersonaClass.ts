@@ -25,7 +25,7 @@ type ResponseDataType = {
 export class PersonaClass {
   id = uuid();
   data: ResponseDataType;
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.data = data ?? {

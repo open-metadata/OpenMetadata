@@ -16,10 +16,15 @@ import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
+import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  formatDateTimeLong,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './test-summary-custom-tooltip.less';
 
 const TestSummaryCustomTooltip = (
   props: TooltipProps<string | number, string>
@@ -78,7 +83,10 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {value}
+          {/* freshness will always be in seconds  */}
+          {key === TABLE_FRESHNESS_KEY && isNumber(value)
+            ? convertMillisecondsToHumanReadableFormat(value)
+            : value}
         </span>
       </li>
     );
@@ -88,10 +96,12 @@ const TestSummaryCustomTooltip = (
     <Card
       title={
         <Typography.Title level={5}>
-          {formatDateTime(payload[0].payload.name)}
+          {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
-      <ul data-testid="test-summary-tooltip-container">
+      <ul
+        className="test-summary-tooltip-container"
+        data-testid="test-summary-tooltip-container">
         {data.map(tooltipRender)}
       </ul>
     </Card>

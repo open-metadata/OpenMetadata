@@ -29,6 +29,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   assignee?: string;
   testCaseFQN?: string;
   offset?: string;
+  originEntityFQN?: string;
 };
 
 export const getListTestCaseIncidentStatus = async ({
@@ -40,14 +41,6 @@ export const getListTestCaseIncidentStatus = async ({
   >(testCaseIncidentUrl, {
     params: { ...params, limit },
   });
-
-  return response.data;
-};
-
-export const getTestCaseIncidentById = async (id: string) => {
-  const response = await APIClient.get<TestCaseResolutionStatus>(
-    `${testCaseIncidentUrl}/${id}`
-  );
 
   return response.data;
 };

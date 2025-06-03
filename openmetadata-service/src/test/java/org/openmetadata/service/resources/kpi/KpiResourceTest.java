@@ -1,9 +1,8 @@
 package org.openmetadata.service.resources.kpi;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -65,24 +64,31 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             "dataProduct",
             "glossaryTerm",
             "tag");
-    if (getSearchRepository()
+    if (Entity.getSearchRepository()
         .getSearchType()
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) getSearchRepository().getSearchClient().getLowLevelClient());
+              (RestClient) Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              Entity.getSearchRepository().getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
               (os.org.opensearch.client.RestClient)
-                  getSearchRepository().getSearchClient().getLowLevelClient());
+                  Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              Entity.getSearchRepository().getClusterAlias());
     }
     try {
       for (String dataAssetType : dataAssetTypes) {
         String dataStreamName =
             String.format("%s-%s", "di-data-assets", dataAssetType).toLowerCase();
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-          searchInterface.createDataAssetsDataStream(dataStreamName);
+          searchInterface.createDataAssetsDataStream(
+              dataStreamName,
+              dataAssetType,
+              Entity.getSearchRepository().getIndexMapping(dataAssetType),
+              "en",
+              7);
         }
       }
     } catch (IOException ex) {
@@ -101,7 +107,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test

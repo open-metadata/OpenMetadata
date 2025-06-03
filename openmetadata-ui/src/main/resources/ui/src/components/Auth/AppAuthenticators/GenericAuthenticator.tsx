@@ -16,33 +16,31 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const {
-      setIsAuthenticated,
-      setIsSigningUp,
-      removeOidcToken,
-      setOidcToken,
-    } = useApplicationStore();
-    const history = useHistory();
+    const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
 
     const handleLogin = () => {
       setIsAuthenticated(false);
       setIsSigningUp(true);
-      window.location.assign('api/v1/auth/login');
+      const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
+      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
     };
 
     const handleLogout = async () => {
-      await logoutUser();
-
-      history.push(ROUTES.SIGNIN);
-      removeOidcToken();
-      setIsAuthenticated(false);
+      try {
+        await logoutUser();
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
+      }
     };
 
     const handleSilentSignIn = async () => {

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -93,7 +93,7 @@ EXPECTED_CUSTOM_PROPERTIES = [
         "description": "Rating of a table",
         "propertyType": {"name": "enum"},
         "customPropertyConfig": {
-            "config": {"values": ["Good", "Average", "Bad"], "multiSelect": False},
+            "config": {"values": ["Average", "Bad", "Good"], "multiSelect": False},
         },
     },
     {
@@ -333,24 +333,22 @@ class OMetaCustomAttributeTest(TestCase):
             for custom_property in custom_properties:
                 if expected_custom_property["name"] == custom_property["name"]:
                     actual_custom_properties.append(custom_property)
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["name"], expected_custom_property["name"]
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["description"],
                         expected_custom_property["description"],
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property.get("customPropertyConfig"),
                         expected_custom_property.get("customPropertyConfig"),
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["propertyType"]["name"],
                         expected_custom_property["propertyType"]["name"],
                     )
-        self.assertEquals(
-            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
-        )
+        self.assertEqual(len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES))
 
     def test_add_custom_property_table(self):
         """

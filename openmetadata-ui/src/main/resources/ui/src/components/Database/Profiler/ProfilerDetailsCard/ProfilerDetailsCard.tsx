@@ -30,6 +30,8 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
+import { CustomTooltip } from '../../../../utils/DataInsightUtils';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
@@ -42,6 +44,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   curveType,
   title,
   isLoading,
+  noDataPlaceholderText,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -94,8 +97,14 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   type={showYAxisCategory ? 'category' : 'number'}
                 />
                 <Tooltip
-                  formatter={(value: number | string) =>
-                    tooltipFormatter(value, tickFormatter)
+                  content={
+                    <CustomTooltip
+                      dateTimeFormatter={formatDateTimeLong}
+                      timeStampKey="timestamp"
+                      valueFormatter={(value) =>
+                        tooltipFormatter(value, tickFormatter)
+                      }
+                    />
                   }
                 />
                 {information.map((info) => (
@@ -118,7 +127,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
           ) : (
             <Row align="middle" className="h-full w-full" justify="center">
               <Col>
-                <ErrorPlaceHolder className="mt-0-important" />
+                <ErrorPlaceHolder
+                  className="mt-0-important"
+                  placeholderText={noDataPlaceholderText}
+                />
               </Col>
             </Row>
           )}

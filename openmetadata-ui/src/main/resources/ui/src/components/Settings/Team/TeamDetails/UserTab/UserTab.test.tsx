@@ -116,7 +116,6 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(screen.getByText('label.users')).toBeInTheDocument();
     expect(screen.queryByText('label.team-plural')).not.toBeInTheDocument();
     expect(

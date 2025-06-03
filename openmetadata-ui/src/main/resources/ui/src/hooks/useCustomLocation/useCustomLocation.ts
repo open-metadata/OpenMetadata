@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 import { useLocation } from 'react-router-dom';
+import { getBasePath } from '../../utils/HistoryUtils';
 
 const useCustomLocation = (): ReturnType<typeof useLocation> => {
   const location = useLocation();
-  const modifiedPathname = location.pathname.replace(
-    process.env.APP_SUB_PATH ?? '',
-    ''
-  );
+  const modifiedPathname = location.pathname.replace(getBasePath(), '');
 
   return {
     ...location,

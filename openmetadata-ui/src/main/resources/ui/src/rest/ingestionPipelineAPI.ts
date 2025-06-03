@@ -21,7 +21,6 @@ import {
 import {
   IngestionPipeline,
   PipelineStatus,
-  Type,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
@@ -59,7 +58,7 @@ export const getIngestionPipelines = async (data: {
   testSuite?: string;
   serviceType?: string;
   limit?: number;
-  applicationType?: Type;
+  applicationType?: PipelineType;
 }) => {
   const {
     arrQueryFields,

@@ -31,6 +31,7 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
@@ -115,6 +116,7 @@ class SearchClassBase {
       [EntityType.API_SERVICE]: SearchIndex.API_SERVICE_INDEX,
       [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION_INDEX,
       [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT_INDEX,
+      [EntityType.METRIC]: SearchIndex.METRIC_SEARCH_INDEX,
     };
   }
 
@@ -155,12 +157,18 @@ class SearchClassBase {
       [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
       [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
       [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+      [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
     };
   }
 
   public getGlobalSearchOptions() {
     return [
       { value: '', label: i18n.t('label.all') },
+      { value: SearchIndex.DATABASE, label: i18n.t('label.database') },
+      {
+        value: SearchIndex.DATABASE_SCHEMA,
+        label: i18n.t('label.database-schema'),
+      },
       { value: SearchIndex.TABLE, label: i18n.t('label.table') },
       { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
@@ -186,6 +194,10 @@ class SearchClassBase {
       {
         value: SearchIndex.API_COLLECTION_INDEX,
         label: i18n.t('label.api-collection'),
+      },
+      {
+        value: SearchIndex.METRIC_SEARCH_INDEX,
+        label: i18n.t('label.metric'),
       },
     ];
   }
@@ -250,7 +262,7 @@ class SearchClassBase {
       },
       {
         title: i18n.t('label.api-uppercase-plural'),
-        key: SearchIndex.API_ENDPOINT_INDEX,
+        key: SearchIndex.API_COLLECTION_INDEX,
         data: {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
@@ -262,7 +274,11 @@ class SearchClassBase {
         key: 'Governance',
         data: {
           isRoot: true,
-          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+          childEntities: [
+            EntityType.TAG,
+            EntityType.GLOSSARY_TERM,
+            EntityType.METRIC,
+          ],
         },
         icon: GovernIcon,
         children: [
@@ -288,8 +304,20 @@ class SearchClassBase {
               dataId: 'Tags',
             },
           },
+          {
+            title: i18n.t('label.metric-plural'),
+            key: EntityType.METRIC,
+            isLeaf: true,
+            icon: MetricIcon,
+            data: {
+              entityType: EntityType.METRIC,
+              isStatic: true,
+              dataId: 'Metrics',
+            },
+          },
         ],
       },
+
       {
         title: i18n.t('label.domain-plural'),
         key: 'Domain',
@@ -321,6 +349,7 @@ class SearchClassBase {
       [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
       [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
       [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT_INDEX],
+      [ExplorePageTabs.METRIC]: [SearchIndex.METRIC_SEARCH_INDEX],
     };
 
     return tabMapping[tab] || [SearchIndex.DATABASE];
@@ -444,6 +473,14 @@ class SearchClassBase {
         path: ExplorePageTabs.API_ENDPOINT,
         icon: IconAPIEndpoint,
       },
+      [SearchIndex.METRIC_SEARCH_INDEX]: {
+        label: i18n.t('label.metric-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.METRIC,
+        icon: MetricIcon,
+      },
     };
   }
   public getDropDownItems(index: string) {
@@ -482,6 +519,7 @@ class SearchClassBase {
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
       case SearchIndex.API_COLLECTION_INDEX:
+      case SearchIndex.METRIC_SEARCH_INDEX:
         return COMMON_DROPDOWN_ITEMS;
       case SearchIndex.DATA_ASSET:
         return DATA_ASSET_DROPDOWN_ITEMS;
@@ -509,7 +547,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN];
   }
 
   public getEntityBreadcrumbs(
@@ -525,7 +563,7 @@ class SearchClassBase {
   ): string | { pathname: string } {
     if (entity.entityType === EntityType.TEST_SUITE) {
       return getTestSuiteDetailsPath({
-        isExecutableTestSuite: (entity as TestSuite).executable,
+        isExecutableTestSuite: (entity as TestSuite).basic,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
     }

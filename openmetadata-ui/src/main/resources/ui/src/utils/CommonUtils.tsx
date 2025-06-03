@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -20,6 +21,7 @@ import {
   capitalize,
   get,
   isEmpty,
+  isNil,
   isNull,
   isString,
   isUndefined,
@@ -37,25 +39,19 @@ import {
 import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
+import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
+import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -65,7 +61,6 @@ import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = <T extends object>(
@@ -252,17 +247,6 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
   return [];
 };
 
-export const getRecentlySearchedData = (): Array<RecentlySearchedData> => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    return recentlySearch.data;
-  }
-
-  return [];
-};
-
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
@@ -301,18 +285,6 @@ export const addToRecentSearched = (searchTerm: string): void => {
       arrSearchedData = [searchData];
     }
     setRecentlySearchedData(arrSearchedData);
-  }
-};
-
-export const removeRecentSearchTerm = (searchTerm: string) => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    const arrData = recentlySearch.data.filter(
-      (item) => item.term !== searchTerm
-    );
-    setRecentlySearchedData(arrData);
   }
 };
 
@@ -385,19 +357,6 @@ export const getServiceLogo = (
   return null;
 };
 
-export const isValidUrl = (href?: string) => {
-  if (!href) {
-    return false;
-  }
-  try {
-    const url = new URL(href);
-
-    return Boolean(url.href);
-  } catch {
-    return false;
-  }
-};
-
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
@@ -446,10 +405,6 @@ export const getRandomColor = (name: string) => {
     backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
-};
-
-export const isUrlFriendlyName = (value: string) => {
-  return !UrlEntityCharRegEx.test(value);
 };
 
 /**
@@ -512,61 +467,52 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
  * @param onDataFetched - callback function which return FeedCounts object
  */
 
-export const getFeedCounts = (
+export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
   feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        const {
-          conversationCount,
-          openTaskCount,
-          closedTaskCount,
-          totalTasksCount,
-          totalCount,
-          mentionCount,
-        } = res.reduce((acc, item) => {
-          const conversationCount =
-            acc.conversationCount + (item.conversationCount || 0);
-          const totalTasksCount =
-            acc.totalTasksCount + (item.totalTaskCount || 0);
+  try {
+    const res = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
+    if (res) {
+      const {
+        conversationCount,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount,
+        mentionCount,
+      } = res.reduce((acc, item) => {
+        const conversationCount =
+          acc.conversationCount + (item.conversationCount || 0);
+        const totalTasksCount =
+          acc.totalTasksCount + (item.totalTaskCount || 0);
 
-          return {
-            conversationCount,
-            totalTasksCount,
-            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
-            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
-            totalCount: conversationCount + totalTasksCount,
-            mentionCount: acc.mentionCount + (item.mentionCount || 0),
-          };
-        }, FEED_COUNT_INITIAL_DATA);
-
-        feedCountCallback({
+        return {
           conversationCount,
           totalTasksCount,
-          openTaskCount,
-          closedTaskCount,
-          totalCount,
-          mentionCount,
-        });
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
+          openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+          closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+          totalCount: conversationCount + totalTasksCount,
+          mentionCount: acc.mentionCount + (item.mentionCount || 0),
+        };
+      }, FEED_COUNT_INITIAL_DATA);
+
+      feedCountCallback({
+        conversationCount,
+        totalTasksCount,
+        openTaskCount,
+        closedTaskCount,
+        totalCount,
+        mentionCount,
+      });
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
 };
-
-/**
- *
- * @param entityType type of the entity
- * @returns true if entity type exists in TASK_ENTITIES otherwise false
- */
-export const isTaskSupported = (entityType: EntityType) =>
-  TASK_ENTITIES.includes(entityType);
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
@@ -587,13 +533,6 @@ export const getStatisticsDisplayValue = (
   }
 
   return formatNumberWithComma(displayValue);
-};
-
-export const formTwoDigitNumber = (number: number) => {
-  return number.toLocaleString('en-US', {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
 };
 
 export const digitFormatter = (value: number) => {
@@ -626,44 +565,6 @@ export const getTeamsUser = (
   return;
 };
 
-export const getHostNameFromURL = (url: string) => {
-  if (isValidUrl(url)) {
-    const domain = new URL(url);
-
-    return domain.hostname;
-  } else {
-    return '';
-  }
-};
-
-export const getOwnerValue = (owner?: EntityReference) => {
-  switch (owner?.type) {
-    case 'team':
-      return getTeamAndUserDetailsPath(owner?.name || '');
-    case 'user':
-      return getUserPath(owner?.fullyQualifiedName ?? '');
-    default:
-      return '';
-  }
-};
-
-export const getIngestionFrequency = (pipelineType: PipelineType) => {
-  const value = {
-    min: 0,
-    hour: 0,
-  };
-
-  switch (pipelineType) {
-    case PipelineType.TestSuite:
-    case PipelineType.Metadata:
-    case PipelineType.Application:
-      return getHourCron(value);
-
-    default:
-      return getDayCron(value);
-  }
-};
-
 export const getEmptyPlaceholder = () => {
   return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
@@ -689,9 +590,6 @@ export const getLoadingStatus = (
 export const refreshPage = () => {
   history.go(0);
 };
-// return array of id as  strings
-export const getEntityIdArray = (entities: EntityReference[]): string[] =>
-  entities.map((item) => item.id);
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
@@ -730,10 +628,6 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const refinedContent = words.slice(0, wordsCount - 1);
 
   return refinedContent.join(' ');
-};
-
-export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags;
 };
 
 export const Transi18next = ({
@@ -823,11 +717,6 @@ export const reduceColorOpacity = (hex: string, opacity: number): string => {
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`; // Create RGBA color
 };
 
-export const getUniqueArray = (count: number) =>
-  [...Array(count)].map((_, index) => ({
-    key: `key${index}`,
-  }));
-
 /**
  * @param searchValue search input
  * @param option select options list
@@ -871,10 +760,76 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
 
 export const filterSelectOptions = (
   input: string,
-  option?: { label: string; value: string }
+  option?: DefaultOptionType
 ) => {
   return (
-    toLower(option?.label).includes(toLower(input)) ||
-    toLower(option?.value).includes(toLower(input))
+    toLower(option?.labelValue).includes(toLower(input)) ||
+    toLower(isString(option?.value) ? option?.value : '').includes(
+      toLower(input)
+    )
   );
+};
+
+/**
+ * helper method to check to determine the deleted flag is true or false
+ * some times deleted flag is string or boolean or undefined from the API
+ * for Example "false" or false or true in Lineage API
+ * @param deleted
+ * @returns
+ */
+export const isDeleted = (deleted: unknown): boolean => {
+  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+    ? false
+    : true;
+};
+
+export const removeOuterEscapes = (input: string) => {
+  // Use regex to check if the string starts and ends with escape characters
+  const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
+
+  // Return the middle part without the outer escape characters or the original input if no match
+  return match && match.length > 3 ? match[2] : input;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
+};
+
+/**
+ * Convert hex color to RGBA
+ * @param hex - Hex color string
+ * @param opacity - Opacity value (0-1)
+ * @returns {string} - RGBA color string
+ */
+const hexToRgba = (hex: string, opacity: number): string => {
+  const bigint = parseInt(hex.replace('#', ''), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+};
+
+/**
+ * Provide the calculated percentage value from the number provided
+ * @param value - value on which percentage will be calculated
+ * @param percentageValue - PercentageValue like 20, 35 or 50
+ * @returns {number} - value derived after calculating percentage, like for 1000 on 10% = 100
+ */
+export const calculatePercentageFromValue = (
+  value: number,
+  percentageValue: number
+) => {
+  return (value * percentageValue) / 100;
 };

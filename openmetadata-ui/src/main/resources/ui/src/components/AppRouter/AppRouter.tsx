@@ -24,10 +24,15 @@ import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
-import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
+
+import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
+import SamlCallback from '../../pages/SamlCallback';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 
 const AppRouter = () => {
   const location = useCustomLocation();
+  const UnAuthenticatedAppRouter =
+    applicationRoutesClass.getUnAuthenticatedRouteElements();
 
   // web analytics instance
   const analytics = useAnalytics();
@@ -84,6 +89,7 @@ const AppRouter = () => {
   return (
     <Switch>
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route exact component={LogoutPage} path={ROUTES.LOGOUT} />
       <Route
         exact
         component={AccessNotAllowedPage}
@@ -92,6 +98,14 @@ const AppRouter = () => {
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
+
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
+          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
+      <Route
+        component={SamlCallback}
+        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+      />
+
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );

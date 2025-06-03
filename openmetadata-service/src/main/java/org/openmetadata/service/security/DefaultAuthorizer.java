@@ -18,8 +18,8 @@ import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
@@ -92,6 +92,36 @@ public class DefaultAuthorizer implements Authorizer {
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
+  public void authorizeRequests(
+      SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    if (subjectContext.isAdmin()) {
+      return;
+    }
+
+    if (logic == AuthorizationLogic.ANY) {
+      boolean anySuccess = false;
+      for (AuthRequest req : requests) {
+        try {
+          PolicyEvaluator.hasPermission(
+              subjectContext, req.resourceContext(), req.operationContext());
+          anySuccess = true;
+          break;
+        } catch (AuthorizationException ignored) {
+        }
+      }
+      if (!anySuccess) {
+        throw new AuthorizationException("User does not have ANY of the required permissions.");
+      }
+    } else { // ALL
+      for (AuthRequest req : requests) {
+        PolicyEvaluator.hasPermission(
+            subjectContext, req.resourceContext(), req.operationContext());
+      }
+    }
+  }
+
   @Override
   public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
@@ -99,6 +129,15 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
+  }
+
+  @Override
+  public void authorizeAdmin(String adminName) {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(adminName);
+    if (subjectContext.isAdmin()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(adminName));
   }
 
   @Override

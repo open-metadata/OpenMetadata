@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -267,9 +267,9 @@ class OMetaLineageTest(TestCase):
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.root}.name"
+                                f"{self.table1_entity.fullyQualifiedName.root}.another"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.name",
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.another",
                         )
                     ],
                 ),
@@ -287,6 +287,30 @@ class OMetaLineageTest(TestCase):
         self.assertEqual(
             len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
         )
+
+        # We can get lineage by ID
+        lineage_id = self.metadata.get_lineage_by_id(
+            entity=Table, entity_id=self.table2_entity.id.root
+        )
+        assert lineage_id["entity"]["id"] == str(self.table2_entity.id.root)
+
+        # Same thing works if we pass directly the Uuid
+        lineage_uuid = self.metadata.get_lineage_by_id(
+            entity=Table, entity_id=self.table2_entity.id
+        )
+        assert lineage_uuid["entity"]["id"] == str(self.table2_entity.id.root)
+
+        # We can also get lineage by name
+        lineage_str = self.metadata.get_lineage_by_name(
+            entity=Table, fqn=self.table2_entity.fullyQualifiedName.root
+        )
+        assert lineage_str["entity"]["id"] == str(self.table2_entity.id.root)
+
+        # Or passing the FQN
+        lineage_fqn = self.metadata.get_lineage_by_name(
+            entity=Table, fqn=self.table2_entity.fullyQualifiedName
+        )
+        assert lineage_fqn["entity"]["id"] == str(self.table2_entity.id.root)
 
     def test_delete_by_source(self):
         """

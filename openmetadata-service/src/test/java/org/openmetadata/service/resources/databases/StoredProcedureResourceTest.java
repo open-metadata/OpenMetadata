@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static jakarta.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.*;
@@ -163,8 +163,8 @@ public class StoredProcedureResourceTest
         storedProcedure.getDatabase(),
         storedProcedure.getDatabaseSchema(),
         storedProcedure.getStoredProcedureCode());
-    assertListNull(
-        storedProcedure.getOwners(), storedProcedure.getTags(), storedProcedure.getFollowers());
+    assertListNull(storedProcedure.getOwners(), storedProcedure.getFollowers());
+    assertTrue(storedProcedure.getTags().isEmpty());
 
     String fields = "owners,tags,followers";
     storedProcedure =

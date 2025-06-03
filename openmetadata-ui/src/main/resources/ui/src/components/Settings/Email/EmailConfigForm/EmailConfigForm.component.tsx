@@ -70,15 +70,6 @@ function EmailConfigForm({
         />
       </Item>
       <Item
-        label={t('label.open-metadata-url')}
-        name="openMetadataUrl"
-        rules={[{ required: true }]}>
-        <Input
-          data-testid="open-metadata-url-input"
-          id="root/openMetadataUrl-input"
-        />
-      </Item>
-      <Item
         label={t('label.server-endpoint')}
         name="serverEndpoint"
         rules={[{ required: true }]}>

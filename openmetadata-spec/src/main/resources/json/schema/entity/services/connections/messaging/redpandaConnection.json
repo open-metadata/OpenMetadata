@@ -42,6 +42,12 @@
       "type": "string",
       "format": "password"
     },
+    "schemaRegistryTopicSuffixName": {
+      "title": "Schema Registry Topic Suffix Name",
+      "description": "Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema from registry.",
+      "type": "string",
+      "default": "-value"
+    },
     "securityProtocol": {
       "title": "Security Protocol",
       "description": "security.protocol consumer config property",
@@ -74,6 +80,11 @@
       "type": "object",
       "default": {},
       "additionalProperties": true
+    },
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Topic Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

@@ -30,6 +30,8 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
+import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -37,6 +39,7 @@ const CustomBarChart = ({
   chartCollection,
   tickFormatter,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -45,7 +48,10 @@ const CustomBarChart = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );
@@ -77,8 +83,12 @@ const CustomBarChart = ({
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
         />
         <Tooltip
-          formatter={(value: number | string) =>
-            tooltipFormatter(value, tickFormatter)
+          content={
+            <CustomTooltip
+              dateTimeFormatter={formatDateTimeLong}
+              timeStampKey="timestamp"
+              valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
+            />
           }
         />
         {information.map((info) => (

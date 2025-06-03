@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@ Base class for ingesting database services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -58,6 +57,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -109,13 +111,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
         post_process=[
-            "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
+            "yield_table_constraints",
         ],
     )
     database: Annotated[
@@ -342,15 +340,14 @@ class DatabaseServiceSource(
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
 
-    @abstractmethod
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints: List[TableConstraint],
+        foreign_columns: [],
+        columns,
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
@@ -377,12 +374,6 @@ class DatabaseServiceSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
-
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -536,7 +527,7 @@ class DatabaseServiceSource(
                 self.inspector, "get_table_owner"
             ):
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member.fetchall()
+                    connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
@@ -607,6 +598,14 @@ class DatabaseServiceSource(
         Process external table lineage
         """
 
+    def yield_table_constraints(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process remaining table constraints by patching the table
+        """
+
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

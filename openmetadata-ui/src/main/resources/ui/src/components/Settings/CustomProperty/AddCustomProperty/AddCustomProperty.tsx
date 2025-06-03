@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -24,10 +24,12 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
@@ -49,6 +51,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -94,12 +97,27 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
+    return map(propertyTypes, (type) => {
+      const Icon =
+        CUSTOM_PROPERTIES_ICON_MAP[
+          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+        ];
+
       // Remove -cp from the name and convert to start case
-      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
-      value: type.id,
-    }));
+      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+
+      return {
+        searchField: title,
+        key: type.name,
+        label: (
+          <div className="d-flex gap-2 items-center" title={title}>
+            {Icon && <Icon width={20} />}
+            <span>{title}</span>
+          </div>
+        ),
+        value: type.id,
+      };
+    });
   }, [propertyTypes]);
 
   const {
@@ -107,6 +125,7 @@ const AddCustomProperty = () => {
     hasFormatConfig,
     hasEntityReferenceConfig,
     watchedOption,
+    hasTableTypeConfig,
   } = useMemo(() => {
     const watchedOption = propertyTypeOptions.find(
       (option) => option.value === watchedPropertyType
@@ -114,6 +133,8 @@ const AddCustomProperty = () => {
     const watchedOptionKey = watchedOption?.key ?? '';
 
     const hasEnumConfig = watchedOptionKey === 'enum';
+
+    const hasTableTypeConfig = watchedOptionKey === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
@@ -126,6 +147,7 @@ const AddCustomProperty = () => {
       hasFormatConfig,
       hasEntityReferenceConfig,
       watchedOption,
+      hasTableTypeConfig,
     };
   }, [watchedPropertyType, propertyTypeOptions]);
 
@@ -166,6 +188,7 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
+      columns: string[];
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -197,6 +220,14 @@ const AddCustomProperty = () => {
         };
       }
 
+      if (hasTableTypeConfig) {
+        customPropertyConfig = {
+          config: {
+            columns: data.columns,
+          },
+        };
+      }
+
       const payload = omitBy(
         {
           ...omit(data, [
@@ -204,6 +235,7 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
+            'columns',
           ]),
           propertyType: {
             id: data.propertyType,
@@ -251,6 +283,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),
@@ -263,8 +306,8 @@ const AddCustomProperty = () => {
           field: t('label.type'),
         })}`,
         showSearch: true,
-        filterOption: (input: string, option: { label: string }) => {
-          return (option?.label ?? '')
+        filterOption: (input: string, option: { searchField: string }) => {
+          return (option?.searchField ?? '')
             .toLowerCase()
             .includes(input.toLowerCase());
         },
@@ -294,6 +337,8 @@ const AddCustomProperty = () => {
       'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -367,8 +412,48 @@ const AddCustomProperty = () => {
     },
   };
 
+  const tableTypePropertyConfig: FieldProp[] = [
+    {
+      name: 'columns',
+      required: true,
+      label: t('label.column-plural'),
+      id: 'root/columns',
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'columns',
+        mode: 'tags',
+        placeholder: t('label.column-plural'),
+      },
+      rules: [
+        {
+          required: true,
+          validator: async (_, value) => {
+            if (isArray(value)) {
+              if (value.length > 3) {
+                return Promise.reject(
+                  t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            } else {
+              return Promise.reject(
+                t('label.field-required', {
+                  field: t('label.column-plural'),
+                })
+              );
+            }
+          },
+        },
+      ],
+    },
+  ];
+
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
@@ -393,6 +478,9 @@ const AddCustomProperty = () => {
           hasEntityReferenceConfig &&
             generateFormFields([entityReferenceConfigField])
         }
+
+        {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
+
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
@@ -414,7 +502,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -430,6 +518,8 @@ const AddCustomProperty = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,

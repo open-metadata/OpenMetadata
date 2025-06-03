@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -39,8 +39,6 @@ const GlobalSettingPage = () => {
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 
-  const [settings, setSettings] = useState<SettingMenuItem[]>([]);
-
   const settingItems = useMemo(
     () =>
       globalSettingsClassBase
@@ -65,26 +63,29 @@ const GlobalSettingPage = () => {
     history.push(getSettingPath(category));
   }, []);
 
-  useEffect(() => {
-    setSettings(settingItems);
-  }, []);
-
   if (isEmpty(settingItems)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        permissionValue={t('label.setting-plural')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="page-container" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <PageHeader data={PAGE_HEADERS.SETTING} />
         </Col>
 
         <Col span={24}>
-          <Row gutter={[20, 20]}>
-            {settings.map((setting) => (
-              <Col key={setting?.key} span={6}>
+          <Row className="setting-items-container" gutter={[20, 20]}>
+            {settingItems.map((setting) => (
+              <Col key={setting?.key} lg={8} md={12} sm={24}>
                 <SettingItemCard
+                  className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />

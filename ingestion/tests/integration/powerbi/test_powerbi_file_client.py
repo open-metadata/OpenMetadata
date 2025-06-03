@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@
 PowerBI File Client tests
 """
 
-import os
+from pathlib import Path
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
@@ -24,7 +24,7 @@ from metadata.ingestion.source.dashboard.powerbi.file_client import (
     _get_datamodel_schema_list,
 )
 
-current_dir = os.getcwd()
+RESOURCES_DIR = Path(__file__).parent / "resources"
 
 powerbi_connection_config = {
     "type": "PowerBI",
@@ -36,8 +36,8 @@ powerbi_connection_config = {
     "useAdminApis": False,
     "pbitFilesSource": {
         "pbitFileConfigType": "local",
-        "path": f"{current_dir}/ingestion/tests/integration/powerbi/resources",
-        "pbitFilesExtractDir": f"{current_dir}/ingestion/tests/integration/powerbi/resources/extracted",
+        "path": str(RESOURCES_DIR),
+        "pbitFilesExtractDir": str(RESOURCES_DIR / "extracted"),
     },
 }
 

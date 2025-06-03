@@ -15,7 +15,7 @@ import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -268,6 +268,11 @@ const UserProfileDetails = ({
       setIsLoading(false);
     }
   }, [userData.id]);
+
+  useEffect(() => {
+    // Reset display name when user data changes
+    setDisplayName(userData.displayName);
+  }, [userData.displayName]);
 
   return (
     <>

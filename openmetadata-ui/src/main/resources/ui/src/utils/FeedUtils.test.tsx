@@ -42,26 +42,6 @@ jest.mock('../rest/miscAPI', () => ({
       },
     },
   }),
-  getUserSuggestions: jest.fn().mockResolvedValue({
-    data: {
-      suggest: {
-        'metadata-suggest': [
-          {
-            options: [
-              {
-                _source: {
-                  entityType: 'User',
-                  name: 'John Doe',
-                  deleted: false,
-                },
-                _id: '1',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  }),
   searchData: jest.fn().mockResolvedValue({
     data: {
       hits: {

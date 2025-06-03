@@ -46,7 +46,7 @@ export const TOOLBAR_ITEMS = [
   ['blockquote', 'code-block'],
   [{ list: 'ordered' }, { list: 'bullet' }],
   ['link'],
-  ['insertMention', 'insertRef', 'emoji'],
+  ['insertMention', 'insertRef'],
 ];
 
 export enum TaskOperation {
@@ -86,6 +86,7 @@ export enum EntityField {
   MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
   EXPERTS = 'experts',
   FIELDS = 'fields',
+  PARAMETER_VALUES = 'parameterValues',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

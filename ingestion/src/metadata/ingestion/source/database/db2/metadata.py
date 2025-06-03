@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@ import traceback
 from typing import Iterable, Optional
 
 from ibm_db_sa.base import ischema_names
+from ibm_db_sa.reflection import DB2Reflector, OS390Reflector
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.sql.sqltypes import BOOLEAN
@@ -26,12 +27,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.db2.utils import get_unique_constraints
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
 ischema_names.update({"BOOLEAN": BOOLEAN})
+
+
+DB2Reflector.get_unique_constraints = get_unique_constraints
+OS390Reflector.get_unique_constraints = get_unique_constraints
 
 
 class Db2Source(CommonDbSourceService):

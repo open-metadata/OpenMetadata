@@ -34,7 +34,7 @@ class EnumBackwardCompatibilityTest {
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEquals(22, Relationship.values().length);
+    assertEquals(23, Relationship.values().length);
     assertEquals(21, Relationship.DEFAULTS_TO.ordinal());
     assertEquals(20, Relationship.EDITED_BY.ordinal());
     assertEquals(19, Relationship.EXPERT.ordinal());
@@ -49,8 +49,12 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagLabelEnumBackwardCompatible() {
-    assertEquals(4, LabelType.values().length);
+    assertEquals(5, LabelType.values().length);
+    assertEquals(0, LabelType.MANUAL.ordinal());
+    assertEquals(1, LabelType.PROPAGATED.ordinal());
+    assertEquals(2, LabelType.AUTOMATED.ordinal());
     assertEquals(3, LabelType.DERIVED.ordinal());
+    assertEquals(4, LabelType.GENERATED.ordinal());
   }
 
   /**

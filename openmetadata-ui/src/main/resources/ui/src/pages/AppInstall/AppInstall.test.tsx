@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';
 
@@ -29,6 +30,11 @@ const MARKETPLACE_DATA = {
   allowConfiguration: true,
 };
 
+const NO_SCHEDULE_DATA = {
+  scheduleType: ScheduleType.NoSchedule,
+  allowConfiguration: true,
+};
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
@@ -36,14 +42,14 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
+  '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <>
-        TestSuiteScheduler
-        <button onClick={onSubmit}>Submit TestSuiteScheduler</button>
-        <button onClick={onCancel}>Cancel TestSuiteScheduler</button>
-      </>
+    jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+      <div>
+        ScheduleInterval
+        <button onClick={onDeploy}>Submit ScheduleInterval</button>
+        <button onClick={onBack}>Cancel ScheduleInterval</button>
+      </div>
     ))
 );
 
@@ -159,13 +165,13 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
-    // TestSuiteScheduler
+    // ScheduleInterval
     await act(async () => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Submit TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
       );
     });
 
@@ -177,7 +183,7 @@ describe('AppInstall component', () => {
     // change ActiveServiceStep to 1
     act(() => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Cancel TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
       );
     });
 
@@ -187,7 +193,7 @@ describe('AppInstall component', () => {
       screen.getByRole('button', { name: 'Cancel AppInstallVerifyCard' })
     );
 
-    // will call for Submit TestSuiteScheduler and Cancel AppInstallVerifyCard
+    // will call for Submit ScheduleInterval and Cancel AppInstallVerifyCard
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
@@ -215,12 +221,12 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     // change ActiveServiceStep to 2
     act(() => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Cancel TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
       );
     });
 
@@ -234,6 +240,33 @@ describe('AppInstall component', () => {
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
   });
 
+  it('actions check with schedule type noSchedule', async () => {
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(NO_SCHEDULE_DATA);
+
+    await act(async () => {
+      render(<AppInstall />);
+    });
+
+    // change ActiveServiceStep to 2
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+      );
+    });
+
+    expect(screen.getByText('FormBuilder')).toBeInTheDocument();
+    expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
+
+    // submit the form here
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', { name: 'Submit FormBuilder' })
+      );
+    });
+
+    expect(mockInstallApplication).toHaveBeenCalled();
+  });
+
   it('errors check in fetching application data', async () => {
     mockGetMarketPlaceApplicationByFqn.mockRejectedValueOnce(ERROR);
 
@@ -241,7 +274,9 @@ describe('AppInstall component', () => {
       render(<AppInstall />);
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.no-application-schema-found'
+    );
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
@@ -259,11 +294,11 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Submit TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
       );
     });
 

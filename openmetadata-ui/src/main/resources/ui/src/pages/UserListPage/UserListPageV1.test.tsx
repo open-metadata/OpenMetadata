@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import React from 'react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
@@ -32,6 +33,7 @@ const mockLocation = {
   pathname: 'pathname',
   search: '',
 };
+const mockSetFilters = jest.fn();
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
@@ -42,6 +44,13 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
   useHistory: jest.fn().mockImplementation(() => mockHistory),
+}));
+
+jest.mock('../../hooks/useTableFilters', () => ({
+  useTableFilters: jest.fn().mockImplementation(() => ({
+    filters: {},
+    setFilters: mockSetFilters,
+  })),
 }));
 
 jest.mock('../../rest/userAPI', () => ({
@@ -76,7 +85,18 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../components/common/Table/Table', () => {
-  return jest.fn().mockImplementation(() => <table>mockTable</table>);
+  return jest
+    .fn()
+    .mockImplementation(({ columns, extraTableFilters, searchProps }) => (
+      <div>
+        {searchProps && <div data-testid="search-bar-container">searchBar</div>}
+        {extraTableFilters}
+        {columns.map((column: Record<string, string>) => (
+          <span key={column.key}>{column.title}</span>
+        ))}
+        <table>mockTable</table>
+      </div>
+    ));
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -102,11 +122,12 @@ describe('Test UserListPage component', () => {
     expect(getUsers).toHaveBeenCalled();
   });
 
-  it('should call getUser with deleted flag on clicking showDeleted switch', async () => {
+  it('should call setFilters with deleted flag on clicking showDeleted switch', async () => {
     const { findByTestId } = render(<UserListPageV1 />);
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
+      include: 'non-deleted',
       isAdmin: false,
       isBot: false,
       limit: 25,
@@ -115,10 +136,32 @@ describe('Test UserListPage component', () => {
     const deletedSwitch = await findByTestId('show-deleted');
 
     expect(deletedSwitch).toBeInTheDocument();
+    expect(deletedSwitch).toHaveAttribute('aria-checked', 'false');
 
-    act(() => {
-      fireEvent.click(deletedSwitch);
+    await act(async () => {
+      (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+        filters: {
+          isDeleted: true,
+        },
+      }));
+      deletedSwitch.click();
     });
+
+    expect(mockSetFilters).toHaveBeenCalledWith({
+      isDeleted: true,
+      user: null,
+    });
+    expect(deletedSwitch).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('should call getUser with deleted flag when filter is applied', async () => {
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        isDeleted: true,
+      },
+      setFilters: mockSetFilters,
+    }));
+    render(<UserListPageV1 />);
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
@@ -134,6 +177,7 @@ describe('Test UserListPage component', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
+      include: 'non-deleted',
       isAdmin: false,
       isBot: false,
       limit: 25,
@@ -142,5 +186,21 @@ describe('Test UserListPage component', () => {
     const searchBar = await findByTestId('search-bar-container');
 
     expect(searchBar).toBeInTheDocument();
+  });
+
+  it('should be render roles column for user listing page', async () => {
+    const { findByText } = render(<UserListPageV1 />);
+
+    expect(await findByText('label.role-plural')).toBeInTheDocument();
+  });
+
+  it('should not render roles column for admin listing page', async () => {
+    mockParam.tab = GlobalSettingOptions.ADMINS;
+    const { queryByText } = render(<UserListPageV1 />);
+
+    expect(queryByText('label.role-plural')).not.toBeInTheDocument();
+
+    // reset mockParam
+    mockParam.tab = GlobalSettingOptions.USERS;
   });
 });

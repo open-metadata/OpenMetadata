@@ -40,6 +40,7 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
@@ -194,6 +195,16 @@ export const PopoverContent: React.FC<{
         promise = getApiEndPointByFQN(entityFQN, { fields });
 
         break;
+      case EntityType.METRIC:
+        promise = getMetricByFqn(entityFQN, {
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.DOMAIN,
+          ],
+        });
+
+        break;
 
       default:
         break;
@@ -234,6 +245,7 @@ export const PopoverContent: React.FC<{
   return (
     <ExploreSearchCard
       actionPopoverContent={extraInfo}
+      className="entity-popover-card"
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -250,7 +262,7 @@ const EntityPopOverCard: FC<Props> = ({
 }) => {
   return (
     <Popover
-      align={{ targetOffset: [0, -10] }}
+      align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
           entityFQN={entityFQN}

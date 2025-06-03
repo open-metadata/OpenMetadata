@@ -91,6 +91,10 @@ const ImportTeamsPage = () => {
     return <TeamImportResult csvImportResult={csvImportResult} />;
   }, [csvImportResult, type]);
 
+  const handleCsvImportResultUpdate = (result: CSVImportResult) => {
+    setCsvImportResult(result);
+  };
+
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
     try {
@@ -131,7 +135,6 @@ const ImportTeamsPage = () => {
     const api = type === ImportType.USERS ? importUserInTeam : importTeam;
     try {
       const response = await api(name, data, dryRun);
-      setCsvImportResult(response);
 
       return response;
     } catch (error) {
@@ -160,7 +163,20 @@ const ImportTeamsPage = () => {
   }
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
   if (!permission?.Create || !permission?.EditAll) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.create-entity', {
+          entity: t('label.import-entity', {
+            entity:
+              type === ImportType.USERS
+                ? t('label.user-plural')
+                : t('label.team-plural'),
+          }),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isUndefined(team)) {
@@ -188,7 +204,7 @@ const ImportTeamsPage = () => {
             : t('label.team-plural'),
       })}>
       <Row
-        className="import-teams w-full page-container"
+        className="import-teams w-full"
         data-testid="import-teams"
         gutter={[16, 8]}>
         <Col span={24}>
@@ -208,6 +224,7 @@ const ImportTeamsPage = () => {
           <EntityImport
             entityName={team.name}
             onCancel={handleViewClick}
+            onCsvResultUpdate={handleCsvImportResultUpdate}
             onImport={handleImportCsv}
             onSuccess={handleViewClick}>
             {importResult}

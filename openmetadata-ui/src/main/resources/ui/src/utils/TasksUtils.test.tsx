@@ -16,7 +16,7 @@ import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { mockTableData } from '../mocks/TableVersion.mock';
 import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
-import { getUserSuggestions } from '../rest/miscAPI';
+import { getUserAndTeamSearch } from '../rest/miscAPI';
 import {
   fetchOptions,
   getEntityTableName,
@@ -26,7 +26,7 @@ import {
 } from './TasksUtils';
 
 jest.mock('../rest/miscAPI', () => ({
-  getUserSuggestions: jest
+  getUserAndTeamSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_ASSIGNEE_DATA)),
 }));
@@ -178,8 +178,8 @@ describe('Tests for fetchOptions', () => {
   it('function fetchOptions should trigger setOptions without filtered options', async () => {
     const mockSetOptions = jest.fn();
 
-    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {
@@ -207,8 +207,8 @@ describe('Tests for fetchOptions', () => {
   it('function fetchOptions should trigger setOptions with filtered options', async () => {
     const mockSetOptions = jest.fn();
 
-    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {

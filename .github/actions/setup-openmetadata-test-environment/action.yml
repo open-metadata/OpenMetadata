@@ -8,7 +8,7 @@ inputs:
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
-    default: "-m no-ui"
+    default: "-m no-ui -d mysql"  # Use "-d postgresql" for postgres and Opensearch
   ingestion_dependency:
     description: Ingestion dependency to pass to run_local_docker.sh
     required: false
@@ -27,7 +27,7 @@ runs:
 
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
@@ -35,7 +35,7 @@ runs:
 
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -56,7 +56,7 @@ runs:
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Start Server and Ingest Sample Data
-      uses: nick-fields/retry@v2.8.3
+      uses: nick-fields/retry@v3.0.2
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
       with:

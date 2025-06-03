@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/api/restConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RestConnection",
+  "description": "REST Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.api.RestConnection",
+  "definitions": {
+    "restType": {
+      "description": "REST API type",
+      "type": "string",
+      "enum": ["Rest"],
+      "default": "Rest"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "REST API Type",
+      "description": "REST API Type",
+      "$ref": "#/definitions/restType",
+      "default": "Rest"
+    },
+    "openAPISchemaURL": {
+      "expose": true,
+      "title": "OpenAPISchemaURL",
+      "description": "Open API Schema URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "token": {
+      "title": "Token",
+      "description": "Generated Token to connect to OpenAPI Schema.",
+      "type": "string",
+      "format": "password"
+    },
+    "docURL": {
+      "expose": true,
+      "title": "docURL",
+      "description": "Documentation URL for the schema.",
+      "type": "string",
+      "format": "uri"
+    },
+    "apiCollectionFilterPattern": {
+      "description": "Regex to only fetch api collections with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default API Collection Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["openAPISchemaURL"]
+}

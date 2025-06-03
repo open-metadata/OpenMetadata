@@ -99,6 +99,19 @@ const mockSearchAPIResponse = {
     },
   },
 };
+const mockLocationPathname = '/mock-path';
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => ({
+    history: {
+      push: jest.fn(),
+    },
+    replace: jest.fn(),
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
+}));
 
 describe('DataAssetAsyncSelectList', () => {
   it('should render without crashing', async () => {

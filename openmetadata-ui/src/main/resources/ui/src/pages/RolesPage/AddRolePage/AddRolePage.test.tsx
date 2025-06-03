@@ -14,12 +14,27 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { getPolicies } from '../../../rest/rolesAPIV1';
 import AddRolePage from './AddRolePage';
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
     push: jest.fn(),
   }),
+}));
+
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -65,10 +80,20 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
 
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {
     render(<AddRolePage />, { wrapper: MemoryRouter });
+
+    expect(getPolicies).toHaveBeenCalledWith(
+      `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
+      undefined,
+      undefined,
+      100
+    );
 
     const container = await screen.findByTestId('add-role-container');
 

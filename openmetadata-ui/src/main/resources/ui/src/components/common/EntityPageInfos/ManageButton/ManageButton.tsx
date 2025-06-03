@@ -22,7 +22,7 @@ import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
+import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -47,6 +47,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityType,
   canDelete,
   entityId,
+  isAsyncDelete = false,
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
@@ -241,7 +242,7 @@ const ManageButton: FC<ManageButtonProps> = ({
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
         <Button
-          className="remove-button-default-styling"
+          className="remove-button-default-styling p-0"
           onClick={(e) => e.stopPropagation()}>
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
@@ -278,6 +279,7 @@ const ManageButton: FC<ManageButtonProps> = ({
           entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+          isAsyncDelete={isAsyncDelete}
           isRecursiveDelete={isRecursiveDelete}
           prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}

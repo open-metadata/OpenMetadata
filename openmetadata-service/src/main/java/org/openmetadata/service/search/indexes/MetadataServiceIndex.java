@@ -27,6 +27,7 @@ public record MetadataServiceIndex(MetadataService metadataService) implements S
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(metadataService, Entity.METADATA_SERVICE);
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(metadataService.getEntityReference()));
     return doc;
   }
 }

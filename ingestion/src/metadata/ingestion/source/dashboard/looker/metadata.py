@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,13 +21,28 @@ Notes:
 """
 import copy
 import os
+import re
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
+from typing import (
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+    get_args,
+)
 
 import giturlparse
 import lkml
+import networkx as nx
+from liquid import Template
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
@@ -52,7 +67,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
     NoGitCredentials,
@@ -83,15 +98,20 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
@@ -107,7 +127,6 @@ from metadata.ingestion.source.dashboard.looker.models import (
     LookMlView,
     ViewName,
 )
-from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
 from metadata.ingestion.source.dashboard.looker.utils import _clone_repo
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
@@ -120,9 +139,12 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-
 LIST_DASHBOARD_FIELDS = ["id", "title"]
 IMPORTED_PROJECTS_DIR = "imported_projects"
+
+# we need to find the derived references in the SQL query using regex
+# https://cloud.google.com/looker/docs/derived-tables#referencing_derived_tables_in_other_derived_tables
+DERIVED_REFERENCES = r"\${([\w\s\d_.]+)\.SQL_TABLE_NAME}"
 
 # Here we can update the fields to get further information, such as:
 # created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
@@ -155,12 +177,21 @@ def build_datamodel_name(model_name: str, explore_name: str) -> str:
     return clean_dashboard_name(model_name + "_" + explore_name)
 
 
+def find_derived_references(sql_query: str) -> List[str]:
+    if sql_query is None:
+        return []
+    matches = re.findall(DERIVED_REFERENCES, sql_query)
+    return matches
+
+
 class LookerSource(DashboardServiceSource):
     """
     Looker Source Class.
 
     Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
     """
+
+    # pylint: disable=too-many-instance-attributes, too-many-public-methods
 
     config: WorkflowSource
     metadata: OpenMetadata
@@ -177,10 +208,14 @@ class LookerSource(DashboardServiceSource):
         self._explores_cache = {}
         self._repo_credentials: Optional[ReadersCredentials] = None
         self._reader_class: Optional[Type[Reader]] = None
-        self._project_parsers: Optional[Dict[str, LkmlParser]] = None
+        self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
         self._main_lookml_repo: Optional[LookMLRepo] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
         self._view_data_model: Optional[DashboardDataModel] = None
+
+        self._parsed_views: Optional[Dict[str, str]] = {}
+        self._unparsed_views: Optional[Dict[str, str]] = {}
+        self._derived_dependencies = nx.DiGraph()
 
         self._added_lineage: Optional[Dict] = {}
 
@@ -259,7 +294,7 @@ class LookerSource(DashboardServiceSource):
             self._main__lookml_manifest = self.__read_manifest(credentials)
 
     @property
-    def parser(self) -> Optional[Dict[str, LkmlParser]]:
+    def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:
         if self.repository_credentials:
             return self._project_parsers
         return None
@@ -281,7 +316,7 @@ class LookerSource(DashboardServiceSource):
         """
         if self.repository_credentials:
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
-            self._project_parsers: Dict[str, LkmlParser] = {
+            self._project_parsers: Dict[str, BulkLkmlParser] = {
                 project_name: BulkLkmlParser(
                     reader=self.reader(Path(self._main_lookml_repo.path))
                 )
@@ -324,7 +359,7 @@ class LookerSource(DashboardServiceSource):
         """
         if not self._repo_credentials:
             if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, ReadersCredentials
+                self.service_connection.gitCredentials, get_args(ReadersCredentials)
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
@@ -450,11 +485,11 @@ class LookerSource(DashboardServiceSource):
                                 view.name, "Data model (View) filtered out."
                             )
                             continue
-
+                        view_name = view.from_ if view.from_ else view.name
                         yield from self._process_view(
-                            view_name=ViewName(view.name), explore=model
+                            view_name=ViewName(view_name), explore=model
                         )
-                    if len(model.joins) == 0 and model.sql_table_name:
+                    if model.view_name:
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
@@ -486,9 +521,13 @@ class LookerSource(DashboardServiceSource):
             try:
                 project_parser = self.parser.get(explore.project_name)
                 if project_parser:
-                    return project_parser.parsed_files.get(
+                    explore_sql = project_parser.parsed_files.get(
                         Includes(get_path_from_link(explore.lookml_link))
                     )
+                    logger.debug(
+                        f"Explore SQL for project {explore.project_name}: \n{explore_sql}"
+                    )
+                    return explore_sql
             except Exception as err:
                 logger.warning(f"Exception getting the model sql: {err}")
 
@@ -543,6 +582,125 @@ class LookerSource(DashboardServiceSource):
                     )
                 )
 
+    def replace_derived_references(self, sql_query):
+        """
+        Replace all derived references with the parsed views sql query
+        will replace the derived references in the SQL query using regex
+        for e.g. It will replace ${view_name.SQL_TABLE_NAME} with the parsed view query for view_name
+        https://cloud.google.com/looker/docs/derived-tables#referencing_derived_tables_in_other_derived_tables
+        """
+        try:
+            sql_query = re.sub(
+                DERIVED_REFERENCES,
+                # from `${view_name.SQL_TABLE_NAME}` we want the `view_name`.
+                # match.group(1) will give us the `view_name`
+                lambda match: f"({self._parsed_views.get(match.group(1), match.group(0))})",
+                sql_query,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Something went wrong while replacing derived view references: {e}"
+            )
+        return sql_query
+
+    def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        build lineage by parsing the unparsed views containing derived references
+        """
+        try:
+            # Doing a reversed topological sort to process the views in the right order
+            for view_name in reversed(
+                list(nx.topological_sort(self._derived_dependencies))
+            ):
+                if view_name in self._parsed_views:
+                    # Skip if already processed
+                    continue
+                sql_query = self.replace_derived_references(
+                    self._unparsed_views[view_name]
+                )
+                if view_references := find_derived_references(sql_query):
+                    # There are still derived references in the view query
+                    logger.debug(
+                        f"Views {view_references} not found for {view_name}. Skipping."
+                    )
+                    continue
+                self._parsed_views[view_name] = sql_query
+                del self._unparsed_views[view_name]
+                yield from self._build_lineage_for_view(view_name, sql_query)
+
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name="parse_unparsed_views",
+                    error=f"Error parsing unparsed views: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _add_dependency_edge(self, view_name: str, view_references: List[str]):
+        """
+        Add a dependency edge between the view and the derived reference
+        """
+        for dependent_view_name in view_references:
+            self._derived_dependencies.add_edge(view_name, dependent_view_name)
+
+    def _extract_column_lineage(self, view: LookMlView) -> List[Tuple[Column, Column]]:
+        """
+        Extract column level lineage from a LookML view.
+        Returns a list of tuples containing (source_column, target_column)
+        """
+        logger.debug(f"Extracting column lineage for view: {view.name}")
+        column_lineage = []
+        try:
+            # Build a map: field_name → sql block
+            field_sql_map = {}
+            for field_type in ["dimensions", "measures", "dimension_groups"]:
+                for field in getattr(view, field_type, []):
+                    if hasattr(field, "sql") and field.sql is not None:
+                        field_sql_map[field.name] = field.sql
+
+            # Regex to extract ${TABLE}.col and ${field}
+            table_col_pattern = re.compile(r"\$\{TABLE\}\.([a-zA-Z_][a-zA-Z0-9_]*)")
+            dimension_ref_pattern = re.compile(
+                r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}"
+            )
+
+            # Recursive resolver
+            def resolve(field_name, visited=None):
+                if visited is None:
+                    visited = set()
+                if field_name in visited:
+                    return set()
+                visited.add(field_name)
+
+                sql = field_sql_map.get(field_name, "")
+                source_cols = set(table_col_pattern.findall(sql))
+                dimension_refs = dimension_ref_pattern.findall(sql)
+
+                for ref in dimension_refs:
+                    source_cols.update(resolve(ref, visited))
+
+                return source_cols
+
+            # Build lineage for each field
+            for field_name, sql in field_sql_map.items():
+                try:
+                    if not sql:  # Skip if sql is None or empty
+                        continue
+                    source_cols = resolve(field_name)
+                    for source_col in source_cols:
+                        column_lineage.append((source_col, field_name))
+                except Exception as err:
+                    logger.warning(f"Error processing field {field_name}: {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+
+            return column_lineage
+        except Exception as e:
+            logger.warning(f"Error extracting column lineage: {e}")
+            logger.debug(traceback.format_exc())
+            return []
+
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -557,6 +715,9 @@ class LookerSource(DashboardServiceSource):
             # TODO: column-level lineage parsing the explore columns with the format `view_name.col`
             # Now the context has the newly created view
             if explore_model:
+                logger.debug(
+                    f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"
+                )
                 yield self._get_add_lineage_request(
                     from_entity=self._view_data_model, to_entity=explore_model
                 )
@@ -570,39 +731,41 @@ class LookerSource(DashboardServiceSource):
             db_service_names = self.get_db_service_names()
 
             if view.sql_table_name:
-                source_table_name = self._clean_table_name(view.sql_table_name)
+                sql_table_name = self._render_table_name(view.sql_table_name)
 
-                # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in db_service_names or []:
+                    dialect = self._get_db_dialect(db_service_name)
+                    source_table_name = self._clean_table_name(sql_table_name, dialect)
+                    self._parsed_views[view.name] = source_table_name
+
+                    # Extract column lineage
+                    column_lineage = self._extract_column_lineage(view)
+
+                    # View to the source is only there if we are informing the dbServiceNames
                     yield self.build_lineage_request(
                         source=source_table_name,
                         db_service_name=db_service_name,
                         to_entity=self._view_data_model,
+                        column_lineage=column_lineage,
                     )
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
-                for db_service_name in db_service_names or []:
-                    db_service = self.metadata.get_by_name(
-                        DatabaseService, db_service_name
-                    )
-
-                    lineage_parser = LineageParser(
-                        sql_query,
-                        ConnectionTypeDialectMapper.dialect_of(
-                            db_service.connection.config.type.value
-                        ),
-                        timeout_seconds=30,
-                    )
-                    if lineage_parser.source_tables:
-                        for from_table_name in lineage_parser.source_tables:
-                            yield self.build_lineage_request(
-                                source=str(from_table_name),
-                                db_service_name=db_service_name,
-                                to_entity=self._view_data_model,
-                            )
+                if find_derived_references(sql_query):
+                    sql_query = self.replace_derived_references(sql_query)
+                    # If we still have derived references, we cannot process the view
+                    if view_references := find_derived_references(sql_query):
+                        self._add_dependency_edge(view.name, view_references)
+                        logger.warning(
+                            f"Not all references are replaced for view [{view.name}]. Parsing it later."
+                        )
+                        return
+                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
+                yield from self._build_lineage_for_view(view.name, sql_query)
+                if self._unparsed_views:
+                    self.build_lineage_for_unparsed_views()
 
         except Exception as err:
             yield Either(
@@ -612,6 +775,44 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _build_lineage_for_view(
+        self, view_name: str, sql_query: str
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Parse the SQL query and build lineage for the view.
+        """
+        for db_service_name in self.get_db_service_names() or []:
+            lineage_parser = LineageParser(
+                f"create view {view_name} as {sql_query}",
+                self._get_db_dialect(db_service_name),
+                timeout_seconds=30,
+            )
+            if lineage_parser.source_tables:
+                self._parsed_views[view_name] = sql_query
+                for from_table_name in lineage_parser.source_tables:
+                    # Process column level lineage
+                    column_lineage = [
+                        (
+                            source_col.raw_name,
+                            target_col.raw_name,
+                        )
+                        for source_col, target_col in lineage_parser.column_lineage
+                        or []
+                        if source_col.parent == from_table_name
+                    ]
+                    yield self.build_lineage_request(
+                        source=str(from_table_name),
+                        db_service_name=db_service_name,
+                        to_entity=self._view_data_model,
+                        column_lineage=column_lineage if column_lineage else None,
+                    )
+
+    def _get_db_dialect(self, db_service_name) -> Dialect:
+        db_service = self.metadata.get_by_name(DatabaseService, db_service_name)
+        return ConnectionTypeDialectMapper.dialect_of(
+            db_service.connection.config.type.value
+        )
 
     def get_dashboards_list(self) -> List[DashboardBase]:
         """
@@ -660,8 +861,10 @@ class LookerSource(DashboardServiceSource):
         try:
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
-                return self.metadata.get_reference_by_email(dashboard_owner.email)
-
+                if dashboard_owner.email:
+                    return self.metadata.get_reference_by_email(
+                        dashboard_owner.email.lower()
+                    )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")
@@ -716,7 +919,7 @@ class LookerSource(DashboardServiceSource):
         return None
 
     @staticmethod
-    def _clean_table_name(table_name: str) -> str:
+    def _clean_table_name(table_name: str, dialect: Dialect = Dialect.ANSI) -> str:
         """
         sql_table_names might be renamed when defining
         an explore. E.g., customers as cust
@@ -724,7 +927,37 @@ class LookerSource(DashboardServiceSource):
         :return: clean table name
         """
 
-        return table_name.lower().split(" as ")[0].strip()
+        clean_table_name = table_name.lower().split(" as ")[0].strip()
+        if dialect == Dialect.BIGQUERY:
+            clean_table_name = clean_table_name.strip("`")
+        return clean_table_name
+
+    @staticmethod
+    def _render_table_name(table_name: str) -> str:
+        """
+        sql_table_names might contain Liquid templates
+        when defining an explore. e.g,:
+        sql_table_name:
+            {% if openmetadata %}
+                event
+            {% elsif event.created_week._in_query %}
+                event_by_week
+            {% else %}
+                event
+            {% endif %} ;;
+        we should render the template and give the option
+        to render a specific value during metadata ingestion
+        using the "openmetadata" context argument
+        :param table_name: table name with possible templating
+        :return: rendered table name
+        """
+        try:
+            context = {"openmetadata": True}
+            template = Template(table_name)
+            sql_table_name = template.render(context)
+        except Exception:
+            sql_table_name = table_name
+        return sql_table_name
 
     @staticmethod
     def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:
@@ -772,7 +1005,9 @@ class LookerSource(DashboardServiceSource):
         )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard, _: str
+        self,
+        dashboard_details: LookerDashboard,
+        _: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
@@ -829,6 +1064,7 @@ class LookerSource(DashboardServiceSource):
         source: str,
         db_service_name: str,
         to_entity: Union[Dashboard, DashboardDataModel],
+        column_lineage: Optional[List[Tuple[Column, Column]]] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         """
         Once we have a list of origin data sources, check their components
@@ -841,6 +1077,8 @@ class LookerSource(DashboardServiceSource):
             db_service_name: name of the service from the config
             to_entity: Dashboard Entity being used
         """
+        # pylint: disable=too-many-locals
+        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
 
@@ -859,13 +1097,57 @@ class LookerSource(DashboardServiceSource):
                 fqn=from_fqn,
             )
 
+            if column_lineage:
+                processed_column_lineage = []
+                for column_tuple in column_lineage or []:
+                    try:
+                        if len(column_tuple) < 2:
+                            logger.debug(
+                                f"Skipping invalid column tuple: {column_tuple}"
+                            )
+                            continue
+
+                        source_col = column_tuple[0]
+                        target_col = column_tuple[-1]
+
+                        if not source_col or not target_col:
+                            logger.debug(
+                                f"Skipping column tuple with empty values: source={source_col}, "
+                                f"target={target_col}, to_entity={to_entity.name}"
+                            )
+                            continue
+
+                        from_column = get_column_fqn(
+                            table_entity=from_entity, column=str(target_col)
+                        )
+                        to_column = self._get_data_model_column_fqn(
+                            data_model_entity=to_entity,
+                            column=str(source_col),
+                        )
+                        if from_column and to_column:
+                            processed_column_lineage.append(
+                                ColumnLineage(
+                                    fromColumns=[from_column], toColumn=to_column
+                                )
+                            )
+                    except Exception as err:
+                        logger.warning(
+                            f"Error processing column lineage {column_tuple}: {err}"
+                        )
+                        logger.debug(traceback.format_exc())
+                        continue
+
+                column_lineage = processed_column_lineage
+
             if from_entity:
                 if from_entity.id.root not in self._added_lineage:
                     self._added_lineage[from_entity.id.root] = []
                 if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
                     self._added_lineage[from_entity.id.root].append(to_entity.id.root)
                     return self._get_add_lineage_request(
-                        to_entity=to_entity, from_entity=from_entity
+                        to_entity=to_entity,
+                        from_entity=from_entity,
+                        column_lineage=column_lineage,
                     )
 
         return None
@@ -890,17 +1172,19 @@ class LookerSource(DashboardServiceSource):
                     continue
 
                 description = self.build_chart_description(chart)
+                if chart.query is not None:
+                    source_url = chart.query.share_url
+                elif getattr(chart.result_maker, "query", None) is not None:
+                    source_url = chart.result_maker.query.share_url
+                else:
+                    source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(chart.id),
                         displayName=chart.title or chart.id,
                         description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=SourceUrl(chart.query.share_url)
-                        if chart.query is not None
-                        else SourceUrl(
-                            f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
-                        ),
+                        sourceUrl=SourceUrl(source_url),
                         service=self.context.get().dashboard_service,
                     )
                 )
@@ -1042,3 +1326,7 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        self.metadata.compute_percentile(Dashboard, self.today)
+        self.metadata.close()

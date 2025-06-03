@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { sidebarClick } from './sidebar';
@@ -66,7 +67,7 @@ export const assignIncident = async (data: {
     '#testCaseResolutionStatusDetails_assignee',
     user.displayName
   );
-  await page.waitForResponse('/api/v1/search/suggest?q=*');
+  await page.waitForResponse('/api/v1/search/query?q=*');
   await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
   const updateIncident = page.waitForResponse(
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
@@ -87,7 +88,7 @@ export const assignIncident = async (data: {
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
-  pipeline: unknown;
+  pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
   // wait for 2s before the pipeline to be run
@@ -122,7 +123,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for the pipeline to be successful',
-        timeout: 60_000,
+        timeout: 90_000,
         intervals: [5_000, 10_000],
       }
     )

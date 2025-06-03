@@ -12,64 +12,51 @@
 name: monitor-slack-link
 on:
   schedule:
-    - cron:  '0 */2 * * *'
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch:
+  
 
+# Grant least privilege permissions needed
 permissions:
-  id-token: write
-  contents: read
+  contents: read # Needed for checkout and reading requirements.txt
 
 jobs:
   monitor-slack-link:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false # Ensure all matrix jobs run even if one fails
+    # Only run specific matrix job when manually triggered with selection
     steps:
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          docker-images: true
-          swap-storage: true      
+    # Step 1: Checkout repository code
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+    # Step 2: Set up Python environment with caching
+    - name: Set up Python 3.9 # Or consider a newer version like 3.11/3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.9 # Or e.g., '3.11'
+        cache: 'pip'
 
-    - name: Install Deps
+    # Step 3: Install dependencies
+    - name: Install Dependencies
       run: |
         python -m venv env
         source env/bin/activate
-        pip install requests
+        pip install --upgrade pip requests types-requests slack_sdk==3.35.0
 
-    - name: Monitor Link
+    # Step 4: Run the monitoring script
+    - name: Monitor Slack Link
       id: monitor
-      continue-on-error: true
+      continue-on-error: true # Allow subsequent steps (notification) even if this fails
       env:
-        PYTHONUNBUFFERED: "1"
+        PYTHONUNBUFFERED: "1" # Recommended for immediate log output
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        GITHUB_SERVER_URL: ${{ github.server_url }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
       run: |
         source env/bin/activate
         python scripts/slack-link-monitor.py
-
-    - name: Slack on Failure
-      if: steps.monitor.outcome != 'success'
-      uses: slackapi/slack-github-action@v1.23.0
-      with:
-        payload: |
-          {
-            "text": "🔥 Slack invitation link has expired! 🔥"
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-    - name: Force failure
-      if: steps.monitor.outcome != 'success'
-      run: |
-        exit 1

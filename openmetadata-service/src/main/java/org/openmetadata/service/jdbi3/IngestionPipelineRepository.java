@@ -16,11 +16,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -39,6 +39,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -53,6 +55,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
+
   private static final String UPDATE_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
   private static final String PATCH_FIELDS =
@@ -94,11 +97,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             ? getLatestPipelineStatus(ingestionPipeline)
             : ingestionPipeline.getPipelineStatuses());
 
-    JSONObject sourceConfigJson =
-        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
-        .map(appConfig -> appConfig.optString("type", null))
-        .ifPresent(ingestionPipeline::setApplicationType);
+    if (ingestionPipeline.getSourceConfig() != null
+        && ingestionPipeline.getSourceConfig().getConfig() != null) {
+      JSONObject sourceConfigJson =
+          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+      Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+          .map(appConfig -> appConfig.optString("type", null))
+          .ifPresent(ingestionPipeline::setApplicationType);
+    }
   }
 
   @Override
@@ -148,11 +154,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
+    if (ingestionPipeline.getIngestionRunner() != null) {
+      addRelationship(
+          ingestionPipeline.getId(),
+          ingestionPipeline.getIngestionRunner().getId(),
+          entityType,
+          ingestionPipeline.getIngestionRunner().getType(),
+          Relationship.USES);
+    }
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+  public EntityRepository<IngestionPipeline>.EntityUpdater getUpdater(
+      IngestionPipeline original,
+      IngestionPipeline updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
@@ -171,7 +188,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private ChangeEvent getChangeEvent(
+  protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -268,6 +285,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         allPipelineStatusList.size());
   }
 
+  /* Get the status of the external application by converting the configuration so that it can be
+   * served like an App configuration */
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
         getLatestExtensionFromTimeSeries(
@@ -288,8 +319,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         PipelineStatus.class);
   }
 
-  /** Handles entity updated from PUT and POST operation. */
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
   public class IngestionPipelineUpdater extends EntityUpdater {
+
     public IngestionPipelineUpdater(
         IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);
@@ -297,12 +331,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
+      updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
     }
 
     private void updateSourceConfig() {
@@ -332,6 +367,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
       if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
         recordChange("deployed", origDeployed, updatedDeployed);
+      }
+    }
+
+    private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
+      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+        recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
 

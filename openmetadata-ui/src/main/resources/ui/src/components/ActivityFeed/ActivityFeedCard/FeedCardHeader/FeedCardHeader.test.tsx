@@ -33,7 +33,7 @@ const mockProps2 = {
   isEntityFeed: false,
 };
 
-jest.mock('../../../../constants/constants', () => ({
+jest.mock('../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('user-profile-path'),
 }));
 

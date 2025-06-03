@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
@@ -23,10 +28,10 @@ export class ApiEndpointClass extends EntityClass {
   private apiCollectionName = `pw-api-collection-${uuid()}`;
   service = {
     name: this.serviceName,
-    serviceType: 'REST',
+    serviceType: 'Rest',
     connection: {
       config: {
-        type: 'REST',
+        type: 'Rest',
         openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
       },
     },
@@ -139,14 +144,17 @@ export class ApiEndpointClass extends EntityClass {
     },
   };
 
-  serviceResponseData: unknown;
-  apiCollectionResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  apiCollectionResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.ApiService;
+    this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;

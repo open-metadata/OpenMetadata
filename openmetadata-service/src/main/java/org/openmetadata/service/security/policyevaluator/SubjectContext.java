@@ -188,7 +188,7 @@ public record SubjectContext(User user) {
   }
 
   @Getter
-  static class PolicyContext {
+  public static class PolicyContext {
     private final String entityType;
     private final String entityName;
     private final String roleName;

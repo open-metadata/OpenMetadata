@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,15 +14,17 @@ Test Snowflake connector with CLI
 """
 from datetime import datetime
 from time import sleep
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
-from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
+from ...src.metadata.data_quality.api.models import TestCaseDefinition
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -65,7 +67,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1,'Peter Parker');",
-        "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1, 'Clark Kent');",
+        "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (2, 'Clark Kent');",
         "INSERT INTO e2e_test.e2e_table (varchar_column, int_column) VALUES ('e2e_test.e2e_table', 1);",
         "INSERT INTO public.e2e_table (varchar_column, int_column) VALUES ('public.e2e_table', 1);",
         "INSERT INTO e2e_table (varchar_column, int_column) VALUES ('e2e_table', 1);",
@@ -164,19 +166,22 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
-        self.custom_profiler_assertions()
+        self.system_profile_assertions()
 
     @staticmethod
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(
             [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
         )
 
     def view_column_lineage_count(self) -> int:
         return 2
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_snowflake.E2E_DB.E2E_TEST.VIEW_PERSONS"
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -230,8 +235,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    def custom_profiler_assertions(self):
-        cases = [
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",
                 [
@@ -266,39 +271,23 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=1),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=2),
                         operation=DmlOperationType.UPDATE,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=3),
                         operation=DmlOperationType.DELETE,
                         rowsAffected=1,
                     ),
                 ],
             ),
         ]
-        for table_fqn, expected_profile in cases:
-            actual_profiles = self.openmetadata.get_profile_data(
-                table_fqn,
-                start_ts=int((datetime.now().timestamp() - 600) * 1000),
-                end_ts=int(datetime.now().timestamp() * 1000),
-                profile_type=SystemProfile,
-            ).entities
-            actual_profiles = sorted(actual_profiles, key=lambda x: x.timestamp.root)
-            actual_profiles = actual_profiles[-len(expected_profile) :]
-            actual_profiles = [
-                p.copy(update={"timestamp": Timestamp(root=0)}) for p in actual_profiles
-            ]
-            try:
-                assert_equal_pydantic_objects(expected_profile, actual_profiles)
-            except AssertionError as e:
-                raise AssertionError(f"Table: {table_fqn}\n{e}")
 
     @classmethod
     def wait_for_query_log(cls, timeout=600):
@@ -316,3 +305,28 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             )
             if (datetime.now().timestamp() - start) > timeout:
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
+
+    def get_data_quality_table(self):
+        return self.fqn_created_table()
+
+    def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+        return [
+            TestCaseDefinition(
+                name="snowflake_data_diff",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="table2",
+                        value=self.get_data_quality_table(),
+                    ),
+                    TestCaseParameterValue(
+                        name="keyColumns",
+                        value='["PERSON_ID"]',
+                    ),
+                ],
+            )
+        ]
+
+    def get_expected_test_case_results(self):
+        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]

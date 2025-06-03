@@ -1,0 +1,90 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: py-tests-postgres
+on:
+  workflow_dispatch:
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "ingestion/**"
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "pom.xml"
+      - "Makefile"
+
+permissions:
+  contents: read
+
+jobs:
+  py-run-tests:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # We'll test postgres and opensearch with a single python version to save time and resources
+        py-version: ['3.10']
+    steps:
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: true
+        docker-images: false
+
+    - name: Wait for the labeler
+      uses: lewagon/wait-on-check-action@v1.3.4
+      if: ${{ github.event_name == 'pull_request_target' }}
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        check-name: Team Label
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 90
+
+    - name: Verify PR labels
+      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+      if: ${{ github.event_name == 'pull_request_target' }}
+      with:
+        github-token: '${{ secrets.GITHUB_TOKEN }}'
+        valid-labels: 'safe to test'
+        pull-request-number: '${{ github.event.pull_request.number }}'
+        disable-reviews: true  # To not auto approve changes
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+
+    - name: Setup Openmetadata Test Environment
+      uses: ./.github/actions/setup-openmetadata-test-environment
+      with:
+        python-version: ${{ matrix.py-version}}
+        args: "-m no-ui -d postgresql"
+        ingestion_dependency: "mysql,elasticsearch,sample-data"
+
+    - name: Run Python Tests
+      run: |
+        source env/bin/activate
+        make run_python_tests
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true
+      
+    - name: Clean Up
+      run: |
+        cd ./docker/development
+        docker compose down --remove-orphans
+        sudo rm -rf ${PWD}/docker-volume

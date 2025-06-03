@@ -75,6 +75,7 @@ const AuthMechanism: FC<Props> = ({
             </Button>
           ) : (
             <Button
+              className="text-sm"
               data-testid="auth-mechanism"
               disabled={!hasPermission}
               size="small"

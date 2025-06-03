@@ -47,4 +47,6 @@ export enum SearchIndex {
   API_SERVICE_INDEX = 'api_service_search_index',
   API_COLLECTION_INDEX = 'api_collection_search_index',
   API_ENDPOINT_INDEX = 'api_endpoint_search_index',
+  METRIC_SEARCH_INDEX = 'metric_search_index',
+  SERVICE = 'service',
 }

@@ -1,0 +1,116 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.service-insights-tab {
+  padding-bottom: 16px;
+  .ant-alert.ant-alert-with-description.status-banner {
+    border-radius: @border-radius-sm;
+    padding: 16px;
+    margin: 0px 8px;
+    width: 100%;
+    .ant-alert-message {
+      margin: 0px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .ant-alert-description {
+      color: @text-grey-muted;
+    }
+    .status-banner-icon {
+      border-radius: 50%;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    &.RUNNING {
+      background-color: @alert-info-bg;
+      border-color: @alert-info;
+      .ant-alert-icon {
+        color: @alert-info-icon;
+      }
+      .status-banner-icon {
+        background-color: @alert-info-icon-bg-1;
+        border: 6px solid @alert-info-icon-bg-2;
+      }
+    }
+
+    &.FINISHED {
+      background-color: @alert-success-bg;
+      border-color: @alert-success;
+      .ant-alert-icon {
+        color: @alert-success-icon;
+      }
+      .status-banner-icon {
+        background-color: @alert-success-icon-bg-1;
+        border: 6px solid @alert-success-icon-bg-2;
+      }
+    }
+
+    &.EXCEPTION {
+      background-color: @alert-warning-bg;
+      border-color: @alert-warning;
+      .ant-alert-icon {
+        color: @alert-warning-icon;
+      }
+      .status-banner-icon {
+        background-color: @alert-warning-icon-bg-1;
+        border: 6px solid @alert-warning-icon-bg-2;
+      }
+    }
+
+    &.FAILURE {
+      background-color: @alert-error-bg;
+      border-color: @alert-error;
+      .ant-alert-icon {
+        color: @alert-error-icon;
+      }
+      .status-banner-icon {
+        background-color: @alert-error-icon-bg-1;
+        border: 6px solid @alert-error-icon-bg-2;
+      }
+    }
+  }
+  .service-insights-widget {
+    height: 100%;
+    background-color: @white;
+    border-radius: @border-radius-sm;
+    border: 1px solid @grey-15;
+    padding: 20px;
+  }
+
+  .widget-flex-col {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .ant-card.widget-info-card {
+    background-color: @grey-25;
+    border-color: @grey-15;
+    border-radius: @border-radius-sm;
+  }
+  .distribution-widget.ant-card {
+    height: 350px;
+    gap: 16px;
+    .ant-card-body {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+}

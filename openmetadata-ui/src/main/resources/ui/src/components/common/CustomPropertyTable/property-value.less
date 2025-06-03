@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .entity-reference-list-item:last-child {
   border-bottom: none;
 }
@@ -21,8 +24,91 @@
     align-items: center;
     justify-content: center;
     svg {
-      height: 18px;
-      width: 18px;
+      height: 24px;
+      width: 24px;
     }
+  }
+}
+
+.custom-property-value-toggle-btn {
+  svg {
+    vertical-align: middle;
+    width: 14px;
+    transition: 0.3s ease-in-out;
+  }
+}
+
+.custom-property-value-toggle-btn.active {
+  svg {
+    transform: rotate(180deg);
+  }
+}
+
+.ant-tag.enum-key-tag {
+  width: max-content;
+  margin: 0px;
+  padding: 2px 8px;
+  border: 1px solid @text-color;
+  background: @white;
+}
+
+.sql-query-custom-property {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
+}
+.custom-property-card {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  .ant-card-body {
+    overflow-x: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .property-name {
+    font-weight: 400;
+  }
+
+  .property-value {
+    font-weight: 500;
+  }
+}
+
+.custom-property-card-right-panel {
+  overflow-x: scroll;
+}
+
+.ant-tag.time-interval-separator {
+  height: 26px;
+  background: @grey-1;
+  padding: 4px 8px;
+  border-radius: 30px;
+  margin-right: 0px;
+  font-size: 12px;
+  text-align: center;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.property-description {
+  .markdown-parser .toastui-editor-contents {
+    font-size: 13px;
+  }
+}
+
+.custom-property-inline-edit-container {
+  width: 100%;
+  flex-wrap: wrap;
+  overflow-x: scroll;
+
+  .ant-space-item:first-child {
+    width: inherit;
   }
 }

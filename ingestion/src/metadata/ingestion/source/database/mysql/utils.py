@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,8 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
+
+
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
@@ -136,9 +138,9 @@ def parse_column(self, line, state):
     raw_type = get_display_datatype(
         col_type=type_,
         char_len=type_instance.length if hasattr(type_instance, "length") else None,
-        precision=type_instance.precision
-        if hasattr(type_instance, "precision")
-        else None,
+        precision=(
+            type_instance.precision if hasattr(type_instance, "precision") else None
+        ),
         scale=type_instance.scale if hasattr(type_instance, "scale") else None,
     )
 

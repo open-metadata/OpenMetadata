@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -45,6 +48,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
@@ -181,18 +185,35 @@ def test_connection(
     engine: Engine,
     service_connection: HiveConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection:
+    if service_connection.metastoreConnection and isinstance(
+        service_connection.metastoreConnection, dict
+    ):
+        try:
+            service_connection.metastoreConnection = MysqlConnection.model_validate(
+                service_connection.metastoreConnection
+            )
+        except ValidationError:
+            try:
+                service_connection.metastoreConnection = (
+                    PostgresConnection.model_validate(
+                        service_connection.metastoreConnection
+                    )
+                )
+            except ValidationError:
+                raise ValueError("Invalid metastore connection")
         engine = get_metastore_connection(service_connection.metastoreConnection)
 
-    test_connection_db_schema_sources(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

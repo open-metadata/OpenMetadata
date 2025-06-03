@@ -77,26 +77,28 @@ test.describe('Add Nested Teams and Test TeamsSelectable', () => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
     // Click on add user button
+    const teamHierarchyResponse = page.waitForResponse(
+      '/api/v1/teams/hierarchy?isJoinable=false'
+    );
     await page.locator('[data-testid="add-user"]').click();
+    await teamHierarchyResponse;
 
     // Enter team name
-    const teamSelect = page.locator(
-      '[data-testid="team-select"] .ant-select-selector'
-    );
-    await teamSelect.click();
-    await teamSelect.type(businessTeamName);
+    await page.click('[data-testid="team-select"]');
+    await page.keyboard.type(businessTeamName);
 
     for (const teamName of teamNames) {
       const dropdown = page.locator('.ant-tree-select-dropdown');
 
       await expect(dropdown).toContainText(teamName);
+      await expect(dropdown.getByText(teamName)).toHaveCount(1);
     }
 
     for (const teamName of teamNames) {
-      await expect(teamSelect).toBeVisible();
+      await expect(page.getByTestId('team-select')).toBeVisible();
 
-      await teamSelect.click();
-      await teamSelect.type(teamName);
+      await page.click('[data-testid="team-select"]');
+      await page.keyboard.type(teamName);
 
       await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
         teamName

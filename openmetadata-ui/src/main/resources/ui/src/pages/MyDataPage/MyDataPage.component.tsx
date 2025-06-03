@@ -13,16 +13,10 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -33,16 +27,17 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
-import { PageType } from '../../generated/system/ui/page';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
+import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -52,12 +47,13 @@ const ReactGridLayout = WidthProvider(RGL);
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
+  const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
-  const isMounted = useRef(false);
+
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
@@ -77,10 +73,19 @@ const MyDataPage = () => {
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isEmpty(selectedPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
-        const pageData = await getDocumentByFQN(pageFQN);
-        setLayout(pageData.data.page.layout);
+      if (selectedPersona) {
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
+        const docData = await getDocumentByFQN(pageFQN);
+
+        const pageData = docData.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.LandingPage
+        ) ?? { layout: [], pageType: PageType.LandingPage };
+
+        setLayout(
+          isEmpty(pageData.layout)
+            ? customizePageClassBase.defaultLayout
+            : pageData.layout
+        );
       } else {
         setLayout(customizePageClassBase.defaultLayout);
       }
@@ -104,11 +109,10 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [selectedPersona]);
+  }, [selectedPersona, customizePageClassBase.defaultLayout]);
 
   useEffect(() => {
-    isMounted.current = true;
-    updateWelcomeScreen(!usernameExistsInCookie);
+    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
   }, []);
@@ -192,45 +196,37 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
+  if (isLoading) {
+    return <Loader fullScreen />;
+  }
+
   if (showWelcomeScreen) {
     return (
-      <div className="bg-white full-height">
+      <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-      </div>
+      </PageLayoutV1>
     );
   }
 
   return (
-    <ActivityFeedProvider>
-      <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageTitle={t('label.my-data')}>
-        {isLoading ? (
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        ) : (
-          <>
-            <ReactGridLayout
-              className="bg-white"
-              cols={4}
-              isDraggable={false}
-              isResizable={false}
-              margin={[
-                customizePageClassBase.landingPageWidgetMargin,
-                customizePageClassBase.landingPageWidgetMargin,
-              ]}
-              rowHeight={100}>
-              {widgets}
-            </ReactGridLayout>
-            <LimitWrapper resource="dataAssets">
-              <br />
-            </LimitWrapper>
-          </>
-        )}
-      </PageLayoutV1>
-    </ActivityFeedProvider>
+    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
+      <ReactGridLayout
+        cols={4}
+        containerPadding={[0, 0]}
+        isDraggable={false}
+        isResizable={false}
+        margin={[
+          customizePageClassBase.landingPageWidgetMargin,
+          customizePageClassBase.landingPageWidgetMargin,
+        ]}
+        rowHeight={100}>
+        {widgets}
+      </ReactGridLayout>
+      <LimitWrapper resource="dataAssets">
+        <br />
+      </LimitWrapper>
+    </PageLayoutV1>
   );
 };
 
-export default MyDataPage;
+export default withActivityFeed(MyDataPage);

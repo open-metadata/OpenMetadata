@@ -17,6 +17,7 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -40,6 +41,7 @@ const entities = [
   ContainerClass,
   SearchIndexClass,
   DashboardDataModelClass,
+  MetricClass,
 ] as const;
 
 // Create 2 page and authenticate 1 with admin and another with normal user
@@ -184,6 +186,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);

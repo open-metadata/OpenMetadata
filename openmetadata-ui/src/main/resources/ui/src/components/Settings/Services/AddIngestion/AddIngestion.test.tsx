@@ -41,6 +41,10 @@ const mockAddIngestionProps: AddIngestionProps = {
   onFocus: jest.fn(),
 };
 
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ ingestionFQN: 'test' }),
+}));
+
 jest.mock('@rjsf/core', () => ({
   Form: jest.fn().mockImplementation(() => <div>RJSF_Form.component</div>),
 }));
@@ -49,9 +53,18 @@ jest.mock('../Ingestion/IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
+jest.mock('./Steps/ScheduleInterval', () => {
+  return jest.fn().mockImplementation(() => <div>ScheduleInterval</div>);
+});
+
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
   return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
 });
+
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
+}));
 
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {

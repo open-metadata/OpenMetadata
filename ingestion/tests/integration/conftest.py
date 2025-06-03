@@ -6,6 +6,9 @@ import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    AutoClassificationConfigType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseMetadataConfigType,
 )
@@ -40,6 +43,16 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
+# TODO: Will be addressed when cleaning up integration tests.
+#  Setting the max tries for testcontainers here has pitfalls,
+#  the main one being that it cannot be changed through the recommended
+#  way of using environment variables. The main problem is that
+#  waiting_utils.py uses testcontainers_config.timeout as a default
+#  value for the timeout. Therefore, if we want to effectively change
+#  this value, we must do so before the module is imported,
+#  which is a potential source of issues.
+
+
 @pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
 def config_testcontatiners():
     from testcontainers.core.config import testcontainers_config
@@ -72,8 +85,31 @@ def profiler_config(db_service, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "Profiler",
-                    "generateSampleData": True,
-                    "timeoutSeconds": 30,
+                    "timeoutSeconds": 600,
+                    "threadCount": 1,  # easier for debugging
+                }
+            },
+        },
+        "processor": {
+            "type": "orm-profiler",
+            "config": {},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+
+
+@pytest.fixture(scope="module")
+def classifier_config(db_service, workflow_config, sink_config):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": AutoClassificationConfigType.AutoClassification.value,
+                    "storeSampleData": True,
+                    "enableAutoClassification": True,
                 }
             },
         },
@@ -92,6 +128,7 @@ def run_workflow():
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
+            workflow.print_status()
             workflow.raise_from_status()
         return workflow
 
@@ -126,8 +163,13 @@ def unmask_password(create_service_request):
     """
 
     def patch_password(service: DatabaseService):
-        service.connection.config.authType.password = (
-            create_service_request.connection.config.authType.password
+        if hasattr(service.connection.config, "authType"):
+            service.connection.config.authType.password = (
+                create_service_request.connection.config.authType.password
+            )
+            return service
+        service.connection.config.password = (
+            create_service_request.connection.config.password
         )
         return service
 

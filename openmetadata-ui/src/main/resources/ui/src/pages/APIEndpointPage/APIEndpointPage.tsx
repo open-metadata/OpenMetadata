@@ -22,7 +22,7 @@ import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { getVersionPath, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -31,7 +31,6 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -42,14 +41,13 @@ import {
   removeApiEndpointFollower,
   updateApiEndPointVote,
 } from '../../rest/apiEndpointsAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const APIEndpointPage = () => {
@@ -82,24 +80,16 @@ const APIEndpointPage = () => {
 
   const handleApiEndpointUpdate = async (
     updatedData: APIEndpoint,
-    key: keyof APIEndpoint
+    key?: keyof APIEndpoint
   ) => {
     try {
       const res = await saveUpdatedApiEndpointData(updatedData);
 
       setApiEndpointDetails((previous) => {
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
-
         return {
           ...previous,
-          version: res.version,
-          [key]: res[key],
+          ...res,
+          ...(key && { [key]: res[key] }),
         };
       });
     } catch (error) {
@@ -115,7 +105,7 @@ const APIEndpointPage = () => {
         entityFqn
       );
       setApiEndpointPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -163,7 +153,7 @@ const APIEndpointPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-details-fetch-error', {
-            entityType: t('label.pipeline'),
+            entityType: t('label.api-endpoint'),
             entityName: apiEndpointFqn,
           })
         );
@@ -222,19 +212,6 @@ const APIEndpointPage = () => {
       );
   };
 
-  const handleCreateThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setApiEndpointDetails((prev) => {
       if (!prev) {
@@ -270,7 +247,7 @@ const APIEndpointPage = () => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -296,7 +273,15 @@ const APIEndpointPage = () => {
     );
   }
   if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.api-endpoint'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -305,7 +290,6 @@ const APIEndpointPage = () => {
       apiEndpointPermissions={apiEndpointPermissions}
       fetchAPIEndpointDetails={() => fetchApiEndPointDetail(apiEndpointFqn)}
       onApiEndpointUpdate={handleApiEndpointUpdate}
-      onCreateThread={handleCreateThread}
       onFollowApiEndPoint={followApiEndPoint}
       onToggleDelete={handleToggleDelete}
       onUnFollowApiEndPoint={unFollowApiEndPoint}

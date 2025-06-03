@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class EntityNotFoundException extends WebServiceException {
@@ -31,7 +31,7 @@ public class EntityNotFoundException extends WebServiceException {
     super(Response.Status.NOT_FOUND, ERROR_TYPE, message);
   }
 
-  private EntityNotFoundException(String message, Throwable cause) {
+  public EntityNotFoundException(String message, Throwable cause) {
     super(Response.Status.NOT_FOUND, ERROR_TYPE, message, cause);
   }
 

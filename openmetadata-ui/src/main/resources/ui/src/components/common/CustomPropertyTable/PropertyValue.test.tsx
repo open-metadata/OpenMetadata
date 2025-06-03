@@ -16,7 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockReturnValue(
@@ -55,6 +55,11 @@ jest.mock(
         </div>
       )
 );
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  calculateInterval: jest.fn().mockReturnValue('4 Days, 0 Hours'),
+}));
 
 const mockUpdate = jest.fn();
 
@@ -116,10 +121,10 @@ describe('Test PropertyValue Component', () => {
       />
     );
 
-    const valueElement = await screen.findByTestId('RichTextPreviewer');
+    const valueElement = await screen.findAllByTestId('RichTextPreviewer');
     const iconElement = await screen.findByTestId('edit-icon');
 
-    expect(valueElement).toBeInTheDocument();
+    expect(valueElement).toHaveLength(1);
     expect(iconElement).toBeInTheDocument();
 
     await act(async () => {
@@ -146,7 +151,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('enum-value')).toHaveTextContent(
-      'enumValue1, enumValue2'
+      'enumValue1enumValue2'
     );
 
     await act(async () => {
@@ -298,8 +303,8 @@ describe('Test PropertyValue Component', () => {
   it('Should render start and end input component for "timeInterval" type', async () => {
     const extension = {
       yNumber: {
-        start: '1736255200000',
-        end: '1736255200020',
+        start: '1710831125922',
+        end: '1711176725922',
       },
     };
     const propertyType = {
@@ -317,7 +322,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('time-interval-value')).toHaveTextContent(
-      'StartTime: 1736255200000EndTime: 1736255200020'
+      'label.start-entity17108311259224 Days, 0 Hourslabel.end-entity1711176725922'
     );
 
     await act(async () => {

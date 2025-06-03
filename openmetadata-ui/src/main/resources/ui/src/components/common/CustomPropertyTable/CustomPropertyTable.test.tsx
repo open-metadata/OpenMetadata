@@ -55,6 +55,14 @@ jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: {},
+    onUpdate: jest.fn(),
+    filterWidgets: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -86,10 +94,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({
     fqn: 'fqn',
   })),
-}));
-
-jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
-  getEntityExtentionDetailsFromEntityType: jest.fn(),
 }));
 
 const handleExtensionUpdate = jest.fn();
@@ -153,17 +157,13 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-    const table = await screen.findByTestId('custom-properties-table');
+    const table = await screen.findByTestId('custom-properties-card');
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('label.name');
-    const propertyValue = await screen.findByText('label.value');
-    const rows = await screen.findAllByRole('row');
+    const propertyValue = await screen.findByText('PropertyValue');
 
-    expect(propertyName).toBeInTheDocument();
     expect(propertyValue).toBeInTheDocument();
-    expect(rows).toHaveLength(mockCustomProperties.length + 1);
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
@@ -222,10 +222,9 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-    const tableRowTitle = await screen.findByText('xName');
+
     const tableRowValue = await screen.findByText('PropertyValue');
 
-    expect(tableRowTitle).toBeInTheDocument();
     expect(tableRowValue).toBeInTheDocument();
   });
 });

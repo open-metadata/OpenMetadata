@@ -32,16 +32,29 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class PostgresIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   queryLogFilePath: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       POSTGRES.serviceName,
       POSTGRES.serviceType,
-      POSTGRES.tableName
+      POSTGRES.tableName,
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'sales';
@@ -99,12 +112,20 @@ class PostgresIngestionClass extends ServiceBaseClass {
           true
         );
 
-        await page.click('[data-testid="ingestions"]');
+        await page.click('[data-testid="agents"]');
         await page.waitForSelector(
           '[data-testid="ingestion-details-container"]'
         );
+
+        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab.isVisible()) {
+          await metadataTab.click();
+        }
+        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page.waitForTimeout(1000);
+        await page.waitForSelector(
+          '.ant-dropdown:visible [data-menu-id*="usage"]'
+        );
         await page.click('[data-menu-id*="usage"]');
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
@@ -117,9 +138,14 @@ class PostgresIngestionClass extends ServiceBaseClass {
         // Header available once page loads
         await page.waitForSelector('[data-testid="data-assets-header"]');
         await page.getByTestId('loader').waitFor({ state: 'detached' });
-        await page.getByTestId('ingestions').click();
+        await page.getByTestId('agents').click();
+        const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab2.isVisible()) {
+          await metadataTab2.click();
+        }
+        await page.waitForLoadState('networkidle');
         await page
-          .getByLabel('Ingestions')
+          .getByLabel('agents')
           .getByTestId('loader')
           .waitFor({ state: 'detached' });
 
@@ -132,7 +158,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           .then((res) => res.json());
 
         // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
         );
@@ -140,6 +166,9 @@ class PostgresIngestionClass extends ServiceBaseClass {
         await page.getByTestId('run-button').click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
+
+        // need manual wait to make sure we are awaiting on latest run results
+        await page.waitForTimeout(2000);
 
         await this.handleIngestionRetry('usage', page);
       });

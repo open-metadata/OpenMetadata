@@ -25,7 +25,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -69,9 +69,9 @@ export const getDashboards = async (
     params: {
       service,
       fields,
+      limit,
       ...paging,
       include,
-      limit,
     },
   });
 

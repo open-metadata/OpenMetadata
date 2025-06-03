@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.security.auth;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static jakarta.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
@@ -51,6 +51,8 @@ import static org.openmetadata.service.util.email.TemplateConstants.USERNAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -60,8 +62,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
@@ -102,7 +102,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private static final int HASHING_COST = 12;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
   private boolean isSelfSignUpAvailable;
 
@@ -111,7 +110,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
@@ -163,7 +161,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update the user
     registeredUser.setIsEmailVerified(true);
-    userRepository.createOrUpdate(uriInfo, registeredUser);
+    userRepository.createOrUpdate(uriInfo, registeredUser, registeredUser.getName());
 
     // deleting the entry for the token from the Database
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
@@ -185,8 +183,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
-              getSmtpSettings().getOpenMetadataUrl(),
-              user.getFullyQualifiedName(),
+              EmailUtil.getOMBaseURL(),
+              URLEncoder.encode(user.getFullyQualifiedName(), StandardCharsets.UTF_8),
               mailVerificationToken);
       try {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
@@ -209,7 +207,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            getSmtpSettings().getOpenMetadataUrl(),
+            EmailUtil.getOMBaseURL(),
             URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
             mailVerificationToken);
     try {
@@ -254,19 +252,20 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.setAuthenticationMechanism(
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
 
-    userRepository.createOrUpdate(uriInfo, storedUser);
+    userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
 
     // Update user about Password Change
     try {
-      sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      sendAccountStatus(
+          storedUser.getName(), storedUser.getEmail(), "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
     }
-    loginAttemptCache.recordSuccessfulLogin(request.getUsername());
+    LoginAttemptCache.getInstance().recordSuccessfulLogin(request.getUsername());
   }
 
   @Override
@@ -309,9 +308,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-    PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
+    PutResponse<User> response =
+        userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
     // remove login/details from cache
-    loginAttemptCache.recordSuccessfulLogin(userName);
+    LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
@@ -340,7 +340,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         templatePopulator.put(SUPPORT_URL, getSmtpSettings().getSupportUrl());
         templatePopulator.put(USERNAME, user.getName());
         templatePopulator.put(PASSWORD, pwd);
-        templatePopulator.put(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl());
+        templatePopulator.put(APPLICATION_LOGIN_LINK, EmailUtil.getOMBaseURL());
         try {
           EmailUtil.sendMail(
               subject, templatePopulator, user.getEmail(), INVITE_RANDOM_PASSWORD_TEMPLATE, true);
@@ -466,64 +466,66 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    String userName = loginRequest.getEmail();
-    checkIfLoginBlocked(userName);
-    User storedUser = lookUserInProvider(userName);
-    validatePassword(userName, storedUser, loginRequest.getPassword());
+    String email = loginRequest.getEmail();
+    checkIfLoginBlocked(email);
+    User storedUser = lookUserInProvider(email, loginRequest.getPassword());
+    validatePassword(email, loginRequest.getPassword(), storedUser);
+    Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   @Override
-  public void checkIfLoginBlocked(String userName) {
-    if (loginAttemptCache.isLoginBlocked(userName)) {
+  public void checkIfLoginBlocked(String email) {
+    if (LoginAttemptCache.getInstance().isLoginBlocked(email)) {
       throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
     }
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User storedUser)
+  public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(providedIdentity);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
+    LoginAttemptCache.getInstance().recordFailedLogin(email);
+    int failedLoginAttempt = LoginAttemptCache.getInstance().getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       sendAccountStatus(
-          storedUser,
+          userName,
+          email,
           "Multiple Failed Login Attempts.",
           String.format(
-              "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
+              "Someone is trying to access your account. Login is Blocked for %s seconds. Please change your password.",
               SecurityUtil.getLoginConfiguration().getAccessBlockTime()));
     }
   }
 
-  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  public void validatePassword(String providedIdentity, String reqPassword, User omUser)
       throws TemplateException, IOException {
     // when basic auth is enabled and the user is created through the API without password, the
     // stored auth mechanism
     // for the user is null
-    if (storedUser.getAuthenticationMechanism() == null) {
+    if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
     @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
+        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
     String storedHashPassword = storedData.get("password");
     if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
       // record Failed Login Attempts
-      recordFailedLoginAttempt(providedIdentity, storedUser);
+      recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
   }
 
   @Override
-  public User lookUserInProvider(String userName) {
+  public User lookUserInProvider(String email, String pwd) {
     User storedUser = null;
     try {
-      if (userName.contains("@")) {
+      if (email.contains("@")) {
         // lookup by User Email
         storedUser =
             userRepository.getByEmail(
                 null,
-                userName,
+                email,
                 new EntityUtil.Fields(
                     Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       }

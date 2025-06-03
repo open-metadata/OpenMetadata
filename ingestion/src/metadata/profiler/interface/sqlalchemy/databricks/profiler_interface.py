@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,10 +16,10 @@ supporting sqlalchemy abstraction layer
 from typing import List
 
 from pyhive.sqlalchemy_hive import HiveCompiler
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import Column as OMColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
+from metadata.generated.schema.entity.data.table import ColumnName, DataType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -97,18 +97,3 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
                 columns.append(col)
         return columns
-
-    def fetch_sample_data(self, table, columns) -> TableData:
-        """Fetch sample data from database
-
-        Args:
-            table: ORM declarative table
-
-        Returns:
-            TableData: sample table data
-        """
-        sampler = self._get_sampler(
-            table=table,
-        )
-
-        return sampler.fetch_sample_data(list(inspect(self.table).c))

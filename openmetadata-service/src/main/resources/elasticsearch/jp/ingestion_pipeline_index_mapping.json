@@ -70,6 +70,7 @@
           },
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
@@ -91,7 +92,7 @@
       "href": {
         "type": "text"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -114,6 +115,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -121,7 +132,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -156,6 +167,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -167,7 +179,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -181,6 +193,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 36
               }
             }
@@ -197,6 +210,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -204,7 +227,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -215,7 +238,7 @@
         "type": "keyword"
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "deployed": {
         "type": "text"
@@ -242,7 +265,14 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -261,18 +291,27 @@
       "pipelineType": {
         "type": "keyword"
       },
+      "pipelineStatuses": {
+        "properties": {
+          "pipelineState": {
+            "type": "keyword"
+          },
+          "runId": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "long"
+          },
+          "startDate": {
+            "type": "long"
+          },
+          "endDate": {
+            "type": "long"
+          }
+        }
+      },
       "entityType": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
       },
       "service_suggest": {
         "type": "completion"
@@ -281,7 +320,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
@@ -291,14 +330,14 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "airflowConfig" : {
-        "properties" : {
-          "scheduleInterval" : {
-            "type" : "text",
-            "fields" : {
-              "keyword" : {
-                "type" : "keyword",
-                "ignore_above" : 256
+      "airflowConfig": {
+        "properties": {
+          "scheduleInterval": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
               }
             }
           }

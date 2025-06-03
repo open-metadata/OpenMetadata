@@ -30,9 +30,9 @@ describe('Test TestCaseFeed Component', () => {
 
     expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();
 
-    expect(screen.getByTestId('test-Success-value')).toContainHTML('02');
-    expect(screen.getByTestId('test-Aborted-value')).toContainHTML('01');
-    expect(screen.getByTestId('test-Failed-value')).toContainHTML('01');
+    expect(screen.getByTestId('test-Success-value')).toContainHTML('2');
+    expect(screen.getByTestId('test-Aborted-value')).toContainHTML('1');
+    expect(screen.getByTestId('test-Failed-value')).toContainHTML('1');
   });
 
   it('Should not render TestSummaryGraph if all status is success', async () => {
@@ -40,9 +40,9 @@ describe('Test TestCaseFeed Component', () => {
 
     expect(screen.getByText('label.test-suite-summary:')).toBeInTheDocument();
 
-    expect(screen.getByTestId('test-Success-value')).toContainHTML('04');
-    expect(screen.getByTestId('test-Aborted-value')).toContainHTML('00');
-    expect(screen.getByTestId('test-Failed-value')).toContainHTML('00');
+    expect(screen.getByTestId('test-Success-value')).toContainHTML('4');
+    expect(screen.getByTestId('test-Aborted-value')).toContainHTML('0');
+    expect(screen.getByTestId('test-Failed-value')).toContainHTML('0');
 
     expect(screen.queryByText('TestSummaryGraph')).not.toBeInTheDocument();
   });

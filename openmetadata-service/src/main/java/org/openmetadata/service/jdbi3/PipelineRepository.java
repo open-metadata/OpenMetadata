@@ -26,10 +26,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -42,10 +41,13 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -147,6 +149,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+    if (pipeline.getUsageSummary() == null) {
+      pipeline.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), pipeline.getId())
+              : null);
+    }
   }
 
   @Override
@@ -154,6 +162,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
     pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withUsageSummary(fields.contains("usageSummary") ? pipeline.getUsageSummary() : null);
   }
 
   @Override
@@ -171,8 +180,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  public RestUtil.PutResponse<?> addPipelineStatus(
-      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
+  public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
@@ -207,12 +215,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
 
     // Update ES Indexes and usage of this pipeline index
     searchRepository.updateEntity(pipeline);
     searchRepository
         .getSearchClient()
-        .reindexAcrossIndices("lineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
+        .reindexAcrossIndices(
+            "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
@@ -297,6 +307,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  protected void entitySpecificCleanup(Pipeline pipeline) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            pipeline.getId(),
+            LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+  }
+
+  @Override
   public void storeRelationships(Pipeline pipeline) {
     addServiceRelationship(pipeline, pipeline.getService());
 
@@ -349,7 +370,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      if (t.getTags() == null) {
+      if (t.getTags() == null || t.getTags().isEmpty()) {
         t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
       }
     }
@@ -401,7 +422,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+  public EntityRepository<Pipeline>.EntityUpdater getUpdater(
+      Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
     return new PipelineUpdater(original, updated, operation);
   }
 
@@ -469,8 +491,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
+      recordChange("state", original.getState(), updated.getState());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(

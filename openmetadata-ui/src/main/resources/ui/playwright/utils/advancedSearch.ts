@@ -12,16 +12,18 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
+import { getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
   name: string;
   localSearch: boolean;
+  skipConditions?: string[];
 };
 
 export const FIELDS: EntityFields[] = [
   {
-    id: 'Owner',
+    id: 'Owners',
     name: 'owners.displayName.keyword',
     localSearch: false,
   },
@@ -53,6 +55,83 @@ export const FIELDS: EntityFields[] = [
   {
     id: 'Column',
     name: 'columns.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Display Name',
+    name: 'displayName.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for display name
+  },
+  {
+    id: 'Service Type',
+    name: 'serviceType',
+    localSearch: false,
+  },
+  {
+    id: 'Schema Field',
+    name: 'messageSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Container Column',
+    name: 'dataModel.columns.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Data Model Type',
+    name: 'dataModelType',
+    localSearch: false,
+  },
+  {
+    id: 'Field',
+    name: 'fields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Task',
+    name: 'tasks.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Domain',
+    name: 'domain.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Name',
+    name: 'name.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
+  },
+  {
+    id: 'Project',
+    name: 'project.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
+  {
+    id: 'Table Type',
+    name: 'tableType',
+    localSearch: false,
+  },
+  {
+    id: 'Chart',
+    name: 'charts.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
     localSearch: false,
   },
 ];
@@ -115,12 +194,15 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
-const selectOption = async (
+export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string
 ) => {
   await dropdownLocator.click();
+  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    state: 'visible',
+  });
   await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
 };
 
@@ -134,7 +216,7 @@ export const fillRule = async (
   }: {
     condition: string;
     field: EntityFields;
-    searchCriteria: string;
+    searchCriteria?: string;
     index: number;
   }
 ) => {
@@ -192,7 +274,17 @@ export const fillRule = async (
 
 export const checkMustPaths = async (
   page: Page,
-  { condition, field, searchCriteria, index }
+  {
+    condition,
+    field,
+    searchCriteria,
+    index,
+  }: {
+    condition: string;
+    field: EntityFields;
+    searchCriteria: string;
+    index: number;
+  }
 ) => {
   const searchData = field.localSearch
     ? searchCriteria
@@ -209,13 +301,14 @@ export const checkMustPaths = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
-  await searchRes.then(async (res) => {
-    await expect(res.request().url()).toContain(encodeURI(searchData));
 
-    await res.json().then(async (json) => {
-      await expect(JSON.stringify(json.hits.hits)).toContain(searchCriteria);
-    });
-  });
+  const res = await searchRes;
+
+  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+
+  const json = await res.json();
+
+  expect(JSON.stringify(json.hits.hits)).toContain(searchCriteria);
 
   await expect(
     page.getByTestId('advance-search-filter-container')
@@ -224,7 +317,17 @@ export const checkMustPaths = async (
 
 export const checkMustNotPaths = async (
   page: Page,
-  { condition, field, searchCriteria, index }
+  {
+    condition,
+    field,
+    searchCriteria,
+    index,
+  }: {
+    condition: string;
+    field: EntityFields;
+    searchCriteria: string;
+    index: number;
+  }
 ) => {
   const searchData = field.localSearch
     ? searchCriteria
@@ -241,17 +344,15 @@ export const checkMustNotPaths = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
-  await searchRes.then(async (res) => {
-    await expect(res.request().url()).toContain(encodeURI(searchData));
+  const res = await searchRes;
 
-    if (!['columns.name.keyword'].includes(field.name)) {
-      await res.json().then(async (json) => {
-        await expect(JSON.stringify(json.hits.hits)).not.toContain(
-          searchCriteria
-        );
-      });
-    }
-  });
+  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+
+  if (!['columns.name.keyword'].includes(field.name)) {
+    const json = await res.json();
+
+    expect(JSON.stringify(json.hits.hits)).not.toContain(searchCriteria);
+  }
 
   await expect(
     page.getByTestId('advance-search-filter-container')
@@ -260,7 +361,17 @@ export const checkMustNotPaths = async (
 
 export const checkNullPaths = async (
   page: Page,
-  { condition, field, searchCriteria, index }
+  {
+    condition,
+    field,
+    searchCriteria,
+    index,
+  }: {
+    condition: string;
+    field: EntityFields;
+    searchCriteria?: string;
+    index: number;
+  }
 ) => {
   await fillRule(page, {
     condition,
@@ -273,51 +384,48 @@ export const checkNullPaths = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
-  await searchRes.then(async (res) => {
-    const urlParams = new URLSearchParams(res.request().url());
-    const queryFilter = JSON.parse(urlParams.get('query_filter') ?? '');
+  const res = await searchRes;
+  const urlParams = new URLSearchParams(res.request().url());
+  const queryFilter = JSON.parse(urlParams.get('query_filter') ?? '');
 
-    const resultQuery =
-      condition === 'Is null'
-        ? {
-            query: {
-              bool: {
-                must: [
-                  {
-                    bool: {
-                      must: [
-                        {
-                          bool: {
-                            must_not: {
-                              exists: { field: field.name },
-                            },
+  const resultQuery =
+    condition === 'Is null'
+      ? {
+          query: {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    must: [
+                      {
+                        bool: {
+                          must_not: {
+                            exists: { field: field.name },
                           },
                         },
-                      ],
-                    },
+                      },
+                    ],
                   },
-                ],
-              },
+                },
+              ],
             },
-          }
-        : {
-            query: {
-              bool: {
-                must: [
-                  {
-                    bool: {
-                      must: [{ exists: { field: field.name } }],
-                    },
+          },
+        }
+      : {
+          query: {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    must: [{ exists: { field: field.name } }],
                   },
-                ],
-              },
+                },
+              ],
             },
-          };
+          },
+        };
 
-    await expect(JSON.stringify(queryFilter)).toContain(
-      JSON.stringify(resultQuery)
-    );
-  });
+  expect(JSON.stringify(queryFilter)).toContain(JSON.stringify(resultQuery));
 };
 
 export const verifyAllConditions = async (
@@ -349,21 +457,27 @@ export const verifyAllConditions = async (
     await page.getByTestId('clear-filters').click();
   }
 
-  // Check for Null and Not Null conditions
-  for (const condition of Object.values(NULL_CONDITIONS)) {
-    await showAdvancedSearchDialog(page);
-    await checkNullPaths(page, {
-      condition: condition.name,
-      field,
-      searchCriteria: undefined,
-      index: 1,
-    });
-    await page.getByTestId('clear-filters').click();
+  // Don't run null path if it's present in skipConditions
+  if (
+    !field.skipConditions?.includes('isNull') ||
+    !field.skipConditions?.includes('isNotNull')
+  ) {
+    // Check for Null and Not Null conditions
+    for (const condition of Object.values(NULL_CONDITIONS)) {
+      await showAdvancedSearchDialog(page);
+      await checkNullPaths(page, {
+        condition: condition.name,
+        field,
+        searchCriteria: undefined,
+        index: 1,
+      });
+      await page.getByTestId('clear-filters').click();
+    }
   }
 };
 
 export const checkAddRuleOrGroupWithOperator = async (
-  page,
+  page: Page,
   {
     field,
     operator,
@@ -405,27 +519,25 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (operator === 'OR') {
     await page
       .getByTestId('advanced-search-modal')
-      .getByRole('button', { name: 'Or' });
+      .getByRole('button', { name: 'Or' })
+      .click();
   }
 
   const searchRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
-  await searchRes;
-  await searchRes.then(async (res) => {
-    await res.json().then(async (json) => {
-      if (field.id !== 'Column') {
-        if (operator === 'Or') {
-          await expect(JSON.stringify(json)).toContain(searchCriteria1);
-          await expect(JSON.stringify(json)).toContain(searchCriteria2);
-        } else {
-          await expect(JSON.stringify(json)).toContain(searchCriteria1);
-          await expect(JSON.stringify(json)).not.toContain(searchCriteria2);
-        }
-      }
-    });
-  });
+
+  // Since the OR operator with must not conditions will result in huge API response
+  // with huge data, checking the required criteria might not be present on first page
+  // Hence, checking the criteria only for AND operator
+  if (field.id !== 'Column' && operator === 'AND') {
+    const res = await searchRes;
+    const json = await res.json();
+
+    expect(JSON.stringify(json)).toContain(searchCriteria1);
+    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+  }
 };
 
 export const runRuleGroupTests = async (

@@ -14,17 +14,15 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { PAGE_SIZE } from '../constants/constants';
+import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
+import { SearchRequest } from '../generated/search/searchRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
-import {
-  RawSuggestResponse,
-  SearchResponse,
-} from '../interface/search.interface';
+import { SearchResponse } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
 import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -75,65 +73,14 @@ export const fetchAuthorizerConfig = async () => {
   return response.data;
 };
 
-export const fetchSandboxConfig = async () => {
-  const response = await APIClient.get<{ sandboxModeEnabled: boolean }>(
-    '/system/config/sandbox'
-  );
-
-  return response.data;
-};
-
-export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<PipelineServiceClientConfiguration>(
-    '/system/config/pipeline-service-client'
-  );
-
-  return response.data;
-};
-
-export const getSuggestions = <T extends SearchIndex>(
-  queryString: string,
-  searchIndex?: T
-) => {
-  const params = {
-    q: queryString,
-    index: searchIndex ?? [
-      SearchIndex.DASHBOARD,
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.STORED_PROCEDURE,
-      SearchIndex.DASHBOARD_DATA_MODEL,
-      SearchIndex.GLOSSARY_TERM,
-      SearchIndex.TAG,
-      SearchIndex.SEARCH_INDEX,
-    ],
-  };
-
-  if (searchIndex) {
-    return APIClient.get<RawSuggestResponse<T>>(`/search/suggest`, {
-      params,
-    });
-  }
-
-  return APIClient.get<RawSuggestResponse<ExploreSearchIndex>>(
-    `/search/suggest`,
-    {
-      params,
-    }
-  );
-};
-
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
 
   return response.data;
 };
 
-export const postSamlLogout = async (data: { token: string }) => {
-  const response = await APIClient.post(`/users/logout`, { ...data });
+export const postSamlLogout = async () => {
+  const response = await APIClient.get(`/saml/logout`);
 
   return response.data;
 };
@@ -153,71 +100,19 @@ export const deleteLineageEdge = (
   );
 };
 
-export const getSuggestedUsers = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.USER}`
-  );
-};
-
-export const getSuggestedTeams = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.TEAM>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.TEAM}`
-  );
-};
-
-export const getUserSuggestions = (term: string, userOnly = false) => {
-  const params = {
-    q: term || WILD_CARD_CHAR,
-    index: userOnly
-      ? SearchIndex.USER
-      : `${SearchIndex.USER},${SearchIndex.TEAM}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest`,
-    { params }
-  );
-};
-
-export const getTeamsByQuery = async (params: {
-  q: string;
-  from?: number;
-  size?: number;
-}) => {
-  const response = await APIClient.get(`/search/query`, {
-    params: {
-      index: SearchIndex.TEAM,
-      ...params,
-      sort_field: 'name.keyword',
-      sort_order: 'asc',
-    },
-  });
-
-  return response.data;
-};
-
-export const getSearchedUsers = (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
-};
-
-export const getSearchedTeams = (
-  queryString: string,
-  from: number,
-  filter?: string,
-  size = 10
+export const getUserAndTeamSearch = (
+  term: string,
+  userOnly = false,
+  size = PAGE_SIZE
 ) => {
   return searchData(
-    queryString,
-    from,
+    term ?? '',
+    1,
     size,
-    filter ?? '',
     '',
     '',
-    SearchIndex.TEAM
+    '',
+    userOnly ? SearchIndex.USER : [SearchIndex.USER, SearchIndex.TEAM]
   );
 };
 
@@ -237,16 +132,25 @@ export const deleteEntity = async (
   });
 };
 
-export const getAdvancedFieldOptions = (
-  q: string,
-  index: SearchIndex,
-  field: string | undefined
+export const deleteAsyncEntity = async (
+  entityType: string,
+  entityId: string,
+  isRecursive: boolean,
+  isHardDelete = true
 ) => {
-  const params = { index, field, q };
+  const params = {
+    hardDelete: isHardDelete,
+    recursive: isRecursive,
+  };
 
-  return APIClient.get<RawSuggestResponse<typeof index>>(`/search/suggest`, {
-    params,
-  });
+  const response = await APIClient.delete<AsyncDeleteJob>(
+    `/${entityType}/async/${entityId}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
 };
 
 /**
@@ -263,7 +167,8 @@ export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
   field: string,
   value: string,
-  q: string
+  q: string,
+  sourceFields?: string
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -273,6 +178,7 @@ export const getAggregateFieldOptions = (
     field,
     value: withWildCardValue,
     q,
+    sourceFields,
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
@@ -280,6 +186,38 @@ export const getAggregateFieldOptions = (
     {
       params,
     }
+  );
+};
+
+/**
+ * Posts aggregate field options request with parameters in the body.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const postAggregateFieldOptions = (
+  index: SearchIndex | SearchIndex[],
+  field: string,
+  value: string,
+  q: string
+) => {
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
+  const body: SearchRequest = {
+    index: index as string,
+    fieldName: field,
+    fieldValue: withWildCardValue,
+    query: q,
+  };
+
+  return APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    `/search/aggregate`,
+    body
   );
 };
 
