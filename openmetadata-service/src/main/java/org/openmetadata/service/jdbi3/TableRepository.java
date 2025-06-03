@@ -1684,6 +1684,13 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
+
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(matchingColumns);
+      populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
+      matchingColumns = PIIMasker.getTableProfile(matchingColumns);
+    }
+
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedResults, before, after, total);
