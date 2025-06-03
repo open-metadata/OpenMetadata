@@ -81,7 +81,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
     testTableWithManyColumns = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     assertNotNull(testTableWithManyColumns);
 
-    Thread.sleep(3000);
+    waitForIndexingCompletion("table_search_index", problematicQuery, 3000);
 
     String problematicQuery = "int_snowplow_experiment_evaluation";
 
