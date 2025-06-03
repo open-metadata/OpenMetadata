@@ -75,7 +75,22 @@ public class MigrationUtil {
         "DataStewardPolicy", "DataStewardPolicy-EditRule", operationsToAdd, collectionDAO);
   }
 
-  public static void addOperationsToPolicyRule(
+  public static void addCertificationOperationsToPolicy(CollectionDAO collectionDAO) {
+
+    addOperationsToPolicyRule(
+        "DataConsumerPolicy",
+        "DataConsumerPolicy-EditRule",
+            List.of(MetadataOperation.EDIT_CERTIFICATION),
+        collectionDAO);
+
+    addOperationsToPolicyRule(
+        "DataStewardPolicy",
+        "DataStewardPolicy-EditRule",
+            List.of(MetadataOperation.EDIT_CERTIFICATION),
+        collectionDAO);
+  }
+
+  private static void addOperationsToPolicyRule(
       String policyName,
       String ruleName,
       List<MetadataOperation> operationsToAdd,

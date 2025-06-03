@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v160;
 
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addCertificationOperationsToPolicy;
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addDisplayNameToCustomProperty;
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addEditGlossaryTermsToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addRelationsForTableConstraints;
@@ -24,5 +25,6 @@ public class Migration extends MigrationProcessImpl {
     addEditGlossaryTermsToDataConsumerPolicy(collectionDAO);
     addDisplayNameToCustomProperty(handle, false);
     addRelationsForTableConstraints(handle, false);
+    addCertificationOperationsToPolicy(collectionDAO);
   }
 }
