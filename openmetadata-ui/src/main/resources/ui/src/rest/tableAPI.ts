@@ -206,7 +206,10 @@ export const getSampleDataByTableId = async (id: string) => {
 export const getLatestTableProfileByFqn = async (fqn: string) => {
   const encodedFQN = getEncodedFqn(fqn);
   const response = await APIClient.get<Table>(
-    `${BASE_URL}/${encodedFQN}/tableProfile/latest`
+    `${BASE_URL}/${encodedFQN}/tableProfile/latest`,
+    {
+      params: { includeColumnProfile: false },
+    }
   );
 
   return response.data;
