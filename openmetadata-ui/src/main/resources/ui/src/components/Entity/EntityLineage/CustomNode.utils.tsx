@@ -137,8 +137,7 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing',
-        showDataObservabilitySummary && 'p-r-md'
+        isColumnTraced && 'custom-node-header-tracing'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -152,16 +151,16 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-      <Row gutter={24}>
-        <Col
-          className="custom-node-name-container"
-          span={showDataObservabilitySummary ? 8 : 12}>
-          <div className="custom-node-name-icon">
-            {getColumnDataTypeIcon({
-              dataType: column.dataType,
-              width: '14px',
-            })}
-          </div>
+      <Row className="d-flex items-center" gutter={12}>
+        <Col className="custom-node-name-container" flex="1">
+          {column.dataType && (
+            <div className="custom-node-name-icon">
+              {getColumnDataTypeIcon({
+                dataType: column.dataType,
+                width: '14px',
+              })}
+            </div>
+          )}
           <Typography.Text
             className="custom-node-column-label"
             ellipsis={{ tooltip: true }}>
@@ -169,16 +168,18 @@ export const getColumnContent = (
           </Typography.Text>
         </Col>
 
-        <Col
-          className={classNames(
-            'custom-node-constraint',
-            showDataObservabilitySummary ? 'text-left' : 'text-right'
-          )}
-          span={showDataObservabilitySummary ? 8 : 12}>
-          {column.constraint}
-        </Col>
+        {column.constraint && (
+          <Col
+            className={classNames(
+              'custom-node-constraint',
+              showDataObservabilitySummary ? 'text-left' : 'text-right'
+            )}
+            flex="80px">
+            {column.constraint}
+          </Col>
+        )}
         {showDataObservabilitySummary && (
-          <Col span={8}>
+          <Col flex="80px">
             <TestSuiteSummaryWidget
               isLoading={isLoading}
               size="small"

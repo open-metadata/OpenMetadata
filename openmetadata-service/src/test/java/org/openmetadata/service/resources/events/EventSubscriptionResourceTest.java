@@ -441,7 +441,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1456,7 +1456,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1643,7 +1643,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
