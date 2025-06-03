@@ -66,9 +66,6 @@ class MinLength(StaticMetric):
 
         length_vectorize_func = vectorize(len)
 
-        if not hasattr(self, "col") or self.col is None:
-            logger.debug("Column information is required for MinLength.")
-            return None
         if self._is_concatenable():
             min_length_list = []
 
@@ -90,8 +87,6 @@ class MinLength(StaticMetric):
         """Spark DataFrame function
         Returns None if the column is not concatenable.
         """
-        if not hasattr(self, "col") or self.col is None:
-            raise AttributeError("Column information is required for MinLength.")
         if not self._is_concatenable():
             logger.debug(
                 f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"

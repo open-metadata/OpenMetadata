@@ -13,7 +13,7 @@
 Min Metric definition
 """
 from functools import partial
-from typing import Callable, Optional, Any
+from typing import Any, Callable, Optional
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
