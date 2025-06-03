@@ -1147,6 +1147,55 @@ class LookerSource(DashboardServiceSource):
                 )
             )
 
+    def _process_and_validate_column_lineage(
+        self,
+        column_lineage: List[Tuple[Column, Column]],
+        from_entity: Table,
+        to_entity: Union[Dashboard, DashboardDataModel],
+    ) -> List[ColumnLineage]:
+        """
+        Process and validate column lineage
+        """
+        processed_column_lineage = []
+        if column_lineage:
+            for column_tuple in column_lineage or []:
+                try:
+                    if len(column_tuple) < 2:
+                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")
+                        continue
+
+                    source_col = column_tuple[0]
+                    target_col = column_tuple[-1]
+
+                    if not source_col or not target_col:
+                        logger.debug(
+                            f"Skipping column tuple with empty values: source={source_col}, "
+                            f"target={target_col}, to_entity={to_entity.name}"
+                        )
+                        continue
+
+                    from_column = get_column_fqn(
+                        table_entity=from_entity, column=str(target_col)
+                    )
+                    to_column = self._get_data_model_column_fqn(
+                        data_model_entity=to_entity,
+                        column=str(source_col),
+                    )
+                    if from_column and to_column:
+                        processed_column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[from_column],
+                                toColumn=to_column,
+                            )
+                        )
+                except Exception as err:
+                    logger.warning(
+                        f"Error processing column lineage {column_tuple}: {err}"
+                    )
+                    logger.debug(traceback.format_exc())
+                    continue
+        return processed_column_lineage
+
     def build_lineage_request(
         self,
         source: str,
@@ -1165,7 +1214,6 @@ class LookerSource(DashboardServiceSource):
             db_service_name: name of the service from the config
             to_entity: Dashboard Entity being used
         """
-        # pylint: disable=too-many-locals, too-many-nested-blocks
         logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
@@ -1185,60 +1233,20 @@ class LookerSource(DashboardServiceSource):
                 fqn=from_fqn,
             )
 
-            if column_lineage:
-                processed_column_lineage = []
-                if isinstance(column_lineage[0], ColumnLineage):
-                    processed_column_lineage = column_lineage
-                else:
-                    for column_tuple in column_lineage or []:
-                        try:
-                            if len(column_tuple) < 2:
-                                logger.debug(
-                                    f"Skipping invalid column tuple: {column_tuple}"
-                                )
-                                continue
-
-                            source_col = column_tuple[0]
-                            target_col = column_tuple[-1]
-
-                            if not source_col or not target_col:
-                                logger.debug(
-                                    f"Skipping column tuple with empty values: source={source_col}, "
-                                    f"target={target_col}, to_entity={to_entity.name}"
-                                )
-                                continue
-
-                            from_column = get_column_fqn(
-                                table_entity=from_entity, column=str(target_col)
-                            )
-                            to_column = self._get_data_model_column_fqn(
-                                data_model_entity=to_entity,
-                                column=str(source_col),
-                            )
-                            if from_column and to_column:
-                                processed_column_lineage.append(
-                                    ColumnLineage(
-                                        fromColumns=[from_column], toColumn=to_column
-                                    )
-                                )
-                        except Exception as err:
-                            logger.warning(
-                                f"Error processing column lineage {column_tuple}: {err}"
-                            )
-                            logger.debug(traceback.format_exc())
-                            continue
-
-                column_lineage = processed_column_lineage
-
             if from_entity:
                 if from_entity.id.root not in self._added_lineage:
                     self._added_lineage[from_entity.id.root] = []
                 if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
                     self._added_lineage[from_entity.id.root].append(to_entity.id.root)
+                    processed_column_lineage = (
+                        self._process_and_validate_column_lineage(
+                            column_lineage, from_entity, to_entity
+                        )
+                    )
                     return self._get_add_lineage_request(
                         to_entity=to_entity,
                         from_entity=from_entity,
-                        column_lineage=column_lineage,
+                        column_lineage=processed_column_lineage,
                     )
 
         return None
