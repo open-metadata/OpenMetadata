@@ -1599,6 +1599,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+     if (fieldsParam != null && fieldsParam.contains("profile")) {
+       setColumnProfile(paginatedColumns);
+     }
     // Calculate pagination metadata
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = toIndex < total ? String.valueOf(toIndex) : null;
