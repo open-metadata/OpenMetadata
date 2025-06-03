@@ -40,6 +40,7 @@ import {
   getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
+import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
@@ -95,10 +96,10 @@ const renderLimitedListMenuItem = ({
 export const UserProfileIcon = () => {
   const {
     currentUser,
-    onLogoutHandler,
     selectedPersona,
     setSelectedPersona: updateSelectedPersona,
   } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
 
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();

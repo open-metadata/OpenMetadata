@@ -128,6 +128,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
@@ -210,6 +211,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.setValidator(
         Validation.byDefaultProvider()
             .configure()
+            .parameterNameProvider(new CustomParameterNameProvider())
             .messageInterpolator(
                 new ResourceBundleMessageInterpolator(
                     new PlatformResourceBundleLocator("jakarta.validation.ValidationMessages")))

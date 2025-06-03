@@ -26,7 +26,10 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../../generated/tests/testCase';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../../generated/tests/testCase';
 import {
   Severities,
   TestCaseResolutionStatus,
@@ -43,6 +46,7 @@ import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
+import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
@@ -60,6 +64,7 @@ import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.inte
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
+  isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
   const [activeTask, setActiveTask] = useState<Thread>();
@@ -77,6 +82,13 @@ const IncidentManagerPageHeader = ({
     testCaseResolutionStatus,
     updateTestCaseIncidentStatus,
   } = useActivityFeedProvider();
+
+  const { ownerDisplayName, ownerRef } = useMemo(() => {
+    return getCommonExtraInfoForVersionDetails(
+      testCaseData?.changeDescription as ChangeDescription,
+      testCaseData?.owners
+    );
+  }, [testCaseData?.changeDescription, testCaseData?.owners]);
 
   const columnName = useMemo(() => {
     const isColumn = testCaseData?.entityLink.includes('::columns::');
@@ -161,7 +173,7 @@ const IncidentManagerPageHeader = ({
       const { data } = await getListTestCaseIncidentByStateId(id);
 
       setTestCaseStatusData(first(data));
-    } catch (error) {
+    } catch {
       setTestCaseStatusData(undefined);
     }
   };
@@ -212,13 +224,18 @@ const IncidentManagerPageHeader = ({
   }, [testCaseData]);
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return {
-      hasEditStatusPermission:
-        testCasePermission?.EditAll || testCasePermission?.EditStatus,
-      hasEditOwnerPermission:
-        testCasePermission?.EditAll || testCasePermission?.EditOwners,
-    };
-  }, [testCasePermission]);
+    return isVersionPage
+      ? {
+          hasEditStatusPermission: false,
+          hasEditOwnerPermission: false,
+        }
+      : {
+          hasEditStatusPermission:
+            testCasePermission?.EditAll || testCasePermission?.EditStatus,
+          hasEditOwnerPermission:
+            testCasePermission?.EditAll || testCasePermission?.EditOwners,
+        };
+  }, [testCasePermission, isVersionPage]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {
@@ -310,10 +327,11 @@ const IncidentManagerPageHeader = ({
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
-        owners={testCaseData?.owners}
+        ownerDisplayName={ownerDisplayName}
+        owners={testCaseData?.owners ?? ownerRef}
         onUpdate={onOwnerUpdate}
       />
-      {statusDetails}
+      {!isVersionPage && statusDetails}
       {tableFqn && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />

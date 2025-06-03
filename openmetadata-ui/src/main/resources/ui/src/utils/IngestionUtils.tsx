@@ -189,7 +189,6 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
 
 export const getIngestionTypes = (
   supportedPipelineTypes: PipelineType[],
-  isOpenMetadataService: boolean,
   ingestionList: IngestionPipeline[],
   pipelineType?: PipelineType
 ) => {
@@ -197,27 +196,17 @@ export const getIngestionTypes = (
     ? supportedPipelineTypes
     : [pipelineType];
 
-  if (isOpenMetadataService || ingestionList.length > 0) {
-    return pipelineTypeArray.reduce((prev, curr) => {
-      if (
-        // Prevent adding multiple usage pipeline
-        curr === PipelineType.Usage &&
-        ingestionList.find((d) => d.pipelineType === curr)
-      ) {
-        return prev;
-      } else {
-        return [...prev, curr];
-      }
-    }, [] as PipelineType[]);
-  }
-
-  return [
-    PipelineType.Metadata,
-    PipelineType.Usage,
-    PipelineType.Lineage,
-    PipelineType.Profiler,
-    PipelineType.Dbt,
-  ];
+  return pipelineTypeArray.reduce((prev, curr) => {
+    if (
+      // Prevent adding multiple usage pipeline
+      curr === PipelineType.Usage &&
+      ingestionList.find((d) => d.pipelineType === curr)
+    ) {
+      return prev;
+    } else {
+      return [...prev, curr];
+    }
+  }, [] as PipelineType[]);
 };
 
 const getPipelineExtraInfo = (

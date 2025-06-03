@@ -75,6 +75,13 @@ const mockUseTestCaseStore = {
   setIsPermissionLoading: jest.fn(),
 };
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    version: undefined,
+  })),
+}));
+
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
   () => ({

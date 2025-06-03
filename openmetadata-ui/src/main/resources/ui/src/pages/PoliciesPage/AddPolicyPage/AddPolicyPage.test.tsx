@@ -55,6 +55,9 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 const mockProps = {
   pageTitle: 'add-policy',
 };
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
 
 describe('Test Add Policy Page', () => {
   it('Should Render the Add Policy page component', async () => {

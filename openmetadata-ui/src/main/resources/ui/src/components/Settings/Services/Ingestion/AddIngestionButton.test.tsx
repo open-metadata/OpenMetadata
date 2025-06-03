@@ -44,8 +44,6 @@ describe('AddIngestionButton', () => {
     expect(mockNavigate).toHaveBeenCalledTimes(0);
 
     expect(screen.getByTestId('agent-item-metadata')).toBeInTheDocument();
-    expect(screen.getByTestId('agent-item-profiler')).toBeInTheDocument();
-    expect(screen.getByTestId('agent-item-lineage')).toBeInTheDocument();
   });
 
   it('should not redirect to metadata ingestion page when ingestion data is present', async () => {

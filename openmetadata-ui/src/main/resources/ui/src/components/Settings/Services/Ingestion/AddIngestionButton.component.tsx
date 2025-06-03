@@ -12,11 +12,11 @@
  */
 
 import { Button, Dropdown } from 'antd';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
-import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
@@ -36,13 +36,6 @@ function AddIngestionButton({
 }: Readonly<AddIngestionButtonProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
-  const isOpenMetadataService = useMemo(
-    () =>
-      serviceDetails?.connection?.config?.type ===
-      MetadataServiceType.OpenMetadata,
-    [serviceDetails]
-  );
 
   const supportedPipelineTypes = useMemo(
     (): PipelineType[] => getSupportedPipelineTypes(serviceDetails),
@@ -66,16 +59,11 @@ function AddIngestionButton({
 
   const types = useMemo(
     (): PipelineType[] =>
-      getIngestionTypes(
-        supportedPipelineTypes,
-        isOpenMetadataService,
-        ingestionList,
-        pipelineType
-      ),
-    [pipelineType, supportedPipelineTypes, isOpenMetadataService, ingestionList]
+      getIngestionTypes(supportedPipelineTypes, ingestionList, pipelineType),
+    [pipelineType, supportedPipelineTypes, ingestionList]
   );
 
-  if (types.length === 0) {
+  if (isEmpty(types)) {
     return null;
   }
 

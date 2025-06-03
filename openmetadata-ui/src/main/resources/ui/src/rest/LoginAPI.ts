@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { HttpStatusCode } from 'axios';
+import { NavigateFunction } from 'react-router-dom';
 import axiosClient from '.';
-import { useApplicationStore } from '../hooks/useApplicationStore';
+import { ROUTES } from '../constants/constants';
 
 const BASE_URL = '/auth';
 
@@ -24,16 +25,18 @@ interface RenewTokenResponse {
   expiryDuration: number;
 }
 
-export const renewToken = async () => {
+export const renewToken = async (navigate: NavigateFunction) => {
   const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
 
   if (data.status === HttpStatusCode.Found) {
-    useApplicationStore.getState().onLoginHandler();
+    navigate(ROUTES.LOGOUT);
   }
 
   return data.data;
 };
 
 export const logoutUser = async () => {
-  return await axiosClient.get(`${BASE_URL}/logout`);
+  const response = await axiosClient.get(`${BASE_URL}/logout`);
+
+  return response.data;
 };

@@ -49,6 +49,10 @@ const mockProps = {
   },
 } as Record<string, UIKpiResult>;
 
+jest.mock('../../utils/DataInsightUtils', () => ({
+  getKpiResultFeedback: jest.fn(),
+}));
+
 describe('KPILatestResultsV1', () => {
   it('Component. should render', async () => {
     render(<KPILatestResultsV1 kpiLatestResultsRecord={mockProps} />);

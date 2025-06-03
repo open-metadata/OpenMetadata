@@ -23,15 +23,6 @@ jest.mock('../../../utils/TableUtils', () => ({
     .mockImplementation((value = 0) => `${value} value`),
 }));
 
-jest.mock('../../../constants/constants', () => ({
-  ROUTES: {
-    TOUR: `tour`,
-  },
-  getDatasetDetailsPath: jest
-    .fn()
-    .mockImplementation((path) => `/dataset/${path}`),
-}));
-
 jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });

@@ -38,14 +38,24 @@ const mockInstance = {
   loginRedirect: jest.fn(),
   handleRedirectPromise: jest.fn(),
   ssoSilent: jest.fn(),
+  logout: jest.fn(),
 };
 
 const mockProps = {
   children: <div>Test Children</div>,
-  onLoginSuccess: jest.fn(),
-  onLoginFailure: jest.fn(),
-  onLogoutSuccess: jest.fn(),
 };
+
+const mockHandleSuccessfulLogout = jest.fn();
+const mockHandleFailedLogin = jest.fn();
+const mockHandleSuccessfulLogin = jest.fn();
+
+jest.mock('../AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    handleSuccessfulLogout: mockHandleSuccessfulLogout,
+    handleFailedLogin: mockHandleFailedLogin,
+    handleSuccessfulLogin: mockHandleSuccessfulLogin,
+  })),
+}));
 
 describe('MsalAuthenticator', () => {
   let authenticatorRef: AuthenticatorRef | null = null;
@@ -87,7 +97,7 @@ describe('MsalAuthenticator', () => {
     });
 
     expect(mockInstance.loginPopup).toHaveBeenCalledWith(msalLoginRequest);
-    expect(mockProps.onLoginSuccess).toHaveBeenCalled();
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalled();
   });
 
   it('should handle login in normal window using redirect', async () => {
@@ -127,7 +137,7 @@ describe('MsalAuthenticator', () => {
       authenticatorRef?.invokeLogout();
     });
 
-    expect(mockProps.onLogoutSuccess).toHaveBeenCalled();
+    expect(mockHandleSuccessfulLogout).toHaveBeenCalled();
   });
 
   it('should handle renewIdToken successfully', async () => {

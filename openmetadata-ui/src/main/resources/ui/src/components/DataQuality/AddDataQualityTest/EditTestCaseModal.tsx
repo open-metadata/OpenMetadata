@@ -112,7 +112,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         : isEmpty(value.description)
         ? undefined
         : value.description,
-      displayName: value.displayName,
+      displayName: showOnlyParameter
+        ? testCase?.displayName
+        : value.displayName,
       computePassedFailedRowCount: isComputeRowCountFieldVisible
         ? value.computePassedFailedRowCount
         : testCase?.computePassedFailedRowCount,

@@ -65,6 +65,9 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
 
 const mockProps = {
   pageTitle: i18n.t('label.add-new-entity', {

@@ -25,6 +25,39 @@ jest.mock('../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn(),
 }));
 
+jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: jest.fn().mockImplementation(() => <div>DomainLabel</div>),
+}));
+
+jest.mock('../../utils/formUtils', () => ({
+  getField: jest
+    .fn()
+    .mockImplementation(({ name }) => <div data-testid={name}>{name}</div>),
+}));
+
+jest.mock('../../utils/TeamUtils', () => ({
+  getTeamOptionsFromType: jest.fn().mockImplementation(() => [
+    {
+      label: 'Organization',
+      value: TeamType.Organization,
+      type: TeamType.Organization,
+    },
+  ]),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
+    activeDomainEntityRef: {
+      id: '1',
+      type: 'domain',
+    },
+  })),
+}));
+
 describe('AddTeamForm component', () => {
   it('should render form with required fields', () => {
     const { getByTestId } = render(
@@ -39,9 +72,9 @@ describe('AddTeamForm component', () => {
 
     expect(getByTestId('name')).toBeInTheDocument();
     expect(getByTestId('email')).toBeInTheDocument();
-    expect(getByTestId('editor')).toBeInTheDocument();
+    expect(getByTestId('description')).toBeInTheDocument();
     expect(getByTestId('team-selector')).toBeInTheDocument();
-    expect(getByTestId('isJoinable-switch-button')).toBeInTheDocument();
+    expect(getByTestId('isJoinable')).toBeInTheDocument();
   });
 
   it('should call onCancel function when cancel button is clicked', () => {
@@ -89,12 +122,6 @@ describe('AddTeamForm component', () => {
       fireEvent.change(emailInput, { target: { value: 'testteam@gmail.com' } });
     });
 
-    // make team joinable
-    const isJoinableSwitch = getByTestId('isJoinable-switch-button');
-    await act(async () => {
-      fireEvent.click(isJoinableSwitch);
-    });
-
     // save form
     const saveButton = getByText('label.save');
 
@@ -107,7 +134,6 @@ describe('AddTeamForm component', () => {
       displayName: 'Test Team',
       email: 'testteam@gmail.com',
       description: '',
-      isJoinable: true,
       teamType: 'Group',
     });
   });
@@ -147,7 +173,6 @@ describe('AddTeamForm component', () => {
       displayName: 'Test Team',
       email: undefined,
       description: '',
-      isJoinable: false,
       teamType: 'Group',
     });
   });

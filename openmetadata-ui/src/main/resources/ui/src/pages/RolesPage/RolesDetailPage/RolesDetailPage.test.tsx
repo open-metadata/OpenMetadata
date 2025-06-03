@@ -83,6 +83,22 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../AddAttributeModal/AddAttributeModal', () =>
+  jest.fn().mockReturnValue(<div>AddAttributeModal</div>)
+);
+
+jest.mock('./RolesDetailPageList.component', () =>
+  jest.fn().mockReturnValue(<div>RolesDetailPageList</div>)
+);
+
 describe('Test Roles Details Page', () => {
   it('Should render the role details component', async () => {
     (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({

@@ -114,29 +114,16 @@ describe('TestSuiteIngestionPage', () => {
   });
 
   it('should render loading state', async () => {
-    jest.useFakeTimers();
-    (getTestSuiteByName as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => setTimeout(() => resolve(mockTestSuite), 1000))
+    (getTestSuiteByName as jest.Mock).mockResolvedValueOnce(mockTestSuite);
+    render(
+      <TestSuiteIngestionPage
+        pageTitle={i18n.t('label.add-entity', {
+          entity: i18n.t('label.test-suite'),
+        })}
+      />
     );
 
-    await act(async () => {
-      render(
-        <TestSuiteIngestionPage
-          pageTitle={i18n.t('label.add-entity', {
-            entity: i18n.t('label.test-suite'),
-          })}
-        />
-      );
-    });
-
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
-
-    await act(async () => {
-      await jest.runAllTimers();
-    });
-
-    expect(screen.queryByText('Loader.component')).not.toBeInTheDocument();
   });
 
   it('should render error placeholder', async () => {

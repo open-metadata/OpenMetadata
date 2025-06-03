@@ -52,6 +52,7 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),
+  getDataInsightPathWithFqn: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>

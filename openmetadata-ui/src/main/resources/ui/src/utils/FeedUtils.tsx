@@ -133,12 +133,10 @@ export const getReplyText = (
     return t('label.reply-in-conversation');
   }
   if (count === 1) {
-    return `${count} ${singular ? singular : t('label.older-reply-lowercase')}`;
+    return `${count} ${singular ?? t('label.older-reply-lowercase')}`;
   }
 
-  return `${count} ${
-    plural ? plural : t('label.older-reply-plural-lowercase')
-  }`;
+  return `${count} ${plural ?? t('label.older-reply-plural-lowercase')}`;
 };
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
@@ -627,6 +625,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.MUTUALLY_EXCLUSIVE]: t('label.mutually-exclusive'),
     [EntityField.EXPERTS]: t('label.expert-plural'),
     [EntityField.FIELDS]: t('label.field-plural'),
+    [EntityField.PARAMETER_VALUES]: t('label.parameter-plural'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];

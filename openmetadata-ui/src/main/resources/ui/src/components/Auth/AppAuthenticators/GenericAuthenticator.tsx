@@ -15,12 +15,13 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
     const navigate = useNavigate();
 
     const handleLogin = () => {
@@ -31,16 +32,16 @@ export const GenericAuthenticator = forwardRef(
     };
 
     const handleLogout = async () => {
-      await logoutUser();
-
-      TokenService.getInstance().clearRefreshInProgress();
-      navigate(ROUTES.SIGNIN);
-      setOidcToken('');
-      setIsAuthenticated(false);
+      try {
+        await logoutUser();
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
+      }
     };
 
     const handleSilentSignIn = async () => {
-      const resp = await renewToken();
+      const resp = await renewToken(navigate);
       setOidcToken(resp.accessToken);
 
       return resp;

@@ -84,6 +84,10 @@ const mockProps: AddTestCaseModalProps = {
   showButton: true,
 };
 
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn(),
+}));
+
 describe('AddTestCaseList', () => {
   it('renders the component', async () => {
     await act(async () => {

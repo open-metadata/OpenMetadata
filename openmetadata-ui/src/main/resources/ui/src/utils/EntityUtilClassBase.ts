@@ -57,7 +57,6 @@ import {
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -67,6 +66,7 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
@@ -192,7 +192,7 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return getIncidentManagerDetailPagePath(fullyQualifiedName);
+        return getTestCaseDetailPagePath(fullyQualifiedName);
 
       case EntityType.TEST_SUITE:
         return getTestSuiteDetailsPath({
