@@ -105,9 +105,7 @@ class TableauClient:
             if owner and owner.email:
                 return TableauOwner(id=owner.id, name=owner.name, email=owner.email)
         except Exception as err:
-            logger.warning(
-                f"Failed to fetch owner details for ID {owner_id}: {str(err)}"
-            )
+            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")
         return None
 
     def get_workbook_charts_and_user_count(
@@ -309,7 +307,7 @@ class TableauClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Unable to fetch Data Sources")
-        return None
+        return []
 
     def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:
         """
