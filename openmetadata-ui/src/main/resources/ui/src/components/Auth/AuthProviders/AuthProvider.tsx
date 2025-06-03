@@ -74,7 +74,7 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   prepareUserProfileFromClaims,
-  requiredAuthFields,
+  validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
@@ -95,11 +95,7 @@ import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
-import {
-  AuthenticationConfigurationWithScope,
-  AuthenticatorRef,
-  OidcUser,
-} from './AuthProvider.interface';
+import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
 
@@ -602,19 +598,6 @@ export const AuthProvider = ({
     );
   };
 
-  const validateAuthFields = (
-    configJson: AuthenticationConfigurationWithScope
-  ) => {
-    requiredAuthFields.forEach((field) => {
-      const value =
-        configJson[field as keyof AuthenticationConfigurationWithScope];
-      if (!value || value === '') {
-        // eslint-disable-next-line no-console
-        console.warn(t('message.missing-config-value', { field }));
-      }
-    });
-  };
-
   const fetchAuthConfig = async () => {
     try {
       const [authConfig, authorizerConfig] = await Promise.all([
@@ -626,7 +609,7 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
-          validateAuthFields(configJson);
+          validateAuthFields(configJson, t);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
