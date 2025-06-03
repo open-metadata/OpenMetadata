@@ -151,6 +151,98 @@
         }
       }
     },
+    "getEntityLineage": {
+      "description": "Get lineage details about a specific entity.",
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "default": "get_entity_lineage"
+            },
+            "description": {
+              "type": "string",
+              "default": "Get detailed lineage information (upstream/downstream dependencies) about a specific entity when you know its fully qualified name (FQN)"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "default": "object"
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "entity_type": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "default": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "default": "The type of entity (e.g., 'table', 'dashboard', 'topic')"
+                        }
+                      }
+                    },
+                    "fqn": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "default": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "default": "The fully qualified name of the entity"
+                        }
+                      }
+                    },
+                    "upstream_depth": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "default": "integer"
+                        },
+                        "description": {
+                          "type": "string",
+                          "default": "Upstream depth for lineage."
+                        }
+                      }
+                    },
+                    "downstream_depth": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "default": "integer"
+                        },
+                        "description": {
+                          "type": "string",
+                          "default": "Downstream depth for lineage."
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": ["entity_type", "fqn"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "nlqSearch": {
       "description": "Search with natural language",
       "type": "object",
