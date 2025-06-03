@@ -13,7 +13,7 @@
 Min Metric definition
 """
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Callable, Optional, Any
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
@@ -122,15 +122,6 @@ class Min(StaticMetric):
         """Spark DataFrame function
         Returns None if the column is not quantifiable, date/time, or concatenable.
         """
-        if not hasattr(self, "col") or self.col is None:
-            raise AttributeError("Column information is required for Min.")
-        if not (
-            is_quantifiable(self.col.type)
-            or is_date_time(self.col.type)
-            or is_concatenable(self.col.type)
-        ):
-            logger.debug(
-                f"Don't know how to process type {self.col.type} when computing MIN"
-            )
+        if not (is_quantifiable(self.col.type) or is_date_time(self.col.type)):
             return None
         return df.agg({self.col.name: "min"}).collect()[0][0]
