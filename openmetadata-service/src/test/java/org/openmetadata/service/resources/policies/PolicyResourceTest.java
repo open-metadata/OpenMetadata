@@ -196,7 +196,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[operations must not be null]");
+        "[query param operations must not be null]");
 
     // Adding a rule without resources should be disallowed
     policyName = getEntityName(test, 1);
@@ -206,7 +206,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[resources must not be null]");
+        "[query param resources must not be null]");
   }
 
   @Test
