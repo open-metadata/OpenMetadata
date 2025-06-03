@@ -21,7 +21,6 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.Date;
 import static org.openmetadata.csv.CsvUtil.formatCsv;
 import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -239,18 +238,8 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-                  
-      // Handle certification field
-      String certificationTag = csvRecord.size() > 7 ? csvRecord.get(7) : null;
-      if (!nullOrEmpty(certificationTag)) {
-        TagLabel certificationLabel = new TagLabel()
-            .withTagFQN(certificationTag)
-            .withSource(TagLabel.TagSource.CLASSIFICATION);
-        database.setCertification(new AssetCertification()
-            .withTagLabel(certificationLabel)
-            .withAppliedDate(new Date().getTime())
-            .withExpiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000).getTime()));
-      }
+
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
       
       database
           .withName(csvRecord.get(0))
@@ -259,6 +248,7 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
+          .withCertification(certification)
           .withDomain(getEntityReference(printer, csvRecord, 8, Entity.DOMAIN))
           .withExtension(getExtension(printer, csvRecord, 9));
 
@@ -272,8 +262,8 @@ public class DatabaseServiceRepository
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
-      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : DATABASE;
-      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
+      String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE;
+      String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
 
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
@@ -314,15 +304,17 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
       database
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withCertification(certification)
+          .withSourceUrl(csvRecord.get(9))
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
         createEntity(printer, csvRecord, database, DATABASE);
@@ -380,6 +372,7 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
       schema
           .withId(UUID.randomUUID())
           .withName(csvRecord.get(0))
@@ -388,10 +381,11 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10))
+          .withCertification(certification)
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11))
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);
       if (processRecord) {

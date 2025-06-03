@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -448,17 +447,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
-      // Handle certification field
-      String certificationTag = csvRecord.size() > 7 ? csvRecord.get(7) : null;
-      if (!nullOrEmpty(certificationTag)) {
-        TagLabel certificationLabel = new TagLabel()
-                .withTagFQN(certificationTag)
-                .withSource(TagLabel.TagSource.CLASSIFICATION);
-        table.setCertification(new AssetCertification()
-                .withTagLabel(certificationLabel)
-                .withAppliedDate(new Date().getTime())
-                .withExpiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000).getTime()));
-      }
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
       table
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(tableFqn)
@@ -466,11 +456,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
+          .withCertification(certification)
+          .withRetentionPeriod(csvRecord.get(9))
+          .withSourceUrl(csvRecord.get(10))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withDomain(getEntityReference(printer, csvRecord, 11, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 12));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table, TABLE);
