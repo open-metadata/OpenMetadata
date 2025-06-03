@@ -442,7 +442,7 @@ public class SearchRepository {
           doc = elasticSearchIndex.buildSearchIndexDoc();
         }
         searchClient.updateEntity(
-            "openmetadata_"+indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
+            indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(
             entityType, entityId, changeDescription, indexMapping, entity);
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
@@ -533,14 +533,12 @@ public class SearchRepository {
   public void propagateCertificationTags(
           String entityType, EntityInterface entity, ChangeDescription changeDescription) {
     if (changeDescription != null) {
-      // Check if this is a tag entity being updated
       if (entityType.equalsIgnoreCase(Entity.TAG)) {
         Tag tagEntity = (Tag) entity;
         if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
           updateCertificationInSearch(tagEntity);
         }
       }
-      // For all other entity types, check if certification was updated
       else {
         checkForCertificationUpdate(entity, changeDescription);
       }
@@ -560,29 +558,22 @@ public class SearchRepository {
   }
 
   private void checkForCertificationUpdate(EntityInterface entity, ChangeDescription change) {
-    // Check if certification was updated in the change description
     boolean certificationUpdated = change.getFieldsUpdated().stream()
             .anyMatch(fieldChange -> "certification".equals(fieldChange.getName()));
 
     if (certificationUpdated) {
-      // Get the new certification from the entity
       AssetCertification certification = (AssetCertification)
               EntityUtil.getEntityField(entity, "certification");
 
       if (certification != null && certification.getTagLabel() != null) {
-        // Update search index with the new certification
-        // Update the entity in the search index
-        // Prepare the update document
         Map<String, Object> doc = new HashMap<>();
         doc.put("certification", JsonUtils.getMap(certification));
-
-        // Get the entity type and index name
         IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
         String indexName = indexMapping.getIndexName(clusterAlias);
         String docId = entity.getId().toString();
         String script = "ctx._source.certification = params.certification";
         // Update the entity in the search index
-        searchClient.updateEntity("openmetadata_"+indexName, docId, doc, script);
+        searchClient.updateEntity(indexName, docId, doc, script);
       }
     }
   }
