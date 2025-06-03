@@ -610,7 +610,7 @@ export const AuthProvider = ({
         configJson[field as keyof AuthenticationConfigurationWithScope];
       if (!value || value === '') {
         // eslint-disable-next-line no-console
-        console.log(t('message.empty-authentication-value-found', { field }));
+        console.warn(t('message.missing-config-value', { field }));
       }
     });
   };
