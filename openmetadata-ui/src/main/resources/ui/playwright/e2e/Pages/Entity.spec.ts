@@ -235,6 +235,7 @@ entities.forEach((EntityClass) => {
       }) => {
         test.slow(true);
 
+        const isMlModel = entity.type === 'MlModel';
         // Tag Selector
         await page
           .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
@@ -242,18 +243,28 @@ entities.forEach((EntityClass) => {
           .getByTestId('add-tag')
           .click();
 
-        await expect(page.locator('#tagsForm_tags_list')).toBeVisible();
-        await expect(page.locator('.ant-tree-select-dropdown')).toBeHidden();
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
 
         // Glossary Selector
         await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .locator(
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
+            }"]`
+          )
           .getByTestId('glossary-container')
           .getByTestId('add-tag')
           .click();
 
-        await expect(page.locator('.ant-tree-select-dropdown')).toBeVisible();
-        await expect(page.locator('#tagsForm_tags_list')).toBeHidden();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
 
         // Re-check Tag Selector
         await page
@@ -262,8 +273,10 @@ entities.forEach((EntityClass) => {
           .getByTestId('add-tag')
           .click();
 
-        await expect(page.locator('#tagsForm_tags_list')).toBeVisible();
-        await expect(page.locator('ant-tree-select-dropdown')).toBeHidden();
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
       });
     }
 

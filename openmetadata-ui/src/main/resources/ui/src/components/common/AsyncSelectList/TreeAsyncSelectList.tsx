@@ -330,6 +330,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         )
       }
       open={open}
+      // this popupClassName class is used to identify the dropdown in the playwright tests
+      popupClassName="async-tree-select-list-dropdown"
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
       switcherIcon={
