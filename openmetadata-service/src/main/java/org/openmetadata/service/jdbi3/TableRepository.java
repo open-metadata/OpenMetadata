@@ -578,7 +578,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
-      return PIIMasker.getTableProfile(table);
+      table.setColumns(PIIMasker.getTableProfile(table.getColumns()));
     }
 
     return table;
@@ -1599,9 +1599,12 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-     if (fieldsParam != null && fieldsParam.contains("profile")) {
-       setColumnProfile(paginatedColumns);
-     }
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(paginatedColumns);
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      paginatedColumns = PIIMasker.getTableProfile(paginatedColumns);
+    }
+
     // Calculate pagination metadata
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = toIndex < total ? String.valueOf(toIndex) : null;
