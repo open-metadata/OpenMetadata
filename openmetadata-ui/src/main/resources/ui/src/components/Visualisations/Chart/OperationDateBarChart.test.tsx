@@ -55,6 +55,9 @@ jest.mock('../../../utils/ChartUtils', () => ({
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest.fn(),
 }));
+jest.mock('../../../constants/profiler.constant', () => ({
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
   __esModule: true,

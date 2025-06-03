@@ -51,7 +51,7 @@ const CustomBarChart = ({
       showBrush: data.length > PROFILER_CHART_DATA_SIZE,
       endIndex: PROFILER_CHART_DATA_SIZE,
     };
-  }, [data]);
+  }, [data.length]);
 
   if (data.length === 0) {
     return (

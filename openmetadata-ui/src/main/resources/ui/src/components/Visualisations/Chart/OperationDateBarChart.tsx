@@ -50,7 +50,7 @@ const OperationDateBarChart = ({
       showBrush: data.length > PROFILER_CHART_DATA_SIZE,
       endIndex: PROFILER_CHART_DATA_SIZE,
     };
-  }, [data]);
+  }, [data.length]);
 
   const handleClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>

@@ -12,16 +12,7 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, pick } from 'lodash';
@@ -64,7 +55,7 @@ import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
-import ProfilerLatestValue from '../../ProfilerLatestValue/ProfilerLatestValue';
+import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
@@ -219,60 +210,40 @@ const TableProfilerChart = ({
 
   const operationDateMetricsCard = useMemo(() => {
     return (
-      <Card
-        className="shadow-none global-border-radius"
-        data-testid="operation-date-metrics"
-        loading={isSystemProfilerLoading}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Typography.Title level={5}>
-              {t('label.table-update-plural')}
-            </Typography.Title>
-          </Col>
-          <Col span={4}>
-            <ProfilerLatestValue
-              stringValue
-              information={operationDateMetrics.information}
-            />
-          </Col>
-          <Col span={20}>
-            <OperationDateBarChart
-              chartCollection={operationDateMetrics}
-              name="operationDateMetrics"
-              noDataPlaceholderText={noProfilerMessage}
-            />
-          </Col>
-        </Row>
-      </Card>
+      <ProfilerStateWrapper
+        dataTestId="operation-date-metrics"
+        isLoading={isSystemProfilerLoading}
+        profilerLatestValueProps={{
+          information: operationDateMetrics.information,
+          stringValue: true,
+        }}
+        title={t('label.table-update-plural')}>
+        <OperationDateBarChart
+          chartCollection={operationDateMetrics}
+          name="operationDateMetrics"
+          noDataPlaceholderText={noProfilerMessage}
+        />
+      </ProfilerStateWrapper>
     );
-  }, [isSystemProfilerLoading, operationDateMetrics]);
+  }, [isSystemProfilerLoading, operationDateMetrics, noProfilerMessage]);
 
   const operationMetricsCard = useMemo(() => {
     return (
-      <Card
-        className="shadow-none global-border-radius"
-        data-testid="operation-metrics"
-        loading={isSystemProfilerLoading}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Typography.Title level={5}>
-              {t('label.volume-change')}
-            </Typography.Title>
-          </Col>
-          <Col span={4}>
-            <ProfilerLatestValue information={operationMetrics.information} />
-          </Col>
-          <Col span={20}>
-            <CustomBarChart
-              chartCollection={operationMetrics}
-              name="operationMetrics"
-              noDataPlaceholderText={noProfilerMessage}
-            />
-          </Col>
-        </Row>
-      </Card>
+      <ProfilerStateWrapper
+        dataTestId="operation-metrics"
+        isLoading={isSystemProfilerLoading}
+        profilerLatestValueProps={{
+          information: operationMetrics.information,
+        }}
+        title={t('label.volume-change')}>
+        <CustomBarChart
+          chartCollection={operationMetrics}
+          name="operationMetrics"
+          noDataPlaceholderText={noProfilerMessage}
+        />
+      </ProfilerStateWrapper>
     );
-  }, [isSystemProfilerLoading, operationMetrics]);
+  }, [isSystemProfilerLoading, operationMetrics, noProfilerMessage]);
 
   return (
     <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>

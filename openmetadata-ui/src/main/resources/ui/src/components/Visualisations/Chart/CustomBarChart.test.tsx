@@ -56,6 +56,10 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
   default: jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>),
 }));
 
+jest.mock('../../../constants/profiler.constant', () => ({
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
 jest.mock('../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(),
   tooltipFormatter: jest.fn(),
