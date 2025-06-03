@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -219,8 +220,8 @@ public class IngestionPipelineResource
           String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -238,14 +239,20 @@ public class IngestionPipelineResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "List Ingestion Pipelines by provider..",
+              schema = @Schema(implementation = ProviderType.class))
+          @QueryParam("provider")
+          ProviderType provider) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
-            .addQueryParam("applicationType", applicationType);
+            .addQueryParam("applicationType", applicationType)
+            .addQueryParam("provider", provider == null ? null : provider.value());
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
