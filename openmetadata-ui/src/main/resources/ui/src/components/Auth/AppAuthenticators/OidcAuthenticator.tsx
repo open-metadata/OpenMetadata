@@ -22,7 +22,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -31,6 +31,7 @@ import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -40,9 +41,6 @@ interface Props {
   childComponentType: ComponentType;
   children: ReactNode;
   userConfig: Record<string, string | boolean | WebStorageStateStore>;
-  onLoginFailure: () => void;
-  onLoginSuccess: (user: OidcUser) => void;
-  onLogoutSuccess: () => void;
 }
 
 const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
@@ -55,27 +53,22 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
 };
 
 const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  (
-    {
-      childComponentType,
-      children,
-      userConfig,
-      onLoginSuccess,
-      onLoginFailure,
-      onLogoutSuccess,
-    }: Props,
-    ref
-  ) => {
+  ({ childComponentType, children, userConfig }: Props, ref) => {
     const {
       isAuthenticated,
       isSigningUp,
       setIsSigningUp,
-      updateAxiosInterceptors,
       currentUser,
       newUser,
       isApplicationLoading,
     } = useApplicationStore();
-    const history = useHistory();
+    const {
+      handleSuccessfulLogout,
+      handleFailedLogin,
+      handleSuccessfulLogin,
+      updateAxiosInterceptors,
+    } = useAuthProvider();
+
     const location = useCustomLocation();
     const userManager = useMemo(
       () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
@@ -91,9 +84,35 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setIsSigningUp(true);
     };
 
-    const logout = () => {
-      userManager.removeUser();
-      onLogoutSuccess();
+    const logout = async () => {
+      return new Promise<void>((resolve, reject) => {
+        userManager.metadataService.getEndSessionEndpoint().then((endpoint) => {
+          if (endpoint) {
+            // Perform singout from sso if endSessionEndpointAvailable
+            userManager
+              .signoutRedirect({
+                post_logout_redirect_uri:
+                  window.location.origin + ROUTES.SIGNIN,
+              })
+              .then(() => {
+                // Cleanup application state
+                handleSuccessfulLogout();
+                resolve();
+              })
+              .catch((error) => {
+                reject(error);
+              });
+          } else {
+            try {
+              // If signout fails, still clean up local state
+              userManager.removeUser().then(resolve);
+            } finally {
+              // Cleanup application state
+              handleSuccessfulLogout();
+            }
+          }
+        });
+      });
     };
 
     // Performs silent signIn and returns with IDToken
@@ -115,11 +134,12 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       // eslint-disable-next-line no-console
       console.error(error);
 
-      // Clear the refresh token in progress flag
-      // Since refresh token request completes with a callback
-      TokenService.getInstance().clearRefreshInProgress();
-      onLogoutSuccess();
-      history.push(ROUTES.SIGNIN);
+      try {
+        userManager.removeUser();
+      } finally {
+        // If silent sign in fails, we need to logout the user
+        handleSuccessfulLogout();
+      }
     };
 
     useImperativeHandle(ref, () => ({
@@ -158,11 +178,11 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   userManager={userManager}
                   onError={(error) => {
                     showErrorToast(error?.message);
-                    onLoginFailure();
+                    handleFailedLogin();
                   }}
                   onSuccess={(user) => {
                     setOidcToken(user.id_token);
-                    onLoginSuccess(user as OidcUser);
+                    handleSuccessfulLogin(user as OidcUser);
                   }}
                 />
               </>

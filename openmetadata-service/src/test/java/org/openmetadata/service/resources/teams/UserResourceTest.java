@@ -216,7 +216,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Create user with mandatory email field null
     CreateUser create = createRequest(test).withEmail(null);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must not be null]");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param email must not be null]");
 
     // Create user with mandatory email field empty
     create.withEmail("");
