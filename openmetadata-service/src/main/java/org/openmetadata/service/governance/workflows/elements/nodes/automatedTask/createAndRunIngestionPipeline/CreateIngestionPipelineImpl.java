@@ -360,8 +360,8 @@ public class CreateIngestionPipelineImpl {
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
         .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
-        .withClassificationFilterPattern(new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS))
-        .withEnableAutoClassification(true);
+        .withEnableAutoClassification(true)
+        .withStoreSampleData(false);
   }
 
   // Other Services Metadata Pipelines
