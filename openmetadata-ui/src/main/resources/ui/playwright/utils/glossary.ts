@@ -685,17 +685,25 @@ export const addAssetToGlossaryTerm = async (
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
     const searchRes = page.waitForResponse('/api/v1/search/query*');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
+    const visibleName = entityDisplayName ?? entityName;
     await page
       .locator(
         '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
       )
-      .fill(entityName);
+      .fill(visibleName);
 
     await searchRes;
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   await page.click('[data-testid="save-btn"]');
