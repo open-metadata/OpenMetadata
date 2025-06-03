@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { LabelType } from '../generated/type/tagLabel';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
@@ -317,3 +318,11 @@ export const SEARCH_INDICES_WITH_COLUMNS_FIELD = [
   SearchIndex.DATA_ASSET,
   SearchIndex.ALL,
 ];
+
+export const TAG_LABEL_TYPE_LIST_VALUES = {
+  [LabelType.Manual]: t('label.manual'),
+  [LabelType.Derived]: t('label.derived'),
+  [LabelType.Propagated]: t('label.propagated'),
+  [LabelType.Automated]: t('label.automated'),
+  [LabelType.Generated]: t('label.generated'),
+};

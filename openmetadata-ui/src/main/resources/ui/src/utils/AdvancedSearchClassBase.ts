@@ -28,6 +28,7 @@ import {
   NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
+  TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import {
@@ -37,7 +38,6 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { LabelType } from '../generated/type/tagLabel';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
@@ -739,13 +739,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: {
-            [LabelType.Manual]: t('label.manual'),
-            [LabelType.Derived]: t('label.derived'),
-            [LabelType.Propagated]: t('label.propagated'),
-            [LabelType.Automated]: t('label.automated'),
-            [LabelType.Generated]: t('label.generated'),
-          },
+          listValues: TAG_LABEL_TYPE_LIST_VALUES,
         },
       },
     };
