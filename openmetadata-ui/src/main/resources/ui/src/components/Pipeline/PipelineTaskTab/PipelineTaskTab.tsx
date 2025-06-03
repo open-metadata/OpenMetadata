@@ -72,10 +72,6 @@ export const PipelineTaskTab = () => {
     task: Task;
     index: number;
   }>();
-  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
-    null
-  );
-
   const { deleted } = pipelineDetails ?? {};
 
   const {
@@ -179,10 +175,6 @@ export const PipelineTaskTab = () => {
     await onUpdate(updatedPipeline);
   };
 
-  const handleOpenTagDropdownKey = (key: string | null): void => {
-    setOpenTagDropdownKey(key);
-  };
-
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
@@ -252,12 +244,10 @@ export const PipelineTaskTab = () => {
           <TableTags<Task>
             entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={editTagsPermission}
             index={index}
             isReadOnly={deleted}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -280,12 +270,10 @@ export const PipelineTaskTab = () => {
           <TableTags<Task>
             entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleTableTagSelection}
             hasTagEditAccess={editGlossaryTermsPermission}
             index={index}
             isReadOnly={deleted}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -298,7 +286,6 @@ export const PipelineTaskTab = () => {
       editTask,
       editTagsPermission,
       editGlossaryTermsPermission,
-      openTagDropdownKey,
       handleTableTagSelection,
       editDescriptionPermission,
     ]

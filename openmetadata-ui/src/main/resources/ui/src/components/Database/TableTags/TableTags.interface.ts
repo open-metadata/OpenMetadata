@@ -34,8 +34,6 @@ export interface TableTagsComponentProps<T> {
     selectedTags: EntityTags[],
     editColumnTag: T
   ) => Promise<void>;
-  openTagDropdownKey?: string | null;
-  handleChangeOpenTagDropdownKey?: (key: string | null) => void;
 }
 
 export interface TableTagsProps {

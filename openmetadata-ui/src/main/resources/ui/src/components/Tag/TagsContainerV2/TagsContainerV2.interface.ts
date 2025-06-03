@@ -15,12 +15,6 @@ import { EntityTags } from 'Models';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
-export interface ExternalControlProps {
-  isDropdownOpen: boolean;
-  onDropdownOpen: () => void;
-  onDropdownClose: () => void;
-}
-
 export interface TagsContainerV2Props {
   permission: boolean;
   showTaskHandler?: boolean;
@@ -41,6 +35,6 @@ export interface TagsContainerV2Props {
   defaultLabelType?: LabelType;
   sizeCap?: number;
   newLook?: boolean;
-  // Props for external control of dropdown state
-  externalControl?: ExternalControlProps;
+  // Props to control the dropdown state from the Generic Provider
+  useGenericControls?: boolean;
 }

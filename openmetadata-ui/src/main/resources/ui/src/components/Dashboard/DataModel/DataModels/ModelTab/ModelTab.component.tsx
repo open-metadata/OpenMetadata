@@ -64,9 +64,6 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
-    null
-  );
   const {
     data: dataModel,
     permissions,
@@ -196,10 +193,6 @@ const ModelTab = () => {
     await handleColumnUpdate(tableCols);
   };
 
-  const handleOpenTagDropdownKey = (key: string | null): void => {
-    setOpenTagDropdownKey(key);
-  };
-
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -277,12 +270,10 @@ const ModelTab = () => {
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
             index={index}
             isReadOnly={isReadOnly}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -303,12 +294,10 @@ const ModelTab = () => {
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditGlossaryTermPermission}
             index={index}
             isReadOnly={isReadOnly}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -323,7 +312,6 @@ const ModelTab = () => {
       hasEditTagsPermission,
       hasEditGlossaryTermPermission,
       editColumnDescription,
-      openTagDropdownKey,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
     ]

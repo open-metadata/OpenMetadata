@@ -75,34 +75,52 @@ const TagsContainerV2 = ({
   defaultState,
   newLook = false,
   sizeCap = LIST_SIZE,
-  externalControl,
+  useGenericControls,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
   const { t } = useTranslation();
-  const { onThreadLinkSelect } = useGenericContext();
+  const {
+    onThreadLinkSelect,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+  } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
-
   const [tags, setTags] = useState<TableTagsProps>();
   const [internalIsEditTags, setInternalIsEditTags] = useState(false);
+
+  const { isEditTags, dropdownKey } = useMemo(() => {
+    const dropdownKey = `${columnData?.fqn ?? entityFqn}-${tagType}`;
+
+    return {
+      dropdownKey,
+      isEditTags: useGenericControls
+        ? activeTagDropdownKey === dropdownKey
+        : internalIsEditTags,
+    };
+  }, [
+    tagType,
+    entityFqn,
+    columnData?.fqn,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+    internalIsEditTags,
+    useGenericControls,
+  ]);
 
   // Helper function to handle external/internal control
   const handleExternalControl = useCallback(
     (isOpen: boolean) => {
-      if (externalControl) {
+      if (useGenericControls) {
         isOpen
-          ? externalControl.onDropdownOpen()
-          : externalControl.onDropdownClose();
+          ? updateActiveTagDropdownKey(dropdownKey)
+          : updateActiveTagDropdownKey(null);
       } else {
         setInternalIsEditTags(isOpen);
       }
     },
-    [externalControl]
+    [useGenericControls, dropdownKey]
   );
-
-  const isEditTags = externalControl
-    ? externalControl.isDropdownOpen
-    : internalIsEditTags;
 
   const {
     isGlossaryType,

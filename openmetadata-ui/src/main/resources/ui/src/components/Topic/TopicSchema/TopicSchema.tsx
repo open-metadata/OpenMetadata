@@ -74,9 +74,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
-  const [openTagDropdownKey, setOpenTagDropdownKey] = useState<string | null>(
-    null
-  );
   const viewTypeOptions = [
     {
       label: t('label.field-plural'),
@@ -215,10 +212,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     >;
   }, [messageSchema?.schemaFields]);
 
-  const handleOpenTagDropdownKey = (key: string | null): void => {
-    setOpenTagDropdownKey(key);
-  };
-
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -269,12 +262,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <TableTags<Field>
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -295,12 +286,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <TableTags<Field>
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
-            handleChangeOpenTagDropdownKey={handleOpenTagDropdownKey}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            openTagDropdownKey={openTagDropdownKey}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -317,7 +306,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       hasTagEditAccess,
       editFieldDescription,
       hasDescriptionEditAccess,
-      openTagDropdownKey,
       handleFieldTagsChange,
       renderSchemaName,
       renderDataType,
