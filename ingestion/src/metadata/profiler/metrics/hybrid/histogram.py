@@ -268,3 +268,48 @@ class Histogram(HybridMetric):
         if frequencies.size > 0:
             return {"boundaries": bins_label, "frequencies": frequencies.tolist()}
         return None
+
+    def spark_fn(self, df, res: dict):
+        """Spark DataFrame function for histogram metric"""
+        import numpy as np
+        from pyspark.sql import functions as F
+
+        if not is_quantifiable(self.col.type):
+            return None
+
+        # get the metric need for the freedman-diaconis rule
+        results = self._get_res(res)
+        if not results:
+            return None
+        res_iqr, res_row_count, res_min, res_max = results
+
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
+        if num_bins == 0:
+            return None
+
+        # Compute bin edges
+        bins = list(np.arange(num_bins) * bin_width + res_min)
+        bins_label = [
+            self._format_bin_labels(bins[i], bins[i + 1])
+            if i < len(bins) - 1
+            else self._format_bin_labels(bins[i])
+            for i in range(len(bins))
+        ]
+        bins.append(np.inf)  # add the last bin
+
+        # Use Spark SQL to compute frequencies for each bin
+        frequencies = np.zeros(num_bins)
+        for i in range(num_bins):
+            lower = bins[i]
+            upper = bins[i + 1]
+            if i < num_bins - 1:
+                count = df.filter(
+                    (F.col(self.col.name) >= lower) & (F.col(self.col.name) < upper)
+                ).count()
+            else:
+                count = df.filter(F.col(self.col.name) >= lower).count()
+            frequencies[i] = count
+
+        if frequencies.size > 0:
+            return {"boundaries": bins_label, "frequencies": frequencies.tolist()}
+        return None

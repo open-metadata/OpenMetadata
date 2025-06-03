@@ -13,7 +13,7 @@
 Max Metric definition
 """
 from functools import partial
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
@@ -117,3 +117,20 @@ class Max(StaticMetric):
         if is_quantifiable(self.col.type):
             return partial(adaptor.max, column=self.col)
         return lambda table: None
+
+    def spark_fn(self, df) -> Optional[Any]:
+        """Spark DataFrame function
+        Returns None if the column is not quantifiable, date/time, or concatenable.
+        """
+        if not hasattr(self, "col") or self.col is None:
+            raise AttributeError("Column information is required for Max.")
+        if not (
+            is_quantifiable(self.col.type)
+            or is_date_time(self.col.type)
+            or is_concatenable(self.col.type)
+        ):
+            logger.debug(
+                f"Don't know how to process type {self.col.type} when computing MAX"
+            )
+            return None
+        return df.agg({self.col.name: "max"}).collect()[0][0]

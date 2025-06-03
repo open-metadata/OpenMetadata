@@ -15,6 +15,8 @@ MIN_LENGTH Metric definition
 # pylint: disable=duplicate-code
 
 
+from typing import Optional
+
 from sqlalchemy import column, func
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
@@ -64,6 +66,9 @@ class MinLength(StaticMetric):
 
         length_vectorize_func = vectorize(len)
 
+        if not hasattr(self, "col") or self.col is None:
+            logger.debug("Column information is required for MinLength.")
+            return None
         if self._is_concatenable():
             min_length_list = []
 
@@ -80,3 +85,18 @@ class MinLength(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )
         return None
+
+    def spark_fn(self, df) -> Optional[int]:
+        """Spark DataFrame function
+        Returns None if the column is not concatenable.
+        """
+        if not hasattr(self, "col") or self.col is None:
+            raise AttributeError("Column information is required for MinLength.")
+        if not self._is_concatenable():
+            logger.debug(
+                f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
+            )
+            return None
+        return df.selectExpr(f"min(length({self.col.name})) as min_length").collect()[
+            0
+        ]["min_length"]

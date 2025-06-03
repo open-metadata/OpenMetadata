@@ -57,3 +57,7 @@ class NullCount(StaticMetric):
     def df_fn(self, dfs=None):
         """pandas function"""
         return sum(df[self.col.name].isnull().sum() for df in dfs)
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        return df.filter(df[self.col.name].isNull()).count()

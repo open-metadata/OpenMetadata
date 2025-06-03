@@ -85,3 +85,15 @@ class NotRegexCount(StaticMetric):
         raise TypeError(
             f"Don't know how to process type {self.col.type} when computing Not RegExp Match Count"
         )
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
+            )
+        if self._is_concatenable():
+            return df.filter(~df[self.col.name].rlike(self.expression)).count()
+        raise TypeError(
+            f"Don't know how to process type {self.col.type} when computing Not RegExp Match Count"
+        )

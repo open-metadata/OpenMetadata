@@ -54,3 +54,11 @@ class ILikeCount(StaticMetric):
                 else_=0,
             )
         )
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "ILike Count requires an expression to be set: add_props(expression=...)(Metrics.ILIKE_COUNT)"
+            )
+        return df.filter(df[self.col.name].rlike(self.expression)).count()

@@ -158,3 +158,25 @@ class Mean(StaticMetric):
         if is_quantifiable(self.col.type):
             return partial(adaptor.mean, column=self.col)
         return lambda table: None
+
+    def spark_fn(self, df) -> Optional[float]:
+        """Spark DataFrame function
+        Returns None if the column is not quantifiable or concatenable.
+        """
+        try:
+            if is_quantifiable(self.col.type):
+                return df.agg({self.col.name: "avg"}).collect()[0][0]
+            elif is_concatenable(self.col.type):
+                return df.selectExpr(f"avg(length({self.col.name})) as mean").collect()[
+                    0
+                ]["mean"]
+        except Exception as err:
+            logger.debug(
+                f"Error while computing mean for column {self.col.name}: {err}"
+            )
+            return None
+
+        logger.warning(
+            f"Don't know how to process type {self.col.type} when computing MEAN"
+        )
+        return None

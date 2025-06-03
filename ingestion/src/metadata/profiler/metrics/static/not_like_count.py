@@ -54,3 +54,11 @@ class NotLikeCount(StaticMetric):
                 else_=1,
             )
         )
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_LIKE_COUNT)"
+            )
+        return df.filter(~df[self.col.name].like(self.expression)).count()

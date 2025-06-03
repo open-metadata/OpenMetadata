@@ -12,6 +12,7 @@
 """
 Profiler interface for Spark (PySpark DataFrames)
 """
+import traceback
 from typing import Any, Dict, List, Type, Union
 
 from metadata.generated.schema.entity.data.table import SystemProfile, Table
@@ -28,8 +29,9 @@ from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.system.system import System
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.logger import profiler_logger
 
-# TODO: Import or define Spark-specific helpers/mixins if needed
+logger = profiler_logger()
 
 
 class SparkProfilerInterface(ProfilerInterface):
@@ -74,9 +76,17 @@ class SparkProfilerInterface(ProfilerInterface):
         **kwargs,
     ):
         """Compute table-level metrics using SparkSQL/DataFrame API."""
-        raise NotImplementedError(
-            "Implement table metrics computation using Spark DataFrame."
-        )
+        try:
+            row_dict = {}
+            for metric in metrics:
+                row_dict[metric().name()] = metric().spark_fn(
+                    self.sampler.get_dataset()
+                )
+            return row_dict
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to compute profile for {exc}")
+            raise RuntimeError(exc)
 
     def _compute_static_metrics(
         self,

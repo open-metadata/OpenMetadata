@@ -56,3 +56,7 @@ class RowCount(StaticMetric):
     @classmethod
     def nosql_fn(cls, client: NoSQLAdaptor) -> Callable[[Table], int]:
         return client.item_count
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        return df.count()
