@@ -1437,6 +1437,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
+    table1 = getLatestTableProfile(table1.getFullyQualifiedName(), false, ADMIN_AUTH_HEADERS);
+    assertNull(table1.getColumns());
 
     // Table profile with column profile as null
     timestamp = TestUtils.dateToTimestamp("2022-09-09");
@@ -3383,10 +3385,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders)
+  public Table getLatestTableProfile(String fqn, boolean includeColumnProfile, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/tableProfile/latest");
+    target = target.queryParam("includeColumnProfile", includeColumnProfile);
     return TestUtils.get(target, Table.class, authHeaders);
+  }
+
+  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return getLatestTableProfile(fqn, true, authHeaders);
   }
 
   public Table putTableProfileData(

@@ -564,7 +564,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public Table getLatestTableProfile(String fqn, boolean authorizePII) {
+  public Table getLatestTableProfile(String fqn, boolean authorizePII, boolean includeColumnProfile) {
     Table table = findByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
@@ -573,7 +573,11 @@ public class TableRepository extends EntityRepository<Table> {
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
-    setColumnProfile(table.getColumns());
+    if (includeColumnProfile) {
+      setColumnProfile(table.getColumns());
+    } else {
+      table.setColumns(null);
+    }
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {

@@ -941,7 +941,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String"))
           @PathParam("fqn")
-          String fqn) {
+          String fqn,
+      @Parameter(description = "Include column profile", schema = @Schema(type = "boolean"))
+          @QueryParam("includeColumnProfile")
+          @DefaultValue("true")
+          boolean includeColumnProfile) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
@@ -949,7 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
-        .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII)))
+        .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
         .build();
   }
 
