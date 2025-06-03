@@ -23,16 +23,16 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.AfterEach;
@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.QualityExpectation;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -375,6 +376,44 @@ class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals(ContractStatus.Active, updated.getStatus());
     assertEquals(created.getId(), updated.getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateContractWithSemantics(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    List<SemanticsRule> semanticsRules =
+        new ArrayList<>(
+            List.of(
+                new SemanticsRule()
+                    .withName("Description can't be empty")
+                    .withDescription("Ensures description is provided")
+                    .withRule("{ \"!!\": { \"var\": \"description\" } }")));
+
+    // Add semantics to the contract
+    create
+        .withDescription("This is a test data contract with semantics")
+        .withSemantics(semanticsRules);
+
+    DataContract dataContract = createDataContract(create);
+
+    assertNotNull(dataContract);
+    assertEquals("This is a test data contract with semantics", dataContract.getDescription());
+    assertEquals(1, dataContract.getSemantics().size());
+
+    String originalJson = JsonUtils.pojoToJson(dataContract);
+    semanticsRules.add(
+        new SemanticsRule()
+            .withName("Single Owner")
+            .withDescription("I only support 1 owner")
+            .withRule("{\"==\":[{\"size\":{\"var\":\"items\"}},1]}"));
+
+    dataContract.setSemantics(semanticsRules);
+    DataContract patched = patchDataContract(dataContract.getId(), originalJson, dataContract);
+    assertNotNull(patched.getSemantics());
+    assertEquals(2, patched.getSemantics().size());
   }
 
   @Test

@@ -37,6 +37,14 @@
       },
       "default": null
     },
+    "semantics": {
+      "description": "Semantics rules defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/dataContract.json#/definitions/semanticsRule"
+      },
+      "default": null
+    },
     "qualityExpectations": {
       "description": "Quality expectations defined in the data contract.",
       "type": "array",

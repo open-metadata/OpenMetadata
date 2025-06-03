@@ -79,6 +79,10 @@ export interface DataContract {
      */
     schema?: Field[];
     /**
+     * Semantics rules defined in the data contract.
+     */
+    semantics?: SemanticsRule[];
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
@@ -384,6 +388,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -418,6 +423,24 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name: string;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
 }
 
 /**
