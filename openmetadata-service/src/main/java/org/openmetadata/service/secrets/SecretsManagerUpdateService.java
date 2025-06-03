@@ -76,7 +76,6 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
-    updateWorkflows();
   }
 
   private void updateServices() {
@@ -101,14 +100,6 @@ public class SecretsManagerUpdateService {
             "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
             secretManager.getSecretsManagerProvider().value()));
     retrieveIngestionPipelines().forEach(this::updateIngestionPipeline);
-  }
-
-  private void updateWorkflows() {
-    LOG.info(
-        String.format(
-            "Updating workflows in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
-    retrieveWorkflows().forEach(this::updateWorkflow);
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
