@@ -20,7 +20,7 @@ import {
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
-import { assignTag } from '../../utils/entity';
+import { assignTag, assignTier } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -37,6 +37,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await table.visitEntityPage(page);
   await assignDomain(page, domain.data);
   await assignTag(page, 'PersonalData.Personal');
+  await assignTier(page, 'Tier1', 'tables');
   await afterAction();
 });
 
@@ -62,19 +63,31 @@ test('search dropdown should work properly for quick filters', async ({
       value: domain.responseData.displayName,
     },
     { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
+    { label: 'Tier', key: 'tier.tagFQN', value: 'Tier.Tier1' },
   ];
 
   for (const filter of items) {
     await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
     await searchAndClickOnOption(page, filter, true);
 
-    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
-      filter.key
-    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
+    const filterValueForEndpoint =
+      filter.key === 'tier.tagFQN'
+        ? filter.value
+        : (filter.value ?? '').replace(/ /g, '+').toLowerCase();
+
+    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filter.key}*${filterValueForEndpoint}*`;
 
     const queryRes = page.waitForResponse(querySearchURL);
     await page.click('[data-testid="update-btn"]');
     await queryRes;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(
+      page.getByTestId(
+        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+      )
+    ).toBeVisible();
+
     await page.click('[data-testid="clear-filters"]');
   }
 });
