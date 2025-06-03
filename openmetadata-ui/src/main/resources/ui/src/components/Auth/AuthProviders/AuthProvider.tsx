@@ -74,6 +74,7 @@ import {
   getUserManagerConfig,
   isProtectedRoute,
   prepareUserProfileFromClaims,
+  validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
@@ -608,6 +609,7 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
+          validateAuthFields(configJson, t);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);

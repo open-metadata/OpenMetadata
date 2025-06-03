@@ -1838,6 +1838,7 @@
     "metric-description": "Track the health of your data assets with metrics.",
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "Минута",
+    "missing-config-value": "Отсутствует значение конфигурации: {{field}}",
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "Отображает самых активных пользователей на платформе на основе просмотров страниц.",
     "most-expensive-queries-widget-description": "Топ-5 самых дорогих запросов для объектов данных в сервисе. <0>узнать больше.</0>",

@@ -1838,6 +1838,7 @@
     "metric-description": "Track the health of your data assets with metrics.",
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "分",
+    "missing-config-value": "設定値が不足しています: {{field}}",
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "ページビューベースの最もアクティブなユーザの表示。",
     "most-expensive-queries-widget-description": "サービス内のデータアセットにおける最もコストの高い上位5つのクエリ。<0>詳細を見る。</0>",
