@@ -1347,6 +1347,15 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getRecordWithOffset(
         @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsPaginated(
+        @Bind("offset") long offset, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
+    long getTotalRelationshipCount();
+
     //
     // Delete Operations
     //
