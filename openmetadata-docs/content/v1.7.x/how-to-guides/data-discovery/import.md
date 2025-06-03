@@ -1,16 +1,15 @@
 ---
 title: Bulk Import Data Asset
 slug: /how-to-guides/data-discovery/import
-collate: true
 ---
 
 # Import Data Asset
 
-Importing a Data Asset from Collate is simple. Below are the steps to bulk import various data assets, such as Databases, Schemas, and Tables.
+Importing a Data Asset is simple. Below are the steps to bulk import various data assets, such as Databases, Schemas, and Tables.
 
 ## How to Bulk Import a Database Service
 
-To import a Database Service into Collate:
+To import a Database Service:
 
 1. Navigate to the Database Service you want to import by going to **Settings > Services > Database**.
 2. For this example, we are importing in the `Snowflake` service.
@@ -83,7 +82,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 
 ## How to Bulk Import a Database
 
-To import a Database into Collate:
+To import a Database:
 
 1. In this example, we are Importing the `DEMO` database under **Snowflake**.
 2. Click on the **⋮** icon and select **Import** to upload the Database CSV file.
@@ -159,7 +158,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 
 ## How to Bulk Import a Database Schema
 
-To import a Database Schema into Collate:
+To import a Database Schema:
 
 1. In this example, we are importing the `JAFFLE_SHOP` schema under **Snowflake > DEMO**.
 2. Click on the **⋮** icon and select **Import** to upload the Database Schema CSV file.
@@ -235,7 +234,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 
 ## How to Bulk Import a Table
 
-To import a Table into Collate:
+To import a Table:
 
 1. In this example, we are importing the `CUSTOMERS` table under **Snowflake > DEMO > JAFFLE_SHOP**.
 2. Click on the **⋮** icon and select **Import** to download the Table CSV file.

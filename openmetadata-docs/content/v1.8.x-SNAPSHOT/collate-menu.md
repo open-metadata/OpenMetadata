@@ -835,14 +835,14 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
-  - category: How-to Guides / Data Discovery / Troubleshooting
-    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
     url: /how-to-guides/data-discovery/bulk-upload
   - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Import/Export Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Table Constraint
     url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
