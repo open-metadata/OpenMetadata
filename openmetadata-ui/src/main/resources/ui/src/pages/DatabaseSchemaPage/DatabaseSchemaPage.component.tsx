@@ -171,13 +171,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.DATABASE_SCHEMA,
       decodedDatabaseSchemaFQN,
       handleFeedCount
     );
-  };
+  }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -404,10 +404,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission]);
+  }, [
+    viewDatabaseSchemaPermission,
+    fetchDatabaseSchemaDetails,
+    fetchStoreProcedureCount,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     fetchTableCount();
