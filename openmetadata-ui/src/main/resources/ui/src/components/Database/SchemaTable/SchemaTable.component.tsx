@@ -300,6 +300,8 @@ const SchemaTable = () => {
         ...table,
         columns: updatedColumns,
       };
+
+      setPaginatedColumns(updatedColumns);
       await onUpdate(updatedTableDetails);
     }
   };
