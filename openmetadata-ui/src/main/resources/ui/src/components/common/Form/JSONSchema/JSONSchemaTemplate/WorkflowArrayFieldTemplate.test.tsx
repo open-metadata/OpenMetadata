@@ -12,7 +12,7 @@
  */
 
 import { FieldProps, IdSchema, Registry } from '@rjsf/utils';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { t } from 'i18next';
 import React from 'react';
 import { MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE } from '../../../../../mocks/Templates.mock';
@@ -145,5 +145,26 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       .querySelector('span.ant-select-selection-placeholder');
 
     expect(placeholderText).toHaveTextContent('');
+  });
+
+  it('Should call onChange with correct value when comma seperated values are entered', async () => {
+    render(
+      <WorkflowArrayFieldTemplate
+        {...mockWorkflowArrayFieldTemplateProps}
+        formData={[]}
+      />
+    );
+
+    const select = screen.getByTestId('workflow-array-field-template');
+    const input = within(select).getByRole('combobox');
+
+    fireEvent.change(input, { target: { value: 'value1,value2,value3' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'value1',
+      'value2',
+      'value3',
+    ]);
   });
 });
