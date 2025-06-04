@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Space, Tree, Typography } from 'antd';
+import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -64,6 +64,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -96,7 +97,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
-      setIsLoading(true);
+      setIsUpdating(true);
       let retn: EntityReference[] = [];
       if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
@@ -108,7 +109,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       try {
         await onSubmit(retn);
       } finally {
-        setIsLoading(false);
+        setIsUpdating(false);
       }
     } else {
       onCancel();
@@ -214,23 +215,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     } else {
       return (
-        <Tree
-          blockNode
-          checkStrictly
-          defaultExpandAll
-          showLine
-          autoExpandParent={Boolean(searchTerm)}
-          checkable={isMultiple}
-          className="domain-selectable-tree"
-          defaultCheckedKeys={isMultiple ? value : []}
-          defaultExpandedKeys={value}
-          defaultSelectedKeys={isMultiple ? [] : value}
-          multiple={isMultiple}
-          switcherIcon={switcherIcon}
-          treeData={treeData}
-          onCheck={onCheck}
-          onSelect={onSelect}
-        />
+        <Spin indicator={<Loader size="small" />} spinning={isUpdating}>
+          <Tree
+            blockNode
+            checkStrictly
+            defaultExpandAll
+            showLine
+            autoExpandParent={Boolean(searchTerm)}
+            checkable={isMultiple}
+            className="domain-selectable-tree"
+            defaultCheckedKeys={isMultiple ? value : []}
+            defaultExpandedKeys={value}
+            defaultSelectedKeys={isMultiple ? [] : value}
+            multiple={isMultiple}
+            switcherIcon={switcherIcon}
+            treeData={treeData}
+            onCheck={onCheck}
+            onSelect={onSelect}
+          />
+        </Spin>
       );
     }
   }, [isLoading, treeData, value, onSelect, isMultiple, searchTerm]);
