@@ -1,12 +1,11 @@
 package org.openmetadata.service.migration.utils.v180;
 
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addOperationsToPolicyRule;
+
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-
-import java.util.List;
-
-import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addOperationsToPolicyRule;
 
 @Slf4j
 public class MigrationUtil {

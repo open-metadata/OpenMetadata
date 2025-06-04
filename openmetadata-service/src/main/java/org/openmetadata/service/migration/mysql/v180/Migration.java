@@ -1,10 +1,10 @@
 package org.openmetadata.service.migration.mysql.v180;
 
+import static org.openmetadata.service.migration.utils.v180.MigrationUtil.addCertificationOperationsToPolicy;
+
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-
-import static org.openmetadata.service.migration.utils.v180.MigrationUtil.addCertificationOperationsToPolicy;
 
 public class Migration extends MigrationProcessImpl {
 
