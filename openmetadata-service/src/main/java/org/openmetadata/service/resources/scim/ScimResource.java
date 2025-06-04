@@ -68,8 +68,9 @@ public class ScimResource {
         @ApiResponse(responseCode = "201", description = "User created"),
         @ApiResponse(responseCode = "400", description = "Invalid user input")
       })
-  public Response createUser(ScimUser user, @Context UriInfo uriInfo) {
-    return provisioningService.createUser(user, uriInfo);
+  public Response createUser(
+      ScimUser user, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return provisioningService.createUser(user, uriInfo, securityContext);
   }
 
   @PUT

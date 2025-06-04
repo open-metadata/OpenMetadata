@@ -11,7 +11,7 @@ public interface ScimProvisioningService {
 
   Response listUsers(UriInfo uriInfo);
 
-  Response createUser(ScimUser user, UriInfo uriInfo);
+  Response createUser(ScimUser user, UriInfo uriInfo, SecurityContext securityContext);
 
   Response getUser(String id, UriInfo uriInfo);
 

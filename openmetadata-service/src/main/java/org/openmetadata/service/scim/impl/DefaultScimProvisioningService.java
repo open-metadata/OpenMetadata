@@ -22,7 +22,7 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
   }
 
   @Override
-  public Response createUser(ScimUser user, UriInfo uriInfo) {
+  public Response createUser(ScimUser user, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 
