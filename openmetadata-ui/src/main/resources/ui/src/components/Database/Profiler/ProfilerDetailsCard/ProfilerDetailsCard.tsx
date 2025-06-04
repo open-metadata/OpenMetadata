@@ -12,8 +12,9 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  Brush,
   CartesianGrid,
   Legend,
   LegendProps,
@@ -25,6 +26,7 @@ import {
   YAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
+import { PROFILER_CHART_DATA_SIZE } from '../../../../constants/profiler.constant';
 import {
   axisTickFormatter,
   tooltipFormatter,
@@ -48,6 +50,12 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const { showBrush, endIndex } = useMemo(() => {
+    return {
+      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
+      endIndex: PROFILER_CHART_DATA_SIZE,
+    };
+  }, [data]);
 
   const handleClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
@@ -122,6 +130,15 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   />
                 ))}
                 <Legend onClick={handleClick} />
+                {showBrush && (
+                  <Brush
+                    data={data}
+                    endIndex={endIndex}
+                    gap={5}
+                    height={30}
+                    padding={{ left: 16, right: 16 }}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           ) : (
