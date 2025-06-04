@@ -24,18 +24,18 @@ export const CarouselLayout = ({
   pageTitle: string;
   children: ReactNode;
 }) => {
-  const { lg } = Grid.useBreakpoint();
+  const { xl } = Grid.useBreakpoint();
 
   return (
     <Layout>
       <DocumentTitle title={pageTitle} />
       <Content className="p-md">
         <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
-          <Col className="carousel-left-side-container" span={lg ? 8 : 24}>
+          <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
             {children}
           </Col>
-          {lg && (
-            <Col span={18}>
+          {xl && (
+            <Col span={14}>
               <div className="form-carousel-container">
                 <LoginCarousel />
               </div>

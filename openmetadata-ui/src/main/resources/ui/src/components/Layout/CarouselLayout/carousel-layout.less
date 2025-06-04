@@ -14,19 +14,16 @@
 
 .form-carousel-container {
   width: 100%;
-  height: 100%;
+  // Page height - page padding
+  height: calc(100vh - 32px);
+  padding: 24px;
+  position: relative;
   overflow: hidden;
   background: linear-gradient(45deg, #194185 0%, #2e90fa 100%);
   border-radius: @size-mlg;
-
-  @media screen and (min-width: 1710px) {
-    width: 100%;
-    height: calc(100vh - @size-xl * 2);
-  }
-
-  //   @media screen and (max-width: 1024px) {
-  //     display: none;
-  //   }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .ant-carousel .slick-dots li {
