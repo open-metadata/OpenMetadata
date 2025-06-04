@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
@@ -308,9 +308,7 @@ const GlossaryV1 = ({
 
     try {
       if (isVersionsView) {
-        const permission = isGlossaryActive
-          ? VERSION_VIEW_GLOSSARY_PERMISSION
-          : VERSION_VIEW_GLOSSARY_PERMISSION;
+        const permission = VERSION_VIEW_GLOSSARY_PERMISSION;
         setGlossaryPermission(permission);
         setGlossaryTermPermission(permission);
 
@@ -352,6 +350,43 @@ const GlossaryV1 = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  const glossaryContent = useMemo(() => {
+    if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
+      return (
+        <div className="d-flex justify-center items-center full-height">
+          <ErrorPlaceHolder
+            className="mt-0-important border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.glossary'),
+            })}
+            size={SIZE.X_LARGE}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <GlossaryDetails
+        handleGlossaryDelete={onGlossaryDelete}
+        isTabExpanded={isTabExpanded}
+        isVersionView={isVersionsView}
+        permissions={glossaryPermission}
+        toggleTabExpanded={toggleTabExpanded}
+        updateGlossary={handleGlossaryUpdate}
+        updateVote={updateVote}
+      />
+    );
+  }, [
+    glossaryPermission.ViewAll,
+    glossaryPermission.ViewBasic,
+    isTabExpanded,
+    isVersionsView,
+    onGlossaryDelete,
+    handleGlossaryUpdate,
+    updateVote,
+  ]);
+
   return (
     <>
       {(isLoading || isPermissionLoading) && <Loader />}
@@ -371,28 +406,7 @@ const GlossaryV1 = ({
           !isPermissionLoading &&
           !isEmpty(selectedData) &&
           (isGlossaryActive ? (
-            !(glossaryPermission.ViewAll || glossaryPermission.ViewBasic) ? (
-              <div className="d-flex justify-center items-center full-height">
-                <ErrorPlaceHolder
-                  className="mt-0-important border-none"
-                  permissionValue={t('label.view-entity', {
-                    entity: t('label.glossary'),
-                  })}
-                  size={SIZE.X_LARGE}
-                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-                />
-              </div>
-            ) : (
-              <GlossaryDetails
-                handleGlossaryDelete={onGlossaryDelete}
-                isTabExpanded={isTabExpanded}
-                isVersionView={isVersionsView}
-                permissions={glossaryPermission}
-                toggleTabExpanded={toggleTabExpanded}
-                updateGlossary={handleGlossaryUpdate}
-                updateVote={updateVote}
-              />
-            )
+            glossaryContent
           ) : (
             <GlossaryTermsV1
               glossaryTerm={selectedData as GlossaryTerm}
