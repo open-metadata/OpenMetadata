@@ -13,6 +13,38 @@
 
 package org.openmetadata.service.resources.databases;
 
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,35 +65,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.csv.CsvUtil;
-import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.api.data.CreateDatabase;
-import org.openmetadata.schema.api.data.CreateDatabaseSchema;
-import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.ApiStatus;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
@@ -127,7 +130,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Update databaseSchema with invalid tags field
     String resultsHeader =
         recordToString(EntityCsv.getResultHeaders(getDatabaseCsvHeaders(database, false)));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
     String csv = createCsv(getDatabaseCsvHeaders(database, false), listOf(record), null);
     CsvImportResult result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -138,7 +141,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertRows(result, expectedRows);
 
     //  invalid tag it will give error.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
     csv = createCsv(getDatabaseSchemaCsvHeaders(dbSchema, false), listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -150,7 +153,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // databaseSchema will be created if it does not exist
     String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), "non-existing");
-    record = "non-existing,dsp1,dsc1,,,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,,,";
     csv = createCsv(getDatabaseSchemaCsvHeaders(dbSchema, false), listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
@@ -169,13 +172,18 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         schemaTest.createRequest("s1").withDatabase(database.getFullyQualifiedName());
     schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
+    // Create certification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag certificationTag =
+            tagResourceTest.createEntity(tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, retentionPeriod,
     // sourceUrl, domain
     // Update terms with change in description
     String record =
         String.format(
-            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
-            user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
+            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,P23DT23H,http://test.com,%s,",
+            user1, certificationTag.getFullyQualifiedName(), escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(

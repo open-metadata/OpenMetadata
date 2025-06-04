@@ -127,7 +127,6 @@ public class DatabaseSchemaResourceTest
     String resultsHeader =
             recordToString(EntityCsv.getResultHeaders(getDatabaseSchemaCsvHeaders(schema, false)));
     String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
-    String recooo = "s1,dsp1,sep1,,,,Tier.Tier1,Certification.Gold,P30D,https://example.com/schema1,,";
     String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), listOf(record), null);
     CsvImportResult result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -220,12 +219,12 @@ public class DatabaseSchemaResourceTest
     modified.add(header);
 
     for (String line : csvLines.subList(1, csvLines.size())) {
-        if (line.contains("t1") && line.contains("table")) {
-            line = line.replace("Initial Table Description", "Updated Table Description");
-        } else if (line.contains("column")) {
-            line = line.replace("Initial Column Description", "Updated Column Description");
-        }
-        modified.add(line);
+      if (line.contains("t1") && line.contains("table")) {
+        line = line.replace("Initial Table Description", "Updated Table Description");
+      } else if (line.contains("column")) {
+        line = line.replace("Initial Column Description", "Updated Column Description");
+      }
+      modified.add(line);
     }
 
     String newCsv = String.join(CsvUtil.LINE_SEPARATOR, modified) + CsvUtil.LINE_SEPARATOR;
