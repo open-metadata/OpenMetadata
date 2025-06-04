@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -122,6 +122,32 @@ export const getCollapseHandle = (
   );
 };
 
+const getColumnNameContent = (column: Column, isLoading: boolean) => {
+  if (isLoading) {
+    return <Skeleton.Button active data-tesid="loader" size="small" />;
+  }
+
+  return (
+    <>
+      {column.dataType && (
+        <div className="custom-node-name-icon">
+          {getColumnDataTypeIcon({
+            dataType: column.dataType,
+            width: '14px',
+          })}
+        </div>
+      )}
+      <Typography.Text
+        className="custom-node-column-label"
+        ellipsis={{
+          tooltip: true,
+        }}>
+        {getEntityName(column)}
+      </Typography.Text>
+    </>
+  );
+};
+
 export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
@@ -132,6 +158,7 @@ export const getColumnContent = (
   summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
+  const columnNameContentRender = getColumnNameContent(column, isLoading);
 
   return (
     <div
@@ -153,19 +180,9 @@ export const getColumnContent = (
       )}
       <Row className="items-center" gutter={12}>
         <Col className="custom-node-name-container" flex="1">
-          {column.dataType && (
-            <div className="custom-node-name-icon">
-              {getColumnDataTypeIcon({
-                dataType: column.dataType,
-                width: '14px',
-              })}
-            </div>
-          )}
-          <Typography.Text
-            className="custom-node-column-label"
-            ellipsis={{ tooltip: true }}>
-            {getEntityName(column)}
-          </Typography.Text>
+          {/* Use isLoading to show skeleton, to avoid flickering and typography truncation issue, 
+          due to showDataObservabilitySummary conditional rendering */}
+          {columnNameContentRender}
         </Col>
 
         {column.constraint && (

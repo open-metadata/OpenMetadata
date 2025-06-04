@@ -24,7 +24,7 @@ const TestSuiteSummaryWidget = ({
   size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
-    return <Skeleton.Input active data-tesid="loader" />;
+    return <Skeleton.Button active data-tesid="loader" size="small" />;
   }
 
   return (
