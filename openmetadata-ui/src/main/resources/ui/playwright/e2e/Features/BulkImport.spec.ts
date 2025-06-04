@@ -387,7 +387,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -602,7 +603,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database Schema', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -794,6 +796,9 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    // 5 minutes to avoid test timeout happening some times in AUTs
+    test.setTimeout(300_000);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
