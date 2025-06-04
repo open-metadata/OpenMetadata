@@ -225,6 +225,7 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+  public static final String DATA_CONTRACT = "dataContract";
 
   //
   // Other entities
