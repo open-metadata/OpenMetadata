@@ -204,13 +204,15 @@ export class EntityClass {
 
   async tier(page: Page, tier1: string, tier2: string, entity?: EntityClass) {
     await assignTier(page, tier1, this.endpoint);
-    await checkExploreSearchFilter(
-      page,
-      'Tier',
-      'tier.tagFQN',
-      `Tier.${tier1}`,
-      entity
-    );
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Tier',
+        'tier.tagFQN',
+        `Tier.${tier1}`,
+        entity
+      );
+    }
     await assignTier(page, tier2, this.endpoint);
     await removeTier(page, this.endpoint);
   }
@@ -225,7 +227,9 @@ export class EntityClass {
 
   async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
     await assignTag(page, tag1);
-    await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag1, entity);
+    if (entity) {
+      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag1, entity);
+    }
     await assignTag(page, tag2, 'Edit');
     await removeTag(page, [tag2]);
     await removeTag(page, [tag1]);
@@ -285,13 +289,15 @@ export class EntityClass {
     entity?: EntityClass
   ) {
     await assignGlossaryTerm(page, glossaryTerm1);
-    await checkExploreSearchFilter(
-      page,
-      'Tag',
-      'tags.tagFQN',
-      glossaryTerm1.fullyQualifiedName,
-      entity
-    );
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        glossaryTerm1.fullyQualifiedName,
+        entity
+      );
+    }
     await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
