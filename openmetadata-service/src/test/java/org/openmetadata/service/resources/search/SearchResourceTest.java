@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.search;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.C1;
+import static org.openmetadata.service.resources.EntityResourceTest.C2;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import jakarta.ws.rs.client.WebTarget;
@@ -197,6 +199,8 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
     // Create many columns with names that could cause ngram explosion when combined with fuzzy
     // search
     String[] columnNames = {
+      C1,
+      C2,
       "customer_id",
       "customer_first_name",
       "customer_last_name",
