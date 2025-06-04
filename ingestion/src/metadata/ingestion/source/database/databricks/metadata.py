@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
@@ -65,6 +66,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_view_definitions,
+    get_schema_comment_result_wrapper,
+    get_schema_comment_results,
     get_table_comment_result_wrapper,
     get_table_comment_results,
     get_view_definition_wrapper,
@@ -326,6 +329,24 @@ def get_table_comment_result(
 
 
 @reflection.cache
+def get_schema_comment_result(
+    self,
+    connection,
+    query,
+    database,
+    schema,
+    **kw,  # pylint: disable=unused-argument
+):
+    return get_schema_comment_result_wrapper(
+        self,
+        connection,
+        query=query,
+        database=database,
+        schema=schema,
+    )
+
+
+@reflection.cache
 def get_table_ddl(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
@@ -413,6 +434,8 @@ DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 DatabricksDialect.get_table_comment_results = get_table_comment_results
+DatabricksDialect.get_schema_comment_results = get_schema_comment_results
+DatabricksDialect.get_schema_comment_result = get_schema_comment_result
 DatabricksDialect.get_table_comment_result = get_table_comment_result
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
@@ -755,6 +778,33 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_schema_description(self, schema_name: str) -> str:
+        description = None
+        try:
+            query = DATABRICKS_GET_SCHEMA_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            cursor = self.inspector.dialect.get_schema_comment_result(
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                schema=schema_name,
+            )
+            for result in list(cursor):
+                data = result.values()
+                if data[0] and data[0].strip() == "Comment":
+                    description = data[1] if data and data[1] else None
+                    return description
+
+        # Catch any exception without breaking the ingestion
+        except Exception as exep:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Schema description error for schema [{schema_name}]: {exep}"
+            )
+        return description
 
     def get_table_description(
         self, schema_name: str, table_name: str, inspector: Inspector
