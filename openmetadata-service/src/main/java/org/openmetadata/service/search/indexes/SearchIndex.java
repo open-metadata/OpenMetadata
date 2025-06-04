@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -109,8 +110,10 @@ public interface SearchIndex {
     map.put("descriptionStatus", getDescriptionStatus(entity));
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(entityType, entity));
-    map.put("tier", parseTags.getTierTag());
+    TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
+    Optional.ofNullable(tierTag)
+        .filter(tier -> tier.getTagFQN() != null && !tier.getTagFQN().isEmpty())
+        .ifPresent(tier -> map.put("tier", tier));
     Optional.ofNullable(entity.getCertification())
         .ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
