@@ -99,10 +99,10 @@ Let’s start with an example of fetching metadata from a database service, i.e.
     caption="Connection Successful"
     /%}
 
-- Once the database service is created and the connections are established, admins can set up Pipelines to ingest all the source data into OpenMetadata.
-  - Clicking on **View Service** will navigate to the Database service page, where you can view the Databases, Ingestion, and Connection Details Tabs. You can also **Add the Metadata Ingestion** from the Ingestion tab.
+- Add the default schema, database, and table patterns, then click Save to create and configure the database service. Administrators can subsequently set up pipelines to ingest source data into OpenMetadata.
+  - Clicking on **save** will navigate to the Database service page, where you can view the Databases, Agent, and Connection Details Tabs. You can also **Add the Metadata Agent** from the Agents tab.
 
-  - Or, you can directly start with **Adding Ingestion**.
+  - Or, you can directly start with **Adding Agent**.
 {% image
     src="/images/v1.7/how-to-guides/admin-guide/snowflake4.png"
     alt="Snowflake Service Created"
@@ -119,7 +119,7 @@ Let’s start with an example of fetching metadata from a database service, i.e.
     caption="View Snowflake Service"
     /%}
 
-- Click on **Add Ingestion** and enter the details to ingest metadata:
+- Click on **Add Agent** and enter the details to ingest metadata:
   - **Name:** The name is randomly generated, and includes the Service Name, and a randomly generated text to create a unique name.
   - **Database Filter Pattern:** to include or exclude certain databases. A database service has multiple databases, of which you can selectively ingest the required databases.
   - **Schema Filter Pattern:** to include or exclude certain schemas. A database can have multiple schemas, of which you can selectively ingest the required schemas.
@@ -133,26 +133,26 @@ Let’s start with an example of fetching metadata from a database service, i.e.
 
 {% image
     src="/images/v1.7/how-to-guides/admin-guide/snowflake6.png"
-    alt="Configure Metadata Ingestion"
-    caption="Configure Metadata Ingestion"
+    alt="Configure Metadata Agent"
+    caption="Configure Metadata Agent"
     /%}
 
-- **Schedule Metadata Ingestion** - Define when the metadata ingestion pipeline must run on a regular basis. Users can also use a **Custom Cron** expression.
+- **Schedule Metadata Agent** - Define when the metadata Agent pipeline must run on a regular basis. Users can also use a **Custom Cron** expression.
 {% image
     src="/images/v1.7/how-to-guides/admin-guide/schedule.png"
-    alt="Schedule and Deploy Metadata Ingestion"
-    caption="Schedule and Deploy Metadata Ingestion"
+    alt="Schedule and Deploy Metadata Agent"
+    caption="Schedule and Deploy Metadata Agent"
     /%}
 
-After the ingestion pipeline has been created and deployed successfully, click on **View Service**. The **Ingestion Tab** will provide all the details for the recent runs, like if the pipeline is queued, running, failed, or successful. On hovering over the ingestion details, admin users can view the scheduling frequency, as well as the start and end times for the recent runs. Users can perform certain actions, like:
+After the Agent pipeline has been created and deployed successfully, click on **View Service**. The **Agents Tab** will provide all the details for the recent runs, like if the pipeline is queued, running, failed, or successful. On hovering over the Agent details, admin users can view the scheduling frequency, as well as the start and end times for the recent runs. Users can perform certain actions, like:
 - **Run** the pipeline now.
 - **Kill** to end all the currently running pipelines.
 - **Redeploy:** When a  service connection is setup, it fetches the data as per the access provided. If the connection credentials are changed at a later point in time, redeploying will fetch additional data with updated access, if any.
 
 {% image
     src="/images/v1.7/how-to-guides/admin-guide/view-service.png"
-    alt="View Service Ingestion"
-    caption="View Service Ingestion"
+    alt="View Service Agent"
+    caption="View Service Agent"
     /%}
 
 By connecting to a database service, you can ingest the databases, schemas, tables, and columns. In the Service page, the **Databases Tab** will display all the ingested databases. Users can further drilldown to view the **Schemas**, and **Tables**.
@@ -163,19 +163,19 @@ By connecting to a database service, you can ingest the databases, schemas, tabl
     /%}
 
 {% note %}
-**Note:** Once you’ve run a metadata ingestion pipeline, you can create separate pipelines to bring in [**Usage**](/connectors/ingestion/workflows/usage), [**Lineage**](/connectors/ingestion/workflows/lineage), [**dbt**](/connectors/ingestion/workflows/dbt), or to run [**Profiler**](/how-to-guides/data-quality-observability/profiler/workflow). To add ingestion pipelines, select the required type of ingestion and enter the required details.
+**Note:** Once you’ve run a metadata Agent pipeline, you can create separate pipelines to bring in [**Usage**](/connectors/ingestion/workflows/usage), [**Lineage**](/connectors/ingestion/workflows/lineage), [**dbt**](/connectors/ingestion/workflows/dbt), or to run [**Profiler**](/how-to-guides/data-quality-observability/profiler/workflow). To add pipelines, select the required type of Agnt and enter the required details.
 {% /note %}
 
 {% image
     src="/images/v1.7/how-to-guides/admin-guide/snowflake8.png"
-    alt="Add Ingestion Pipelines for Usage, Lineage, Profiler, and dbt"
-    caption="Add Ingestion Pipelines for Usage, Lineage, Profiler, and dbt"
+    alt="Add Agent Pipelines for Usage, Lineage, Profiler, and dbt"
+    caption="Add Agent Pipelines for Usage, Lineage, Profiler, and dbt"
     /%}
 
 Admin users can create, edit, or delete services. They can also view the connection details for the existing services.
 
 {% note %}
-**Pro Tip:** Refer to the [Best Practices for Metadata Ingestion](/connectors/ingestion/best-practices).
+**Pro Tip:** Refer to the [Best Practices for Metadata Agent](/connectors/ingestion/best-practices).
 {% /note %}
 
 {%inlineCallout
