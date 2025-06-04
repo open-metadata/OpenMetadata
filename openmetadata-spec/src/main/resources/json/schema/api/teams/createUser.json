@@ -22,6 +22,10 @@
       "description": "External identifier from identity provider (used for SCIM).",
       "type": "string"
     },
+    "scimUserName": {
+      "description": "Raw user name from SCIM.",
+      "type": "string"
+    },  
     "email": {
       "$ref": "../../type/basic.json#/definitions/email"
     },

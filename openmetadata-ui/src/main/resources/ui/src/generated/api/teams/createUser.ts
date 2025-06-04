@@ -77,6 +77,10 @@ export interface CreateUser {
      */
     roles?: string[];
     /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
+    /**
      * Teams that the user belongs to
      */
     teams?: string[];
