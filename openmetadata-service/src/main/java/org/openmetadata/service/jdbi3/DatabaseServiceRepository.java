@@ -13,26 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.csv.CsvUtil.addExtension;
-import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwners;
-import static org.openmetadata.csv.CsvUtil.addTagLabels;
-import static org.openmetadata.csv.CsvUtil.addTagTiers;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
-import static org.openmetadata.csv.CsvUtil.formatCsv;
-import static org.openmetadata.service.Entity.DATABASE;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.Entity.STORED_PROCEDURE;
-import static org.openmetadata.service.Entity.TABLE;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -58,6 +38,25 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
+import static org.openmetadata.csv.CsvUtil.addExtension;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.csv.CsvUtil.formatCsv;
+import static org.openmetadata.service.Entity.DATABASE;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
 
 @Slf4j
 public class DatabaseServiceRepository
@@ -168,6 +167,8 @@ public class DatabaseServiceRepository
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
+      addField(recordList, entity.getCertification() != null && entity.getCertification().getTagLabel() != null ?
+              entity.getCertification().getTagLabel().getTagFQN() : "" );
 
       if (recursive) {
         Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");

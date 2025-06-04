@@ -13,35 +13,7 @@
 
 package org.openmetadata.service.resources.services;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.csv.CsvUtil.recordToString;
-import static org.openmetadata.csv.EntityCsv.entityNotFound;
-import static org.openmetadata.csv.EntityCsvTest.*;
-import static org.openmetadata.csv.EntityCsvTest.assertRows;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidEnumValue;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-
 import jakarta.ws.rs.client.WebTarget;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -56,6 +28,7 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -85,10 +58,43 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsv.entityNotFound;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidEnumValue;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 @Slf4j
 public class DatabaseServiceResourceTest
@@ -358,7 +364,7 @@ public class DatabaseServiceResourceTest
     // Update database with invalid tags field
     String resultsHeader =
         recordToString(EntityCsv.getResultHeaders(getDatabaseServiceCsvHeaders(service, false)));
-    String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,";
+    String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,,";
     String csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     CsvImportResult result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -369,7 +375,7 @@ public class DatabaseServiceResourceTest
     assertRows(result, expectedRows);
 
     //  invalid tag it will give error.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
     csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -381,7 +387,7 @@ public class DatabaseServiceResourceTest
 
     // database will be created if it does not exist
     String databaseFqn = FullyQualifiedName.add(serviceName, "non-existing");
-    record = "non-existing,dsp1,dsc1,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,";
     csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
@@ -400,12 +406,17 @@ public class DatabaseServiceResourceTest
         databaseTest.createRequest("d1").withService(service.getFullyQualifiedName());
     databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
 
+    // Create certification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag certificationTag =
+            tagResourceTest.createEntity(tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
     // Update terms with change in description
     String record =
         String.format(
-            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,",
-            user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
+            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,%s,",
+            user1, certificationTag.getFullyQualifiedName(), escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(
