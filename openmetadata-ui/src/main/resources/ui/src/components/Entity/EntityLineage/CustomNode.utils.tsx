@@ -158,6 +158,7 @@ export const getColumnContent = (
   summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
+  const columnNameContentRender = getColumnNameContent(column, isLoading);
 
   return (
     <div
@@ -181,7 +182,7 @@ export const getColumnContent = (
         <Col className="custom-node-name-container" flex="1">
           {/* Use isLoading to show skeleton, to avoid flickering and typography truncation issue, 
           due to showDataObservabilitySummary conditional rendering */}
-          {getColumnNameContent(column, isLoading)}
+          {columnNameContentRender}
         </Col>
 
         {column.constraint && (
