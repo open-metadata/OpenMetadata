@@ -8,7 +8,9 @@
     "dashboardMetadataConfigType": {
       "description": "Dashboard Source Config Metadata Pipeline type",
       "type": "string",
-      "enum": ["DashboardMetadata"],
+      "enum": [
+        "DashboardMetadata"
+      ],
       "default": "DashboardMetadata"
     }
   },
@@ -26,6 +28,14 @@
         "dbServiceNames": {
           "title": "Database Service Names List",
           "description": "List of Database Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dbServicePrefixes": {
+          "title": "Database Service Path Prefixes",
+          "description": "List of service path prefixes for lineage matching. Supported formats: <DBServiceName>, <DBServiceName>.<DatabaseName>, <DBServiceName>.<DatabaseName>.<SchemaName>, or <DBServiceName>.<DatabaseName>.<SchemaName>.<TableName>",
           "type": "array",
           "items": {
             "type": "string"
@@ -86,16 +96,16 @@
     "includeDraftDashboard": {
       "title": "Include Draft Dashboards",
       "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
-      "type":"boolean",
+      "type": "boolean",
       "default": true
     },
-    "overrideMetadata":{
+    "overrideMetadata": {
       "title": "Override Metadata",
       "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
       "type": "boolean",
       "default": false
     },
-    "overrideLineage":{
+    "overrideLineage": {
       "title": "Override Lineage",
       "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
       "type": "boolean",

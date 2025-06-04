@@ -115,9 +115,11 @@ class SigmaSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.workbookId)),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -165,9 +167,11 @@ class SigmaSource(DashboardServiceSource):
                             self.context.get().dashboard_service
                         ),
                         sourceUrl=SourceUrl(dashboard_details.url),
-                        description=Markdown(dashboard_details.description)
-                        if dashboard_details.description
-                        else None,
+                        description=(
+                            Markdown(dashboard_details.description)
+                            if dashboard_details.description
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:
@@ -223,6 +227,7 @@ class SigmaSource(DashboardServiceSource):
         self,
         dashboard_details: WorkbookDetails,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ):
         """
         yield dashboard lineage

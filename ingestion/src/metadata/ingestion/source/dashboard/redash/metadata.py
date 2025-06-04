@@ -201,6 +201,7 @@ class RedashSource(DashboardServiceSource):
         self,
         dashboard_details: dict,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources

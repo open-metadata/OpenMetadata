@@ -210,9 +210,11 @@ class MetabaseSource(DashboardServiceSource):
                 name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.context.get().project_name,
                 charts=[
                     FullyQualifiedEntityName(
@@ -287,6 +289,7 @@ class MetabaseSource(DashboardServiceSource):
         self,
         dashboard_details: MetabaseDashboardDetails,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
@@ -363,9 +366,11 @@ class MetabaseSource(DashboardServiceSource):
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
-            if db_service
-            else Dialect.ANSI,
+            (
+                ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+                if db_service
+                else Dialect.ANSI
+            ),
         )
 
         for table in lineage_parser.source_tables:

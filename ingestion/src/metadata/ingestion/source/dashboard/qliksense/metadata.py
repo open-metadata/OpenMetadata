@@ -136,9 +136,11 @@ class QliksenseSource(DashboardServiceSource):
                 name=EntityName(dashboard_details.qDocId),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.qDocName,
-                description=Markdown(dashboard_details.qMeta.description)
-                if dashboard_details.qMeta.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.qMeta.description)
+                    if dashboard_details.qMeta.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -189,9 +191,11 @@ class QliksenseSource(DashboardServiceSource):
                     right=CreateChartRequest(
                         name=EntityName(chart.qInfo.qId),
                         displayName=chart.qMeta.title,
-                        description=Markdown(chart.qMeta.description)
-                        if chart.qMeta.description
-                        else None,
+                        description=(
+                            Markdown(chart.qMeta.description)
+                            if chart.qMeta.description
+                            else None
+                        ),
                         chartType=ChartType.Other,
                         sourceUrl=SourceUrl(chart_url),
                         service=FullyQualifiedEntityName(
@@ -311,6 +315,7 @@ class QliksenseSource(DashboardServiceSource):
         self,
         dashboard_details: QlikDashboard,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         for datamodel in self.data_models or []:

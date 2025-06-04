@@ -309,6 +309,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between datamodel and table

@@ -110,9 +110,11 @@ class ModeSource(DashboardServiceSource):
             name=EntityName(dashboard_details.get(client.TOKEN)),
             sourceUrl=SourceUrl(dashboard_url),
             displayName=dashboard_details.get(client.NAME),
-            description=Markdown(dashboard_details.get(client.DESCRIPTION))
-            if dashboard_details.get(client.DESCRIPTION)
-            else None,
+            description=(
+                Markdown(dashboard_details.get(client.DESCRIPTION))
+                if dashboard_details.get(client.DESCRIPTION)
+                else None
+            ),
             charts=[
                 FullyQualifiedEntityName(
                     fqn.build(
@@ -130,10 +132,12 @@ class ModeSource(DashboardServiceSource):
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
+    # pylint: disable=too-many-locals
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         try:
