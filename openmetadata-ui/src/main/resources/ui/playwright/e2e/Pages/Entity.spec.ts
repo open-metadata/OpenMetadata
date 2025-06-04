@@ -211,10 +211,14 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tag(page, 'PersonalData.Personal', 'PII.None');
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
@@ -272,6 +276,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });

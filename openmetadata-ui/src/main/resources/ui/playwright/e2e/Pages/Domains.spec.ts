@@ -513,6 +513,10 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await page.reload();
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await addTagsAndGlossaryToDomain(page, {
@@ -522,6 +526,10 @@ test.describe('Domains', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`[data-testid="loader"]`, {
+        state: 'hidden',
+      });
       await selectDomain(page, domain.data);
 
       await page.waitForLoadState('networkidle');
@@ -716,7 +724,7 @@ test.describe('Domains Rbac', () => {
         await expect(
           userPage.getByTestId('permission-error-placeholder')
         ).toHaveText(
-          'You don’t have access, please check with the admin to get permissions'
+          "You don't have necessary permissions. Please check with the admin to get the  permission."
         );
       }
 

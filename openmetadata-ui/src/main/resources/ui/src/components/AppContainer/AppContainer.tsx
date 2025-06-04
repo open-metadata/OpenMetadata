@@ -13,7 +13,7 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -21,7 +21,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
@@ -36,7 +35,6 @@ const AppContainer = () => {
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const { isAuthenticated } = useApplicationStore();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   const { setConfig, bannerDetails } = useLimitStore();
 
@@ -71,16 +69,14 @@ const AppContainer = () => {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
         {/* Render left side navigation */}
-        <LeftSidebar isSidebarCollapsed={isSidebarCollapsed} />
+        <LeftSidebar />
 
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
-          {isProtectedRoute(location.pathname) && isAuthenticated ? (
-            <NavBar
-              isSidebarCollapsed={isSidebarCollapsed}
-              toggleSideBar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            />
+          {applicationRoutesClass.isProtectedRoute(location.pathname) &&
+          isAuthenticated ? (
+            <NavBar />
           ) : null}
 
           {/* Render main content */}

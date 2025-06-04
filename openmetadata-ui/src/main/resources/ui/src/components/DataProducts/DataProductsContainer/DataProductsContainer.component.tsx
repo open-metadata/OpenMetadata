@@ -13,7 +13,7 @@
 import { Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
@@ -26,15 +26,19 @@ import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
-import DataProductsSelectForm from '../DataProductSelectForm/DataProductsSelectForm';
+import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
+  newLook?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -43,13 +47,11 @@ const DataProductsContainer = ({
   dataProducts,
   activeDomain,
   onSave,
+  newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [previousDomainId, setPreviousDomainId] = useState<string | undefined>(
-    activeDomain?.id
-  );
 
   const handleAddClick = () => {
     setIsEditMode(true);
@@ -78,28 +80,15 @@ const DataProductsContainer = ({
     setIsEditMode(false);
   };
 
-  // Check for domain changes and clear data products if needed
-  useEffect(() => {
-    const currentDomainId = activeDomain?.id;
-
-    if (
-      previousDomainId !== currentDomainId &&
-      dataProducts.length > 0 &&
-      onSave
-    ) {
-      onSave([]);
-    }
-
-    setPreviousDomainId(currentDomainId);
-  }, [activeDomain?.id, previousDomainId, dataProducts, onSave]);
-
   const autoCompleteFormSelectContainer = useMemo(() => {
     return (
-      <DataProductsSelectForm
+      <DataProductsSelectList
+        open
         defaultValue={(dataProducts ?? []).map(
           (item) => item.fullyQualifiedName ?? ''
         )}
-        fetchApi={fetchAPI}
+        fetchOptions={fetchAPI}
+        mode="multiple"
         placeholder={t('label.data-product-plural')}
         onCancel={handleCancel}
         onSubmit={handleSave}
@@ -157,6 +146,16 @@ const DataProductsContainer = ({
           <Typography.Text className={classNames('text-sm font-medium')}>
             {t('label.data-product-plural')}
           </Typography.Text>
+          {showAddTagButton && (
+            <PlusIconButton
+              data-testid="add-data-product"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.data-product-plural'),
+              })}
+              onClick={handleAddClick}
+            />
+          )}
           {hasPermission && !isUndefined(activeDomain) && (
             <Row gutter={12}>
               {!isEmpty(dataProducts) && (
@@ -177,7 +176,7 @@ const DataProductsContainer = ({
         </Space>
       )
     );
-  }, [showHeader, dataProducts, hasPermission]);
+  }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
 
   const addTagButton = useMemo(
     () =>
@@ -192,27 +191,53 @@ const DataProductsContainer = ({
     [showAddTagButton]
   );
 
+  const renderer = useMemo(() => {
+    if (isEditMode) {
+      return autoCompleteFormSelectContainer;
+    }
+
+    if (newLook && isEmpty(renderDataProducts)) {
+      return null;
+    }
+
+    return (
+      <Row data-testid="data-products-list">
+        <Col className="flex flex-wrap gap-2">
+          {!newLook && addTagButton}
+          {renderDataProducts}
+        </Col>
+      </Row>
+    );
+  }, [
+    newLook,
+    isEditMode,
+    addTagButton,
+    renderDataProducts,
+    autoCompleteFormSelectContainer,
+  ]);
+
   const cardProps = useMemo(() => {
     return {
       title: header,
     };
-  }, [header]);
+  }, [header, showAddTagButton, isEditMode]);
+
+  if (newLook) {
+    return (
+      <ExpandableCard
+        cardProps={cardProps}
+        dataTestId="data-products-container"
+        isExpandDisabled={isEmpty(dataProducts)}>
+        {renderer}
+      </ExpandableCard>
+    );
+  }
 
   return (
-    <ExpandableCard
-      cardProps={cardProps}
-      dataTestId="data-products-container"
-      isExpandDisabled={isEmpty(dataProducts)}>
-      {!isEditMode && (
-        <Row data-testid="data-products-list">
-          <Col className="flex flex-wrap gap-2">
-            {addTagButton}
-            {renderDataProducts}
-          </Col>
-        </Row>
-      )}
-      {isEditMode && autoCompleteFormSelectContainer}
-    </ExpandableCard>
+    <div className="w-full" data-testid="data-products-container">
+      {header}
+      {renderer}
+    </div>
   );
 };
 

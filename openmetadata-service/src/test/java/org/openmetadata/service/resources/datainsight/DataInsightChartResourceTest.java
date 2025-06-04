@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.datainsight;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static jakarta.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
@@ -11,12 +11,12 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -64,7 +64,7 @@ public class DataInsightChartResourceTest
     assertResponseContains(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name must not be null");
+        "query param name must not be null");
   }
 
   @Test

@@ -2,14 +2,14 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -257,7 +257,8 @@ public interface SearchClient {
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
-  Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
+  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+      throws IOException;
 
   Response aggregate(AggregationRequest request) throws IOException;
 

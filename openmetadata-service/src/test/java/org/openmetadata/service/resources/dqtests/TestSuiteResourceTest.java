@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -17,6 +17,8 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -27,8 +29,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -130,7 +130,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -683,7 +683,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponseContains(
         () -> createEntity(createTestSuite, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestSuite createTestSuite1 = createRequest("", "description", "displayName", null);

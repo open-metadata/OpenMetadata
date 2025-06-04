@@ -21,11 +21,11 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -57,6 +57,13 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDestination;
       this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
+
+      // Validate webhook URL to prevent SSRF
+      if (this.webhook != null && this.webhook.getEndpoint() != null) {
+        org.openmetadata.service.util.URLValidator.validateURL(
+            this.webhook.getEndpoint().toString());
+      }
+
       this.client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {

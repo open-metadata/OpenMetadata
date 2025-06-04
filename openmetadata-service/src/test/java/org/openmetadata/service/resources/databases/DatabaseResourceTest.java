@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -86,7 +86,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = createRequest(test).withService(null);
     assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "query param service must not be null");
   }
 
   @Test
@@ -333,7 +335,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         database.getUsageSummary(),
         database.getLocation());
 
-    fields = "owners,databaseSchemas,usageSummary,location,tags";
+    fields = "owners,databaseSchemas,usageSummary,location,tags,followers";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

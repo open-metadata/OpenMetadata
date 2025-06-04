@@ -21,6 +21,9 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
@@ -34,15 +37,13 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -103,7 +104,24 @@ public final class EntityUtil {
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
-
+  public static final BiPredicate<List<EntityReference>, List<EntityReference>>
+      entityReferenceListMatch =
+          (list1, list2) -> {
+            if (list1 == null || list2 == null) {
+              return list1 == list2;
+            }
+            if (list1.size() != list2.size()) {
+              return false;
+            }
+            for (int i = 0; i < list1.size(); i++) {
+              EntityReference ref1 = list1.get(i);
+              EntityReference ref2 = list2.get(i);
+              if (ref1 == null || ref2 == null || !entityReferenceMatch.test(ref1, ref2)) {
+                return false;
+              }
+            }
+            return true;
+          };
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) ->
           tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
@@ -559,6 +577,10 @@ public final class EntityUtil {
         : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
   }
 
+  public static EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    return fqn == null ? null : Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
   public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;
@@ -776,5 +798,20 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
+  }
+
+  public static Object getEntityDetails(Map<String, Object> params) {
+    try {
+      String entityType = (String) params.get("entity_type");
+      String fqn = (String) params.get("fqn");
+
+      LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
+      String fields = "*";
+      Object entity = Entity.getEntityByName(entityType, fqn, fields, null);
+      return entity;
+    } catch (Exception e) {
+      LOG.error("Error getting entity details", e);
+      return Map.of("error", e.getMessage());
+    }
   }
 }

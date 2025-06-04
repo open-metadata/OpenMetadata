@@ -13,7 +13,7 @@
 export const DEFAULT_THEME = {
   primaryColor: '#1570ef',
   infoColor: '#84caff',
-  successColor: '#6ce9a6',
-  warningColor: '#fec84b',
+  successColor: '#039855',
+  warningColor: '#DC6803',
   errorColor: '#D92D20',
 };

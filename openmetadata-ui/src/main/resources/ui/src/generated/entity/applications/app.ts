@@ -607,6 +607,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -889,7 +890,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",
@@ -1323,6 +1324,7 @@ export interface ExecutionContext {
 export enum ScheduleType {
     Live = "Live",
     NoSchedule = "NoSchedule",
+    OnlyManual = "OnlyManual",
     Scheduled = "Scheduled",
     ScheduledOrManual = "ScheduledOrManual",
 }
