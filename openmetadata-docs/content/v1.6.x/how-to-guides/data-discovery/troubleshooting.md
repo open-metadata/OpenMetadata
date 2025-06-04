@@ -1,5 +1,5 @@
 ---
-title: Troubleshooting for Export issue
+title: Troubleshooting for Import-Export issue
 slug: /how-to-guides/data-discovery/troubleshooting
 ---
 
