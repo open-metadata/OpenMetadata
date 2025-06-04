@@ -16,9 +16,12 @@ import org.openmetadata.service.util.JsonUtils;
 public class RuleEngine {
 
   @Getter private static final RuleEngine instance = new RuleEngine();
-  @Getter private static final JsonLogic jsonLogic = new JsonLogic();
+  private final JsonLogic jsonLogic;
 
-  private RuleEngine() {}
+  private RuleEngine() {
+    this.jsonLogic = new JsonLogic();
+    LogicOps.addCustomOps(jsonLogic);
+  }
 
   public void evaluate(Object facts, List<SemanticsRule> rules) {
     evaluate(facts, rules, false);
@@ -50,7 +53,10 @@ public class RuleEngine {
 
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {
     try {
-      jsonLogic.apply(rule.getRule(), JsonUtils.getMap(facts));
+      Boolean result = (Boolean) jsonLogic.apply(rule.getRule(), JsonUtils.getMap(facts));
+      if (result == null || !result) {
+        throw new RuleValidationException(rule, "Entity does not satisfy the rule");
+      }
     } catch (JsonLogicException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
     }

@@ -3,7 +3,7 @@
     {
       "name": "Test Rule",
       "description": "This is a test rule for demonstration purposes checking that we have at most one owner.",
-      "rule": "{\"<=\":[{\"length\":[{\"var\":\"owners\"}]},1]}"
+      "rule": "{\"<=\":[{\"length\":{\"var\":\"owners\"}},1]}"
     }
   ]
 }
