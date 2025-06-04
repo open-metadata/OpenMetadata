@@ -409,14 +409,17 @@ public class DatabaseServiceResourceTest
     // Create certification
     TagResourceTest tagResourceTest = new TagResourceTest();
     Tag certificationTag =
-            tagResourceTest.createEntity(tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+        tagResourceTest.createEntity(
+            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
     // Update terms with change in description
     String record =
         String.format(
             "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,%s,",
-            user1, certificationTag.getFullyQualifiedName(), escapeCsv(DOMAIN.getFullyQualifiedName()));
+            user1,
+            certificationTag.getFullyQualifiedName(),
+            escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(

@@ -592,19 +592,19 @@ public class SearchRepository {
     return (AssetCertification) EntityUtil.getEntityField(entity, CERTIFICATION_FIELD);
   }
 
-  private void updateEntityCertificationInSearch(EntityInterface entity, AssetCertification certification) {
+  private void updateEntityCertificationInSearch(
+      EntityInterface entity, AssetCertification certification) {
     IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
     String indexName = indexMapping.getIndexName(clusterAlias);
-    
+
     Map<String, Object> doc = new HashMap<>();
     doc.put(CERTIFICATION_FIELD, JsonUtils.getMap(certification));
-    
+
     searchClient.updateEntity(
         indexName,
         entity.getId().toString(),
         doc,
-        String.format("ctx._source.%s = params.%s", CERTIFICATION_FIELD, CERTIFICATION_FIELD)
-    );
+        String.format("ctx._source.%s = params.%s", CERTIFICATION_FIELD, CERTIFICATION_FIELD));
   }
 
   public void propagateToRelatedEntities(

@@ -119,21 +119,22 @@ public class DatabaseSchemaResourceTest
     String schemaName = schema.getFullyQualifiedName();
     TableResourceTest tableTest = new TableResourceTest();
     CreateTable createTable =
-            tableTest.createRequest("s1").withDatabaseSchema(schema.getFullyQualifiedName());
+        tableTest.createRequest("s1").withDatabaseSchema(schema.getFullyQualifiedName());
     tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification, retentionPeriod, sourceUrl, domain, extension
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+    // retentionPeriod, sourceUrl, domain, extension
     // Create table with invalid tags field
     String resultsHeader =
-            recordToString(EntityCsv.getResultHeaders(getDatabaseSchemaCsvHeaders(schema, false)));
+        recordToString(EntityCsv.getResultHeaders(getDatabaseSchemaCsvHeaders(schema, false)));
     String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
     String csv = createCsv(getDatabaseSchemaCsvHeaders(schema, false), listOf(record), null);
     CsvImportResult result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
-            new String[] {
-                    resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
-            };
+        new String[] {
+          resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
+        };
     assertRows(result, expectedRows);
 
     // Tag will cause failure
@@ -171,14 +172,17 @@ public class DatabaseSchemaResourceTest
     // Create certification
     TagResourceTest tagResourceTest = new TagResourceTest();
     Tag certificationTag =
-            tagResourceTest.createEntity(tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+        tagResourceTest.createEntity(
+            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     List<String> updateRecords =
         listOf(
             String.format(
                 "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,P23DT23H,http://test.com,%s,",
-                user1, certificationTag.getFullyQualifiedName(), escapeCsv(DOMAIN.getFullyQualifiedName())));
+                user1,
+                certificationTag.getFullyQualifiedName(),
+                escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
     importCsvAndValidate(
@@ -233,7 +237,8 @@ public class DatabaseSchemaResourceTest
 
     // Validate updated table
     Table updated =
-        tableTest.getEntityByName(table.getFullyQualifiedName(), "description,certification", ADMIN_AUTH_HEADERS);
+        tableTest.getEntityByName(
+            table.getFullyQualifiedName(), "description,certification", ADMIN_AUTH_HEADERS);
     assertEquals("Updated Table Description", updated.getDescription());
 
     // Validate updated column

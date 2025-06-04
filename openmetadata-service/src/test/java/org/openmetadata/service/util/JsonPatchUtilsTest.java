@@ -1,19 +1,10 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
 import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Set;
-import java.util.UUID;
-
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +20,16 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -322,7 +323,8 @@ class JsonPatchUtilsTest {
   @Test
   void testRemoveCertificationTag() throws JsonPatchException, IOException {
     // Create a patch to remove the Certification tag
-    String patchString = """
+    String patchString =
+        """
             [
               {
                 "op": "remove",
@@ -347,19 +349,23 @@ class JsonPatchUtilsTest {
     long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
     long expiryTime = currentTime + oneYearInMillis;
     return "[\n"
-            + "  {\n"
-            + operationString
-            + "    \"path\": \"/certification\",\n"
-            + "    \"value\": {\n"
-            + "      \"tagLabel\": {\n"
-            + "        \"tagFQN\": \"Certification.Gold\",\n"
-            + "        \"labelType\": \"Manual\",\n"
-            + "        \"state\": \"Confirmed\"\n"
-            + "      },\n"
-            + "      \"appliedDate\": " + currentTime + ",\n"
-            + "      \"expiryDate\": " + expiryTime + "\n"
-            + "    }\n"
-            + "  }\n"
-            + "]";
+        + "  {\n"
+        + operationString
+        + "    \"path\": \"/certification\",\n"
+        + "    \"value\": {\n"
+        + "      \"tagLabel\": {\n"
+        + "        \"tagFQN\": \"Certification.Gold\",\n"
+        + "        \"labelType\": \"Manual\",\n"
+        + "        \"state\": \"Confirmed\"\n"
+        + "      },\n"
+        + "      \"appliedDate\": "
+        + currentTime
+        + ",\n"
+        + "      \"expiryDate\": "
+        + expiryTime
+        + "\n"
+        + "    }\n"
+        + "  }\n"
+        + "]";
   }
 }

@@ -1,15 +1,5 @@
 package org.openmetadata.service.migration.utils.v160;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.TABLE;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.Table;
@@ -27,6 +17,17 @@ import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.TABLE;
 
 @Slf4j
 public class MigrationUtil {
@@ -75,22 +76,7 @@ public class MigrationUtil {
         "DataStewardPolicy", "DataStewardPolicy-EditRule", operationsToAdd, collectionDAO);
   }
 
-  public static void addCertificationOperationsToPolicy(CollectionDAO collectionDAO) {
-
-    addOperationsToPolicyRule(
-        "DataConsumerPolicy",
-        "DataConsumerPolicy-EditRule",
-            List.of(MetadataOperation.EDIT_CERTIFICATION),
-        collectionDAO);
-
-    addOperationsToPolicyRule(
-        "DataStewardPolicy",
-        "DataStewardPolicy-EditRule",
-            List.of(MetadataOperation.EDIT_CERTIFICATION),
-        collectionDAO);
-  }
-
-  private static void addOperationsToPolicyRule(
+  public static void addOperationsToPolicyRule(
       String policyName,
       String ruleName,
       List<MetadataOperation> operationsToAdd,
