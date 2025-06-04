@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -92,7 +93,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
               response.getStatus() == 200,
               "Search should succeed without too_many_nested_clauses error");
 
-          String responseBody = response.readEntity(String.class);
+          String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
           assertTrue(responseBody.length() > 0);
         });
@@ -129,7 +130,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
               response.getStatus() == 200,
               "Topic search should succeed without too_many_nested_clauses error");
 
-          String responseBody = response.readEntity(String.class);
+          String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
           assertTrue(responseBody.length() > 0);
         });
@@ -149,7 +150,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
           assertTrue(
               response.getStatus() == 200, "Very long query search should succeed without errors");
 
-          String responseBody = response.readEntity(String.class);
+          String responseBody = (String) response.getEntity();
           assertNotNull(responseBody);
         });
   }
@@ -180,10 +181,14 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
             .queryParam("from", 0)
             .queryParam("size", 10);
 
-    return target
-        .request()
-        .header("Authorization", "Bearer " + ADMIN_AUTH_HEADERS.get("Authorization"))
-        .get();
+    try {
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+
+      return Response.ok(result).build();
+    } catch (org.apache.http.client.HttpResponseException e) {
+      LOG.error("Error occurred while executing search query: {}", e.getMessage());
+      return Response.status(e.getStatusCode()).entity(e.getMessage()).build();
+    }
   }
 
   private List<Column> createManyTableColumns() {
