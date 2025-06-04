@@ -16,10 +16,10 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Paging;
 

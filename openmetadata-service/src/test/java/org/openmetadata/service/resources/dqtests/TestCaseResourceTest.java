@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.dqtests;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,11 +56,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -465,7 +465,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -2259,7 +2259,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Create an entity with mandatory name field null
     final CreateTestCase request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestCase request1 = createRequest("", "description", "displayName", null);

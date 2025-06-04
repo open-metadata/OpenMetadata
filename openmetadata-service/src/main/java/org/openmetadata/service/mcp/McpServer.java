@@ -3,22 +3,25 @@ package org.openmetadata.service.mcp;
 import static org.openmetadata.service.search.SearchUtil.searchMetadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
-import io.dropwizard.setup.Environment;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.DispatcherType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.tools.GlossaryTermTool;
+import org.openmetadata.service.mcp.tools.GlossaryTool;
 import org.openmetadata.service.mcp.tools.PatchEntityTool;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -31,14 +34,19 @@ import org.openmetadata.service.util.JsonUtils;
 public class McpServer {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
+  private Limits limits;
 
   public McpServer() {}
 
   public void initializeMcpServer(
-      Environment environment, Authorizer authorizer, OpenMetadataApplicationConfig config) {
+      Environment environment,
+      Authorizer authorizer,
+      Limits limits,
+      OpenMetadataApplicationConfig config) {
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.authorizer = authorizer;
+    this.limits = limits;
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -66,7 +74,7 @@ public class McpServer {
             new JwtFilter(
                 config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
     contextHandler.addFilter(
-        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+        new FilterHolder((Filter) authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
   }
 
   public void addTools(McpSyncServer server) {
@@ -169,8 +177,11 @@ public class McpServer {
         case "get_entity_details":
           result = EntityUtil.getEntityDetails(params);
           break;
+        case "create_glossary":
+          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
+          break;
         case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, securityContext, params);
+          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
           break;
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, securityContext, params);

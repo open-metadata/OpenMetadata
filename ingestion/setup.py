@@ -382,6 +382,8 @@ test_unit = {
     "pytest-order",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # TODO: Remove once no unit test requires testcontainers
+    "testcontainers",
 }
 
 test = {
@@ -449,7 +451,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
-    "Faker==37.1.0",  # Fixed the version to prevent flaky tests!
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
 }
 
 if sys.version_info >= (3, 9):
@@ -504,8 +506,8 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         # FIXME: all-dev-env is a temporary solution to install all dependencies except
-        # those that might conflict with each other or cause issues in the dev environment
-        # This covers all development cases where none of the plugins are used
+        #   those that might conflict with each other or cause issues in the dev environment
+        #   This covers all development cases where none of the plugins are used
         "all-dev-env": filter_requirements(
             {"airflow", "db2", "great-expectations", "pymssql"}
         ),
