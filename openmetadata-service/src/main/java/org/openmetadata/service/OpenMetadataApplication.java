@@ -128,6 +128,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
@@ -138,7 +139,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-  private Limits limits;
+  protected Limits limits;
 
   protected Jdbi jdbi;
 
@@ -210,6 +211,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.setValidator(
         Validation.byDefaultProvider()
             .configure()
+            .parameterNameProvider(new CustomParameterNameProvider())
             .messageInterpolator(
                 new ResourceBundleMessageInterpolator(
                     new PlatformResourceBundleLocator("jakarta.validation.ValidationMessages")))
@@ -288,7 +290,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getMcpConfiguration() != null
         && catalogConfig.getMcpConfiguration().isEnabled()) {
       McpServer mcpServer = new McpServer();
-      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
+      mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
     }
   }
 
