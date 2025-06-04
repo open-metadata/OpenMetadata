@@ -186,7 +186,7 @@ const SchemaTable = () => {
     try {
       const response = await getTestCaseExecutionSummary(table?.testSuite?.id);
       setTestCaseSummary(response);
-    } catch (error) {
+    } catch {
       setTestCaseSummary(undefined);
     }
   };
