@@ -312,6 +312,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
         )
       }
       optionLabelProp="label"
+      // this popupClassName class is used to identify the dropdown in the playwright tests
+      popupClassName="async-select-list-dropdown"
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}

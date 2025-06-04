@@ -191,6 +191,7 @@ const ModelTab = () => {
 
     await handleColumnUpdate(tableCols);
   };
+
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {

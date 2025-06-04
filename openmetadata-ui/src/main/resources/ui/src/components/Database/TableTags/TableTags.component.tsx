@@ -33,7 +33,8 @@ const TableTags = <T extends TableUnion>({
   handleTagSelection,
   entityType,
 }: TableTagsComponentProps<T>) => {
-  const { onThreadLinkSelect } = useGenericContext();
+  const { onThreadLinkSelect, updateActiveTagDropdownKey } =
+    useGenericContext();
 
   return (
     <div
@@ -44,6 +45,7 @@ const TableTags = <T extends TableUnion>({
         data-testid="tags-wrapper">
         <TagsContainerV2
           showBottomEditButton
+          useGenericControls
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
           }}
@@ -56,6 +58,7 @@ const TableTags = <T extends TableUnion>({
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);
+            updateActiveTagDropdownKey(null);
           }}>
           <>
             {!isReadOnly && (
