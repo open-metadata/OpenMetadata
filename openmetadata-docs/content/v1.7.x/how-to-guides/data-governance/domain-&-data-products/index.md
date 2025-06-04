@@ -17,10 +17,6 @@ Domains in Open Metadata allow you to categorize and manage your data assets, gl
 - **Streamlined Management**: By associating teams and glossaries with specific domains, you can streamline the governance and oversight of data assets.
 - **Decentralized Control**: Each domain can be managed independently, aligning with the principles of a Data Mesh, where data ownership is distributed across different teams.
 
-Watch the [Demo on Domain in OpenMetadata](https://www.youtube.com/watch?v=t-9G3vaSdjI)
-
-{% youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="800px" height="450px" /%}
-
 ## Domains
 
 In the context of a data mesh, a domain refers to a specific area within an organization that produces and consumes data. Each domain is responsible for managing its data as a product, ensuring it is available, reliable, and understandable to other domains within the organization. Domains are typically aligned with business capabilities and are managed by cross-functional teams who are responsible for the entire lifecycle of the data within their domain.
@@ -46,10 +42,6 @@ Data Products in Open Metadata allow teams to package and present their data ass
 - **Centralized Access**: Data consumers can easily discover and access all Data Products available within their organization through the Explore page.
 - **Comprehensive Documentation**: Each Data Product comes with rich documentation, helping users understand the data’s context, usage, and governance.
 - **Metadata Management**: Essential metadata, such as owner information, expert contacts, tags, and styling, can be captured and maintained for each Data Product, enhancing discoverability and usability.
-
-Watch the [Demo on Data Product in OpenMetadata](https://www.youtube.com/watch?v=6NgI_G38D0A)
-
-{% youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="800px" height="450px" /%}
 
 ## Data Products
 
