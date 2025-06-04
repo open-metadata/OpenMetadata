@@ -1,75 +1,10 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
-import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
-import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
-import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
-import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
-import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
-import static org.openmetadata.service.search.SearchConstants.HITS;
-import static org.openmetadata.service.search.SearchConstants.ID;
-import static org.openmetadata.service.search.SearchConstants.PARENT;
-import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
-import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
-import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
-import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
-import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
-import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
-import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
-import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -111,6 +46,71 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
+import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.SearchConstants.HITS;
+import static org.openmetadata.service.search.SearchConstants.ID;
+import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
+import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
+import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
+import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
+import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 @Slf4j
 public class SearchRepository {
@@ -530,18 +530,33 @@ public class SearchRepository {
     }
   }
 
+  private static final String CERTIFICATION = "Certification";
+  private static final String CERTIFICATION_FIELD = "certification";
+  private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
+  private static final String UPDATE_CERTIFICATION_SCRIPT = "update_certification";
+
+  /**
+   * Propagate certification tag updates to search index
+   * @param entityType Type of the entity being updated
+   * @param entity The entity being updated
+   * @param changeDescription Description of the changes made to the entity
+   */
   public void propagateCertificationTags(
-          String entityType, EntityInterface entity, ChangeDescription changeDescription) {
-    if (changeDescription != null) {
-      if (entityType.equalsIgnoreCase(Entity.TAG)) {
-        Tag tagEntity = (Tag) entity;
-        if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
-          updateCertificationInSearch(tagEntity);
-        }
-      }
-      else {
-        checkForCertificationUpdate(entity, changeDescription);
-      }
+      String entityType, EntityInterface entity, ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return;
+    }
+
+    if (Entity.TAG.equalsIgnoreCase(entityType)) {
+      handleTagEntityUpdate((Tag) entity);
+    } else {
+      handleEntityCertificationUpdate(entity, changeDescription);
+    }
+  }
+
+  private void handleTagEntityUpdate(Tag tagEntity) {
+    if (CERTIFICATION.equals(tagEntity.getClassification().getFullyQualifiedName())) {
+      updateCertificationInSearch(tagEntity);
     }
   }
 
@@ -552,30 +567,44 @@ public class SearchRepository {
     paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
     paramMap.put("style", tagEntity.getStyle());
     searchClient.updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("certification.tagLabel.tagFQN", tagEntity.getFullyQualifiedName()),
-            new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
+        new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
   }
 
-  private void checkForCertificationUpdate(EntityInterface entity, ChangeDescription change) {
-    boolean certificationUpdated = change.getFieldsUpdated().stream()
-            .anyMatch(fieldChange -> "certification".equals(fieldChange.getName()));
-
-    if (certificationUpdated) {
-      AssetCertification certification = (AssetCertification)
-              EntityUtil.getEntityField(entity, "certification");
-
-      if (certification != null && certification.getTagLabel() != null) {
-        Map<String, Object> doc = new HashMap<>();
-        doc.put("certification", JsonUtils.getMap(certification));
-        IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
-        String indexName = indexMapping.getIndexName(clusterAlias);
-        String docId = entity.getId().toString();
-        String script = "ctx._source.certification = params.certification";
-        // Update the entity in the search index
-        searchClient.updateEntity(indexName, docId, doc, script);
-      }
+  private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
+    if (!isCertificationUpdated(change)) {
+      return;
     }
+
+    AssetCertification certification = getCertificationFromEntity(entity);
+    if (certification != null && certification.getTagLabel() != null) {
+      updateEntityCertificationInSearch(entity, certification);
+    }
+  }
+
+  private boolean isCertificationUpdated(ChangeDescription change) {
+    return change.getFieldsUpdated().stream()
+        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+  }
+
+  private AssetCertification getCertificationFromEntity(EntityInterface entity) {
+    return (AssetCertification) EntityUtil.getEntityField(entity, CERTIFICATION_FIELD);
+  }
+
+  private void updateEntityCertificationInSearch(EntityInterface entity, AssetCertification certification) {
+    IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    
+    Map<String, Object> doc = new HashMap<>();
+    doc.put(CERTIFICATION_FIELD, JsonUtils.getMap(certification));
+    
+    searchClient.updateEntity(
+        indexName,
+        entity.getId().toString(),
+        doc,
+        String.format("ctx._source.%s = params.%s", CERTIFICATION_FIELD, CERTIFICATION_FIELD)
+    );
   }
 
   public void propagateToRelatedEntities(
