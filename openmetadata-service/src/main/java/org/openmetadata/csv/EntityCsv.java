@@ -13,52 +13,11 @@
 
 package org.openmetadata.csv;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.csv.CsvUtil.ENTITY_TYPE_SEPARATOR;
-import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
-import static org.openmetadata.csv.CsvUtil.fieldToColumns;
-import static org.openmetadata.csv.CsvUtil.fieldToEntities;
-import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
-import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
-import static org.openmetadata.csv.CsvUtil.recordToString;
-import static org.openmetadata.service.Entity.DATABASE;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.STORED_PROCEDURE;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
-import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.TemporalAccessor;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -104,6 +63,48 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.ENTITY_TYPE_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.fieldToColumns;
+import static org.openmetadata.csv.CsvUtil.fieldToEntities;
+import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
+import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.Entity.DATABASE;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
+import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
+import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 
 /**
  * EntityCsv provides export and import capabilities for an entity. Each entity must implement the
@@ -1101,10 +1102,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
-        .withRetentionPeriod(csvRecord.get(7))
-        .withSourceUrl(csvRecord.get(8))
-        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-        .withExtension(getExtension(printer, csvRecord, 10))
+        .withRetentionPeriod(csvRecord.get(8))
+        .withSourceUrl(csvRecord.get(9))
+        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
@@ -1247,7 +1248,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-    String languageStr = csvRecord.get(20);
+    String languageStr = csvRecord.get(19);
     StoredProcedureLanguage language = null;
 
     if (languageStr != null && !languageStr.isEmpty()) {
@@ -1376,7 +1377,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         throw new IllegalArgumentException(
             "Array data type is mandatory for ARRAY columns: " + csvRecord.get(0));
       }
-      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(15)));
+      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(16)));
     }
 
     if (column.getDataType() == ColumnDataType.STRUCT && column.getChildren() == null) {
