@@ -57,6 +57,8 @@ class BaseModel(PydanticBaseModel):
             if not self.__class__.__name__.endswith("Connection"):
                 # Only parse FilterPattern for Connection classes
                 return
+            if not hasattr(self, "__pydantic_fields__"):
+                return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
                     from metadata.generated.schema.type.filterPattern import (
