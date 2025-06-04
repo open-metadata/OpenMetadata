@@ -78,6 +78,7 @@
 
   .column-container {
     min-height: 48px;
+    max-width: 320px;
     padding: 12px;
     background-color: @grey-1;
 
@@ -88,6 +89,7 @@
       .ant-collapse-header {
         padding: 4px;
         font-size: 12px;
+        display: inherit; // to fix the overflow issue of parent column node, which has children.
 
         .custom-node-column-container {
           background-color: @lineage-collapse-header;
@@ -284,16 +286,17 @@
 }
 
 .custom-node-column-container {
-  padding: 6px;
+  padding: 6px 8px;
   background: @white;
   position: relative;
   font-size: 12px;
   font-weight: 400;
 
   .custom-node-name-container {
+    min-width: 0;
     display: flex;
     align-items: center;
-    padding-left: 12px;
+    text-align: left;
     gap: 4px;
 
     .custom-node-name-icon {
@@ -302,7 +305,8 @@
     }
 
     .custom-node-column-label {
-      max-width: 140px;
+      width: 100%;
+      display: block;
     }
   }
 
