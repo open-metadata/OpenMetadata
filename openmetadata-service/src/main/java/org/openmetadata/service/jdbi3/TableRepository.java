@@ -1652,21 +1652,28 @@ public class TableRepository extends EntityRepository<Table> {
       return new ResultList<>(List.of(), null, null, 0);
     }
 
+    // Flatten nested columns for search
+    List<Column> flattenedColumns = flattenTableColumns(allColumns);
+
     List<Column> matchingColumns;
     if (query == null || query.trim().isEmpty()) {
-      matchingColumns = allColumns;
+      matchingColumns = flattenedColumns;
     } else {
       String searchTerm = query.toLowerCase().trim();
       matchingColumns =
-          allColumns.stream()
+          flattenedColumns.stream()
               .filter(
                   column -> {
                     if (column.getName() != null
                         && column.getName().toLowerCase().contains(searchTerm)) {
                       return true;
                     }
-                    return column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm);
+                    if (column.getDisplayName() != null
+                        && column.getDisplayName().toLowerCase().contains(searchTerm)) {
+                      return true;
+                    }
+                    return column.getDescription() != null
+                        && column.getDescription().toLowerCase().contains(searchTerm);
                   })
               .toList();
     }
@@ -1694,5 +1701,16 @@ public class TableRepository extends EntityRepository<Table> {
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedResults, before, after, total);
+  }
+
+  private List<Column> flattenTableColumns(List<Column> columns) {
+    List<Column> flattened = new ArrayList<>();
+    for (Column column : columns) {
+      flattened.add(column);
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        flattened.addAll(flattenTableColumns(column.getChildren()));
+      }
+    }
+    return flattened;
   }
 }

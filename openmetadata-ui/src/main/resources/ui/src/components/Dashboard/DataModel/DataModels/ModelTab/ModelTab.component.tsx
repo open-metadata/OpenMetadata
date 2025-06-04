@@ -22,8 +22,9 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
@@ -35,6 +36,11 @@ import {
   DashboardDataModel,
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
+import { usePaging } from '../../../../../hooks/paging/usePaging';
+import {
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
+} from '../../../../../rest/dataModelsAPI';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
 import {
   getColumnSorter,
@@ -48,6 +54,8 @@ import {
 import { updateFieldTags } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -63,20 +71,82 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [searchText, setSearchText] = useState('');
+
+  const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(true);
+
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+
   const {
     data: dataModel,
     permissions,
     onUpdate,
   } = useGenericContext<DashboardDataModel>();
-  const {
-    columns: data,
-    fullyQualifiedName: entityFqn,
-    deleted: isReadOnly,
-  } = dataModel;
+  const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
-  const { tableColumns, deleted } = useMemo(
+  // Always use paginated columns, never dataModel.columns directly
+  const data = paginatedColumns;
+
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!entityFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchDataModelColumnsByFQN(
+              entityFqn,
+              searchQuery,
+              pageSize,
+              offset,
+              'tags'
+            )
+          : await getDataModelColumnsByFQN(entityFqn, pageSize, offset, 'tags');
+
+        setPaginatedColumns(response.data || []);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        setPaginatedColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: PAGE_SIZE_LARGE,
+          total: 0,
+        });
+      }
+      setColumnsLoading(false);
+    },
+    [entityFqn, pageSize, handlePagingChange]
+  );
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage, cursorType }: PagingHandlerParams) => {
+      if (searchText) {
+        fetchPaginatedColumns(currentPage, searchText);
+      } else if (cursorType) {
+        fetchPaginatedColumns(currentPage, searchText);
+      }
+      handlePageChange(currentPage);
+    },
+    [paging, fetchPaginatedColumns, searchText, handlePageChange]
+  );
+
+  const { deleted } = useMemo(
     () => ({
-      tableColumns: dataModel?.columns ?? [],
       deleted: dataModel?.deleted,
     }),
     [dataModel]
@@ -107,9 +177,17 @@ const ModelTab = () => {
     >;
   }, [data]);
 
+  useEffect(() => {
+    if (entityFqn) {
+      fetchPaginatedColumns(1, searchText || undefined);
+    }
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      const dataModelData = cloneDeep(data);
+      // Update tags both in the original data model and refresh pagination
+      const originalColumns = dataModel?.columns ?? [];
+      const dataModelData = cloneDeep(originalColumns);
 
       updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
@@ -118,14 +196,26 @@ const ModelTab = () => {
       );
 
       await onUpdate({ ...dataModel, columns: dataModelData });
+
+      // Refresh current page to show updated tags
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     },
-    [data, updateFieldTags]
+    [
+      dataModel,
+      updateFieldTags,
+      onUpdate,
+      fetchPaginatedColumns,
+      currentPage,
+      searchText,
+    ]
   );
 
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
       if (!isUndefined(editColumnDescription)) {
-        const dataModelColumns = cloneDeep(data);
+        // Update description in the original data model
+        const originalColumns = dataModel?.columns ?? [];
+        const dataModelColumns = cloneDeep(originalColumns);
         updateDataModelColumnDescription(
           dataModelColumns,
           editColumnDescription?.fullyQualifiedName ?? '',
@@ -135,10 +225,19 @@ const ModelTab = () => {
           ...dataModel,
           columns: dataModelColumns,
         });
+
+        fetchPaginatedColumns(currentPage, searchText || undefined);
       }
       setEditColumnDescription(undefined);
     },
-    [editColumnDescription, data]
+    [
+      editColumnDescription,
+      dataModel,
+      onUpdate,
+      fetchPaginatedColumns,
+      currentPage,
+      searchText,
+    ]
   );
 
   const updateColumnFields = ({
@@ -161,12 +260,15 @@ const ModelTab = () => {
     });
   };
   const handleColumnUpdate = async (updatedColumns: Column[]) => {
-    if (dataModel && !isEqual(tableColumns, updatedColumns)) {
+    const originalColumns = dataModel?.columns ?? [];
+    if (dataModel && !isEqual(originalColumns, updatedColumns)) {
       const updatedTableDetails = {
         ...dataModel,
         columns: updatedColumns,
       };
       await onUpdate(updatedTableDetails);
+
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     }
   };
 
@@ -180,7 +282,8 @@ const ModelTab = () => {
       return; // Early return if id is not provided
     }
 
-    const tableCols = cloneDeep(tableColumns);
+    const originalColumns = dataModel?.columns ?? [];
+    const tableCols = cloneDeep(originalColumns);
 
     updateColumnFields({
       fqn: fullyQualifiedName,
@@ -191,6 +294,42 @@ const ModelTab = () => {
 
     await handleColumnUpdate(tableCols);
   };
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      onSearch: (value: string) => {
+        setSearchText(value);
+        handlePageChange(1);
+      },
+      onClear: () => setSearchText(''),
+    }),
+    [searchText, handlePageChange, t]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: columnsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      columnsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleColumnsPageChange,
+      handlePageSizeChange,
+    ]
+  );
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -312,12 +451,18 @@ const ModelTab = () => {
       <Table
         className="p-t-xs align-table-filter-left"
         columns={tableColumn}
+        customPaginationProps={paginationProps}
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
+        loading={columnsLoading}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}
+        searchProps={searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />

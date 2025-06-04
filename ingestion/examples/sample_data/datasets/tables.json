@@ -32082,6 +32082,141 @@
         "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
       },
       "sourceUrl": "http://localhost:8080/performance_test_table"
+    },
+    {
+      "name": "big_data_table_with_nested_columns",
+      "description": "A large table with thousands of columns including nested structures for testing pagination and search performance",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/big-data-table-nested",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE big_data_table_with_nested_columns AS SELECT * FROM big_source",
+      "columns": [
+        {
+                "name": "column_0001",
+                "dataType": "BIGINT",
+                "dataTypeDisplay": "bigint",
+                "description": "Auto-generated column 1 for testing pagination and search",
+                "tags": [],
+                "ordinalPosition": 1
+        },
+        {
+                "name": "column_0002",
+                "dataType": "INT",
+                "dataTypeDisplay": "int",
+                "description": "Auto-generated column 2 for testing pagination and search",
+                "tags": [],
+                "ordinalPosition": 2
+        },
+        {
+                "name": "column_0003",
+                "dataType": "VARCHAR",
+                "dataLength": 255,
+                "dataTypeDisplay": "varchar(255)",
+                "description": "Auto-generated column 3 for testing pagination and search",
+                "tags": [],
+                "ordinalPosition": 3
+        },
+        {
+                "name": "nested_struct_01",
+                "dataType": "STRUCT",
+                "dataTypeDisplay": "struct",
+                "description": "Nested structure 1 containing customer/order/product data",
+                "tags": [],
+                "ordinalPosition": 1001,
+                "children": [
+                        {
+                                "name": "field_01",
+                                "dataType": "BIGINT",
+                                "dataTypeDisplay": "bigint",
+                                "description": "Nested field 1 in structure 1",
+                                "tags": [],
+                                "ordinalPosition": 1
+                        },
+                        {
+                                "name": "field_02",
+                                "dataType": "DOUBLE",
+                                "dataTypeDisplay": "double",
+                                "description": "Nested field 2 in structure 1",
+                                "tags": [],
+                                "ordinalPosition": 2
+                        },
+                        {
+                                "name": "field_03",
+                                "dataType": "INT",
+                                "dataTypeDisplay": "int",
+                                "description": "Nested field 3 in structure 1",
+                                "tags": [],
+                                "ordinalPosition": 3
+                        }
+                ]
+        },
+        {
+                "name": "deeply_nested_data",
+                "dataType": "STRUCT",
+                "dataTypeDisplay": "struct",
+                "description": "Deeply nested structure for testing recursive search",
+                "tags": [],
+                "ordinalPosition": 1011,
+                "children": [
+                        {
+                                "name": "customer_info",
+                                "dataType": "STRUCT",
+                                "dataTypeDisplay": "struct",
+                                "description": "Customer information structure",
+                                "tags": [],
+                                "ordinalPosition": 1,
+                                "children": [
+                                        {
+                                                "name": "personal_details",
+                                                "dataType": "STRUCT",
+                                                "dataTypeDisplay": "struct",
+                                                "description": "Personal details nested structure",
+                                                "tags": [],
+                                                "ordinalPosition": 1,
+                                                "children": [
+                                                        {
+                                                                "name": "first_name",
+                                                                "dataType": "VARCHAR",
+                                                                "dataLength": 50,
+                                                                "dataTypeDisplay": "varchar(50)",
+                                                                "description": "Customer first name",
+                                                                "tags": [],
+                                                                "ordinalPosition": 1
+                                                        },
+                                                        {
+                                                                "name": "last_name",
+                                                                "dataType": "VARCHAR",
+                                                                "dataLength": 50,
+                                                                "dataTypeDisplay": "varchar(50)",
+                                                                "description": "Customer last name",
+                                                                "tags": [],
+                                                                "ordinalPosition": 2
+                                                        }
+                                                ]
+                                        }
+                                ]
+                        }
+                ]
+        }
+      ],
+      "database": {
+        "id": "c7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains mock tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/c7be1e2c-b3dc-11ec-b909-0242ac120002"
+      },
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      },
+      "sourceUrl": "http://localhost:8080/big_data_table_with_nested_columns",
+      "tags": []
     }
   ]
 }
