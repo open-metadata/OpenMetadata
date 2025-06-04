@@ -84,7 +84,7 @@ class QueryParserTest(TestCase):
         ingestion_dir = Path(__file__).parent.parent.parent.parent
         assert (
             ingestion_dir.name == "ingestion"
-        ), "Expected ingestion directory name to be 'ingestion', this is likely caused by a refact"
+        ), "Expected ingestion directory name to be 'ingestion', this is likely caused by a refactor."
 
         conn_opts = config_dict["source"]["serviceConnection"]["config"][
             "connectionOptions"

@@ -19,7 +19,9 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.tools.GlossaryTermTool;
+import org.openmetadata.service.mcp.tools.GlossaryTool;
 import org.openmetadata.service.mcp.tools.PatchEntityTool;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -32,14 +34,19 @@ import org.openmetadata.service.util.JsonUtils;
 public class McpServer {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
+  private Limits limits;
 
   public McpServer() {}
 
   public void initializeMcpServer(
-      Environment environment, Authorizer authorizer, OpenMetadataApplicationConfig config) {
+      Environment environment,
+      Authorizer authorizer,
+      Limits limits,
+      OpenMetadataApplicationConfig config) {
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.authorizer = authorizer;
+    this.limits = limits;
     McpSchema.ServerCapabilities serverCapabilities =
         McpSchema.ServerCapabilities.builder()
             .tools(true)
@@ -170,8 +177,11 @@ public class McpServer {
         case "get_entity_details":
           result = EntityUtil.getEntityDetails(params);
           break;
+        case "create_glossary":
+          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
+          break;
         case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, securityContext, params);
+          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
           break;
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, securityContext, params);

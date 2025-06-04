@@ -62,18 +62,7 @@ def unit(session):
     #       we should find a way to avoid this
     session.install("pip")
 
-    # TODO: We need to remove ignored test once they can be run properly within nox
-    # Run unit tests
-    ignored_tests = [
-        "test_usage_filter.py",
-        "profiler/test_profiler_partitions.py",
-        "profiler/test_workflow.py",
-        "topology",
-    ]
-    ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
-
-    # run pytest with the ignore arguments
-    session.run("pytest", "tests/unit/", *ignore_args)
+    session.run("pytest", "tests/unit/")
 
 
 # TEST PLUGINS

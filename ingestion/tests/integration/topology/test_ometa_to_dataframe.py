@@ -25,7 +25,7 @@ from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 
-from .topology.database.test_datalake import mock_datalake_config
+from .database.test_datalake import mock_datalake_config
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
