@@ -63,6 +63,7 @@ import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
   selectColumns,
+  setupGlossaryDenyPermissionTest,
   toggleBulkActionColumnsSelection,
   updateGlossaryReviewer,
   updateGlossaryTermDataFromTree,
@@ -1432,6 +1433,38 @@ test.describe('Glossary tests', () => {
       await glossary1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Verify Glossary Deny Permission', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    const { dataConsumerUser, glossary1, cleanup } =
+      await setupGlossaryDenyPermissionTest(apiContext);
+
+    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
+      await performUserLogin(browser, dataConsumerUser);
+
+    await redirectToHomePage(dataConsumerPage);
+    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(
+      dataConsumerPage,
+      glossary1.data.displayName,
+      false
+    );
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toHaveText(
+      "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
+    );
+
+    await consumerAfterAction();
+    await cleanup(apiContext);
+    await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
