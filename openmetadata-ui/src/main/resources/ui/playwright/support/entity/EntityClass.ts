@@ -66,6 +66,7 @@ export class EntityClass {
   serviceType?: ServiceTypes;
   childrenTabId?: string;
   childrenSelectorId?: string;
+  childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
 
