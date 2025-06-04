@@ -49,34 +49,41 @@ import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
+  getFormattedServiceType,
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <Tooltip
-    overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
-    title={
-      <Typography.Text className="text-white">
-        {node.title}
-        {node.type && (
-          <span className="text-grey-400">{` (${node.type})`}</span>
+const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
+  const tooltipText = node.tooltip ?? node.title;
+
+  return (
+    <Tooltip
+      overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
+      title={
+        <Typography.Text className="text-white">
+          {tooltipText}
+          {node.type && (
+            <span className="text-grey-400">{` (${node.type})`}</span>
+          )}
+        </Typography.Text>
+      }>
+      <div className="d-flex justify-between">
+        <Typography.Text
+          className={classNames({
+            'm-l-xss': node.data?.isRoot,
+          })}
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          {node.title}
+        </Typography.Text>
+        {!isUndefined(node.count) && (
+          <span className="explore-node-count">
+            {getCountBadge(node.count)}
+          </span>
         )}
-      </Typography.Text>
-    }>
-    <div className="d-flex justify-between">
-      <Typography.Text
-        className={classNames({
-          'm-l-xss': node.data?.isRoot,
-        })}
-        data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-        {node.title}
-      </Typography.Text>
-      {!isUndefined(node.count) && (
-        <span className="explore-node-count">{getCountBadge(node.count)}</span>
-      )}
-    </div>
-  </Tooltip>
-);
+      </div>
+    </Tooltip>
+  );
+};
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
@@ -213,6 +220,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             ) : (
               <>{bucket.key}</>
             ),
+            tooltip: getFormattedServiceType(bucket.key),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,
