@@ -31,6 +31,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
@@ -532,7 +533,6 @@ public class SearchRepository {
   private static final String CERTIFICATION = "Certification";
   private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
-  private static final String UPDATE_CERTIFICATION_SCRIPT = "update_certification";
 
   /**
    * Propagate certification tag updates to search index
@@ -595,15 +595,14 @@ public class SearchRepository {
       EntityInterface entity, AssetCertification certification) {
     IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
     String indexName = indexMapping.getIndexName(clusterAlias);
-
-    Map<String, Object> doc = new HashMap<>();
-    doc.put(CERTIFICATION_FIELD, JsonUtils.getMap(certification));
+    Map<String, Object> paramMap = new HashMap<>();
+    paramMap.put("name", certification.getTagLabel().getName());
+    paramMap.put("description", certification.getTagLabel().getDescription());
+    paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
+    paramMap.put("style", certification.getTagLabel().getStyle());
 
     searchClient.updateEntity(
-        indexName,
-        entity.getId().toString(),
-        doc,
-        String.format("ctx._source.%s = params.%s", CERTIFICATION_FIELD, CERTIFICATION_FIELD));
+        indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
   }
 
   public void propagateToRelatedEntities(
