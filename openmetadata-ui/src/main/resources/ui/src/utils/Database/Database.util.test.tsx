@@ -37,8 +37,10 @@ jest.mock(
   })
 );
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: mockNavigate,
 }));
 
 describe('Database Util', () => {
@@ -180,7 +182,8 @@ describe('Database Util', () => {
       const result = ExtraDatabaseDropdownOptions(
         'databaseFqn',
         permission,
-        false
+        false,
+        mockNavigate
       );
 
       expect(result).toHaveLength(1);
@@ -196,7 +199,8 @@ describe('Database Util', () => {
       const result = ExtraDatabaseDropdownOptions(
         'databaseFqn',
         permission,
-        false
+        false,
+        mockNavigate
       );
 
       expect(result).toHaveLength(1);
@@ -212,7 +216,8 @@ describe('Database Util', () => {
       const result = ExtraDatabaseDropdownOptions(
         'databaseFqn',
         permission,
-        false
+        false,
+        mockNavigate
       );
 
       expect(result).toHaveLength(2);
@@ -228,7 +233,8 @@ describe('Database Util', () => {
       const result = ExtraDatabaseDropdownOptions(
         'databaseFqn',
         permission,
-        false
+        false,
+        mockNavigate
       );
 
       expect(result).toHaveLength(0);
@@ -243,7 +249,8 @@ describe('Database Util', () => {
       const result = ExtraDatabaseDropdownOptions(
         'databaseFqn',
         permission,
-        true
+        true,
+        mockNavigate
       );
 
       expect(result).toHaveLength(0);

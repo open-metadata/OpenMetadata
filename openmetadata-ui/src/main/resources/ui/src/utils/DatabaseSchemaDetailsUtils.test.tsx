@@ -30,8 +30,10 @@ jest.mock(
   })
 );
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: mockNavigate,
 }));
 
 describe('ExtraDatabaseSchemaDropdownOptions', () => {
@@ -44,7 +46,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -60,7 +63,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -76,7 +80,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(2);
@@ -92,7 +97,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);
@@ -107,7 +113,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      true
+      true,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);

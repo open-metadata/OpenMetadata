@@ -122,9 +122,7 @@ describe('Test EntityDelete Modal Component', () => {
       });
     });
 
-    await act(async () => {
-      jest.runAllTimers();
-    });
+    jest.runOnlyPendingTimers();
 
     const inputBox = await screen.findByTestId('confirmation-text-input');
 
