@@ -23,6 +23,13 @@ public class RuleEngine {
     LogicOps.addCustomOps(jsonLogic);
   }
 
+  /**
+   * Evaluates the default platform entity semantics rules against the provided entity
+   */
+  public void evaluate(Object facts) {
+    evaluate(facts, null, false);
+  }
+
   public void evaluate(Object facts, List<SemanticsRule> rules) {
     evaluate(facts, rules, false);
   }

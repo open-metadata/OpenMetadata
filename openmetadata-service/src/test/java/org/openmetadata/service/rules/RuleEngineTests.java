@@ -48,7 +48,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     // we're passing no extra rules, just using the ones on the default settings (no more than 1
     // owner)
-    RuleEngine.getInstance().evaluate(table, null);
+    RuleEngine.getInstance().evaluate(table);
 
     Table tableWithOneOwner =
         table.withOwners(
@@ -56,7 +56,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                 new org.openmetadata.schema.type.EntityReference()
                     .withId(UUID.randomUUID())
                     .withName("owner1")));
-    RuleEngine.getInstance().evaluate(tableWithOneOwner, null);
+    RuleEngine.getInstance().evaluate(tableWithOneOwner);
 
     Table tableWithOwners =
         table.withOwners(
@@ -68,8 +68,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                     .withId(UUID.randomUUID())
                     .withName("owner2")));
     assertThrows(
-        RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(tableWithOwners, null));
+        RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(tableWithOwners));
 
     // if we don't apply the default rules, it should work
     RuleEngine.getInstance().evaluate(tableWithOwners, null, true);
