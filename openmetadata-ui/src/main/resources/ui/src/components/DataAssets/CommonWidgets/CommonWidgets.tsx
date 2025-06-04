@@ -279,6 +279,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -302,6 +303,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}

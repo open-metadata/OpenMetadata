@@ -151,7 +151,7 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-      <Row className="d-flex items-center" gutter={12}>
+      <Row className="items-center" gutter={12}>
         <Col className="custom-node-name-container" flex="1">
           {column.dataType && (
             <div className="custom-node-name-icon">

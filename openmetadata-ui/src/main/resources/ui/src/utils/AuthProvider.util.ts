@@ -413,3 +413,24 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
 
   return user;
 };
+
+export const requiredAuthFields = [
+  'authority',
+  'clientId',
+  'callbackUrl',
+  'provider',
+];
+
+export const validateAuthFields = (
+  configJson: AuthenticationConfigurationWithScope,
+  t: (key: string, options?: any) => string
+) => {
+  requiredAuthFields.forEach((field) => {
+    const value =
+      configJson[field as keyof AuthenticationConfigurationWithScope];
+    if (isEmpty(value)) {
+      // eslint-disable-next-line no-console
+      console.warn(t('message.missing-config-value', { field }));
+    }
+  });
+};

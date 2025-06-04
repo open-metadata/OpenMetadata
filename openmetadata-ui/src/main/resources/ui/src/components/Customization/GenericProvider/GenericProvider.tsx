@@ -67,6 +67,9 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
   updateWidgetHeight: (widgetId: string, height: number) => void;
+  // Props to control the dropdown state of Tag/Glossary from the Generic Provider
+  activeTagDropdownKey: string | null;
+  updateActiveTagDropdownKey: (key: string | null) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -98,6 +101,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
+  const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
@@ -138,6 +144,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     },
     [setFilteredKeys]
   );
+
+  const updateActiveTagDropdownKey = useCallback((key: string | null) => {
+    setActiveTagDropdownKey(key);
+  }, []);
 
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
@@ -216,6 +226,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       layout: filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     }),
     [
       data,
@@ -228,6 +240,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     ]
   );
 

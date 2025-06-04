@@ -89,6 +89,7 @@
       .ant-collapse-header {
         padding: 4px;
         font-size: 12px;
+        display: inherit; // to fix the overflow issue of parent column node, which has children.
 
         .custom-node-column-container {
           background-color: @lineage-collapse-header;

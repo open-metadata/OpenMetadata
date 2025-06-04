@@ -75,15 +75,52 @@ const TagsContainerV2 = ({
   defaultState,
   newLook = false,
   sizeCap = LIST_SIZE,
+  useGenericControls,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const { t } = useTranslation();
-  const { onThreadLinkSelect } = useGenericContext();
+  const {
+    onThreadLinkSelect,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+  } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
-
-  const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
+  const [internalIsEditTags, setInternalIsEditTags] = useState(false);
+
+  const { isEditTags, dropdownKey } = useMemo(() => {
+    const dropdownKey = `${columnData?.fqn ?? entityFqn}-${tagType}`;
+
+    return {
+      dropdownKey,
+      isEditTags: useGenericControls
+        ? activeTagDropdownKey === dropdownKey
+        : internalIsEditTags,
+    };
+  }, [
+    tagType,
+    entityFqn,
+    columnData?.fqn,
+    activeTagDropdownKey,
+    updateActiveTagDropdownKey,
+    internalIsEditTags,
+    useGenericControls,
+  ]);
+
+  // Helper function to handle external/internal control
+  const handleExternalControl = useCallback(
+    (isOpen: boolean) => {
+      if (useGenericControls) {
+        isOpen
+          ? updateActiveTagDropdownKey(dropdownKey)
+          : updateActiveTagDropdownKey(null);
+      } else {
+        setInternalIsEditTags(isOpen);
+      }
+    },
+    [useGenericControls, dropdownKey]
+  );
 
   const {
     isGlossaryType,
@@ -158,17 +195,17 @@ const TagsContainerV2 = ({
     }
 
     form.resetFields();
-    setIsEditTags(false);
+    handleExternalControl(false);
   };
 
   const handleCancel = useCallback(() => {
-    setIsEditTags(false);
+    handleExternalControl(false);
     form.resetFields();
-  }, [form]);
+  }, [form, handleExternalControl]);
 
   const handleAddClick = useCallback(() => {
-    setIsEditTags(true);
-  }, [isGlossaryType]);
+    handleExternalControl(true);
+  }, [handleExternalControl]);
 
   const addTagButton = useMemo(
     () =>
