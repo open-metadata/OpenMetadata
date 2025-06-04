@@ -96,7 +96,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
-      setIsSubmitLoading(true);
+      setIsLoading(true);
       let retn: EntityReference[] = [];
       if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
@@ -105,8 +105,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         );
         retn = [domain];
       }
-      await onSubmit(retn);
-      setIsSubmitLoading(false);
+      try {
+        await onSubmit(retn);
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       onCancel();
     }
