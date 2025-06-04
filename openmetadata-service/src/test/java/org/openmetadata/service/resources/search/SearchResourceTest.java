@@ -82,8 +82,7 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(testTableWithManyColumns);
 
     String problematicQuery = "int_snowplow_experiment_evaluation";
-    //waitForIndexingCompletion("table_search_index", problematicQuery, 3000);
-
+    // waitForIndexingCompletion("table_search_index", problematicQuery, 3000);
 
     assertDoesNotThrow(
         () -> {
