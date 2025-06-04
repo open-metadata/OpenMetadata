@@ -353,8 +353,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
-      addField(recordList, entity.getCertification() != null && entity.getCertification().getTagLabel() != null ?
-              entity.getCertification().getTagLabel().getTagFQN() : "" );
+      addField(
+          recordList,
+          entity.getCertification() != null && entity.getCertification().getTagLabel() != null
+              ? entity.getCertification().getTagLabel().getTagFQN()
+              : "");
       Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
@@ -447,7 +450,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
                 .withService(database.getService());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification, retentionPeriod,
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+      // retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
       List<TagLabel> tagLabels =

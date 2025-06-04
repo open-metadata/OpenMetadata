@@ -175,7 +175,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Create certification
     TagResourceTest tagResourceTest = new TagResourceTest();
     Tag certificationTag =
-            tagResourceTest.createEntity(tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+        tagResourceTest.createEntity(
+            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, retentionPeriod,
     // sourceUrl, domain
@@ -183,7 +184,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     String record =
         String.format(
             "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,P23DT23H,http://test.com,%s,",
-            user1, certificationTag.getFullyQualifiedName(), escapeCsv(DOMAIN.getFullyQualifiedName()));
+            user1,
+            certificationTag.getFullyQualifiedName(),
+            escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(

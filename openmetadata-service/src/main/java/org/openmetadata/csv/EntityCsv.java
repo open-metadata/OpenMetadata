@@ -384,15 +384,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (nullOrEmpty(certificationTag)) {
       return null;
     }
-    // Dates are populated by default, this will be modified based on the assetCertification settings during import
-    TagLabel certificationLabel = new TagLabel()
-            .withTagFQN(certificationTag)
-            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    // Dates are populated by default, this will be modified based on the assetCertification
+    // settings during import
+    TagLabel certificationLabel =
+        new TagLabel().withTagFQN(certificationTag).withSource(TagLabel.TagSource.CLASSIFICATION);
 
     return new AssetCertification()
-            .withTagLabel(certificationLabel)
-            .withAppliedDate(System.currentTimeMillis())
-            .withExpiryDate(System.currentTimeMillis());
+        .withTagLabel(certificationLabel)
+        .withAppliedDate(System.currentTimeMillis())
+        .withExpiryDate(System.currentTimeMillis());
   }
 
   public Map<String, Object> getExtension(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)

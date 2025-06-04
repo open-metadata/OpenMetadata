@@ -167,8 +167,11 @@ public class DatabaseServiceRepository
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
-      addField(recordList, entity.getCertification() != null && entity.getCertification().getTagLabel() != null ?
-              entity.getCertification().getTagLabel().getTagFQN() : "" );
+      addField(
+          recordList,
+          entity.getCertification() != null && entity.getCertification().getTagLabel() != null
+              ? entity.getCertification().getTagLabel().getTagFQN()
+              : "");
 
       if (recursive) {
         Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
@@ -230,7 +233,8 @@ public class DatabaseServiceRepository
         database = new Database().withService(service.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification, domain, extension
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
+      // domain, extension
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -241,7 +245,7 @@ public class DatabaseServiceRepository
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-      
+
       database
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(databaseFqn)
