@@ -14,11 +14,12 @@ Main entrypoints to create and test connections
 for any source.
 """
 import traceback
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
+from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.importer import import_connection_fn
 from metadata.utils.logger import cli_logger
 
@@ -28,10 +29,47 @@ GET_CONNECTION_FN_NAME = "get_connection"
 TEST_CONNECTION_FN_NAME = "test_connection"
 
 
+def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:
+    """
+    Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
+    """
+
+    from metadata.utils.service_spec.service_spec import (
+        BaseSpec,
+        import_connection_class,
+    )
+
+    connection_type = getattr(connection, "type", None)
+    if connection_type:
+        service_type = get_service_type_from_source_type(connection_type.value)
+        try:
+            spec = BaseSpec.get_for_source(service_type, connection_type.value.lower())
+            if getattr(spec, "connection_class", None):
+                connection_class = import_connection_class(
+                    service_type, connection_type.value.lower()
+                )
+
+                def _get_connection_with_client(conn):
+                    return connection_class(conn).get_client()
+
+                return _get_connection_with_client
+        except Exception:
+            logger.error(
+                f"Error importing connection class for {connection_type.value}"
+            )
+            logger.debug(traceback.format_exc())
+    return None
+
+
 def get_connection_fn(connection: BaseModel) -> Callable:
     """
-    Import the get_connection function from the source
+    Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
     """
+    # Try ServiceSpec path first
+    connection_fn = _get_connection_fn_from_service_spec(connection)
+    if connection_fn:
+        return connection_fn
+    # Fallback to default
     return import_connection_fn(
         connection=connection, function_name=GET_CONNECTION_FN_NAME
     )
