@@ -653,6 +653,10 @@ export interface PipelineStatus {
      */
     endDate?: number;
     /**
+     * Metadata for the pipeline status.
+     */
+    metadata?: { [key: string]: any };
+    /**
      * Pipeline status denotes if its failed or succeeded.
      */
     pipelineState?: PipelineState;
