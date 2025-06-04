@@ -29,6 +29,7 @@ import {
 import {
   addMultiOwner,
   addOwner,
+  assignCertification,
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
@@ -41,6 +42,7 @@ import {
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeCertification,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -216,6 +218,11 @@ export class EntityClass {
     }
     await assignTier(page, tier2, this.endpoint);
     await removeTier(page, this.endpoint);
+  }
+
+  async certification(page: Page, certification1: string) {
+    await assignCertification(page, certification1, this.endpoint);
+    await removeCertification(page, this.endpoint);
   }
 
   async descriptionUpdate(page: Page) {

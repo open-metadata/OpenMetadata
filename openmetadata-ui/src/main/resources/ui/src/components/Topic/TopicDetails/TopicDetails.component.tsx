@@ -44,7 +44,11 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -372,6 +376,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (topicDetails) {
+        const certificationTag: Topic['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTopicDetails = {
+          ...topicDetails,
+          certification: certificationTag,
+        };
+
+        await onTopicUpdate(updatedTopicDetails, 'certification');
+      }
+    },
+    [topicDetails, onTopicUpdate]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -401,6 +420,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityType={EntityType.TOPIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={topicPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}
