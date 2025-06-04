@@ -139,7 +139,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-  private Limits limits;
+  protected Limits limits;
 
   protected Jdbi jdbi;
 
