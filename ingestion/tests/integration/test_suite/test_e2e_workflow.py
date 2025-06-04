@@ -278,7 +278,7 @@ class TestE2EWorkflow(unittest.TestCase):
                 assert test_case_2
 
                 test_case_result_1 = self.metadata.client.get(
-                    f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".my_test_case",
                     data={
                         "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
@@ -288,7 +288,7 @@ class TestE2EWorkflow(unittest.TestCase):
                     },
                 )
                 test_case_result_2 = self.metadata.client.get(
-                    f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".id.table_column_to_be_not_null",
                     data={
                         "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
@@ -340,7 +340,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".my_test_case",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -348,7 +348,7 @@ class TestE2EWorkflow(unittest.TestCase):
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".id.table_column_to_be_not_null",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -411,7 +411,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".my_test_case",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -419,7 +419,7 @@ class TestE2EWorkflow(unittest.TestCase):
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResult/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".id.table_column_to_be_not_null",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
