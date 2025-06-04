@@ -957,7 +957,7 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
-  - category: How-to Guides / Data Discovery / Import/Export Troubleshooting
+  - category: How-to Guides / Data Discovery / Import-Export Troubleshooting
     url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Table Constraint
     url: /how-to-guides/data-discovery/table-constraint
