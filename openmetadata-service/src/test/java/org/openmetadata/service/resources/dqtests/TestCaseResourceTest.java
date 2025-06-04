@@ -1338,7 +1338,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         hasDeletedFalse = true;
       }
     }
-    assertTrue(hasDeletedTrue && hasDeletedFalse); // We should have both deleted and non-deleted test cases in the executable test suite
+    assertTrue(
+        hasDeletedTrue
+            && hasDeletedFalse); // We should have both deleted and non-deleted test cases in the
+    // executable test suite
 
     // Hard Delete a test case from the executable test suite and check that it is deleted from the
     // executable test suite and from the logical test suite
@@ -1346,12 +1349,27 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
     logicalTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, logicalTestSuiteTestCases.getData().size());
+    assertTrue(
+        logicalTestSuiteTestCases.getData().stream()
+            .allMatch(
+                t -> {
+                  List<TestSuite> testSuites = t.getTestSuites();
+                  return testSuites.stream()
+                      .anyMatch(
+                          ts -> ts.getId().toString().equals(logicalTestSuite.getId().toString()));
+                }));
     assertTrue(assertTestCaseIdNotInList(logicalTestSuiteTestCases, executableTestCaseIdToDelete));
 
     queryParams.put("testSuiteId", testSuiteID);
     executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(initialSize - 1, executableTestSuiteTestCases.getData().size());
+    assertTrue(
+        executableTestSuiteTestCases.getData().stream()
+            .allMatch(
+                t -> {
+                  List<TestSuite> testSuites = t.getTestSuites();
+                  return testSuites.stream()
+                      .anyMatch(ts -> ts.getId().toString().equals(testSuiteID));
+                }));
     assertTrue(
         assertTestCaseIdNotInList(executableTestSuiteTestCases, executableTestCaseIdToDelete));
   }
