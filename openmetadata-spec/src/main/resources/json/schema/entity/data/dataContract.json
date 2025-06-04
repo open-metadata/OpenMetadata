@@ -92,36 +92,6 @@
         "version"
       ],
       "additionalProperties": false
-    },
-    "semanticsRule": {
-        "type": "object",
-        "javaType": "org.openmetadata.schema.type.SemanticsRule",
-        "description": "Semantics rule defined in the data contract.",
-        "properties": {
-          "name": {
-            "title": "Rule Name",
-            "description": "Name of the semantics rule.",
-            "type": "string"
-          },
-          "description": {
-            "title": "Rule Description",
-            "description": "Description of the semantics rule.",
-            "$ref": "../../type/basic.json#/definitions/markdown"
-          },
-          "rule": {
-            "title": "Rule Definition",
-            "description": "Definition of the semantics rule.",
-            "type": "string",
-            "outputType": "jsonlogic",
-            "format": "queryBuilder"
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "rule"
-        ],
-        "additionalProperties": false
     }
   },
   "properties": {
@@ -181,7 +151,7 @@
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/semanticsRule"
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
       },
       "default": null
     },
