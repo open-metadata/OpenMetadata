@@ -98,6 +98,7 @@ export class ContainerClass extends EntityClass {
     this.serviceType = ServiceTypes.STORAGE_SERVICES;
     this.type = 'Container';
     this.serviceCategory = SERVICE_TYPE.Storage;
+    this.childrenSelectorId = `${this.entity.dataModel.columns[0].name}`;
   }
 
   async create(
