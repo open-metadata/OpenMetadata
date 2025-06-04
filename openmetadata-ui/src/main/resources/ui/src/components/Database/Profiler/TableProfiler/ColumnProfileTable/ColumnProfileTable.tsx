@@ -382,7 +382,7 @@ const ColumnProfileTable = () => {
       });
 
       setColumnTestCases(data);
-    } catch (error) {
+    } catch {
       setColumnTestCases([]);
     } finally {
       setIsTestCaseLoading(false);
@@ -416,7 +416,7 @@ const ColumnProfileTable = () => {
 
         setData(response.data || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setData([]);
         handlePagingChange({
           offset: 1,
@@ -430,12 +430,7 @@ const ColumnProfileTable = () => {
   );
 
   const handleColumnProfilePageChange = useCallback(
-    ({ currentPage, cursorType }: PagingHandlerParams) => {
-      if (searchText) {
-        fetchTableColumnWithProfiler(currentPage, searchText);
-      } else if (cursorType) {
-        fetchTableColumnWithProfiler(currentPage, searchText);
-      }
+    ({ currentPage }: PagingHandlerParams) => {
       handlePageChange(currentPage);
     },
     [paging, fetchTableColumnWithProfiler, searchText]
@@ -467,6 +462,15 @@ const ColumnProfileTable = () => {
       onShowSizeChange: handlePageSizeChange,
     };
   }, [currentPage, pageSize, showPagination, searchText, isColumnsLoading]);
+
+  const searchProps = useMemo(() => {
+    return {
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      typingInterval: 500,
+      onSearch: handleSearchAction,
+    };
+  }, [searchText, handleSearchAction]);
 
   return (
     <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
@@ -595,12 +599,7 @@ const ColumnProfileTable = () => {
             pagination={false}
             rowKey="name"
             scroll={{ x: true }}
-            searchProps={{
-              placeholder: t('message.find-in-table'),
-              value: searchText,
-              typingInterval: 500,
-              onSearch: handleSearchAction,
-            }}
+            searchProps={searchProps}
             size="small"
           />
         </Col>

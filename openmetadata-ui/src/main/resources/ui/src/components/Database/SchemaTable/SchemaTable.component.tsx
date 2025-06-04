@@ -229,7 +229,7 @@ const SchemaTable = () => {
 
         setPaginatedColumns(response.data || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         // Set empty state if API fails
         setPaginatedColumns([]);
         handlePagingChange({
@@ -244,12 +244,8 @@ const SchemaTable = () => {
   );
 
   const handleColumnsPageChange = useCallback(
-    ({ currentPage, cursorType }: PagingHandlerParams) => {
-      if (searchText) {
-        fetchPaginatedColumns(currentPage, searchText);
-      } else if (cursorType) {
-        fetchPaginatedColumns(currentPage, searchText);
-      }
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
       handlePageChange(currentPage);
     },
     [paging, fetchPaginatedColumns, searchText]

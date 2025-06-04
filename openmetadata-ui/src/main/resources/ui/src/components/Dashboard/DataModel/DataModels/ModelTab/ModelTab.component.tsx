@@ -30,7 +30,7 @@ import {
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../../../constants/TableKeys.constants';
-import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import {
   Column,
   DashboardDataModel,
@@ -109,14 +109,17 @@ const ModelTab = () => {
 
         // Use search API if there's a search query, otherwise use regular pagination
         const response = searchQuery
-          ? await searchDataModelColumnsByFQN(
-              entityFqn,
-              searchQuery,
-              pageSize,
+          ? await searchDataModelColumnsByFQN(entityFqn, {
+              limit: pageSize,
               offset,
-              'tags'
-            )
-          : await getDataModelColumnsByFQN(entityFqn, pageSize, offset, 'tags');
+              fields: TabSpecificField.TAGS,
+              q: searchQuery,
+            })
+          : await getDataModelColumnsByFQN(entityFqn, {
+              limit: pageSize,
+              offset,
+              fields: TabSpecificField.TAGS,
+            });
 
         setPaginatedColumns(response.data || []);
         handlePagingChange(response.paging);
@@ -134,12 +137,9 @@ const ModelTab = () => {
   );
 
   const handleColumnsPageChange = useCallback(
-    ({ currentPage, cursorType }: PagingHandlerParams) => {
-      if (searchText) {
-        fetchPaginatedColumns(currentPage, searchText);
-      } else if (cursorType) {
-        fetchPaginatedColumns(currentPage, searchText);
-      }
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
+
       handlePageChange(currentPage);
     },
     [paging, fetchPaginatedColumns, searchText, handlePageChange]
