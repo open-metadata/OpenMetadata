@@ -21,7 +21,10 @@ import React, {
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
+import {
+  EDITOR_OPTIONS,
+  TEXT_TYPES,
+} from '../../constants/BlockEditor.constants';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -79,12 +82,16 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         },
         handleDOMEvents: {
           paste: (view, event) => {
-            // Allow paste if either image or file upload is enabled
-            if (!allowImageUpload && !allowFileUpload) {
+            const items = Array.from(event.clipboardData?.items || []);
+            // Check if the paste contains text types
+            const hasText = items.some(
+              (item) => item.kind === 'string' && TEXT_TYPES.includes(item.type)
+            );
+            // Allow paste if either image or file upload is enabled or if the paste contains text types
+            if ((!allowImageUpload && !allowFileUpload) || hasText) {
               return false;
             }
 
-            const items = Array.from(event.clipboardData?.items || []);
             const files = items
               .filter((item) => item.kind === FileType.FILE)
               .map((item) => item.getAsFile())
