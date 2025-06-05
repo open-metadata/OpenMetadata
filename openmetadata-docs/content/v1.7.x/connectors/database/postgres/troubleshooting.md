@@ -5,6 +5,37 @@ slug: /connectors/database/postgres/troubleshooting
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
+## Troubleshooting: `pg_stat_statements` Relation Does Not Exist
+
+**Issue**  
+When running a query through OpenMetadata, you may encounter the following error:
+
+
+```sql
+(psycopg2.errors.UndefinedTable) relation "pg_stat_statements" does not exist
+LINE 9:         pg_stat_statements s
+```
+
+**Cause**  
+This error occurs because the PostgreSQL extension `pg_stat_statements` is not enabled. This extension is required to access query execution statistics, which are used by OpenMetadata for usage and performance insights.
+
+**Solution**  
+Enable the `pg_stat_statements` extension in your PostgreSQL instance. You can do this by executing the following command as a superuser:
+
+```sql
+CREATE EXTENSION pg_stat_statements;
+```
+
+Additionally, ensure the extension is loaded at server startup by setting the following in your `postgresql.conf`:
+
+```sql
+shared_preload_libraries = 'pg_stat_statements'
+```
+
+After making this change, restart the PostgreSQL server.
+
+For more details, refer to the official PostgreSQL documentation: [pg_stat_statements – PostgreSQL](https://www.postgresql.org/docs/current/pgstatstatements.html)
+
 Learn how to resolve the most common problems people encounter in the PostgreSQL connector.
 
 ## Column XYZ does not exist
