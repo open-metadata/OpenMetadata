@@ -588,7 +588,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         {`${t('label.include')}:`}
                       </p>
                       <Button
-                        className="include-columns-add-button"
+                        className="include-columns-add-button flex-center"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -873,7 +873,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               {`${t('label.value')}:`}
                             </p>
                             <Button
-                              className="include-columns-add-button"
+                              className="include-columns-add-button flex-center"
                               icon={<PlusOutlined />}
                               size="small"
                               type="primary"
