@@ -122,6 +122,10 @@ const ColumnProfileTable = () => {
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
+  const columnCount = useMemo(() => {
+    return tableProfiler?.profile?.columnCount ?? paging.total;
+  }, [overallSummary]);
+
   // SingleColumnProfile needs tableDetailsWithColumns to be passed as props
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
@@ -564,7 +568,11 @@ const ColumnProfileTable = () => {
                     showProgressBar={false}
                     title={summery.title}
                     total={0}
-                    value={summery.value}
+                    value={
+                      summery.key === 'column-count'
+                        ? columnCount
+                        : summery.value
+                    }
                   />
                 </Col>
               ))}

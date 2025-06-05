@@ -135,24 +135,29 @@ export const TableProfilerProvider = ({
         title: t('label.entity-count', {
           entity: t('label.row'),
         }),
+        key: 'row-count',
         value: profile?.rowCount ?? 0,
       },
       {
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
+        key: 'column-count',
         value: profile?.columnCount ?? tableProfiler?.columns.length ?? 0,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
+        key: 'profile-sample-type',
         value: getProfileSampleValue(),
       },
       {
         title: t('label.size'),
+        key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
       },
       {
         title: t('label.created-date'),
+        key: 'created-date',
         value: profile?.createDateTime
           ? DateTime.fromJSDate(new Date(profile?.createDateTime))
               .toUTC()
