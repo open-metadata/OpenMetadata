@@ -1057,7 +1057,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
-    entity.setCertification(fields.contains(FIELD_TAGS) ? getCertification(entity) : null);
+    entity.setCertification(fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION) ? getCertification(entity) : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -3658,8 +3658,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      if (Objects.equals(origCertification, updatedCertification) || updatedCertification == null)
+      if (Objects.equals(origCertification, updatedCertification))
         return;
+
+      if(updatedCertification == null) {
+        recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
+        return;
+      }
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =
