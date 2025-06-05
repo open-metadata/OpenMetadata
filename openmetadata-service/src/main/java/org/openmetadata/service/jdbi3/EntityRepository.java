@@ -3661,7 +3661,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      LOG.debug("Updating certification - Original: {}, Updated: {}", origCertification, updatedCertification);
+      LOG.debug(
+          "Updating certification - Original: {}, Updated: {}",
+          origCertification,
+          updatedCertification);
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
