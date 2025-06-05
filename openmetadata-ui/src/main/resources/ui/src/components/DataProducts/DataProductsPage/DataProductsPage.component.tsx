@@ -67,7 +67,7 @@ const DataProductsPage = () => {
         ({ id }) => id === currentUserId
       ),
     };
-  }, [dataProduct, currentUserId]);
+  }, [dataProduct?.followers, currentUserId]);
 
   const handleDataProductUpdate = async (updatedData: DataProduct) => {
     if (dataProduct) {
