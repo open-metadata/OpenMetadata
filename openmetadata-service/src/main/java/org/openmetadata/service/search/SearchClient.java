@@ -364,4 +364,82 @@ public interface SearchClient {
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
+
+  /**
+   * Get a list of data stream names that match the given prefix.
+   *
+   * @param prefix The prefix to match data stream names against
+   * @return List of data stream names that match the prefix
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default List<String> getDataStreams(String prefix) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete data streams that match the given name or pattern.
+   *
+   * @param dataStreamName The name or pattern of data streams to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteDataStream(String dataStreamName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an Index Lifecycle Management (ILM) policy.
+   *
+   * @param policyName The name of the ILM policy to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteILMPolicy(String policyName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an index template.
+   *
+   * @param templateName The name of the index template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteIndexTemplate(String templateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete a component template.
+   *
+   * @param componentTemplateName The name of the component template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Detach an ILM policy from indexes matching the given pattern.
+   *
+   * @param indexPattern The pattern of indexes to detach the ILM policy from
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Removes ILM policy from a component template while preserving all other settings.
+   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
+   *
+   * @param componentTemplateName The name of the component template to update
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    // Default implementation does nothing as this is only needed for Elasticsearch
+  }
 }
