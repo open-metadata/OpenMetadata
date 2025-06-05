@@ -92,6 +92,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      name: 'currentUser',
+      fullyQualifiedName: 'currentUser',
+    },
+  }),
+}));
+
 describe('Test GlossaryTermTab component', () => {
   it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
     const { container } = render(<GlossaryTermTab {...mockProps} />, {

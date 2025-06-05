@@ -159,6 +159,15 @@ jest.mock('../../../hooks/authHooks', () => {
   };
 });
 
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      name: 'currentUser',
+      fullyQualifiedName: 'currentUser',
+    },
+  }),
+}));
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });

@@ -97,6 +97,15 @@ jest.mock('../../../utils/TableUtils', () => ({
   handleUpdateTableColumnSelections: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: {
+      name: 'currentUser',
+      fullyQualifiedName: 'currentUser',
+    },
+  }),
+}));
+
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
     await act(async () => {
