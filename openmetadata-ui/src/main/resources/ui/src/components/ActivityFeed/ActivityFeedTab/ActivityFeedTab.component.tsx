@@ -97,7 +97,7 @@ export const ActivityFeedTab = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const { subTab: activeTab } =
+  const { subTab: activeTab = subTab } =
     useRequiredParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
@@ -230,7 +230,7 @@ export const ActivityFeedTab = ({
     setCountData((prev) => ({ ...prev, loading: false }));
   };
 
-  const getThreadType = useCallback((activeTab: ActivityFeedTabs) => {
+  const getThreadType = useCallback((activeTab?: ActivityFeedTabs) => {
     if (activeTab === ActivityFeedTabs.TASKS) {
       return ThreadType.Task;
     } else if (activeTab === ActivityFeedTabs.ALL) {

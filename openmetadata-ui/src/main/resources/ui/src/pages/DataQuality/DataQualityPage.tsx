@@ -15,12 +15,11 @@ import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
@@ -31,7 +30,8 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { tab: activeTab } = useRequiredParams<{ tab: DataQualityPageTabs }>();
+  const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
+    useRequiredParams<{ tab: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const menuItems: MenuProps['items'] = useMemo(() => {
@@ -54,10 +54,6 @@ const DataQualityPage = () => {
     });
   }, []);
 
-  const tabDetailsComponent = useMemo(() => {
-    return DataQualityClassBase.getDataQualityTab();
-  }, []);
-
   const extraDropdownContent = useMemo(
     () => DataQualityClassBase.getManageExtraOptions(activeTab),
     [activeTab]
@@ -69,6 +65,27 @@ const DataQualityPage = () => {
       navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
+
+  const renderTabComponent = useMemo(() => {
+    const currentTab = DataQualityClassBase.getDataQualityTab().find(
+      (tabItem) => tabItem.key === activeTab
+    );
+
+    if (!currentTab) {
+      return (
+        <Navigate
+          replace
+          to={getDataQualityPagePath(
+            DataQualityClassBase.getDefaultActiveTab()
+          )}
+        />
+      );
+    }
+
+    const TabComponent = currentTab.component;
+
+    return <TabComponent />;
+  }, [activeTab]);
 
   return (
     <div>
@@ -121,28 +138,7 @@ const DataQualityPage = () => {
                       />
                     </Col>
                   )}
-                  <Col span={24}>
-                    <Routes>
-                      {tabDetailsComponent.map((tab) => (
-                        <Route
-                          Component={tab.component}
-                          key={tab.key}
-                          path={tab.path}
-                        />
-                      ))}
-
-                      <Route
-                        element={
-                          <Navigate
-                            to={getDataQualityPagePath(
-                              DataQualityClassBase.getDefaultActiveTab()
-                            )}
-                          />
-                        }
-                        path={ROUTES.DATA_QUALITY}
-                      />
-                    </Routes>
-                  </Col>
+                  <Col span={24}>{renderTabComponent}</Col>
                 </Row>
               </DataQualityProvider>
             </Card>

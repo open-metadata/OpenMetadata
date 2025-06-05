@@ -88,7 +88,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       setTestCaseResolutionStatus(
         orderBy(data, (item) => item.timestamp, ['asc'])
       );
-    } catch (error) {
+    } catch {
       setTestCaseResolutionStatus([]);
     }
   }, []);
@@ -123,7 +123,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             }
           });
         });
-      } catch (err) {
+      } catch {
         // no need to show error toast
       }
     },

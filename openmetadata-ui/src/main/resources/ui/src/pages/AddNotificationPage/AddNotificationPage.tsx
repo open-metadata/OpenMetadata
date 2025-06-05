@@ -203,7 +203,7 @@ const AddNotificationPage = () => {
     [selectedTrigger, supportedFilters]
   );
 
-  if (loadingCount > 0) {
+  if (loadingCount > 0 || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 

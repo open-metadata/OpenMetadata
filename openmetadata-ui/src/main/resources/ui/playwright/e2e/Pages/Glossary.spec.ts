@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  descriptionBoxReadOnly,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -1024,11 +1025,11 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
-      );
-
-      expect(viewerContainerText).toContain('Updated description');
+      await expect(
+        page.locator(
+          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
+        )
+      ).toContainText('Updated description');
     } finally {
       await glossary1.delete(apiContext);
       await afterAction();

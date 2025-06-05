@@ -191,7 +191,7 @@ function AddObservabilityPage() {
     [selectedTrigger, supportedTriggers]
   );
 
-  if (fetching) {
+  if (fetching || (isEditMode && isEmpty(alert))) {
     return <Loader />;
   }
 
