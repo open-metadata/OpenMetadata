@@ -104,7 +104,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const fetchPostsFeed = useCallback(async (active: Thread) => {
     // If the posts count is greater than the page count, fetch the posts
     if (
-      active?.id &&
       active?.postsCount &&
       active?.postsCount > POST_FEED_PAGE_COUNT &&
       active?.posts?.length !== active?.postsCount

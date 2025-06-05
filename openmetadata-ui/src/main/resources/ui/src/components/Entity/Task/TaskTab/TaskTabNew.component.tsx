@@ -1054,7 +1054,7 @@ export const TaskTabNew = ({
     setShowFeedEditor(false);
   };
 
-  const renderPosts = useMemo(() => {
+  const posts = useMemo(() => {
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
@@ -1184,7 +1184,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {renderPosts}
+            {posts}
           </div>
         </Col>
       </Col>

@@ -183,7 +183,7 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
-  const renderPosts = useMemo(() => {
+  const posts = useMemo(() => {
     if (!showThread) {
       return null;
     }
@@ -362,7 +362,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
 
-          {renderPosts}
+          {posts}
         </div>
       )}
     </Card>
