@@ -162,8 +162,9 @@ public class ScimResource {
         @ApiResponse(responseCode = "201", description = "Group created"),
         @ApiResponse(responseCode = "400", description = "Invalid group input")
       })
-  public Response createGroup(ScimGroup group, @Context UriInfo uriInfo) {
-    return provisioningService.createGroup(group, uriInfo);
+  public Response createGroup(
+      ScimGroup group, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return provisioningService.createGroup(group, uriInfo, securityContext);
   }
 
   @PUT
@@ -179,8 +180,9 @@ public class ScimResource {
   public Response updateGroup(
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       ScimGroup group,
-      @Context UriInfo uriInfo) {
-    return provisioningService.updateGroup(id, group, uriInfo);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+    return provisioningService.updateGroup(id, group, uriInfo, securityContext);
   }
 
   @GET
@@ -229,8 +231,9 @@ public class ScimResource {
       })
   public Response deleteGroup(
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
-      @Context UriInfo uriInfo) {
-    return provisioningService.deleteGroup(id, uriInfo);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+    return provisioningService.deleteGroup(id, uriInfo, securityContext);
   }
 
   @GET

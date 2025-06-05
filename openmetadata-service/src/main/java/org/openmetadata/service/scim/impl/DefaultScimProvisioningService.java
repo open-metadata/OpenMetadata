@@ -53,17 +53,18 @@ public class DefaultScimProvisioningService implements ScimProvisioningService {
   }
 
   @Override
-  public Response createGroup(ScimGroup group, UriInfo uriInfo) {
+  public Response createGroup(ScimGroup group, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 
   @Override
-  public Response updateGroup(String id, ScimGroup group, UriInfo uriInfo) {
+  public Response updateGroup(
+      String id, ScimGroup group, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 
   @Override
-  public Response deleteGroup(String id, UriInfo uriInfo) {
+  public Response deleteGroup(String id, UriInfo uriInfo, SecurityContext securityContext) {
     return notImplemented();
   }
 

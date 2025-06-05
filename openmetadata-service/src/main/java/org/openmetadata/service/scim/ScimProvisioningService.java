@@ -24,11 +24,12 @@ public interface ScimProvisioningService {
 
   Response listGroups(UriInfo uriInfo);
 
-  Response createGroup(ScimGroup group, UriInfo uriInfo);
+  Response createGroup(ScimGroup group, UriInfo uriInfo, SecurityContext securityContext);
 
-  Response updateGroup(String id, ScimGroup group, UriInfo uriInfo);
+  Response updateGroup(
+      String id, ScimGroup group, UriInfo uriInfo, SecurityContext securityContext);
 
-  Response deleteGroup(String id, UriInfo uriInfo);
+  Response deleteGroup(String id, UriInfo uriInfo, SecurityContext securityContext);
 
   Response getGroup(String id, UriInfo uriInfo);
 

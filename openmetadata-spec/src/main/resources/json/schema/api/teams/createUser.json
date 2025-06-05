@@ -25,7 +25,7 @@
     "scimUserName": {
       "description": "Raw user name from SCIM.",
       "type": "string"
-    },  
+    },
     "email": {
       "$ref": "../../type/basic.json#/definitions/email"
     },
