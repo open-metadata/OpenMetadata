@@ -15,7 +15,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
@@ -68,7 +67,8 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
             "id,testSuite",
             Include.ALL);
     TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuite(), "id", Include.ALL);
-    ResultList<TestCaseResult> testCaseResultResultList = testCaseResultRepository.getTestCaseResults(
+    ResultList<TestCaseResult> testCaseResultResultList =
+        testCaseResultRepository.getTestCaseResults(
             testCaseEntity.getFullyQualifiedName(), lastWeekTime, currentTime);
     TestCaseResultFeedInfo testCaseResultFeedInfo =
         new TestCaseResultFeedInfo()

@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -18,7 +17,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.gson.Gson;
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -69,7 +67,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
