@@ -116,6 +116,18 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       return;
     }
 
+    // Validate Accept header - MUST include both application/json and text/event-stream
+    String acceptHeader = request.getHeader("Accept");
+    if (acceptHeader == null
+        || !acceptHeader.contains(CONTENT_TYPE_JSON)
+        || !acceptHeader.contains(CONTENT_TYPE_SSE)) {
+      sendError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "Accept header must include both application/json and text/event-stream");
+      return;
+    }
+
     try {
       String requestBody = readRequestBody(request);
       String sessionId = request.getHeader(SESSION_HEADER);
@@ -196,11 +208,11 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       return;
     }
 
-    // Validate session for non-initialization requests
-    //    if (sessionId != null && !sessions.containsKey(sessionId)) {
-    //      sendError(response, HttpServletResponse.SC_NOT_FOUND, "Session not found");
-    //      return;
-    //    }
+    //  Validate session for non-initialization requests
+    if (sessionId != null && !sessions.containsKey(sessionId)) {
+      sendError(response, HttpServletResponse.SC_NOT_FOUND, "Session not found");
+      return;
+    }
 
     // Handle different message types
     if (!hasId) {
@@ -274,7 +286,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         () -> {
           try {
             // Send any server-initiated messages first (if needed)
-            //             sendServerInitiatedMessages(connection);
+            //            sendServerInitiatedMessages(connection);
 
             // Process the actual request
             Map<String, Object> jsonResponse = processRequest(jsonRequest, sessionId);
@@ -508,7 +520,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           break;
 
         case "tools/list":
-          response.put("result", Map.of("tools", tools));
+          response.put("result", new McpSchema.ListToolsResult(tools, null));
           break;
 
         case "tools/call":
@@ -516,9 +528,12 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           if (toolParams != null && toolParams.has("name")) {
             String toolName = toolParams.get("name").asText();
             JsonNode arguments = toolParams.get("arguments");
-            response.put(
-                "result",
-                callTool(authorizer, jwtFilter, limits, toolName, JsonUtils.getMap(arguments)));
+            McpSchema.Content content =
+                new McpSchema.TextContent(
+                    JsonUtils.pojoToJson(
+                        callTool(
+                            authorizer, jwtFilter, limits, toolName, JsonUtils.getMap(arguments))));
+            response.put("result", new McpSchema.CallToolResult(List.of(content), false));
           } else {
             response.put("error", createError(-32602, "Invalid params"));
           }
@@ -569,7 +584,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
   private boolean shouldUseSSE() {
     // TODO: Decide when to use SSE vs direct JSON response
-    return true;
+    return false;
   }
 
   private String readRequestBody(HttpServletRequest request) throws IOException {
