@@ -28,6 +28,7 @@ import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
+  getFormattedServiceType,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
@@ -39,7 +40,6 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { getFormattedServiceType } from '../../../utils/ExploreUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -339,7 +339,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
-              <a href={DATA_DISCOVERY_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label="Learn more about data discovery"
+                href={DATA_DISCOVERY_DOCS}
+                rel="noreferrer"
+                target="_blank">
+                {t('label.learn-more')}
+              </a>
             }
             values={{
               doc: t('message.see-how-to-get-started'),
