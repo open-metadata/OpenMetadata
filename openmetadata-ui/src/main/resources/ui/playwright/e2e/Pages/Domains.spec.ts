@@ -357,7 +357,9 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Create nested sub domain', async ({ page }) => {
+  test('Follow/unfollow subdomain and create nested sub domain', async ({
+    page,
+  }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const subDomain = new SubDomain(domain);
@@ -369,6 +371,21 @@ test.describe('Domains', () => {
     await selectDomain(page, domain.data);
     // Create sub domain
     await createSubDomain(page, subDomain.data);
+    await selectSubDomain(page, domain.data, subDomain.data);
+    await verifyDomain(page, subDomain.data, domain.data, false);
+    // Follow domain
+    await followEntity(page, EntityTypeEndpoint.Domain);
+    await page.reload();
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await selectSubDomain(page, domain.data, subDomain.data);
+    await verifyDomain(page, subDomain.data, domain.data, false);
+    // Unfollow domain
+    await unFollowEntity(page, EntityTypeEndpoint.Domain);
+    await page.reload();
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
     await selectSubDomain(page, domain.data, subDomain.data);
     await verifyDomain(page, subDomain.data, domain.data, false);
 
