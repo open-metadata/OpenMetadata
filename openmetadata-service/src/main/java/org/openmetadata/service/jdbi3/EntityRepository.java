@@ -3658,13 +3658,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      if (Objects.equals(origCertification, updatedCertification))
-        return;
-
       if(updatedCertification == null) {
         recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
         return;
       }
+
+      if (Objects.equals(origCertification, updatedCertification))
+        return;
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =
