@@ -104,13 +104,13 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withFields(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[fields must not be null]");
+        "[query param fields must not be null]");
   }
 
   @Test
