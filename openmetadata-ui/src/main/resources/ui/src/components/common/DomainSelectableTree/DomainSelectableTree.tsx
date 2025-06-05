@@ -64,7 +64,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -97,7 +96,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
-      setIsUpdating(true);
+      setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
       if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
@@ -109,7 +108,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       try {
         await onSubmit(retn);
       } finally {
-        setIsUpdating(false);
+        setIsSubmitLoading(false);
       }
     } else {
       onCancel();
@@ -215,7 +214,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     } else {
       return (
-        <Spin indicator={<Loader size="small" />} spinning={isUpdating}>
+        <Spin indicator={<Loader size="small" />} spinning={isSubmitLoading}>
           <Tree
             blockNode
             checkStrictly
