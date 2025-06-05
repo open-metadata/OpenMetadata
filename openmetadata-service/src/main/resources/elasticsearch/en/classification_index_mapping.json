@@ -127,6 +127,12 @@
       "descriptionSources": {
         "type": "object"
       },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {

@@ -350,6 +350,12 @@
       "descriptionSources": {
         "type": "object"
       },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
       "applicationType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"

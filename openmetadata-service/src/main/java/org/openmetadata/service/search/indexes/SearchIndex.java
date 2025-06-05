@@ -113,6 +113,10 @@ public interface SearchIndex {
     Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
     map.put(
         "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(entity);
+    map.put("tagSources", tagAndTierSources.getTagSources());
+    map.put("tierSources", tagAndTierSources.getTierSources());
 
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());

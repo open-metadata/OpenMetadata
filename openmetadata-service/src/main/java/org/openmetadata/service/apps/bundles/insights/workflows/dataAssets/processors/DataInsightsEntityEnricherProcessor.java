@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -22,7 +21,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -169,7 +167,8 @@ public class DataInsightsEntityEnricherProcessor
         "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
 
     // Process Tag Source
-    TagAndTierSources tagAndTierSources = processTagAndTierSources(entity);
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(entity);
     entityMap.put("tagSources", tagAndTierSources.getTagSources());
     entityMap.put("tierSources", tagAndTierSources.getTierSources());
 
@@ -239,52 +238,6 @@ public class DataInsightsEntityEnricherProcessor
     return team;
   }
 
-  private void processTagAndTierSources(
-      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags -> {
-              tags.forEach(
-                  tag -> {
-                    String tagSource = tag.getLabelType().value();
-                    if (tag.getTagFQN().startsWith("Tier.")) {
-                      tagAndTierSources
-                          .getTierSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                    } else {
-                      tagAndTierSources
-                          .getTagSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                    }
-                  });
-            });
-  }
-
-  private void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
-    processTagAndTierSources(entity.getTags(), tagAndTierSources);
-  }
-
-  private void processColumnTagSources(
-      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
-    for (Column column : entity.getColumns()) {
-      processTagAndTierSources(column.getTags(), tagAndTierSources);
-    }
-  }
-
-  private TagAndTierSources processTagAndTierSources(EntityInterface entity) {
-    TagAndTierSources tagAndTierSources = new TagAndTierSources();
-    processEntityTagSources(entity, tagAndTierSources);
-    if (SearchIndexUtils.hasColumns(entity)) {
-      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
-    }
-    return tagAndTierSources;
-  }
-
   private String processTier(EntityInterface entity) {
     String tier = null;
 
@@ -347,16 +300,5 @@ public class DataInsightsEntityEnricherProcessor
   @Override
   public StepStats getStats() {
     return stats;
-  }
-
-  @Getter
-  public static class TagAndTierSources {
-    private final Map<String, Integer> tagSources;
-    private final Map<String, Integer> tierSources;
-
-    public TagAndTierSources() {
-      this.tagSources = new HashMap<>();
-      this.tierSources = new HashMap<>();
-    }
   }
 }

@@ -278,6 +278,12 @@
       "descriptionSources": {
         "type": "object"
       },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
       "extension": {
         "type": "object"
       }

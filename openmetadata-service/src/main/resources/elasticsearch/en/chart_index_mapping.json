@@ -388,6 +388,12 @@
       "descriptionSources": {
         "type": "object"
       },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
       "dashboards": {
         "properties": {
           "id": {

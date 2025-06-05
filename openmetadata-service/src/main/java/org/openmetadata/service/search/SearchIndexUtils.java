@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -322,6 +323,52 @@ public final class SearchIndexUtils {
     return descriptionSource;
   }
 
+  private static void processTagAndTierSources(
+      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
+    Optional.ofNullable(tagList)
+        .ifPresent(
+            tags -> {
+              tags.forEach(
+                  tag -> {
+                    String tagSource = tag.getLabelType().value();
+                    if (tag.getTagFQN().startsWith("Tier.")) {
+                      tagAndTierSources
+                          .getTierSources()
+                          .put(
+                              tagSource,
+                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
+                    } else {
+                      tagAndTierSources
+                          .getTagSources()
+                          .put(
+                              tagSource,
+                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
+                    }
+                  });
+            });
+  }
+
+  private static void processEntityTagSources(
+      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+    processTagAndTierSources(entity.getTags(), tagAndTierSources);
+  }
+
+  private static void processColumnTagSources(
+      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
+    for (Column column : entity.getColumns()) {
+      processTagAndTierSources(column.getTags(), tagAndTierSources);
+    }
+  }
+
+  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+    TagAndTierSources tagAndTierSources = new TagAndTierSources();
+    processEntityTagSources(entity, tagAndTierSources);
+    if (SearchIndexUtils.hasColumns(entity)) {
+      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
+    }
+    return tagAndTierSources;
+  }
+
   public static void processDescriptionSource(
       EntityInterface entity,
       Map<String, ChangeSummary> changeSummaryMap,
@@ -369,5 +416,16 @@ public final class SearchIndexUtils {
         .map(ChangeDescription::getChangeSummary)
         .map(ChangeSummaryMap::getAdditionalProperties)
         .orElse(null);
+  }
+
+  @Getter
+  public static class TagAndTierSources {
+    private final Map<String, Integer> tagSources;
+    private final Map<String, Integer> tierSources;
+
+    public TagAndTierSources() {
+      this.tagSources = new HashMap<>();
+      this.tierSources = new HashMap<>();
+    }
   }
 }
