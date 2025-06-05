@@ -1057,7 +1057,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
-    entity.setCertification(fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION) ? getCertification(entity) : null);
+    entity.setCertification(
+        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+            ? getCertification(entity)
+            : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -3658,13 +3661,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      if(updatedCertification == null) {
+      LOG.debug("Updating certification - Original: {}, Updated: {}", origCertification, updatedCertification);
+
+      if (updatedCertification == null) {
+        LOG.debug("Setting certification to null");
         recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
         return;
       }
 
-      if (Objects.equals(origCertification, updatedCertification))
+      if (Objects.equals(origCertification, updatedCertification)) {
+        LOG.debug("Certification unchanged");
         return;
+      }
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =

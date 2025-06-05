@@ -5,44 +5,69 @@ USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
-RUN dpkg --configure -a \
-    && apt-get -qq update \
-    && apt-get -qq install -y \
-    alien \
+# Configure dpkg and update package lists
+RUN dpkg --configure -a && apt-get -qq update
+
+# Install base development tools
+RUN echo "Installing base development tools..." && \
+    apt-get -qq install -y --no-install-recommends \
     build-essential \
+    gcc \
+    git \
+    gnupg \
+    unzip \
+    vim \
+    wget
+
+# Install database development libraries
+RUN echo "Installing database development libraries..." && \
+    apt-get -qq install -y --no-install-recommends \
+    default-jdk \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
-    gcc \
-    gnupg \
     libaio1 \
+    libmysqlclient-dev \
+    libpq-dev \
+    postgresql \
+    postgresql-contrib
+
+# Install ODBC drivers and dependencies
+RUN echo "Installing ODBC drivers and dependencies..." && \
+    apt-get -qq install -y --no-install-recommends \
+    odbcinst=2.3.11-2+deb12u1 \
+    tdsodbc \
+    unixodbc=2.3.11-2+deb12u1 \
+    unixodbc-dev=2.3.11-2+deb12u1
+
+# Install SASL and security libraries
+RUN echo "Installing SASL and security libraries..." && \
+    apt-get -qq install -y --no-install-recommends \
     libevent-dev \
     libffi-dev \
-    libpq-dev \
-    librdkafka-dev \
-    libsasl2-dev \
+    libkrb5-dev \
     libsasl2-2 \
+    libsasl2-dev \
     libsasl2-modules \
     libsasl2-modules-gssapi-mit \
     libssl-dev \
-    libxml2 \
-    libkrb5-dev \
-    default-jdk \
-    openssl \
-    # To ensure compatibility with unixodbc package
-    odbcinst=2.3.11-2+deb12u1 \
-    postgresql \
-    postgresql-contrib \
-    tdsodbc \
-    unixodbc=2.3.11-2+deb12u1 \
-    unixodbc-dev=2.3.11-2+deb12u1 \
-    unzip \
-    vim \
-    git \
-    wget --no-install-recommends \
-    # Accept MSSQL ODBC License
-    && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/*
+    libxml2
+
+# Install additional development tools
+RUN echo "Installing additional development tools..." && \
+    apt-get -qq install -y --no-install-recommends \
+    alien \
+    librdkafka-dev \
+    openssl
+
+# Install MSSQL ODBC driver
+RUN echo "Installing MSSQL ODBC driver..." && \
+    ACCEPT_EULA=Y apt-get -qq install -y --no-install-recommends msodbcsql18
+
+# Clean up
+RUN echo "Cleaning up..." && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
 RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
