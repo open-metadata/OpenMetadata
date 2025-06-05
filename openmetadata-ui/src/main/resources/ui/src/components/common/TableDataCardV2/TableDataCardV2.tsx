@@ -155,6 +155,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           )}
           <Col flex="auto">
             <EntityHeader
+              showOnlyDisplayName
               titleIsLink
               breadcrumb={breadcrumbs}
               displayNameClassName={displayNameClassName}
