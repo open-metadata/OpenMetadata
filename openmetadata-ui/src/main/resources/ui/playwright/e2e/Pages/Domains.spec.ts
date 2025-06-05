@@ -17,7 +17,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
-import { ENTITY_PATH } from '../../support/entity/Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ENTITY_PATH,
+} from '../../support/entity/Entity.interface';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -48,6 +51,7 @@ import {
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
+import { followEntity, unFollowEntity } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
@@ -192,6 +196,17 @@ test.describe('Domains', () => {
       await createDataProduct(page, dataProduct2.data);
     });
 
+    await test.step('Follow & Un-follow DataProducts', async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await followEntity(page, EntityTypeEndpoint.DataProduct);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDataProduct(page, domain.data, dataProduct2.data);
+      await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
+    });
+
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -215,6 +230,22 @@ test.describe('Domains', () => {
     await dataProduct2.delete(apiContext);
     await domain.delete(apiContext);
     await assetCleanup();
+    await afterAction();
+  });
+
+  test('Follow & Un-follow domain', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    await domain.create(apiContext);
+    await page.reload();
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await followEntity(page, EntityTypeEndpoint.Domain);
+    await page.reload();
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await unFollowEntity(page, EntityTypeEndpoint.Domain);
+    await domain.delete(apiContext);
     await afterAction();
   });
 

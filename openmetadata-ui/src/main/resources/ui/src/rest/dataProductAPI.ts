@@ -179,10 +179,7 @@ export const addFollower = async (dataProductID: string, userId: string) => {
 export const removeFollower = async (dataProductID: string, userId: string) => {
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
-  }>(
-    `${BASE_URL}/${dataProductID}/followers/${userId}`,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
+  }>(`${BASE_URL}/${dataProductID}/followers/${userId}`);
 
   return response.data;
 };
