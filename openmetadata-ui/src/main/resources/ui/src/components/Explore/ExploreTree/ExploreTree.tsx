@@ -39,6 +39,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { getFormattedServiceType } from '../../../utils/ExploreUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -49,7 +50,6 @@ import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
-  getFormattedServiceType,
   TreeNodeData,
 } from './ExploreTree.interface';
 
