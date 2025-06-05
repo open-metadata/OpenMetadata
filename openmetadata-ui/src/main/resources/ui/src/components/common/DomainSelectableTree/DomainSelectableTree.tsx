@@ -265,7 +265,16 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             }
           )}
           data-testid="all-domains-selector"
-          onClick={handleMyDomainsClick}>
+          role="button"
+          tabIndex={0}
+          onClick={handleMyDomainsClick}
+          onKeyDown={(e) => {
+            // To pass Sonar test
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleMyDomainsClick();
+            }
+          }}>
           <DomainIcon height={20} name="domain" width={20} />
           <Typography.Text
             className={classNames({
