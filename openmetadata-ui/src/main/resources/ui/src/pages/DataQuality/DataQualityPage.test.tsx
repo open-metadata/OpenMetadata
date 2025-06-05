@@ -64,12 +64,16 @@ jest.mock('../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
-  };
-});
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest
+    .fn()
+    .mockImplementation(() => ({ tab: mockUseParam })),
+}));
 
 const mockProps = {
   pageTitle: 'data-quality',
