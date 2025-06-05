@@ -115,7 +115,6 @@ class Dialect(Enum):
     TERADATA = "teradata"
     TSQL = "tsql"
     MARIADB = "mariadb"
-    EXASOL = "exasol"
     TRINO = "trino"
     VERTICA = "vertica"
 
