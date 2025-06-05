@@ -542,22 +542,28 @@ public class SystemRepository {
   private StepValidation getPipelineServiceClientValidation(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient) {
-    PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
-    if (pipelineResponse.getCode() == 200) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "%s is available at %s",
-                  pipelineServiceClient.getPlatform(),
-                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
-    } else {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage(pipelineResponse.getReason());
+    if (pipelineServiceClient != null) {
+      PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
+      if (pipelineResponse.getCode() == 200) {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "%s is available at %s",
+                    pipelineServiceClient.getPlatform(),
+                    applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+      } else {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.FALSE)
+            .withMessage(pipelineResponse.getReason());
+      }
     }
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+        .withPassed(Boolean.FALSE)
+        .withMessage("Pipeline client disabled, please check configuration");
   }
 
   private StepValidation getJWKsValidation(
