@@ -38,6 +38,7 @@ interface Props {
   showName?: boolean;
   nameClassName?: string;
   displayNameClassName?: string;
+  showOnlyDisplayName?: boolean;
 }
 
 export const EntityHeader = ({
@@ -54,6 +55,7 @@ export const EntityHeader = ({
   showName = true,
   nameClassName = '',
   displayNameClassName = '',
+  showOnlyDisplayName = false,
 }: Props) => {
   return (
     <div className="w-full">
@@ -83,6 +85,7 @@ export const EntityHeader = ({
         openEntityInNewPage={openEntityInNewPage}
         serviceName={serviceName}
         showName={showName}
+        showOnlyDisplayName={showOnlyDisplayName}
       />
     </div>
   );

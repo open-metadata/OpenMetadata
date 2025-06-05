@@ -113,34 +113,43 @@ export const addAssetsToTag = async (
   if (!isUndefined(otherAsset)) {
     for (const asset of otherAsset) {
       const name = get(asset, 'entityResponseData.name');
-
+      const entityDisplayName = get(asset, 'entityResponseData.displayName');
+      const visibleName = entityDisplayName ?? name;
       const searchRes = page.waitForResponse(
-        `/api/v1/search/query?q=${name}&index=all&from=0&size=25&**`
+        `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
       );
       await page
         .getByTestId('asset-selection-modal')
         .getByTestId('searchbar')
-        .fill(name);
+        .fill(visibleName);
       await searchRes;
 
-      await expect(page.getByText(name)).not.toBeVisible();
+      await expect(page.getByText(visibleName)).not.toBeVisible();
     }
   }
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&**`
+      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
     );
     await page
       .getByTestId('asset-selection-modal')
       .getByTestId('searchbar')
-      .fill(name);
+      .fill(visibleName);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
