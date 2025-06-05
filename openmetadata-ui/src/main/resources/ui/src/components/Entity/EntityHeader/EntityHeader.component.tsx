@@ -41,6 +41,7 @@ interface Props {
   handleFollowingClick?: () => void;
   isFollowingLoading?: boolean;
   isFollowing?: boolean;
+  showOnlyDisplayName?: boolean;
 }
 
 export const EntityHeader = ({
@@ -60,6 +61,7 @@ export const EntityHeader = ({
   displayNameClassName = '',
   handleFollowingClick,
   isFollowing,
+  showOnlyDisplayName = false,
 }: Props) => {
   return (
     <div className="w-full">
@@ -92,6 +94,7 @@ export const EntityHeader = ({
         openEntityInNewPage={openEntityInNewPage}
         serviceName={serviceName}
         showName={showName}
+        showOnlyDisplayName={showOnlyDisplayName}
       />
     </div>
   );
