@@ -95,6 +95,9 @@ const DataProductsDetailsPage = ({
   isVersionsView = false,
   onUpdate,
   onDelete,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -102,7 +105,6 @@ const DataProductsDetailsPage = ({
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
-
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -487,6 +489,7 @@ const DataProductsDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
+            handleFollowingClick={handleFollowingClick}
             icon={
               dataProduct.style?.iconURL ? (
                 <img
@@ -506,6 +509,8 @@ const DataProductsDetailsPage = ({
                 />
               )
             }
+            isFollowing={isFollowing}
+            isFollowingLoading={isFollowingLoading}
             serviceName=""
             titleColor={dataProduct.style?.color}
           />

@@ -122,6 +122,9 @@ const DomainDetailsPage = ({
   onUpdate,
   onDelete,
   isVersionsView = false,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -635,7 +638,10 @@ const DomainDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
+            handleFollowingClick={handleFollowingClick}
             icon={iconData}
+            isFollowing={isFollowing}
+            isFollowingLoading={isFollowingLoading}
             serviceName=""
             titleColor={domain.style?.color}
           />

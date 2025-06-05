@@ -38,6 +38,9 @@ interface Props {
   showName?: boolean;
   nameClassName?: string;
   displayNameClassName?: string;
+  handleFollowingClick?: () => void;
+  isFollowingLoading?: boolean;
+  isFollowing?: boolean;
 }
 
 export const EntityHeader = ({
@@ -52,8 +55,11 @@ export const EntityHeader = ({
   badge,
   titleColor,
   showName = true,
+  isFollowingLoading,
   nameClassName = '',
   displayNameClassName = '',
+  handleFollowingClick,
+  isFollowing,
 }: Props) => {
   return (
     <div className="w-full">
@@ -72,7 +78,10 @@ export const EntityHeader = ({
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         displayNameClassName={displayNameClassName}
+        handleFollowingClick={handleFollowingClick}
         icon={icon}
+        isFollowing={isFollowing}
+        isFollowingLoading={isFollowingLoading}
         link={
           titleIsLink && entityData.fullyQualifiedName && entityType
             ? getEntityLinkFromType(entityData.fullyQualifiedName, entityType)
