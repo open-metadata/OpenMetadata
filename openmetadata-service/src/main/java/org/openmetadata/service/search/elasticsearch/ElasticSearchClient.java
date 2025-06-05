@@ -2429,6 +2429,14 @@ public class ElasticSearchClient implements SearchClient {
       }
 
       return streams;
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
+        return Collections.emptyList();
+      } else {
+        throw new IOException(
+            "Failed to find DataStreams: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
     } catch (Exception e) {
       LOG.error("Failed to get data streams for prefix {}", prefix, e);
       throw e;
@@ -2441,6 +2449,13 @@ public class ElasticSearchClient implements SearchClient {
       DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
       client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
       LOG.debug("Deleted data stream {}", dataStreamName);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status().getStatus() == 404) {
+        LOG.warn("Data Stream {} does not exist. Skipping Deletion.", dataStreamName);
+      } else {
+        LOG.error("Failed to delete data stream {}", dataStreamName, e);
+        throw e;
+      }
     } catch (Exception e) {
       LOG.error("Failed to delete data stream {}", dataStreamName, e);
       throw e;
