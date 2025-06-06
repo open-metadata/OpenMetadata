@@ -551,41 +551,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @POST
-  @Path("/executable")
-  @Operation(
-      operationId = "createExecutableTestSuite",
-      summary = "Create an executable test suite",
-      description = "Create an executable test suite.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Executable test suite",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createExecutable(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpServletResponse response,
-      @Valid CreateTestSuite create) {
-    TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    if (testSuite.getBasicEntityReference() == null) {
-      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
-    }
-    testSuite.setBasic(true);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
-    response.setHeader("Deprecation", "Monday, March 24, 2025");
-    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
-    List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
-    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
-  }
-
-  @POST
   @Path("/basic")
   @Operation(
       operationId = "createBasicTestSuite",

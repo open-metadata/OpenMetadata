@@ -153,7 +153,6 @@ Given an entity fqn, retrieve the link test suite if it exists or create a new o
 get_or_create_test_case(
     test_case_fqn: str,
     entity_link: Optional[str] = None,
-    test_suite_fqn: Optional[str] = None,
     test_definition_fqn: Optional[str] = None,
     test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None
 )
