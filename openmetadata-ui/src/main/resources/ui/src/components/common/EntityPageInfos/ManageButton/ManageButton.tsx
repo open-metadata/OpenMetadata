@@ -237,6 +237,11 @@ const ManageButton: FC<ManageButtonProps> = ({
       : []),
   ];
 
+  const formattedEntityType = useMemo(
+    () => entityUtilClassBase.getFormattedEntityType(entityType),
+    [entityType]
+  );
+
   return (
     <>
       {items.length ? (
@@ -256,7 +261,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Tooltip
               placement="topRight"
               title={t('label.manage-entity', {
-                entity: entityUtilClassBase.getFormattedEntityType(entityType),
+                entity: formattedEntityType,
               })}>
               <Button
                 className={classNames('flex-center px-1.5', buttonClassName)}

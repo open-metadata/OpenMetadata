@@ -68,6 +68,11 @@ const EntityHeaderTitle = ({
     [location.pathname]
   );
 
+  const formattedEntityType = useMemo(
+    () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
+    [entityType]
+  );
+
   const entityName = useMemo(
     () =>
       stringToHTML(
@@ -182,9 +187,7 @@ const EntityHeaderTitle = ({
               <Tooltip
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: entityUtilClassBase.getFormattedEntityType(
-                    entityType as EntityType
-                  ),
+                  entity: formattedEntityType,
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "

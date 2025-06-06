@@ -24,7 +24,7 @@ export type ExploreTreeNode = {
   count?: number;
   totalCount?: number;
   type?: string | null;
-  tooltip?: string | ReactNode;
+  tooltip?: string;
 };
 
 export type ExploreTreeProps = {

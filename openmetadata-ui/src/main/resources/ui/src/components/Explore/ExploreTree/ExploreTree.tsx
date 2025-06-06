@@ -58,7 +58,6 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
 
   return (
     <Tooltip
-      overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
       title={
         <Typography.Text className="text-white">
           {tooltipText}
@@ -214,13 +213,16 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
+          const formattedEntityType =
+            entityUtilClassBase.getFormattedServiceType(bucket.key);
+
           return {
             title: isEntityType ? (
               <>{getPluralizeEntityName(bucket.key)}</>
             ) : (
               <>{bucket.key}</>
             ),
-            tooltip: entityUtilClassBase.getFormattedServiceType(bucket.key),
+            tooltip: formattedEntityType,
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,
