@@ -40,7 +40,6 @@ import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -192,6 +191,7 @@ const ModelTab = () => {
 
     await handleColumnUpdate(tableCols);
   };
+
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -209,14 +209,6 @@ const ModelTab = () => {
               allowRename={editDisplayNamePermission}
               displayName={displayName}
               id={record.fullyQualifiedName ?? ''}
-              link={
-                record.fullyQualifiedName
-                  ? getEntityDetailsPath(
-                      EntityType.DASHBOARD_DATA_MODEL,
-                      record.fullyQualifiedName
-                    )
-                  : ''
-              }
               name={record.name}
               onEditDisplayName={handleEditColumnData}
             />
