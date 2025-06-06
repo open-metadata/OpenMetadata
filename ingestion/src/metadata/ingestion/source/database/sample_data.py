@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createAPICollection import (
@@ -702,12 +703,22 @@ class SampleDataSource(
         table: Table = self.metadata.get_by_name(
             entity=Table, fqn="mysql_sample.default.posts_db.Tags"
         )
+        col_desc_list = []
         for column in table.columns:
             column.description = f"{table.name} - {column.name}"
-            self.metadata.patch_column_description(
+            col_desc_list.append(ColumnDescription(column_fqn=column.fullyQualifiedName.root, description=column.description))
+            
+        self.metadata.patch_column_descriptions(
                 table=table,
-                column_fqn=column.fullyQualifiedName.root,
-                description=column.description,
+                column_descriptions=col_desc_list,
+            )
+        self.metadata.patch_column_descriptions(
+                table=table,
+                column_descriptions=[ColumnDescription(column_fqn=column.fullyQualifiedName.root, description=None) for column in table.columns],
+            )
+        self.metadata.patch_column_descriptions(
+                table=table,
+                column_descriptions=col_desc_list,
             )
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
