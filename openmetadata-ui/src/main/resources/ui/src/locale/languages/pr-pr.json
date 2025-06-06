@@ -1842,6 +1842,7 @@
     "metric-description": "سلامت دارایی‌های داده‌ای خود را با متریک‌ها دنبال کنید.",
     "minimum-value-error": "مقدار حداقل باید کوچکتر از مقدار حداکثر باشد.",
     "minute": "دقیقه",
+    "missing-config-value": "مقدار پیکربندی گم شده: {{field}}",
     "modify-hierarchy-entity-description": "با تغییر والد {{entity}}، سلسله‌مراتب را ویرایش کنید.",
     "most-active-users": "فعال‌ترین کاربران بر اساس بازدیدهای صفحه را نمایش می‌دهد.",
     "most-expensive-queries-widget-description": "5 کوئری پرهزینه برتر برای دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",

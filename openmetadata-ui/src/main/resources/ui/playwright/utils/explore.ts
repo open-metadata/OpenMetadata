@@ -38,8 +38,8 @@ export const searchAndClickOnOption = async (
     testId = filter.value ?? '';
   }
 
-  await page.waitForSelector(`[data-testid="${testId}"]`);
-  await page.click(`[data-testid="${testId}"]`);
+  await page.getByTestId(testId).click();
+
   await checkCheckboxStatus(page, `${testId}-checkbox`, checkedAfterClick);
 };
 
