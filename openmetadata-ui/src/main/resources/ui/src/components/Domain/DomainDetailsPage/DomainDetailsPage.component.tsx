@@ -389,7 +389,7 @@ const DomainDetailsPage = ({
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.asset-plural'),
+            entity: t('label.asset-plural-lowercase'),
           })
         );
       }
