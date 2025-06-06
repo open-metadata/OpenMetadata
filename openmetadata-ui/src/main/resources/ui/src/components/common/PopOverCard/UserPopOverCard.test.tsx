@@ -63,8 +63,10 @@ jest.mock('../../../rest/userAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockUserData)),
 }));
 
+const mockPush = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => mockPush),
   Link: jest.fn().mockImplementation(({ children }) => children),
 }));
 
@@ -81,11 +83,6 @@ jest.mock('../Loader/Loader', () => {
 jest.mock('../ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <div>ProfilePicture</div>);
 });
-
-const mockPush = jest.fn();
-(useHistory as jest.Mock).mockImplementation(() => ({
-  push: mockPush,
-}));
 
 describe('Test UserPopOverCard components', () => {
   describe('UserTeams Component', () => {

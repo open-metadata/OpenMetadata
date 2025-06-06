@@ -105,14 +105,6 @@ const SchemaEditor = ({
     }
   }, [editorRef, wrapperRef]);
 
-  const editorDidMount = useCallback(
-    (editorElement: Editor) => {
-      (editorRef as React.MutableRefObject<CodeMirror.Editor>).current =
-        editorElement;
-    },
-    [editorRef]
-  );
-
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
