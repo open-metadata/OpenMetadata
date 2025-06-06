@@ -259,6 +259,12 @@ const DomainDetailsPage = ({
         setSubDomains(data);
       } catch (error) {
         setSubDomains([]);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.sub-domain-lowercase'),
+          })
+        );
       } finally {
         setIsSubDomainsLoading(false);
       }
@@ -354,6 +360,12 @@ const DomainDetailsPage = ({
         setDataProductsCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.data-product-lowercase'),
+          })
+        );
       }
     }
   };
@@ -374,6 +386,12 @@ const DomainDetailsPage = ({
         setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural'),
+          })
+        );
       }
     }
   };
@@ -420,8 +438,8 @@ const DomainDetailsPage = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
     };
     const updatedDetails = {
       ...domain,

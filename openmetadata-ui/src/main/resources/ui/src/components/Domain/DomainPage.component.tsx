@@ -156,7 +156,12 @@ const DomainPage = () => {
       });
       setActiveDomain(data);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.domain-lowercase'),
+        })
+      );
     } finally {
       setIsMainContentLoading(false);
     }
@@ -169,7 +174,7 @@ const DomainPage = () => {
       }
       const res = await addFollower(activeDomain.id, currentUserId);
       const { newValue } = res.changeDescription.fieldsAdded[0];
-      await setActiveDomain(
+      setActiveDomain(
         (prev) =>
           ({
             ...prev,

@@ -197,6 +197,12 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-lowercase'),
+          })
+        );
       }
     }
   };
@@ -308,8 +314,8 @@ const DataProductsDetailsPage = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
     };
     const updatedDetails = {
       ...dataProduct,

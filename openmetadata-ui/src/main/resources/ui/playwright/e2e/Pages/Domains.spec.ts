@@ -201,10 +201,28 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDataProduct(page, domain.data, dataProduct1.data);
       await followEntity(page, EntityTypeEndpoint.DataProduct);
-      await page.reload();
+      await redirectToHomePage(page);
+
+      // Check that the followed data product is shown in the following widget
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toContainText(dataProduct1.data.displayName);
+
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDataProduct(page, domain.data, dataProduct2.data);
       await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
+      await redirectToHomePage(page);
+
+      // Check that the data product is not shown in the following widget
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="following-widget"]')
+      ).not.toContainText(dataProduct2.data.displayName);
     });
 
     await test.step('Add assets to DataProducts', async () => {
@@ -241,10 +259,29 @@ test.describe('Domains', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
-    await page.reload();
+    await redirectToHomePage(page);
+
+    // Check that the followed domain is shown in the following widget
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toContainText(domain.data.displayName);
+
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await unFollowEntity(page, EntityTypeEndpoint.Domain);
+    await redirectToHomePage(page);
+
+    // Check that the domain is not shown in the following widget
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).not.toContainText(domain.data.displayName);
+
     await domain.delete(apiContext);
     await afterAction();
   });
@@ -375,7 +412,15 @@ test.describe('Domains', () => {
     await verifyDomain(page, subDomain.data, domain.data, false);
     // Follow domain
     await followEntity(page, EntityTypeEndpoint.Domain);
-    await page.reload();
+    await redirectToHomePage(page);
+
+    // Check that the followed domain is shown in the following widget
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toContainText(subDomain.data.displayName);
 
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
@@ -383,7 +428,16 @@ test.describe('Domains', () => {
     await verifyDomain(page, subDomain.data, domain.data, false);
     // Unfollow domain
     await unFollowEntity(page, EntityTypeEndpoint.Domain);
-    await page.reload();
+    await redirectToHomePage(page);
+
+    // Check that the domain is not shown in the following widget
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="following-widget"]')
+    ).not.toContainText(subDomain.data.displayName);
+
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await selectSubDomain(page, domain.data, subDomain.data);
