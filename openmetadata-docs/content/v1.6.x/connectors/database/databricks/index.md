@@ -67,8 +67,8 @@ Ensure these grants are applied to all relevant tables for metadata ingestion an
 These permissions enable OpenMetadata to extract query history and construct lineage information.
 
 ```sql
-GRANT SELECT ON SYSTEM.QUERY_HISTORY TO `<user>`;
-GRANT USE SCHEMA ON SCHEMA query TO `<user>`;
+GRANT SELECT ON SYSTEM.QUERY.HISTORY TO `<user>`;
+GRANT USE SCHEMA ON SCHEMA system.query TO `<user>`;
 ```
 
 These permissions allow access to Databricks system tables that track query activity, enabling lineage and usage statistics generation.
