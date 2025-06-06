@@ -11,8 +11,9 @@ from metadata.ingestion.source.database.unitycatalog.usage import (
 from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
     UnityCatalogProfilerInterface,
 )
-from metadata.sampler.sqlalchemy.unitycatalog.sampler import UnityCatalogSamplerInterface
-
+from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
+    UnityCatalogSamplerInterface,
+)
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(

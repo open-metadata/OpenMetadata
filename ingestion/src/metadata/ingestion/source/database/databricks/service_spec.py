@@ -9,9 +9,8 @@ from metadata.ingestion.source.database.databricks.usage import DatabricksUsageS
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
 )
-from metadata.utils.service_spec.default import DefaultDatabaseSpec
-
 from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
+from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=DatabricksSource,
