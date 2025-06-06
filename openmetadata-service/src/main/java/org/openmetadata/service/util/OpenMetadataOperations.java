@@ -139,7 +139,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup'");
     return 0;
   }
 
@@ -704,6 +705,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to Entity Cleanup due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "relationshipCleanup",
+      description =
+          "Cleans up orphaned entity relationships where referenced entities no longer exist. By default, runs in dry-run mode to only identify orphaned relationships.")
+  public Integer cleanupOrphanedRelationships(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned relationships. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of relationships to process in each batch.")
+          int batchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info(
+          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+      parseConfig();
+
+      EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+      EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(batchSize);
+
+      LOG.info("=== Entity Relationship Cleanup Summary ===");
+      LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+      LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+      LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+
+      if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+        LOG.info("To actually delete these orphaned relationships, run with --delete");
+        return 1;
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned relationships due to ", e);
       return 1;
     }
   }
