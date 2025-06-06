@@ -512,8 +512,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Table', async ({ page }) => {
-    // 5 minutes to avoid test timeout happening some times in AUTs
-    test.setTimeout(300_000);
+    test.slow(true);
 
     const tableEntity = new TableClass();
 
