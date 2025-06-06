@@ -13,7 +13,7 @@
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -21,11 +21,12 @@ import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg'
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
-import { EntityTypeName } from '../../../constants/entity.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import tooltipClassBase from '../../../utils/TooltipClassBase';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -181,10 +182,9 @@ const EntityHeaderTitle = ({
               <Tooltip
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity:
-                    entityType && entityType in EntityTypeName
-                      ? EntityTypeName[entityType]
-                      : capitalize(entityType),
+                  entity: tooltipClassBase.getFormattedEntityType(
+                    entityType as EntityType
+                  ),
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "

@@ -28,7 +28,6 @@ import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
-  getFormattedServiceType,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
@@ -43,6 +42,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import TooltipClassBase from '../../../utils/TooltipClassBase';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -220,7 +220,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             ) : (
               <>{bucket.key}</>
             ),
-            tooltip: getFormattedServiceType(bucket.key),
+            tooltip: TooltipClassBase.getFormattedServiceType(bucket.key),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,

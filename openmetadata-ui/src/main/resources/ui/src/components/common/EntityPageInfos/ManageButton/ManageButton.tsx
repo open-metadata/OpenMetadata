@@ -15,7 +15,7 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
@@ -24,11 +24,11 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { EntityTypeName } from '../../../../constants/entity.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import tooltipClassBase from '../../../../utils/TooltipClassBase';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
@@ -256,10 +256,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Tooltip
               placement="topRight"
               title={t('label.manage-entity', {
-                entity:
-                  entityType in EntityTypeName
-                    ? EntityTypeName[entityType]
-                    : capitalize(entityType),
+                entity: tooltipClassBase.getFormattedEntityType(entityType),
               })}>
               <Button
                 className={classNames('flex-center px-1.5', buttonClassName)}

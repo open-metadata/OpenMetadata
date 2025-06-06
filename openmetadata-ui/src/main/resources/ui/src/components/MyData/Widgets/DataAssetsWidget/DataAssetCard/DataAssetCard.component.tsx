@@ -21,6 +21,7 @@ import {
 } from '../../../../../utils/CommonUtils';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
+import tooltipClassBase from '../../../../../utils/TooltipClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';
 
@@ -57,7 +58,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         <Typography.Text
           className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
           data-testid={`service-name-${key}`}>
-          {serviceUtilClassBase.getServiceName(key)}
+          {tooltipClassBase.getFormattedServiceType(key)}
         </Typography.Text>
 
         <AppBadge
