@@ -92,10 +92,6 @@ jest.mock(
   }
 );
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({ t: (key: string) => key }),
-}));
-
 jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
