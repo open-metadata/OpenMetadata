@@ -38,6 +38,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn(),
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+  getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -90,93 +91,6 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
-
-jest.mock('antd', () => {
-  const ActualCollapse = jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>);
-  const Panel = jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>);
-  (ActualCollapse as any).Panel = Panel;
-
-  const Input = Object.assign(
-    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    {
-      TextArea: jest.fn().mockImplementation(() => <div>TextArea</div>),
-    }
-  );
-
-  const Select = Object.assign(
-    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    {
-      Option: jest
-        .fn()
-        .mockImplementation(({ children }) => <div>{children}</div>),
-    }
-  );
-
-  const DatePicker = Object.assign(
-    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    {
-      RangePicker: jest.fn().mockImplementation(() => <div>RangePicker</div>),
-    }
-  );
-
-  const Radio = Object.assign(
-    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    {
-      Button: jest
-        .fn()
-        .mockImplementation(({ children }) => <div>{children}</div>),
-      Group: jest
-        .fn()
-        .mockImplementation(({ children }) => <div>{children}</div>),
-    }
-  );
-
-  const Modal = Object.assign(
-    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    {
-      confirm: jest.fn(),
-    }
-  );
-
-  return {
-    Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Tabs: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Skeleton: jest.fn().mockImplementation(() => <div>Skeleton</div>),
-    Typography: {
-      Text: jest
-        .fn()
-        .mockImplementation(({ children }) => <span>{children}</span>),
-      Paragraph: jest
-        .fn()
-        .mockImplementation(({ children }) => <p>{children}</p>),
-    },
-    Space: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Divider: jest.fn().mockImplementation(() => <hr />),
-    Button: jest
-      .fn()
-      .mockImplementation(({ children }) => <button>{children}</button>),
-    Tooltip: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Dropdown: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Collapse: ActualCollapse,
-    Input,
-    Select,
-    DatePicker,
-    Radio,
-    Modal,
-  };
-});
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
