@@ -34,7 +34,8 @@
         "searchSettings",
         "assetCertificationSettings",
         "lineageSettings",
-        "workflowSettings"
+        "workflowSettings",
+        "scimConfiguration"
       ]
     }
   },

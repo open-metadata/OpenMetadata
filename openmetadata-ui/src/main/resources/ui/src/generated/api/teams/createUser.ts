@@ -48,6 +48,10 @@ export interface CreateUser {
     domains?: string[];
     email:    string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * When true indicates user is an administrator for the system with superuser privileges
      */
     isAdmin?: boolean;
@@ -72,6 +76,10 @@ export interface CreateUser {
      * Roles that the user has been assigned
      */
     roles?: string[];
+    /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
     /**
      * Teams that the user belongs to
      */
