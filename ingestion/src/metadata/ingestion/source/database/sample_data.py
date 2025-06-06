@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -629,6 +630,13 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.domain = json.load(
+            open(
+                sample_data_folder + "/domains/domain.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -647,6 +655,7 @@ class SampleDataSource(
         """Nothing to prepare"""
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
+        yield from self.ingest_domains()
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_tables()
@@ -676,6 +685,16 @@ class SampleDataSource(
         yield from self.ingest_ometa_api_service()
         self.modify_column_descriptions()
 
+    def ingest_domains(self):
+        
+        
+            domain_request = CreateDomainRequest(
+                **self.domain
+            )
+            yield Either(right=domain_request)
+        
+        
+        
     def modify_column_descriptions(self):
         """
         Modify column descriptions to include the table name
@@ -768,6 +787,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
                 sourceUrl=table.get("sourceUrl"),
+                domain="TestDomain"
             )
             yield Either(right=table_request)
 
