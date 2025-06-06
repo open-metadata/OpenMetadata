@@ -3,13 +3,13 @@ title: Adding Auto Classification Workflow through UI
 slug: /how-to-guides/data-governance/classification/auto-classification/workflow
 ---
 
-# Adding Auto Classification Ingestion through the UI
+# Adding Auto Classification Agent through the UI
 
-Follow these steps to configure Auto Classification ingestion via the OpenMetadata UI:
+Follow these steps to configure Auto Classification Agent via the OpenMetadata UI:
 
 ## 1. Navigate to the Database Service
 - Go to **Settings > Services > Databases** in the OpenMetadata UI.
-- Select the database for which you want to configure Auto Classification ingestion.
+- Select the database for which you want to configure Auto Classification Agent.
 
 {% image
 src="/images/v1.7/how-to-guides/governance/ac-1.png"
@@ -29,18 +29,18 @@ alt="Databases"
 caption="Databases"
 /%}
 
-## 2. Access the Ingestion Tab
-- In the selected database, navigate to the **Ingestion** tab.
-- Click on the option to **Add Auto Classification Ingestion**, as shown in the example image.
+## 2. Access the Agents Tab
+- In the selected database, navigate to the **Agents** tab.
+- Click on the option to **Add Auto Classification Agent**, as shown in the example image.
 
 {% image
 src="/images/v1.7/how-to-guides/governance/ac-3.png"
-alt="Access the Ingestion Tab"
-caption="Access the Ingestion Tab"
+alt="Access the Agents Tab"
+caption="Access the Agents Tab"
 /%}
 
 ## 3. Configure Auto Classification Details
-- Fill in the details for your Auto Classification ingestion workflow.
+- Fill in the details for your Auto Classification Agent workflow.
 - Each field's purpose is explained directly in the UI, allowing you to customize the configuration based on your requirements.
 
 {% image
@@ -49,7 +49,7 @@ alt="Configure Auto Classification Details"
 caption="Configure Auto Classification Details"
 /%}
 
-- By default, the store sample data option is enabled. If you prefer not to ingest sample data during a scheduled run, please ensure that this option is disabled in the ingestion configuration.
+- By default, the store sample data option is enabled. If you prefer not to ingest sample data during a scheduled run, please ensure that this option is disabled in the Agent configuration.
 
 {% image
 src="/images/v1.7/how-to-guides/governance/acnew.png"
@@ -58,7 +58,7 @@ caption="Disable sample data"
 /%}
 
 ## 4. Set the Schedule
-- Specify the time interval at which the Auto Classification ingestion should run.
+- Specify the time interval at which the Auto Classification agent should run.
 
 {% image
 src="/images/v1.7/how-to-guides/governance/ac-5.png"
@@ -66,13 +66,13 @@ alt="Set the Schedule"
 caption="Set the Schedule"
 /%}
 
-## 5. Add the Ingestion Workflow
-- Once all details are configured, click **Add Auto Classification Ingestion** to save and activate the workflow.
+## 5. Add the Agent Workflow
+- Once all details are configured, click **Add Auto Classification agent** to save and activate the workflow.
 
 {% image
 src="/images/v1.7/how-to-guides/governance/ac-6.png"
-alt="Add the Ingestion Workflow"
-caption="Add the Ingestion Workflow"
+alt="Add the agent Workflow"
+caption="Add the agent Workflow"
 /%}
 
-By following these steps, you can set up an Auto Classification ingestion workflow to automatically identify and tag sensitive data in your databases.
+By following these steps, you can set up an Auto Classification agent workflow to automatically identify and tag sensitive data in your databases.
