@@ -146,13 +146,13 @@ const APICollectionPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.API_COLLECTION,
       decodedAPICollectionFQN,
       handleFeedCount
     );
-  };
+  }, [handleFeedCount, decodedAPICollectionFQN]);
 
   const fetchAPICollectionDetails = useCallback(async () => {
     try {
@@ -355,7 +355,11 @@ const APICollectionPage: FunctionComponent = () => {
       fetchAPICollectionDetails();
       getEntityFeedCount();
     }
-  }, [viewAPICollectionPermission]);
+  }, [
+    viewAPICollectionPermission,
+    fetchAPICollectionDetails,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
