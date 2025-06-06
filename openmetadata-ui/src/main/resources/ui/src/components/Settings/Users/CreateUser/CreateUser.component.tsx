@@ -413,6 +413,7 @@ const CreateUser = ({
                   data-testid="roles-dropdown"
                   disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
