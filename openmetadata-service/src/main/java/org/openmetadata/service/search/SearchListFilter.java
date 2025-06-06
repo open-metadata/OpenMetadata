@@ -27,6 +27,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
     conditions.add(getOwnerCondition());
+    conditions.add(getCreatedByCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
@@ -118,6 +119,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       String ownersList =
           Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
       return String.format("{\"terms\": {\"owners.id\": [%s]}}", ownersList);
+    }
+    return "";
+  }
+
+  private String getCreatedByCondition() {
+    String createdBy = getQueryParam("createdBy");
+    if (!nullOrEmpty(createdBy)) {
+      return String.format("{\"term\": {\"createdBy\": \"%s\"}}", escapeDoubleQuotes(createdBy));
     }
     return "";
   }

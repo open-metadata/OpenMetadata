@@ -217,14 +217,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                       allowableValues = {"column", "table", "all"}))
           @QueryParam("testCaseType")
           @DefaultValue("all")
-          String type) {
+          String type,
+      @Parameter(
+              description = "Filter test cases by the user who created them",
+              schema = @Schema(type = "string"))
+          @QueryParam("createdBy")
+          String createdBy) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
-            .addQueryParam("entityFQN", entityFQN);
+            .addQueryParam("entityFQN", entityFQN)
+            .addQueryParam("createdBy", createdBy);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
@@ -406,7 +412,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "raw elasticsearch query to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("queryString")
-          String queryString)
+          String queryString,
+      @Parameter(
+              description = "Filter test cases by the user who created them",
+              schema = @Schema(type = "string"))
+          @QueryParam("createdBy")
+          String createdBy)
       throws IOException {
     if ((startTimestamp == null && endTimestamp != null)
         || (startTimestamp != null && endTimestamp == null)) {
@@ -428,6 +439,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("tags", tags);
     searchListFilter.addQueryParam("tier", tier);
     searchListFilter.addQueryParam("serviceName", serviceName);
+    searchListFilter.addQueryParam("createdBy", createdBy);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       StringBuilder owners = new StringBuilder();
