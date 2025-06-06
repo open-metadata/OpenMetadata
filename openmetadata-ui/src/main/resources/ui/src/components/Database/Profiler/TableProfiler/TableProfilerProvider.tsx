@@ -143,7 +143,7 @@ export const TableProfilerProvider = ({
           entity: t('label.count'),
         }),
         key: 'column-count',
-        value: profile?.columnCount ?? tableProfiler?.columns.length ?? 0,
+        value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,

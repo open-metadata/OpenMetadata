@@ -15,7 +15,7 @@ import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, sortBy, uniqBy } from 'lodash';
+import { groupBy, isEmpty, isEqual, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -73,7 +73,6 @@ import {
 import {
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
-  makeData,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -97,7 +96,6 @@ const SchemaTable = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
-  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
@@ -113,7 +111,7 @@ const SchemaTable = () => {
   } = usePaging(PAGE_SIZE_LARGE);
 
   // Pagination state for columns
-  const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
+  const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
 
   const { fqn: decodedEntityFqn } = useFqn();
@@ -126,17 +124,15 @@ const SchemaTable = () => {
     onThreadLinkSelect,
   } = useGenericContext<TableType>();
 
-  const { testCaseCounts, tableColumns, joins, tableConstraints, deleted } =
-    useMemo(
-      () => ({
-        testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
-        tableColumns: paginatedColumns, // Always use paginated columns, never table.columns
-        joins: table?.joins?.columnJoins ?? [],
-        tableConstraints: table?.tableConstraints,
-        deleted: table?.deleted,
-      }),
-      [table, testCaseSummary, paginatedColumns]
-    );
+  const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
+    () => ({
+      testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
+      joins: table?.joins?.columnJoins ?? [],
+      tableConstraints: table?.tableConstraints,
+      deleted: table?.deleted,
+    }),
+    [table, testCaseSummary]
+  );
 
   const tableFqn = useMemo(
     () =>
@@ -184,11 +180,6 @@ const SchemaTable = () => {
     [tablePermissions, deleted]
   );
 
-  const sortByOrdinalPosition = useMemo(
-    () => sortBy(tableColumns, 'ordinalPosition'),
-    [tableColumns]
-  );
-
   // Function to fetch paginated columns or search results
   const fetchPaginatedColumns = useCallback(
     async (page = 1, searchQuery?: string) => {
@@ -214,11 +205,11 @@ const SchemaTable = () => {
               fields: 'tags,customMetrics',
             });
 
-        setPaginatedColumns(response.data || []);
+        setTableColumns(response.data || []);
         handlePagingChange(response.paging);
       } catch {
         // Set empty state if API fails
-        setPaginatedColumns([]);
+        setTableColumns([]);
         handlePagingChange({
           offset: 1,
           limit: PAGE_SIZE_LARGE,
@@ -247,17 +238,6 @@ const SchemaTable = () => {
     }
   };
 
-  const data = React.useMemo(
-    () => makeData(searchedColumns),
-    [searchedColumns]
-  );
-
-  const nestedTableFqnKeys = useMemo(
-    () =>
-      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName'),
-    [tableColumns]
-  );
-
   useEffect(() => {
     fetchTestCaseSummary();
   }, [tableFqn]);
@@ -283,7 +263,7 @@ const SchemaTable = () => {
   ) => {
     const response = await updateTableColumn(columnFqn, column);
 
-    setPaginatedColumns((prev) =>
+    setTableColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn ? { ...col, ...response } : col
       )
@@ -384,11 +364,6 @@ const SchemaTable = () => {
     [expandedRowKeys]
   );
 
-  // Set searched columns to always use paginated results
-  useEffect(() => {
-    setSearchedColumns(sortByOrdinalPosition);
-  }, [sortByOrdinalPosition]);
-
   const handleEditDisplayNameClick = (record: Column) => {
     setEditColumnDisplayName(record);
   };
@@ -411,13 +386,13 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(data);
+    const tags = getAllTags(tableColumns);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [data]);
+  }, [tableColumns]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -606,8 +581,10 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    setExpandedRowKeys(nestedTableFqnKeys);
-  }, [searchText]);
+    setExpandedRowKeys(
+      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
+    );
+  }, [tableColumns]);
 
   // Need to scroll to the selected row
   useEffect(() => {
@@ -620,11 +597,11 @@ const SchemaTable = () => {
 
     const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
 
-    if (row && data.length > 0) {
+    if (row && tableColumns?.length && tableColumns.length > 0) {
       // Need to wait till table loads fully so that we can call scroll accurately
       setTimeout(() => row.scrollIntoView(), 1);
     }
-  }, [data, decodedEntityFqn]);
+  }, [tableColumns, decodedEntityFqn]);
 
   const searchProps = useMemo(
     () => ({
@@ -670,7 +647,7 @@ const SchemaTable = () => {
           columns={columns}
           customPaginationProps={paginationProps}
           data-testid="entity-table"
-          dataSource={data}
+          dataSource={tableColumns}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={getBulkEditButton(
