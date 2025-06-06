@@ -70,11 +70,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4
         with:
-          java-version: "17"
+          java-version: "21"
           distribution: "temurin"
 
       - name: Install Ubuntu dependencies
