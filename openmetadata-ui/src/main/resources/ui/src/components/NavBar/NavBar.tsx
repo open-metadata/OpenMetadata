@@ -46,7 +46,9 @@ import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sideb
 import {
   DEFAULT_DOMAIN_VALUE,
   NOTIFICATION_READ_TIMER,
+  ONE_HOUR_MS,
   SOCKET_EVENTS,
+  VERSION_FETCH_TIME_KEY,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
@@ -56,12 +58,16 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import {
+  BackgroundJob,
+  EnumCleanupArgs,
+  JobType,
+} from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
@@ -124,9 +130,22 @@ const NavBar = () => {
   } = useCurrentUserPreferences();
 
   const fetchOMVersion = async () => {
+    // If version fetch happens within an hour, skip fetching
+    const lastFetchTime = cookieStorage.getItem(VERSION_FETCH_TIME_KEY);
+    const now = Date.now();
+
+    if (lastFetchTime && now - Number(lastFetchTime) < ONE_HOUR_MS) {
+      // Less than an hour since last fetch, skip fetching
+      return;
+    }
+
     try {
       const res = await getVersion();
       setVersion(res.version);
+      // Set/update the cookie with current time, expires in 1 hour
+      cookieStorage.setItem(VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(now + ONE_HOUR_MS),
+      });
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -244,6 +263,18 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
+          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          if (!enumCleanupArgs.entityType) {
+            showErrorToast(
+              {
+                isAxiosError: true,
+                message: 'Invalid job arguments: entityType is required',
+              } as AxiosError,
+              t('message.unexpected-error')
+            );
+
+            break;
+          }
           body = t('message.custom-property-update', {
             propertyName: jobArgs.propertyName,
             entityName: jobArgs.entityType,
@@ -252,7 +283,7 @@ const NavBar = () => {
 
           path = getSettingPath(
             GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-            getCustomPropertyEntityPathname(jobArgs.entityType)
+            getCustomPropertyEntityPathname(enumCleanupArgs.entityType)
           );
         }
 
@@ -288,7 +319,10 @@ const NavBar = () => {
     }
 
     const handleDocumentVisibilityChange = async () => {
-      if (isProtectedRoute(location.pathname) && isTourRoute) {
+      if (
+        applicationRoutesClass.isProtectedRoute(location.pathname) &&
+        isTourRoute
+      ) {
         return;
       }
       const newVersion = await getVersion();

@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -74,7 +74,7 @@ public class TestDefinitionResourceTest
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -110,7 +110,9 @@ public class TestDefinitionResourceTest
     // Create an entity with mandatory name field null
     final CreateTestDefinition request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestDefinition request1 = createRequest("", "description", "displayName", null);

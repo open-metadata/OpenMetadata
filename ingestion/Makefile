@@ -13,6 +13,12 @@ endif
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
 
+.PHONY: install_dev_env
+install_dev_env:  ## Install all dependencies for development (in edit mode)
+	pip install --upgrade pip
+	pip install nox
+	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
+
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
 	python -m pip install "$(INGESTION_DIR)[dev]/"
@@ -60,6 +66,18 @@ py_format_check:  ## Check if Python sources are correctly formatted
 unit_ingestion:  ## Run Python unit tests
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
 
+# FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
+# and might be omitted in unless the we are developing them. This only must be used for local development!
+.PHONY: unit_ingestion_dev_env
+unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Only for local development!
+	# Ignores tests:
+	# test_ometa_validation_action.py: require great_expectations 0.18.x, the test installs the required package version thus corrupting the environment
+	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
+	pytest -c $(INGESTION_DIR)/pyproject.toml $(INGESTION_DIR)/tests/unit \
+	 	--ignore=$(INGESTION_DIR)/tests/unit/great_expectations/test_ometa_validation_action.py \
+	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
+	 	--ignore-glob="*airflow*"
+
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
@@ -101,3 +119,7 @@ coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
+
+.PHONY: clean-nox
+clean-nox:
+	rm -rf .nox

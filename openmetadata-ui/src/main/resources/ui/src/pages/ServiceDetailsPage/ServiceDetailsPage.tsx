@@ -44,6 +44,7 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
+  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -55,6 +56,7 @@ import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -76,7 +78,6 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -149,7 +150,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable } = useMemo(
+  const { isAirflowAvailable, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -1084,8 +1085,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.service'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -1453,7 +1453,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    if (platform === AIRFLOW_HYBRID) {
+      serviceUtilClassBase.getExtraInfo();
+    }
   }, []);
 
   if (isLoading) {
@@ -1461,7 +1463,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

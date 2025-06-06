@@ -266,6 +266,7 @@ export const CommonWidgets = ({
   const dataProductsWidget = useMemo(() => {
     return (
       <DataProductsContainer
+        newLook
         activeDomain={domain as EntityReference}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
@@ -278,6 +279,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -301,6 +303,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}

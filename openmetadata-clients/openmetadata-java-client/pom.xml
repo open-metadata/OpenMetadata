@@ -242,6 +242,7 @@
                                 ${project.build.directory}/generated-sources/swagger
                             </output>
                             <skipOperationExample>true</skipOperationExample>
+                            <skipValidateSpec>true</skipValidateSpec>
                         </configuration>
                     </execution>
                 </executions>

@@ -385,8 +385,7 @@ const ContainerPage = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.container'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -532,7 +531,15 @@ const ContainerPage = () => {
   }
 
   if (!viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.container'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!containerData) {

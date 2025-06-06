@@ -27,6 +27,9 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,9 +41,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -69,6 +69,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -326,6 +327,10 @@ public class UserRepository extends EntityRepository<User> {
     } else {
       user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
     }
+  }
+
+  protected void entitySpecificCleanup(User entityInterface) {
+    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), USER);
   }
 
   /* Validate if the user is already part of the given team */

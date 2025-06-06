@@ -68,6 +68,9 @@ entities.forEach((EntityClass) => {
   const entityName = entity.getType();
 
   test.describe(entityName, () => {
+    const rowSelector =
+      entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -192,7 +195,8 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.data.displayName
+        EntityDataClass.tierTag1.data.displayName,
+        entity
       );
     });
 
@@ -211,16 +215,72 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      test.slow(true);
+
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
-        EntityDataClass.glossaryTerm2.responseData
+        EntityDataClass.glossaryTerm2.responseData,
+        entity
       );
     });
+
+    if (!['Store Procedure', 'Metric'].includes(entity.type)) {
+      test('Tag and Glossary Selector should close vice versa', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        const isMlModel = entity.type === 'MlModel';
+        // Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+
+        // Glossary Selector
+        await page
+          .locator(
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
+            }"]`
+          )
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
+
+        // Re-check Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+      });
+    }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
@@ -234,8 +294,7 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
         });
       });
     }
@@ -252,8 +311,7 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
         });
       });
     }
@@ -272,6 +330,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });

@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 import React from 'react';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
+import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
+import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
+import {
+  ExtraDatabaseServiceDropdownOptions,
+  getDatabaseConfig,
+} from './DatabaseServiceUtils';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -112,5 +122,61 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
 
     expect(result).toHaveLength(0);
     expect(result).toStrictEqual([]);
+  });
+});
+
+describe('getDatabaseConfig', () => {
+  it('should return correct schema and UI schema for MySQL', () => {
+    const result = getDatabaseConfig(DatabaseServiceType.Mysql);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(mysqlConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return correct schema and UI schema for Postgres', () => {
+    const result = getDatabaseConfig(DatabaseServiceType.Postgres);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(postgresConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return correct schema and UI schema for Snowflake', () => {
+    const result = getDatabaseConfig(DatabaseServiceType.Snowflake);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(snowflakeConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return correct schema and UI schema for BigQuery', () => {
+    const result = getDatabaseConfig(DatabaseServiceType.BigQuery);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(bigQueryConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return correct schema and UI schema for CustomDatabase', () => {
+    const result = getDatabaseConfig(DatabaseServiceType.CustomDatabase);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(customDatabaseConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return empty schema and default UI schema for unknown database type', () => {
+    const result = getDatabaseConfig('UnknownType' as DatabaseServiceType);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toEqual({});
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 });
