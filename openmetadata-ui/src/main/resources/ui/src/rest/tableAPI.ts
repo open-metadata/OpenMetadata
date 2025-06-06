@@ -335,3 +335,15 @@ export const searchTableColumnsByFQN = async (
 
   return response.data;
 };
+
+export const updateTableColumn = async (
+  fqn: string,
+  data: Partial<Table['columns'][number]>
+) => {
+  const response = await APIClient.put<
+    Partial<Table['columns'][number]>,
+    AxiosResponse<Table['columns'][number]>
+  >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
+
+  return response.data;
+};

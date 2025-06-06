@@ -20,11 +20,15 @@ import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import { ColumnSummaryList } from './ColumnsSummaryList';
 
 jest.mock('../../../../rest/tableAPI', () => ({
-  getTableColumnsByFQN: jest.fn(),
+  getTableColumnsByFQN: jest
+    .fn()
+    .mockImplementation(() => ({ data: [], paging: { total: 0 } })),
 }));
 
 jest.mock('../../../../rest/dataModelsAPI', () => ({
-  getDataModelColumnsByFQN: jest.fn(),
+  getDataModelColumnsByFQN: jest
+    .fn()
+    .mockImplementation(() => ({ data: [], paging: { total: 0 } })),
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>
@@ -35,6 +39,10 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 
 jest.mock('../../../../utils/EntitySummaryPanelUtils', () => ({
   getFormattedEntityData: jest.fn(),
+}));
+
+jest.mock('../../../../constants/constants', () => ({
+  PAGE_SIZE_LARGE: 10,
 }));
 
 const mockColumns = [

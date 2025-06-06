@@ -15,16 +15,7 @@ import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import {
-  cloneDeep,
-  groupBy,
-  isEmpty,
-  isEqual,
-  isUndefined,
-  set,
-  sortBy,
-  uniqBy,
-} from 'lodash';
+import { groupBy, isEmpty, isEqual, isUndefined, sortBy, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +50,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
+  updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -83,7 +75,6 @@ import {
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
-  updateFieldTags,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -100,10 +91,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
-import {
-  TableCellRendered,
-  UpdatedColumnFieldData,
-} from './SchemaTable.interface';
+import { TableCellRendered } from './SchemaTable.interface';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
@@ -135,7 +123,6 @@ const SchemaTable = () => {
   const {
     permissions: tablePermissions,
     data: table,
-    onUpdate,
     onThreadLinkSelect,
   } = useGenericContext<TableType>();
 
@@ -290,48 +277,26 @@ const SchemaTable = () => {
     setEditColumn(undefined);
   };
 
-  const handleColumnUpdate = async (updatedColumns: Column[]) => {
-    if (table && !isEqual(tableColumns, updatedColumns)) {
-      const updatedTableDetails = {
-        ...table,
-        columns: updatedColumns,
-      };
+  const updateColumnDetails = async (
+    columnFqn: string,
+    column: Partial<Column>
+  ) => {
+    const response = await updateTableColumn(columnFqn, column);
 
-      setPaginatedColumns(updatedColumns);
-      await onUpdate(updatedTableDetails);
-    }
-  };
+    setPaginatedColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === columnFqn ? { ...col, ...response } : col
+      )
+    );
 
-  const updateColumnFields = ({
-    fqn,
-    field,
-    value,
-    columns,
-  }: UpdatedColumnFieldData) => {
-    columns?.forEach((col) => {
-      if (col.fullyQualifiedName === fqn) {
-        set(col, field, value);
-      } else {
-        updateColumnFields({
-          fqn,
-          field,
-          value,
-          columns: col.children as Column[],
-        });
-      }
-    });
+    return response;
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      const tableCols = cloneDeep(tableColumns);
-      updateColumnFields({
-        fqn: editColumn.fullyQualifiedName,
-        value: columnDescription,
-        field: 'description',
-        columns: tableCols,
+      await updateColumnDetails(editColumn.fullyQualifiedName, {
+        description: columnDescription,
       });
-      await handleColumnUpdate(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -342,15 +307,10 @@ const SchemaTable = () => {
     selectedTags: EntityTags[],
     editColumnTag: Column
   ) => {
-    if (selectedTags && editColumnTag) {
-      const tableCols = cloneDeep(tableColumns);
-
-      updateFieldTags<Column>(
-        editColumnTag.fullyQualifiedName ?? '',
-        selectedTags,
-        tableCols
-      );
-      await handleColumnUpdate(tableCols);
+    if (selectedTags && editColumnTag.fullyQualifiedName) {
+      await updateColumnDetails(editColumnTag.fullyQualifiedName, {
+        tags: selectedTags,
+      });
     }
   };
 
@@ -439,22 +399,11 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      const tableCols = cloneDeep(tableColumns);
-
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(displayName) ? undefined : displayName,
-        field: 'displayName',
-        columns: tableCols,
+      await updateColumnDetails(editColumnDisplayName.fullyQualifiedName, {
+        displayName: isEmpty(displayName) ? undefined : displayName,
+        constraint: isEmpty(constraint) ? undefined : constraint,
       });
 
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(constraint) ? undefined : constraint,
-        field: 'constraint',
-        columns: tableCols,
-      });
-      await handleColumnUpdate(tableCols);
       setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);

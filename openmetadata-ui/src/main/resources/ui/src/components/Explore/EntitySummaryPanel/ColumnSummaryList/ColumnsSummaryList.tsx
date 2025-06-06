@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import SummaryList from '../SummaryList/SummaryList.component';
-
 import { Button, Skeleton } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +21,7 @@ import { Paging } from '../../../../generated/type/paging';
 import { getDataModelColumnsByFQN } from '../../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import SummaryList from '../SummaryList/SummaryList.component';
 import { ColumnSummaryListProps } from './ColumnsSummaryList.interface';
 
 export const ColumnSummaryList = ({
