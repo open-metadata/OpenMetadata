@@ -127,7 +127,7 @@ public interface PipelineServiceClientInterface {
   /* Get the all last run logs of a deployed pipeline */
   Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
-  /* Get the all last run logs of a deployed pipeline */
+  /* Terminate the ingestion process of a deployed pipeline */
   PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);
 
   String getPlatform();
