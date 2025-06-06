@@ -310,11 +310,11 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <UserPopOverCard userName={getEntityName(currentUser)}>
+                <UserPopOverCard userName={currentUser?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture
                       key={feed.id}
-                      name={getEntityName(currentUser)}
+                      name={currentUser?.name ?? ''}
                       width="32"
                     />
                   </div>

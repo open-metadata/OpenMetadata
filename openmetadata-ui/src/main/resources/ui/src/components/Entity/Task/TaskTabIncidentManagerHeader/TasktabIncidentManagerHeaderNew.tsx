@@ -145,17 +145,16 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <UserPopOverCard
-                userName={thread?.task?.assignees[0].displayName ?? ''}>
+              <UserPopOverCard userName={thread?.task?.assignees[0].name ?? ''}>
                 <div className="d-flex items-center">
                   <ProfilePicture
-                    name={thread?.task?.assignees[0].displayName ?? ''}
+                    name={thread?.task?.assignees[0].name ?? ''}
                     width="24"
                   />
                 </div>
               </UserPopOverCard>
               <Typography.Text className="text-grey-body">
-                {thread?.task?.assignees[0].displayName}
+                {getEntityName(thread?.task?.assignees[0])}
               </Typography.Text>
             </div>
           ) : (
