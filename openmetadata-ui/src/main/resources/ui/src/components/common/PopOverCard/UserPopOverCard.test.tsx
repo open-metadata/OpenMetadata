@@ -82,6 +82,11 @@ jest.mock('../ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <div>ProfilePicture</div>);
 });
 
+const mockPush = jest.fn();
+(useHistory as jest.Mock).mockImplementation(() => ({
+  push: mockPush,
+}));
+
 describe('Test UserPopOverCard components', () => {
   describe('UserTeams Component', () => {
     it('should render teams when teams are available', () => {
@@ -188,6 +193,27 @@ describe('Test UserPopOverCard components', () => {
 
       expect(screen.getByText('Test User')).toBeInTheDocument();
       expect(screen.getByText('testUser')).toBeInTheDocument();
+    });
+
+    it('should navigate using name instead of display name when clicking display name in tooltip', () => {
+      (useUserProfile as jest.Mock).mockImplementation(() => [
+        null,
+        null,
+        mockUserData,
+      ]);
+
+      render(
+        <PopoverTitle
+          profilePicture={<div>ProfilePicture</div>}
+          type={OwnerType.USER}
+          userName="testUser"
+        />
+      );
+
+      const displayNameButton = screen.getByText('Test User');
+      displayNameButton.click();
+
+      expect(mockPush).toHaveBeenCalledWith('/users/testUser');
     });
 
     it('should handle click on user name', () => {

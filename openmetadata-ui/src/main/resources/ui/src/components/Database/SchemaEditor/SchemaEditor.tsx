@@ -49,6 +49,7 @@ const SchemaEditor = ({
   showCopyButton = true,
   onChange,
   onFocus,
+  refreshEditor,
 }: SchemaEditorProps) => {
   const editorRef = useRef<Editor>();
   const wrapperRef = useRef<CodeMirror | null>(null);
@@ -71,6 +72,8 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
+  // Store the CodeMirror editor instance
+  const editorInstance = useRef<Editor | null>(null);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   const handleEditorInputBeforeChange = (
@@ -114,6 +117,18 @@ const SchemaEditor = ({
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
+  useEffect(() => {
+    if (refreshEditor) {
+      // CodeMirror can't measure its container if hidden (e.g., in an inactive tab with display: none).
+      // When the tab becomes visible, the browser may not have finished layout/reflow when this runs.
+      // Delaying refresh by 50ms ensures the editor is visible and DOM is ready for CodeMirror to re-render.
+      // This is a common workaround for editors inside tabbed interfaces.
+      setTimeout(() => {
+        editorInstance.current?.refresh();
+      }, 50);
+    }
+  }, [refreshEditor]);
+
   return (
     <div
       className={classNames('relative', className)}
@@ -136,7 +151,9 @@ const SchemaEditor = ({
 
       <CodeMirror
         className={editorClass}
-        editorDidMount={editorDidMount}
+        editorDidMount={(editor) => {
+          editorInstance.current = editor;
+        }}
         editorWillUnmount={editorWillUnmount}
         options={defaultOptions}
         ref={wrapperRef}

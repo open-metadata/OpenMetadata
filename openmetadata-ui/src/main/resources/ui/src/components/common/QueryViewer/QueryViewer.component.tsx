@@ -24,9 +24,11 @@ import './query-viewer.style.less';
 const QueryViewer = ({
   title,
   sqlQuery,
+  isActive,
 }: {
   title?: React.ReactNode;
   sqlQuery: string;
+  isActive?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -69,6 +71,7 @@ const QueryViewer = ({
         )}
         mode={{ name: CSMode.SQL }}
         options={{ readOnly: true }}
+        refreshEditor={isActive}
         showCopyButton={false}
         value={sqlQuery}
       />
