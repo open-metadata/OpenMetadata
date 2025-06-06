@@ -27,7 +27,6 @@ import {
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
-import moment from 'moment';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -84,25 +83,25 @@ const AddKPIPage = () => {
 
   const handleCancel = () => navigate(-1);
 
-  const handleFormValuesChange = (
-    changedValues: Partial<KPIFormValues>,
-    allValues: KPIFormValues
+  const handleFormValuesChange: FormProps['onValuesChange'] = (
+    changedValues,
+    allValues
   ) => {
     if (changedValues.startDate) {
-      const startDate = moment(changedValues.startDate).startOf('day');
+      const startDate = changedValues.startDate.startOf('day');
       form.setFieldsValue({ startDate });
-      if (changedValues.startDate > allValues.endDate) {
+      if (startDate > allValues.endDate) {
         form.setFieldsValue({
-          endDate: '',
+          endDate: undefined,
         });
       }
     }
 
     if (changedValues.endDate) {
-      let endDate = moment(changedValues.endDate).endOf('day');
+      let endDate = changedValues.endDate.endOf('day');
       form.setFieldsValue({ endDate });
-      if (changedValues.endDate < allValues.startDate) {
-        endDate = moment(changedValues.endDate).startOf('day');
+      if (endDate < allValues.startDate) {
+        endDate = changedValues.endDate.startOf('day');
         form.setFieldsValue({
           startDate: endDate,
         });

@@ -407,7 +407,9 @@ export const getWebChartSummary = (
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   // Can not select days before today
-  return current && current.diff(DateTime.now()).days < 1;
+  const today = DateTime.now().startOf('day');
+
+  return current ? current.startOf('day') < today : false;
 };
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
