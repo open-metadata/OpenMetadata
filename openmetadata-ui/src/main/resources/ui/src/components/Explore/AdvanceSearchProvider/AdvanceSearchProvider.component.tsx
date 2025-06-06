@@ -241,7 +241,7 @@ export const AdvanceSearchProvider = ({
           });
         }
       });
-    } catch (error) {
+    } catch {
       return subfields;
     }
 

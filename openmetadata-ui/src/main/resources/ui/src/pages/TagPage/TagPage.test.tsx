@@ -38,8 +38,10 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({ fqn: 'PII.NonSensitive' }),
   useLocation: jest
     .fn()

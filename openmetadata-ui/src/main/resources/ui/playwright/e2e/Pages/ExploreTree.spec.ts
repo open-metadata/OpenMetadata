@@ -42,6 +42,8 @@ test.beforeEach(async ({ page }) => {
 test.describe('Explore Tree scenarios ', () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
+      await page.waitForLoadState('networkidle');
+
       await expect(page.getByRole('tree')).toContainText('Databases');
       await expect(page.getByRole('tree')).toContainText('Dashboards');
       await expect(page.getByRole('tree')).toContainText('Pipelines');
