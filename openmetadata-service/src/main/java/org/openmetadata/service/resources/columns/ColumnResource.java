@@ -69,7 +69,16 @@ public class ColumnResource {
       description =
           "Update column metadata such as display name, description, tags, glossary terms, "
               + "and other properties. This API works for columns in both tables and dashboard data models. "
-              + "The column is identified by its fully qualified name and the parent entity type is specified.",
+              + "The column is identified by its fully qualified name and the parent entity type is specified. "
+              + "\n\nTag Management Examples:"
+              + "\n• Add tags: {\"tags\": [{\"tagFQN\": \"PersonalData.PII\", \"source\": \"Classification\"}]}"
+              + "\n• Remove specific tag: {\"tags\": []} (specify only tags you want to keep)"
+              + "\n• Remove all tags: {\"tags\": []}"
+              + "\n• Mix classifications and glossary terms: {\"tags\": [{\"tagFQN\": \"PII.Sensitive\", \"source\": \"Classification\"}, {\"tagFQN\": \"Glossary.CustomerData\", \"source\": \"Glossary\"}]}"
+              + "\n• Don't change tags: omit the 'tags' field entirely"
+              + "\n\nValidation Rules:"
+              + "\n• Invalid or non-existent tags/glossary terms will result in a 404 error"
+              + "\n• All tags and glossary terms must exist and be valid before the request succeeds",
       responses = {
         @ApiResponse(
             responseCode = "200",

@@ -31,7 +31,10 @@ export interface UpdateColumn {
      */
     displayName?: string;
     /**
-     * Tags associated with the column (both Classification and Glossary tags).
+     * Tags and glossary terms associated with the column. Use source: 'Classification' for
+     * classification tags and source: 'Glossary' for glossary terms. Provide an empty array to
+     * remove all tags. Note: Invalid or non-existent tags/glossary terms will result in a 404
+     * error.
      */
     tags?: TagLabel[];
 }

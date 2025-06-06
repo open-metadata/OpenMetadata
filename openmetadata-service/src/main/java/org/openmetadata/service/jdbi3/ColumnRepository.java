@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -92,24 +93,22 @@ public class ColumnRepository {
       throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
     }
 
-    if (updateColumn.getDisplayName() != null) {
+    // Only update fields that are explicitly provided with non-empty values
+    // We don't support removal - only updates with actual values
+    if (updateColumn.getDisplayName() != null && !updateColumn.getDisplayName().trim().isEmpty()) {
       column.setDisplayName(updateColumn.getDisplayName());
     }
-    if (updateColumn.getDescription() != null) {
+    if (updateColumn.getDescription() != null && !updateColumn.getDescription().trim().isEmpty()) {
       column.setDescription(updateColumn.getDescription());
     }
     if (updateColumn.getTags() != null) {
-      // Handle tag updates - including removal (empty list) and validation
-      List<org.openmetadata.schema.type.TagLabel> validTags =
-          validateAndFilterTags(updateColumn.getTags());
-      column.setTags(validTags.isEmpty() ? null : validTags);
+      column.setTags(updateColumn.getTags());
     }
     if (updateColumn.getConstraint() != null) {
       column.setConstraint(updateColumn.getConstraint());
     }
 
-    // Use patch to update the table
-    jakarta.json.JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
+    JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
     tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
     return column;
@@ -128,15 +127,13 @@ public class ColumnRepository {
         dataModelRepository.get(
             null,
             parentEntityRef.getId(),
-            dataModelRepository.getFields("columns"),
+            dataModelRepository.getFields("columns,tags"),
             Include.NON_DELETED,
             false);
 
-    // Create a copy for updating
     DashboardDataModel updatedDataModel =
         JsonUtils.deepCopy(originalDataModel, DashboardDataModel.class);
 
-    // Ensure column FQNs are set
     setDataModelColumnFQN(updatedDataModel.getFullyQualifiedName(), updatedDataModel.getColumns());
 
     Column column = findColumnInHierarchy(updatedDataModel.getColumns(), columnFQN);
@@ -144,22 +141,17 @@ public class ColumnRepository {
       throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
     }
 
-    if (updateColumn.getDisplayName() != null) {
+    if (updateColumn.getDisplayName() != null && !updateColumn.getDisplayName().trim().isEmpty()) {
       column.setDisplayName(updateColumn.getDisplayName());
     }
-    if (updateColumn.getDescription() != null) {
+    if (updateColumn.getDescription() != null && !updateColumn.getDescription().trim().isEmpty()) {
       column.setDescription(updateColumn.getDescription());
     }
     if (updateColumn.getTags() != null) {
-      // Handle tag updates - including removal (empty list) and validation
-      List<org.openmetadata.schema.type.TagLabel> validTags =
-          validateAndFilterTags(updateColumn.getTags());
-      column.setTags(validTags.isEmpty() ? null : validTags);
+      column.setTags(updateColumn.getTags());
     }
-    // Note: constraint is ignored for dashboard data model columns
 
-    // Use patch to update the data model
-    jakarta.json.JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
+    JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
     dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
     return column;
@@ -194,51 +186,6 @@ public class ColumnRepository {
     }
   }
 
-  private List<org.openmetadata.schema.type.TagLabel> validateAndFilterTags(
-      List<org.openmetadata.schema.type.TagLabel> tags) {
-    if (tags == null) {
-      return new java.util.ArrayList<>();
-    }
-
-    return tags.stream()
-        .filter(tag -> tag != null && tag.getTagFQN() != null)
-        .filter(this::isTagFromEnabledClassification)
-        .collect(java.util.stream.Collectors.toList());
-  }
-
-  private boolean isTagFromEnabledClassification(org.openmetadata.schema.type.TagLabel tag) {
-    try {
-      // Extract classification name from tag FQN (format: "ClassificationName.TagName")
-      String tagFQN = tag.getTagFQN();
-      String[] parts = tagFQN.split("\\.");
-      if (parts.length < 2) {
-        return false; // Invalid tag FQN format
-      }
-
-      String classificationName = parts[0];
-
-      // Get classification repository and check if classification is enabled
-      org.openmetadata.service.jdbi3.ClassificationRepository classificationRepository =
-          (org.openmetadata.service.jdbi3.ClassificationRepository)
-              Entity.getEntityRepository("classification");
-
-      try {
-        org.openmetadata.schema.entity.classification.Classification classification =
-            classificationRepository.findByName(
-                classificationName, org.openmetadata.schema.type.Include.NON_DELETED);
-
-        // Check if classification is disabled
-        return classification.getDisabled() == null || !classification.getDisabled();
-      } catch (org.openmetadata.service.exception.EntityNotFoundException e) {
-        // Classification not found, tag is invalid
-        return false;
-      }
-    } catch (Exception e) {
-      LOG.warn("Error validating tag {}: {}", tag.getTagFQN(), e.getMessage());
-      return false;
-    }
-  }
-
   Column findColumnInHierarchy(List<Column> columns, String columnFQN) {
     if (columns == null) {
       return null;
@@ -248,7 +195,6 @@ public class ColumnRepository {
       if (columnFQN.equals(column.getFullyQualifiedName())) {
         return column;
       }
-      // Recursively search in children
       if (column.getChildren() != null) {
         Column found = findColumnInHierarchy(column.getChildren(), columnFQN);
         if (found != null) {
