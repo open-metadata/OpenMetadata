@@ -157,6 +157,7 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SEARCH_INDEX_SETTINGS,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
           sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
           title={t('label.search-index-setting-plural')}
         />
