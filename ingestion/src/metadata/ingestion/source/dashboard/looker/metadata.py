@@ -882,11 +882,19 @@ class LookerSource(DashboardServiceSource):
                     # Process column level lineage
                     column_lineage = []
                     for column_tuple in lineage_parser.column_lineage or []:
-                        if column_tuple and column_tuple[0].parent == from_table_name:
+                        if (
+                            column_tuple
+                            and hasattr(column_tuple[0], "parent")
+                            and column_tuple[0].parent == from_table_name
+                        ):
                             column_lineage.append(
                                 (
-                                    column_tuple[0].raw_name,
-                                    column_tuple[-1].raw_name,
+                                    column_tuple[0].raw_name
+                                    if hasattr(column_tuple[0], "raw_name")
+                                    else column_tuple[0],
+                                    column_tuple[-1].raw_name
+                                    if hasattr(column_tuple[-1], "raw_name")
+                                    else column_tuple[-1],
                                 )
                             )
                     yield self.build_lineage_request(
