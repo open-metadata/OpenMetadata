@@ -674,6 +674,22 @@ class SampleDataSource(
         yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
         yield from self.ingest_ometa_api_service()
+        self.modify_column_descriptions()
+
+    def modify_column_descriptions(self):
+        """
+        Modify column descriptions to include the table name
+        """
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn="mysql_sample.default.posts_db.Tags"
+        )
+        for column in table.columns:
+            column.description = f"{table.name} - {column.name}"
+            self.metadata.patch_column_description(
+                table=table,
+                column_fqn=column.fullyQualifiedName.root,
+                description=column.description,
+            )
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
