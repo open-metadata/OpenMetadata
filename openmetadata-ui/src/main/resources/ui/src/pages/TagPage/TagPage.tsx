@@ -566,7 +566,7 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-  }, []);
+  }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
