@@ -56,6 +56,15 @@ export const ColumnSummaryList = ({
 
         setColumns((prev) => [...prev, ...data]);
         setColumnsPaging(paging);
+      } catch (error) {
+        setColumns([]);
+        setColumnsPaging({
+          offset: 0,
+          total: 0,
+          limit: PAGE_SIZE_LARGE,
+        });
+        // eslint-disable-next-line no-console
+        console.error(error);
       } finally {
         setLoading(false);
       }

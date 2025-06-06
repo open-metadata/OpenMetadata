@@ -45,6 +45,13 @@ jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 10,
 }));
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
+}));
+
 const mockColumns = [
   {
     name: 'api_client_id',
@@ -76,16 +83,11 @@ const mockPaging = {
 };
 
 describe('ColumnSummaryList Component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should render loading state initially', async () => {
-    (getTableColumnsByFQN as jest.Mock).mockImplementation(
+    (getTableColumnsByFQN as jest.Mock).mockImplementationOnce(
       () =>
-        new Promise((resolve) => {
+        new Promise(() => {
           // Never resolve to simulate loading state
-          setTimeout(resolve, 100);
         })
     );
 
