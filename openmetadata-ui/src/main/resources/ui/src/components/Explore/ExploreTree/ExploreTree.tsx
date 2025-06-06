@@ -39,10 +39,10 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import TooltipClassBase from '../../../utils/TooltipClassBase';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -220,7 +220,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             ) : (
               <>{bucket.key}</>
             ),
-            tooltip: TooltipClassBase.getFormattedServiceType(bucket.key),
+            tooltip: entityUtilClassBase.getFormattedServiceType(bucket.key),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,

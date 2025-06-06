@@ -24,9 +24,9 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import tooltipClassBase from '../../../utils/TooltipClassBase';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -182,7 +182,7 @@ const EntityHeaderTitle = ({
               <Tooltip
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: tooltipClassBase.getFormattedEntityType(
+                  entity: entityUtilClassBase.getFormattedEntityType(
                     entityType as EntityType
                   ),
                 })}>

@@ -27,8 +27,8 @@ import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg'
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import tooltipClassBase from '../../../../utils/TooltipClassBase';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
@@ -256,7 +256,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Tooltip
               placement="topRight"
               title={t('label.manage-entity', {
-                entity: tooltipClassBase.getFormattedEntityType(entityType),
+                entity: entityUtilClassBase.getFormattedEntityType(entityType),
               })}>
               <Button
                 className={classNames('flex-center px-1.5', buttonClassName)}
