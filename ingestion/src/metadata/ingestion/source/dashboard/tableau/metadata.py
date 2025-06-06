@@ -127,8 +127,8 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        return self.client.get_workbooks()
+    def get_dashboards_list(self) -> Optional[Iterable[TableauDashboard]]:
+        yield from self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -137,6 +137,7 @@ class TableauSource(DashboardServiceSource):
         """
         Get Dashboard Details including the dashboard charts and datamodels
         """
+        dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
     def get_owner_ref(

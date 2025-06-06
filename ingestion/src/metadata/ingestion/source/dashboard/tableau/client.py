@@ -13,7 +13,7 @@ Wrapper module of TableauServerConnection client
 """
 import math
 import traceback
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import validators
 from cached_property import cached_property
@@ -77,7 +77,7 @@ class TableauClient:
         self,
         tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],
         config,
-        verify_ssl,
+        verify_ssl: Union[bool, str],
         pagination_limit: int,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
@@ -87,6 +87,7 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
         self.usage_metrics: Dict[str, int] = {}
+        self.owner_cache: Dict[str, TableauOwner] = {}
 
     @cached_property
     def server_info(self) -> Callable:
@@ -101,9 +102,15 @@ class TableauClient:
 
     def get_tableau_owner(self, owner_id: str) -> Optional[TableauOwner]:
         try:
+            if owner_id in self.owner_cache:
+                return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
             if owner and owner.email:
-                return TableauOwner(id=owner.id, name=owner.name, email=owner.email)
+                owner_obj = TableauOwner(
+                    id=owner.id, name=owner.name, email=owner.email
+                )
+                self.owner_cache[owner_id] = owner_obj
+                return owner_obj
         except Exception as err:
             logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")
         return None
@@ -130,21 +137,20 @@ class TableauClient:
                 )
                 view_count += view.total_views
             except AttributeError as e:
-                logger.warning(
+                logger.debug(
                     f"Failed to process view due to missing attribute: {str(e)}"
                 )
                 continue
             except Exception as e:
-                logger.warning(f"Failed to process view: {str(e)}")
+                logger.debug(f"Failed to process view: {str(e)}")
                 continue
 
         return charts, view_count
 
-    def get_workbooks(self) -> List[TableauDashboard]:
+    def get_workbooks(self) -> Iterable[TableauDashboard]:
         """
         Fetch all tableau workbooks
         """
-        workbooks: Optional[List[TableauDashboard]] = []
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
@@ -152,22 +158,20 @@ class TableauClient:
                 charts, user_views = self.get_workbook_charts_and_user_count(
                     workbook.views
                 )
-                workbooks.append(
-                    TableauDashboard(
-                        id=workbook.id,
-                        name=workbook.name,
-                        project=TableauBaseModel(
-                            id=workbook.project_id, name=workbook.project_name
-                        ),
-                        description=workbook.description,
-                        owner=self.get_tableau_owner(workbook.owner_id),
-                        tags=workbook.tags,
-                        webpageUrl=workbook.webpage_url,
-                        charts=charts,
-                        dataModels=self.get_datasources(dashboard_id=workbook.id),
-                        user_views=user_views,
-                    )
+                workbook = TableauDashboard(
+                    id=workbook.id,
+                    name=workbook.name,
+                    project=TableauBaseModel(
+                        id=workbook.project_id, name=workbook.project_name
+                    ),
+                    owner=self.get_tableau_owner(workbook.owner_id),
+                    description=workbook.description,
+                    tags=workbook.tags,
+                    webpageUrl=workbook.webpage_url,
+                    charts=charts,
+                    user_views=user_views,
                 )
+                yield workbook
             except AttributeError as err:
                 logger.warning(
                     f"Failed to process workbook due to missing attribute: {str(err)}"
@@ -176,7 +180,6 @@ class TableauClient:
             except Exception as err:
                 logger.warning(f"Failed to process workbook: {str(err)}")
                 continue
-        return workbooks
 
     def test_get_workbooks(self):
         for workbook in Pager(self.tableau_server.workbooks):
