@@ -11,10 +11,13 @@ from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import
 )
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
+from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
+
 ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=DatabricksSource,
     lineage_source_class=DatabricksLineageSource,
     usage_source_class=DatabricksUsageSource,
     profiler_class=DatabricksProfilerInterface,
     test_suite_class=DatabricksTestSuiteInterface,
+    sampler_class=DatabricksSamplerInterface,
 )
