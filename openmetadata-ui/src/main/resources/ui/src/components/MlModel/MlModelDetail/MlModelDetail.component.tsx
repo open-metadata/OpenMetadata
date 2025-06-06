@@ -190,9 +190,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.ml-model'),
-        }),
-        // Autoclose timer
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {

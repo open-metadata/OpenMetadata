@@ -170,8 +170,7 @@ const PipelineDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.pipeline'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {

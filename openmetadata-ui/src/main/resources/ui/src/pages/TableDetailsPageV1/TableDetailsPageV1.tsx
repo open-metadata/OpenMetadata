@@ -590,8 +590,7 @@ const TableDetailsPageV1: React.FC = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
