@@ -154,7 +154,6 @@ export enum Operation {
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
     EditAll = "EditAll",
-    EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
     EditDataProfile = "EditDataProfile",
     EditDescription = "EditDescription",
