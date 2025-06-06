@@ -107,6 +107,7 @@
     "asset": "נכס",
     "asset-lowercase": "נכס",
     "asset-plural": "נכסים",
+    "asset-plural-lowercase": "נכסים",
     "assigned": "Assigned",
     "assigned-entity": "הוקצה {{entity}}",
     "assigned-to-me": "הוקצה לי",

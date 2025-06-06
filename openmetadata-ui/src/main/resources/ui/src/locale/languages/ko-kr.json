@@ -107,6 +107,7 @@
     "asset": "자산",
     "asset-lowercase": "자산",
     "asset-plural": "자산들",
+    "asset-plural-lowercase": "자산들",
     "assigned": "할당됨",
     "assigned-entity": "할당된 {{entity}}",
     "assigned-to-me": "나에게 할당됨",

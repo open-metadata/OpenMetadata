@@ -107,6 +107,7 @@
     "asset": "ทรัพย์สิน",
     "asset-lowercase": "ทรัพย์สิน",
     "asset-plural": "ทรัพย์สินหลายรายการ",
+    "asset-plural-lowercase": "ทรัพย์สิน",
     "assigned": "มอบหมายแล้ว",
     "assigned-entity": "มอบหมาย {{entity}}",
     "assigned-to-me": "มอบหมายให้ฉัน",
