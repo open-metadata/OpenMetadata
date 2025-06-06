@@ -88,7 +88,6 @@ class TableauClient:
         self.config = config
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
-        self.usage_metrics: Dict[str, int] = {}
         self.owner_cache: Dict[str, TableauOwner] = {}
 
     @cached_property
