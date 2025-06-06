@@ -150,14 +150,3 @@ export enum FormattedStorageServiceType {
   Gcs = 'GCS',
   S3 = 'S3',
 }
-
-export type ServiceType =
-  | keyof typeof FormattedMlModelServiceType
-  | keyof typeof FormattedMetadataServiceType
-  | keyof typeof FormattedPipelineServiceType
-  | keyof typeof FormattedSearchServiceType
-  | keyof typeof FormattedDatabaseServiceType
-  | keyof typeof FormattedDashboardServiceType
-  | keyof typeof FormattedMessagingServiceType
-  | keyof typeof FormattedAPIServiceType
-  | keyof typeof FormattedStorageServiceType;
