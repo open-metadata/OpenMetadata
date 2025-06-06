@@ -91,6 +91,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -278,6 +279,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataProductDAO dataProductDAO();
+
+  @CreateSqlObject
+  DataContractDAO dataContractDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -2427,6 +2431,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface DataContractDAO extends EntityDAO<DataContract> {
+    @Override
+    default String getTableName() {
+      return "data_contract_entity";
+    }
+
+    @Override
+    default Class<DataContract> getEntityClass() {
+      return DataContract.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
     @Override
     default String getTableName() {
@@ -2878,6 +2899,11 @@ public interface CollectionDAO {
         condition += serviceCondition;
       }
 
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
       if (!nullOrEmpty(serviceType)) {
@@ -2912,6 +2938,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -2953,6 +2984,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();

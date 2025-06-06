@@ -72,7 +72,6 @@ export const PipelineTaskTab = () => {
     task: Task;
     index: number;
   }>();
-
   const { deleted } = pipelineDetails ?? {};
 
   const {

@@ -46,6 +46,9 @@
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
+    "provider" : {
+      "$ref": "../../../type/basic.json#/definitions/providerType"
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
