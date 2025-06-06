@@ -1082,7 +1082,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void clearFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
-    entity.setCertification(fields.contains(FIELD_CERTIFICATION) ? entity.getCertification() : null);
+    entity.setCertification(
+        fields.contains(FIELD_CERTIFICATION) ? entity.getCertification() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
