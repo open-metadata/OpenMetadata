@@ -243,6 +243,13 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       fetchAPI();
     }
   }, [visible]);
+  const handleAllDomainKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // To pass Sonar test
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleMyDomainsClick();
+    }
+  };
 
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
@@ -267,13 +274,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           role="button"
           tabIndex={0}
           onClick={handleMyDomainsClick}
-          onKeyDown={(e) => {
-            // To pass Sonar test
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleMyDomainsClick();
-            }
-          }}>
+          onKeyDown={handleAllDomainKeyPress}>
           <DomainIcon height={20} name="domain" width={20} />
           <Typography.Text
             className={classNames({
