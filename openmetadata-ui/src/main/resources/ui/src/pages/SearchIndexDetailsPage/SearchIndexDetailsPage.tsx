@@ -386,8 +386,7 @@ function SearchIndexDetailsPage() {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.search-index'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {

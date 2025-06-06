@@ -104,8 +104,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.metric'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {

@@ -328,8 +328,7 @@ const StoredProcedurePage = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.stored-procedure-plural'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
