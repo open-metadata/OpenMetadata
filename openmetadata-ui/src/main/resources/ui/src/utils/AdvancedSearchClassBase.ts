@@ -103,6 +103,39 @@ class AdvancedSearchClassBase {
     },
     text: {
       ...this.baseConfig.widgets.text,
+      elasticSearchFormatValue: (_queryType, value, operator, fieldName) => {
+        let newValue = value[0];
+
+        // Only handle extension fields specially
+        if (fieldName.startsWith('extension.')) {
+          newValue = toLower(value[0]);
+        }
+
+        switch (operator) {
+          case 'is_null':
+            return { field: fieldName };
+          case 'is_not_null':
+            return { field: fieldName };
+          case 'not_like':
+            return {
+              wildcard: { [fieldName]: { value: `*${newValue}*` } },
+            };
+          case 'like':
+            return { [fieldName]: { value: `*${newValue}*` } };
+          case 'not_equal':
+            return { term: { [fieldName]: newValue } };
+          case 'equal':
+            return { [fieldName]: newValue };
+          case 'regexp':
+            return {
+              regexp: {
+                [fieldName]: { value: newValue, case_insensitive: true },
+              },
+            };
+          default:
+            return { [fieldName]: { value: newValue } };
+        }
+      },
     },
   };
   configOperators = {
