@@ -12,15 +12,7 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import {
-  cloneDeep,
-  groupBy,
-  isEmpty,
-  isEqual,
-  isUndefined,
-  set,
-  uniqBy,
-} from 'lodash';
+import { groupBy, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,8 +32,8 @@ import { usePaging } from '../../../../../hooks/paging/usePaging';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
+  updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
-import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
 import {
   getColumnSorter,
   getEntityName,
@@ -51,7 +43,6 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { updateFieldTags } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -59,7 +50,6 @@ import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPreviou
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
-import { UpdatedColumnFieldData } from '../../../../Database/SchemaTable/SchemaTable.interface';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
 import {
@@ -86,11 +76,8 @@ const ModelTab = () => {
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
-  const {
-    data: dataModel,
-    permissions,
-    onUpdate,
-  } = useGenericContext<DashboardDataModel>();
+  const { data: dataModel, permissions } =
+    useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
   // Always use paginated columns, never dataModel.columns directly
@@ -183,94 +170,42 @@ const ModelTab = () => {
     }
   }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
 
+  const updateColumnDetails = async (
+    columnFqn: string,
+    column: Partial<Column>
+  ) => {
+    const response = await updateDataModelColumn(columnFqn, column);
+
+    setPaginatedColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === columnFqn ? { ...col, ...response } : col
+      )
+    );
+
+    return response;
+  };
+
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      // Update tags both in the original data model and refresh pagination
-      const originalColumns = dataModel?.columns ?? [];
-      const dataModelData = cloneDeep(originalColumns);
-
-      updateFieldTags<Column>(
-        editColumnTag.fullyQualifiedName ?? '',
-        selectedTags,
-        dataModelData
-      );
-
-      await onUpdate({ ...dataModel, columns: dataModelData });
-
-      // Refresh current page to show updated tags
-      fetchPaginatedColumns(currentPage, searchText || undefined);
+      if (editColumnTag.fullyQualifiedName) {
+        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
+          tags: selectedTags,
+        });
+      }
     },
-    [
-      dataModel,
-      updateFieldTags,
-      onUpdate,
-      fetchPaginatedColumns,
-      currentPage,
-      searchText,
-    ]
+    [updateColumnDetails]
   );
 
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
-      if (!isUndefined(editColumnDescription)) {
-        // Update description in the original data model
-        const originalColumns = dataModel?.columns ?? [];
-        const dataModelColumns = cloneDeep(originalColumns);
-        updateDataModelColumnDescription(
-          dataModelColumns,
-          editColumnDescription?.fullyQualifiedName ?? '',
-          updatedDescription
-        );
-        await onUpdate({
-          ...dataModel,
-          columns: dataModelColumns,
+      if (editColumnDescription?.fullyQualifiedName) {
+        await updateColumnDetails(editColumnDescription.fullyQualifiedName, {
+          description: updatedDescription,
         });
-
-        fetchPaginatedColumns(currentPage, searchText || undefined);
       }
-      setEditColumnDescription(undefined);
     },
-    [
-      editColumnDescription,
-      dataModel,
-      onUpdate,
-      fetchPaginatedColumns,
-      currentPage,
-      searchText,
-    ]
+    [updateColumnDetails, editColumnDescription]
   );
-
-  const updateColumnFields = ({
-    fqn,
-    field,
-    value,
-    columns,
-  }: UpdatedColumnFieldData) => {
-    columns?.forEach((col) => {
-      if (col.fullyQualifiedName === fqn) {
-        set(col, field, value);
-      } else {
-        updateColumnFields({
-          fqn,
-          field,
-          value,
-          columns: col.children as Column[],
-        });
-      }
-    });
-  };
-  const handleColumnUpdate = async (updatedColumns: Column[]) => {
-    const originalColumns = dataModel?.columns ?? [];
-    if (dataModel && !isEqual(originalColumns, updatedColumns)) {
-      const updatedTableDetails = {
-        ...dataModel,
-        columns: updatedColumns,
-      };
-      await onUpdate(updatedTableDetails);
-
-      fetchPaginatedColumns(currentPage, searchText || undefined);
-    }
-  };
 
   const handleEditColumnData = async (
     data: EntityName,
@@ -282,17 +217,9 @@ const ModelTab = () => {
       return; // Early return if id is not provided
     }
 
-    const originalColumns = dataModel?.columns ?? [];
-    const tableCols = cloneDeep(originalColumns);
-
-    updateColumnFields({
-      fqn: fullyQualifiedName,
-      value: isEmpty(displayName) ? undefined : displayName,
-      field: 'displayName',
-      columns: tableCols,
+    await updateColumnDetails(fullyQualifiedName, {
+      displayName,
     });
-
-    await handleColumnUpdate(tableCols);
   };
 
   const searchProps = useMemo(

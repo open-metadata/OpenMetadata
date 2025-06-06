@@ -143,3 +143,15 @@ export const searchDataModelColumnsByFQN = async (
 
   return response.data;
 };
+
+export const updateDataModelColumn = async (
+  fqn: string,
+  column: Partial<Column>
+) => {
+  const response = await APIClient.patch<Column>(
+    `/columns/name/${getEncodedFqn(fqn)}?entityType=dashboardDataModel`,
+    column
+  );
+
+  return response.data;
+};
