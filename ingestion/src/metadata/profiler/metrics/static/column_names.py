@@ -86,3 +86,7 @@ class ColumnNames(StaticMetric):
 
     def df_fn(self, dfs=None):
         return dfs[0].columns.values.tolist()
+
+    def spark_fn(self, df) -> list[str]:
+        """Spark DataFrame function"""
+        return df.columns

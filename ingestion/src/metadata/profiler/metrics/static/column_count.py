@@ -88,3 +88,7 @@ class ColumnCount(StaticMetric):
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         return len(cast(DataFrame, dfs[0]).columns)
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        return len(df.columns)

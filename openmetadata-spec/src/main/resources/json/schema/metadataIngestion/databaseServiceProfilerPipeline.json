@@ -10,6 +10,45 @@
       "type": "string",
       "enum": ["Profiler"],
       "default": "Profiler"
+    },
+    "processingEngine": {
+      "description": "Processing engine for the profiler pipeline.",
+      "oneOf": [
+        {
+          "title": "Native Engine",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Native"],
+              "default": "Native"
+            }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        },
+        {
+          "title": "Spark Engine",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Spark"],
+              "default": "Spark"
+            },
+            "master": {
+              "type": "string",
+              "description": "Spark master URL (e.g., local[*], yarn, spark://host:port, etc.)"
+            },
+            "config": {
+              "$ref": "../type/basic.json#/definitions/map",
+              "description": "Additional Spark configuration properties as key-value pairs."
+            }
+          },
+          "required": ["type", "master"],
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "properties": {
@@ -104,6 +143,10 @@
       "type": "integer",
       "default": 43200,
       "title": "Timeout (in sec.)"
+    },
+    "processingEngine": {
+      "$ref": "#/definitions/processingEngine",
+      "description": "Select the processing engine for the profiler pipeline. If not set, defaults to Native."
     }
   },
   "additionalProperties": false

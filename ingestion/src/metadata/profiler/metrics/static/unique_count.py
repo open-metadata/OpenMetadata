@@ -89,3 +89,19 @@ class UniqueCount(QueryMetric):
                 f" when computing Unique Count.\n Error: {err}"
             )
             return 0
+
+    def spark_fn(self, df) -> Optional[int]:
+        """Spark DataFrame function
+        Returns None if the column type is not computable.
+        """
+        from pyspark.sql import functions as F
+
+        try:
+            value_counts = df.groupBy(self.col.name).count()
+            return value_counts.filter(F.col("count") == 1).count()
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.type}"
+                f" when computing Unique Count.\n Error: {err}"
+            )
+            return None

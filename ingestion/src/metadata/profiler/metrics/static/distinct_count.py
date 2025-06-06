@@ -74,3 +74,14 @@ class DistinctCount(StaticMetric):
                 f" when computing Distinct Count.\n Error: {err}"
             )
             return 0
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        try:
+            return df.select(self.col.name).distinct().count()
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.type}"
+                f" when computing Distinct Count.\n Error: {err}"
+            )
+            return 0

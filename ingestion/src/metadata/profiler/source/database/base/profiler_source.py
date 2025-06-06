@@ -46,7 +46,6 @@ from metadata.sampler.config import (
     get_include_columns,
 )
 from metadata.sampler.models import SampleConfig
-from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
@@ -122,27 +121,95 @@ class ProfilerSource(ProfilerSourceInterface):
 
         return config_copy
 
+    # TODO: Ask... Do we need the db_service/profiler_config here for any reason?
     def create_profiler_interface(
         self,
         entity: Table,
         config: Optional[TableConfig],
         profiler_config: Optional[ProfilerProcessorConfig],
-        schema_entity: Optional[DatabaseSchema],
-        database_entity: Optional[Database],
+        schema_entity: DatabaseSchema,
+        database_entity: Database,
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
-        """Create sqlalchemy profiler interface"""
+        """Create the appropriate profiler interface based on processing engine."""
+
+        # TODO: Any reason to instantiate this here instead of __init__? Not sure I'm getting the difference
         self.source_config = DatabaseServiceProfilerPipeline.model_validate(
             self.config.source.sourceConfig.config
         )
+
+        engine_type = self.get_processing_engine(self.source_config)
+
+        if engine_type == "Native":
+            self.interface = self.get_native_profiler_interface(
+                entity, config, schema_entity, database_entity
+            )
+        elif engine_type == "Spark":
+            self.interface = self.get_spark_profiler_interface(
+                entity, config, schema_entity, database_entity
+            )
+        else:
+            raise ValueError(f"Invalid processing engine type: {engine_type}")
+
+        return self.interface
+
+    def get_spark_profiler_interface(
+        self,
+        entity: Table,
+        config: Optional[TableConfig],
+        schema_entity: DatabaseSchema,
+        database_entity: Database,
+    ) -> ProfilerInterface:
+        """Get the spark profiler interface"""
+        # Import Spark-specific classes
+
+        from metadata.profiler.interface.spark.profiler_interface import (  # pylint: disable=import-outside-toplevel
+            SparkProfilerInterface,
+        )
+        from metadata.sampler.spark.sampler import (  # pylint: disable=import-outside-toplevel
+            SparkSampler,
+        )
+
+        # Create SparkSampler with Spark config
+        sampler_interface = SparkSampler.create(
+            service_connection_config=self.service_conn_config,
+            ometa_client=self.ometa_client,
+            entity=entity,
+            schema_entity=schema_entity,
+            database_entity=database_entity,
+            table_config=config,
+            default_sample_config=SampleConfig(
+                profileSample=self.source_config.profileSample,
+                profileSampleType=self.source_config.profileSampleType,
+                samplingMethodType=self.source_config.samplingMethodType,
+                randomizedSample=self.source_config.randomizedSample,
+            ),
+            processing_engine=self.source_config.processingEngine.root,
+        )
+
+        return SparkProfilerInterface.create(
+            entity=entity,
+            source_config=self.source_config,
+            service_connection_config=self.service_conn_config,
+            sampler=sampler_interface,
+            ometa_client=self.ometa_client,
+        )
+
+    def get_native_profiler_interface(
+        self,
+        entity: Table,
+        config: Optional[TableConfig],
+        schema_entity: DatabaseSchema,
+        database_entity: Database,
+    ) -> ProfilerInterface:
+        """Get the native profiler interface"""
         profiler_class = import_profiler_class(
             ServiceType.Database, source_type=self._interface_type
         )
         sampler_class = import_sampler_class(
             ServiceType.Database, source_type=self._interface_type
         )
-        # This is shared between the sampler and profiler interfaces
-        sampler_interface: SamplerInterface = sampler_class.create(
+        sampler_interface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=entity,
@@ -156,17 +223,13 @@ class ProfilerSource(ProfilerSourceInterface):
                 randomizedSample=self.source_config.randomizedSample,
             ),
         )
-
-        profiler_interface: ProfilerInterface = profiler_class.create(
+        return profiler_class.create(
             entity=entity,
             source_config=self.source_config,
             service_connection_config=self.service_conn_config,
             sampler=sampler_interface,
             ometa_client=self.ometa_client,
-        )  # type: ignore
-
-        self.interface = profiler_interface
-        return self.interface
+        )
 
     def get_profiler_runner(
         self, entity: Table, profiler_config: ProfilerProcessorConfig

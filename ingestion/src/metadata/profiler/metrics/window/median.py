@@ -101,3 +101,11 @@ class Median(StaticMetric, PercentilMixin):
             f"Don't know how to process type {self.col.type} when computing Median"
         )
         return None
+
+    def spark_fn(self, df):
+        """Spark DataFrame function"""
+        if not is_quantifiable(self.col.type):
+            return None
+        # approxQuantile(col, probabilities, relativeError)
+        result = df.approxQuantile(self.col.name, [0.5], 0.01)
+        return result[0] if result else None

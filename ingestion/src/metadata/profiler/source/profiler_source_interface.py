@@ -16,6 +16,10 @@ Class defining the interface for the profiler source
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+    ProcessingEngine,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
 
@@ -51,3 +55,16 @@ class ProfilerSourceInterface(ABC):
     def get_profiler_runner(self, entity, profiler_config):
         """Get the profiler runner"""
         raise NotImplementedError
+
+    @staticmethod
+    def get_processing_engine(config: DatabaseServiceProfilerPipeline):
+        """Get the processing engine based on the configuration."""
+        engine_type = "Native"
+
+        engine_config: Optional[ProcessingEngine] = getattr(
+            config, "processingEngine", None
+        )
+        if engine_config:
+            engine_type = engine_config.root.type.value
+
+        return engine_type

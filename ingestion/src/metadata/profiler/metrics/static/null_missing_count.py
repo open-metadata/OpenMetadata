@@ -71,3 +71,9 @@ class NullMissingCount(StaticMetric):
         Returns the pandas function for calculating the metric.
         """
         return sum(df[self.col.name].isnull().sum() for df in dfs)
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        return df.filter(
+            (df[self.col.name].isNull()) | (df[self.col.name] == "")
+        ).count()

@@ -20,6 +20,7 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import (
+    ColumnName,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
@@ -174,7 +175,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
             if len(rows) >= (self.sample_limit or 100):
                 break
-        return cols, rows
+        return [ColumnName(col) for col in cols], rows
 
     def get_dataset(self, **__):
         """Generate random sample from the table
@@ -212,7 +213,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         cols, rows = self.get_col_row(data_frame=self.raw_dataset, columns=columns)
         return TableData(columns=cols, rows=rows)
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+    def get_columns(self) -> List[SQALikeColumn]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.raw_dataset:
