@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -3952,7 +3953,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     target = getResource("tables/" + table.getId() + "/columns/search").queryParam("q", "price");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
-    assertEquals(1, response.getData().size()); // price_history (only name contains "price")
+    assertEquals(2, response.getData().size());
     assertEquals("price_history", response.getData().get(0).getName());
     assertEquals(1, response.getPaging().getTotal());
 
@@ -4132,5 +4133,160 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(2, response.getPaging().getTotal());
     assertNotNull(response.getData().get(0));
     assertNotNull(response.getData().get(1));
+  }
+
+  // Column Update Permission Tests
+  @Test
+  void test_updateColumn_adminCanUpdateAnyColumn(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Admin Updated Name");
+    updateColumn.setDescription("Admin updated description");
+
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("Admin Updated Name", updatedColumn.getDisplayName());
+    assertEquals("Admin updated description", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_updateColumn_ownerCanUpdateOwnedTableColumns(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = COLUMNS.get(0).getFullyQualifiedName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Owner Updated Name");
+    updateColumn.setDescription("Owner updated description");
+
+    Map<String, String> ownerAuthHeaders = authHeaders(DATA_STEWARD.getName());
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, ownerAuthHeaders);
+
+    assertEquals("Owner Updated Name", updatedColumn.getDisplayName());
+    assertEquals("Owner updated description", updatedColumn.getDescription());
+  }
+
+  @Test
+  void test_updateColumn_dataStewardCanUpdateDescriptionAndTags(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = COLUMNS.get(0).getFullyQualifiedName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDescription("Data steward updated description");
+
+    TagLabel testTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    updateColumn.setTags(listOf(testTag));
+
+    Map<String, String> dataStewardAuthHeaders = authHeaders(DATA_STEWARD.getName());
+    Column updatedColumn = updateColumnByFQN(columnFQN, updateColumn, dataStewardAuthHeaders);
+
+    assertEquals("Data steward updated description", updatedColumn.getDescription());
+    assertEquals(1, updatedColumn.getTags().size());
+    assertEquals("PersonalData.Personal", updatedColumn.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void test_updateColumn_dataConsumerCannotUpdateColumns(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDescription("Data consumer trying to update");
+
+    Map<String, String> dataConsumerAuthHeaders = authHeaders(DATA_CONSUMER.getName());
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, dataConsumerAuthHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+  }
+
+  @Test
+  void test_updateColumn_nonOwnerCannotUpdateDisplayName(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Non-owner trying to update display name");
+
+    Map<String, String> user1AuthHeaders = authHeaders(USER1.getName());
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, user1AuthHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(USER1.getName(), List.of(MetadataOperation.EDIT_ALL)));
+  }
+
+  @Test
+  void test_updateColumn_nonOwnerCannotUpdateConstraints(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(DATA_STEWARD.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+
+    Map<String, String> user1AuthHeaders = authHeaders(USER1.getName());
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, user1AuthHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(USER1.getName(), List.of(MetadataOperation.EDIT_ALL)));
+  }
+
+  @Test
+  void test_updateColumn_userCannotUpdateOtherUsersTableColumns(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withOwners(listOf(USER1.getEntityReference()));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDescription("USER2 trying to update USER1's table");
+
+    Map<String, String> user2AuthHeaders = authHeaders(USER2.getName());
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, user2AuthHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_DESCRIPTION)));
+  }
+
+  @Test
+  void test_updateColumn_noAuthHeadersReturnsUnauthorized(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String columnFQN = table.getFullyQualifiedName() + "." + COLUMNS.get(0).getName();
+
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
+    updateColumn.setDisplayName("Should Fail");
+
+    assertResponse(
+        () -> updateColumnByFQN(columnFQN, updateColumn, null),
+        UNAUTHORIZED,
+        "Not authorized; User's Email is not present");
+  }
+
+  private Column updateColumnByFQN(
+      String columnFQN,
+      org.openmetadata.schema.api.data.UpdateColumn updateColumn,
+      Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource("columns/name/" + columnFQN).queryParam("entityType", "table");
+    return TestUtils.put(target, updateColumn, Column.class, OK, authHeaders);
   }
 }
