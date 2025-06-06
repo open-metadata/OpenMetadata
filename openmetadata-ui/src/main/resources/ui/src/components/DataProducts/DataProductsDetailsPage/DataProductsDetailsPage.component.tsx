@@ -200,7 +200,7 @@ const DataProductsDetailsPage = ({
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.asset-lowercase'),
+            entity: t('label.asset-plural-lowercase'),
           })
         );
       }
