@@ -480,7 +480,7 @@ public class ElasticSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (request.getTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);

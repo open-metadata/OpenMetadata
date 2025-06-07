@@ -498,7 +498,7 @@ public class OpenSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (Boolean.TRUE.equals(request.getTrackTotalHits())) {
       searchSourceBuilder.trackTotalHits(true);
@@ -1570,7 +1570,7 @@ public class OpenSearchClient implements SearchClient {
             new FetchSourceContext(
                 request.getFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
-                new String[] {}));
+                request.getExcludeSourceFields().toArray(String[]::new)));
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
                 Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
