@@ -188,10 +188,7 @@ public class OpenSearchSourceBuilderFactory
                 .prefixLength(1)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f);
-
-        for (Map.Entry<String, Float> fieldEntry : fuzzyFields.entrySet()) {
-          fuzzyQueryBuilder.field(fieldEntry.getKey(), fieldEntry.getValue());
-        }
+        fuzzyFields.forEach(fuzzyQueryBuilder::field);
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
@@ -201,10 +198,7 @@ public class OpenSearchSourceBuilderFactory
                 .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f);
-
-        for (Map.Entry<String, Float> fieldEntry : nonFuzzyFields.entrySet()) {
-          nonFuzzyQueryBuilder.field(fieldEntry.getKey(), fieldEntry.getValue());
-        }
+        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
 
@@ -253,10 +247,8 @@ public class OpenSearchSourceBuilderFactory
         functionScore.boostMode(CombineFunction.SUM);
       }
 
-      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
-      combinedQuery.must(baseQuery);
-      combinedQuery.should(functionScore.boost(functionBoostFactor));
-      finalQuery = combinedQuery;
+      functionScore.boost(functionBoostFactor);
+      finalQuery = functionScore;
     }
 
     HighlightBuilder highlightBuilder = null;
