@@ -22,6 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import loginClassBase from './constants/LoginClassBase';
 import AirflowStatusProvider from './context/AirflowStatusProvider/AirflowStatusProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -30,6 +31,7 @@ import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
+import { preloadImage } from './utils/CommonUtils';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
@@ -70,6 +72,17 @@ const App: FC = () => {
       });
     }
   }, [applicationConfig]);
+
+  useEffect(() => {
+    const content = loginClassBase.getLoginCarouselContent();
+
+    content.forEach((data) => {
+      preloadImage(data.image);
+      data.image1?.image && preloadImage(data.image1.image);
+      data.image2?.image && preloadImage(data.image2.image);
+      data.image3?.image && preloadImage(data.image3.image);
+    });
+  }, []);
 
   return (
     <div className="main-container">
