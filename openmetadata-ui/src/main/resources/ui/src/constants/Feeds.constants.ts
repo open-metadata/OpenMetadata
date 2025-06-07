@@ -24,6 +24,9 @@ export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
+// 3 is the default page count for the post feed in list API
+export const POST_FEED_PAGE_COUNT = 3;
+
 export const ENTITY_URL_MAP = {
   team: 'settings/members/teams',
   user: 'users',
