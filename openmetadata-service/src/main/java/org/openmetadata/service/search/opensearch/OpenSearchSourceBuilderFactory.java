@@ -165,21 +165,45 @@ public class OpenSearchSourceBuilderFactory
 
       baseQuery.must(queryStringBuilder);
     } else {
-      MultiMatchQueryBuilder multiMatchQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .prefixLength(1)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f);
+      Map<String, Float> fuzzyFields = new HashMap<>();
+      Map<String, Float> nonFuzzyFields = new HashMap<>();
 
       for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
         String fieldName = fieldEntry.getKey();
         Float boost = fieldEntry.getValue();
-        multiMatchQueryBuilder.field(fieldName, boost);
+        if (fieldName.contains(".ngram")) {
+          nonFuzzyFields.put(fieldName, boost);
+        } else {
+          fuzzyFields.put(fieldName, boost);
+        }
       }
 
-      baseQuery.must(multiMatchQueryBuilder);
+      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+
+      if (!fuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder fuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .fuzziness(Fuzziness.AUTO)
+                .prefixLength(1)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+        fuzzyFields.forEach(fuzzyQueryBuilder::field);
+        combinedQuery.should(fuzzyQueryBuilder);
+      }
+
+      if (!nonFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+
+      combinedQuery.minimumShouldMatch(1);
+      baseQuery.must(combinedQuery);
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
@@ -223,10 +247,8 @@ public class OpenSearchSourceBuilderFactory
         functionScore.boostMode(CombineFunction.SUM);
       }
 
-      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
-      combinedQuery.must(baseQuery);
-      combinedQuery.should(functionScore.boost(functionBoostFactor));
-      finalQuery = combinedQuery;
+      functionScore.boost(functionBoostFactor);
+      finalQuery = functionScore;
     }
 
     HighlightBuilder highlightBuilder = null;

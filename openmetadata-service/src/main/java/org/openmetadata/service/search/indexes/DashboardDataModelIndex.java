@@ -49,6 +49,8 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
+      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
+      doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
     }
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
