@@ -334,9 +334,6 @@
       "entityType": {
         "type": "keyword"
       },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
