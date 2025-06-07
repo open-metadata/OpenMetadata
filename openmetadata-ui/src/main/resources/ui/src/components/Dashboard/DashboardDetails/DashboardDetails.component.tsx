@@ -233,6 +233,7 @@ const DashboardDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      editAllPermission,
       dashboardDetails,
       deleted: deleted ?? false,
       handleFeedCount,

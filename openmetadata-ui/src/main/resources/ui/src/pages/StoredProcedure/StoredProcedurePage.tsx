@@ -409,6 +409,7 @@ const StoredProcedurePage = () => {
     editLineagePermission,
     viewAllPermission,
     viewBasicPermission,
+    editAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -435,6 +436,7 @@ const StoredProcedurePage = () => {
       viewBasicPermission:
         storedProcedurePermissions.ViewAll ||
         storedProcedurePermissions.ViewBasic,
+      editAllPermission: storedProcedurePermissions.EditAll,
     }),
     [storedProcedurePermissions, storedProcedure]
   );
@@ -454,6 +456,7 @@ const StoredProcedurePage = () => {
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      editAllPermission,
       onExtensionUpdate,
       getEntityFeedCount: getEntityFeedCount,
       fetchStoredProcedureDetails,

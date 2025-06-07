@@ -552,6 +552,10 @@ export enum ThreadTaskStatus {
     Closed = "Closed",
     Open = "Open",
 }
+export enum AnnoucementStatus{
+    Active="active",
+    Inactive="inactive"
+}
 
 /**
  * Type of a task.

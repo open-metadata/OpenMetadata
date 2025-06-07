@@ -88,6 +88,7 @@ export const getMetricDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  editAllPermission,
   getEntityFeedCount,
   fetchMetricDetails,
   metricDetails,
@@ -139,6 +140,7 @@ export const getMetricDetailsPageTabs = ({
           entityType={EntityType.METRIC}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchMetricDetails}
           onUpdateFeedCount={handleFeedCount}

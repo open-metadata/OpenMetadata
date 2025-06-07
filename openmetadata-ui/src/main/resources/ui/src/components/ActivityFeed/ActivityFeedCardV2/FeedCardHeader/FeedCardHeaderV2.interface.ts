@@ -28,4 +28,5 @@ export interface FeedCardHeaderV2Props {
   fieldName?: string;
   cardStyle?: CardStyle;
   feed: Thread;
+  isAnnouncementTab?: boolean;
 }
