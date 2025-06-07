@@ -13,7 +13,7 @@
       "type": "string",
       "format": "password",
       "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
-      "uiFieldType": "file"
+      "uiFieldType": "fileOrInput"
     },
     "sslCertificate": {
       "title": "SSL Certificate",
@@ -21,7 +21,7 @@
       "type": "string",
       "format": "password",
       "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
-      "uiFieldType": "file"
+      "uiFieldType": "fileOrInput"
     },
     "sslKey": {
       "title": "SSL Key",
@@ -29,7 +29,7 @@
       "type": "string",
       "format": "password",
       "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
-      "uiFieldType": "file"
+      "uiFieldType": "fileOrInput"
     }
   }
 }

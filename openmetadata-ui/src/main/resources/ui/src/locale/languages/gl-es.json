@@ -487,6 +487,7 @@
     "enter-entity-name": "Introducir o nome de {{entity}}",
     "enter-entity-value": "Introducir o valor de {{entity}}",
     "enter-field-description": "Introducir a descrición de {{field}}",
+    "enter-file-content": "Introducir o contido do ficheiro",
     "enter-property-value": "Introducir o valor da propiedade",
     "enter-type-password": "Introducir contrasinal de {{type}}",
     "entity": "Entidade",
