@@ -80,6 +80,22 @@
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "owners": {
+      "description": "Owners of this Classification.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this classification.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags associated with this classification. These tags captures relationship of a classification with a tag automatically. As an example a classification 'Classification.Certification' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
     }
   },
   "required": ["name", "description"],

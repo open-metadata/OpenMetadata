@@ -120,13 +120,15 @@ public class ClassificationResourceTest
   @Override
   public Classification validateGetWithDifferentFields(
       Classification classification, boolean byName) throws HttpResponseException {
+    String fields = "";
     classification =
         byName
-            ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(classification.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(classification.getUsageCount());
+            ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNull(classification.getOwners());
+    assertTrue(classification.getTags().isEmpty());
 
-    String fields = "usageCount";
+    fields = "owners,tags,usageCount";
     classification =
         byName
             ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
