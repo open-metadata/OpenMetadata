@@ -23,9 +23,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -47,7 +47,7 @@ import './market-place-app-details.less';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
@@ -113,11 +113,11 @@ const MarketPlaceAppDetails = () => {
   }, [fqn]);
 
   const installApp = useCallback(() => {
-    history.push(getAppInstallPath(fqn));
+    navigate(getAppInstallPath(fqn));
   }, [fqn]);
 
   const onBrowseAppsClick = () => {
-    history.push(ROUTES.MARKETPLACE);
+    navigate(ROUTES.MARKETPLACE);
   };
 
   const tooltipTitle = useMemo(() => {

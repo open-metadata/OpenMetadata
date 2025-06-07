@@ -108,15 +108,13 @@ describe('AlertConfigDetails', () => {
 
   it('should show loader when fetching data', async () => {
     jest.spyOn(React, 'useState').mockImplementationOnce(() => [1, jest.fn()]);
-    await act(async () => {
-      render(
-        <AlertConfigDetails
-          alertDetails={mockAlertDetails}
-          isNotificationAlert={false}
-        />
-      );
+    render(
+      <AlertConfigDetails
+        alertDetails={mockAlertDetails}
+        isNotificationAlert={false}
+      />
+    );
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 });

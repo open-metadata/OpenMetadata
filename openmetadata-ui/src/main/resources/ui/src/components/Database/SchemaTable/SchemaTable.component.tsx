@@ -26,9 +26,9 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -101,7 +101,7 @@ import {
 
 const SchemaTable = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -191,10 +191,7 @@ const SchemaTable = () => {
     }
   };
 
-  const data = React.useMemo(
-    () => makeData(searchedColumns),
-    [searchedColumns]
-  );
+  const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
 
   const nestedTableFqnKeys = useMemo(
     () =>
@@ -401,7 +398,6 @@ const SchemaTable = () => {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
@@ -461,7 +457,6 @@ const SchemaTable = () => {
         title: t('label.type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
-        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         width: 150,
         render: renderDataTypeDisplay,
       },
@@ -469,7 +464,6 @@ const SchemaTable = () => {
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 300,
         render: renderDescription,
       },
@@ -477,7 +471,6 @@ const SchemaTable = () => {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -501,7 +494,6 @@ const SchemaTable = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -526,7 +518,7 @@ const SchemaTable = () => {
         dataIndex: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         key: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         width: 120,
-        render: (_, record) => {
+        render: (_: string, record: Column) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
               getEntityColumnFQN(column.entityLink ?? ''),
@@ -576,9 +568,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    history.push({
-      pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
-    });
+    navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
   useEffect(() => {

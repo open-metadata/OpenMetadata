@@ -13,9 +13,9 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.png';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
@@ -41,7 +41,7 @@ const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const { authConfig, isAuthenticated } = useApplicationStore();
   const { onLoginHandler } = useAuthProvider();
   const { alert, resetAlert } = useAlertStore();
@@ -137,7 +137,7 @@ const SignInPage = () => {
     // If the user is already logged in or if security is disabled
     // redirect the user to the home page.
     if (isAuthenticated) {
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     }
   }, [isAuthenticated]);
 
@@ -158,12 +158,12 @@ const SignInPage = () => {
   };
 
   const onClickSignUp = () => {
-    history.push(ROUTES.REGISTER);
+    navigate(ROUTES.REGISTER);
     resetAlert();
   };
 
   const onClickForgotPassword = () => {
-    history.push(ROUTES.FORGOT_PASSWORD);
+    navigate(ROUTES.FORGOT_PASSWORD);
     resetAlert();
   };
 
@@ -202,7 +202,6 @@ const SignInPage = () => {
                     data-testid="email"
                     label={t('label.email')}
                     name="email"
-                    requiredMark={false}
                     rules={[
                       { required: true },
                       {
@@ -235,7 +234,6 @@ const SignInPage = () => {
                       </div>
                     }
                     name="password"
-                    requiredMark={false}
                     rules={[{ required: true }]}>
                     <Input.Password
                       autoComplete="off"

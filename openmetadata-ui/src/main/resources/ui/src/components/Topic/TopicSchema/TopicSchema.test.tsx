@@ -16,12 +16,12 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
@@ -204,9 +204,7 @@ describe('Topic Schema', () => {
     // order_id is child of nested row, so should be null initially
     expect(await screen.findByText('order_id')).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(expandIcon);
-    });
+    fireEvent.click(expandIcon);
 
     expect(screen.queryByText('order_id')).toBeNull();
   });

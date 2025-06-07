@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column } from '../generated/entity/data/table';
@@ -40,15 +39,18 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 // Mock EntityLink methods
 jest.mock('./EntityLink', () => ({
   getTableColumnNameFromColumnFqn: jest.fn(),
   getTableEntityLink: jest.fn(),
 }));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
+const navigate = jest.fn();
 
 describe('TableUtils', () => {
   it('getTierTags should return the correct usage percentile', () => {
@@ -245,7 +247,12 @@ describe('TableUtils', () => {
         EditAll: true,
       } as OperationPermission;
 
-      const result = ExtraTableDropdownOptions('tableFqn', permission, false);
+      const result = ExtraTableDropdownOptions(
+        'tableFqn',
+        permission,
+        false,
+        navigate
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].key).toBe('import-button');
@@ -257,7 +264,12 @@ describe('TableUtils', () => {
         EditAll: false,
       } as OperationPermission;
 
-      const result = ExtraTableDropdownOptions('tableFqn', permission, false);
+      const result = ExtraTableDropdownOptions(
+        'tableFqn',
+        permission,
+        false,
+        navigate
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].key).toBe('export-button');
@@ -269,7 +281,12 @@ describe('TableUtils', () => {
         EditAll: true,
       } as OperationPermission;
 
-      const result = ExtraTableDropdownOptions('tableFqn', permission, false);
+      const result = ExtraTableDropdownOptions(
+        'tableFqn',
+        permission,
+        false,
+        navigate
+      );
 
       expect(result).toHaveLength(2);
       expect(result[0].key).toBe('import-button');
@@ -281,7 +298,12 @@ describe('TableUtils', () => {
         ViewAll: false,
         EditAll: false,
       } as OperationPermission;
-      const result = ExtraTableDropdownOptions('tableFqn', permission, false);
+      const result = ExtraTableDropdownOptions(
+        'tableFqn',
+        permission,
+        false,
+        navigate
+      );
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);
@@ -292,7 +314,12 @@ describe('TableUtils', () => {
         ViewAll: true,
         EditAll: true,
       } as OperationPermission;
-      const result = ExtraTableDropdownOptions('tableFqn', permission, true);
+      const result = ExtraTableDropdownOptions(
+        'tableFqn',
+        permission,
+        true,
+        navigate
+      );
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);

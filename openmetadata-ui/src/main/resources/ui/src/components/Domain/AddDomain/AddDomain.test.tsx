@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { addDomains } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -40,7 +39,7 @@ jest.mock('../../../utils/CommonUtils', () => ({
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
-  getDomainPath: jest.fn().mockImplementation(() => Promise.resolve({})),
+  getDomainPath: jest.fn().mockImplementation(() => -1),
 }));
 jest.mock('../../common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -74,12 +73,10 @@ jest.mock('../AddDomainForm/AddDomainForm.component', () => {
     </div>
   ));
 });
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AddDomain', () => {
@@ -107,11 +104,9 @@ describe('AddDomain', () => {
     render(<AddDomain />);
 
     const cancelButton = await screen.findByTestId('cancel-button');
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Should show error message when api fails', async () => {

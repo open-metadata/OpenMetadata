@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
@@ -26,6 +22,7 @@ export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
     const { handleSuccessfulLogout } = useAuthProvider();
+    const navigate = useNavigate();
 
     const handleLogin = () => {
       setIsAuthenticated(false);
@@ -44,7 +41,7 @@ export const GenericAuthenticator = forwardRef(
     };
 
     const handleSilentSignIn = async () => {
-      const resp = await renewToken();
+      const resp = await renewToken(navigate);
       setOidcToken(resp.accessToken);
 
       return resp;

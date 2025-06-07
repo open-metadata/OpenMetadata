@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
   ErrorSource,
@@ -20,6 +19,18 @@ import {
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
 import AppLogsViewer from './AppLogsViewer.component';
+
+// Add TextEncoder polyfill
+class MockTextEncoder {
+  encoding = 'utf-8';
+  encode() {
+    return new Uint8Array();
+  }
+  encodeInto() {
+    return { read: 0, written: 0 };
+  }
+}
+global.TextEncoder = MockTextEncoder as unknown as typeof TextEncoder;
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeWithTimezone: jest

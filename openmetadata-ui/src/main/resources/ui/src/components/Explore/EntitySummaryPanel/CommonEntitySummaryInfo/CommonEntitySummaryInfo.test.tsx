@@ -17,7 +17,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockCommonEntityInfo } from '../mocks/CommonEntitySummaryInfo.mock';
@@ -50,6 +49,7 @@ describe('CommonEntitySummaryInfo component', () => {
     expect(externalURL.getAttribute('href')).toEqual(
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
+    expect(externalURL.getAttribute('target')).toEqual('_blank');
     expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();
   });
 
@@ -89,6 +89,7 @@ describe('CommonEntitySummaryInfo component', () => {
     expect(externalURL.getAttribute('href')).toEqual(
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
+    expect(externalURL.getAttribute('target')).toEqual('_blank');
     expect(serviceURL.getAttribute('href')).toEqual(
       '/service/databaseServices/sample_airflow'
     );

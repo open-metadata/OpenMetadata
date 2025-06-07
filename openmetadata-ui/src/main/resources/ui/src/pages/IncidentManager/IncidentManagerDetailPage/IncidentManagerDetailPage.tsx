@@ -17,9 +17,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -61,6 +61,7 @@ import {
   getTestCaseVersionPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
@@ -72,12 +73,11 @@ const IncidentManagerDetailPage = ({
   isVersionPage?: boolean;
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const location =
-    useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const { tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS, version } =
-    useParams<{ tab: EntityTabs; version: string }>();
+    useRequiredParams<{ tab: EntityTabs; version: string }>();
 
   const { fqn: testCaseFQN } = useFqn();
 
@@ -188,7 +188,7 @@ const IncidentManagerDetailPage = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         isVersionPage
           ? getTestCaseVersionPath(
               testCaseFQN,
@@ -251,7 +251,7 @@ const IncidentManagerDetailPage = ({
   }, [testCaseFQN]);
 
   const onVersionClick = () => {
-    history.push(
+    navigate(
       isVersionPage
         ? getTestCaseDetailPagePath(testCaseFQN)
         : getTestCaseVersionPath(
@@ -265,7 +265,7 @@ const IncidentManagerDetailPage = ({
   // version related methods
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getTestCaseVersionPath(testCaseFQN, toString(newVersion), activeTab)
       );
     },
@@ -385,9 +385,7 @@ const IncidentManagerDetailPage = ({
                 {!isVersionPage && (
                   <ManageButton
                     isRecursiveDelete
-                    afterDeleteAction={() =>
-                      history.push(ROUTES.INCIDENT_MANAGER)
-                    }
+                    afterDeleteAction={() => navigate(ROUTES.INCIDENT_MANAGER)}
                     allowSoftDelete={false}
                     canDelete={hasDeletePermission}
                     displayName={testCase.displayName}

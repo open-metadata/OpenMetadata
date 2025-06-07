@@ -12,7 +12,7 @@
  */
 import { Alert } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { getIconAndClassName } from '../../utils/ToastUtils';

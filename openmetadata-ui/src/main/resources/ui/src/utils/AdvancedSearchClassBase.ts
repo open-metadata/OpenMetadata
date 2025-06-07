@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { debounce, isEmpty, sortBy } from 'lodash';
 import {
-  AsyncFetchListValues,
+  AntdConfig,
   AsyncFetchListValuesResult,
   BasicConfig,
   Fields,
   ListItem,
+  ListValues,
   SelectFieldSettings,
-} from 'react-awesome-query-builder';
-import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+} from '@react-awesome-query-builder/antd';
+import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
@@ -45,6 +44,7 @@ import {
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
 
@@ -103,6 +103,39 @@ class AdvancedSearchClassBase {
     },
     text: {
       ...this.baseConfig.widgets.text,
+      elasticSearchFormatValue: (_queryType, value, operator, fieldName) => {
+        let newValue = value[0];
+
+        // Only handle extension fields specially
+        if (fieldName.startsWith('extension.')) {
+          newValue = toLower(value[0]);
+        }
+
+        switch (operator) {
+          case 'is_null':
+            return { field: fieldName };
+          case 'is_not_null':
+            return { field: fieldName };
+          case 'not_like':
+            return {
+              wildcard: { [fieldName]: { value: `*${newValue}*` } },
+            };
+          case 'like':
+            return { [fieldName]: { value: `*${newValue}*` } };
+          case 'not_equal':
+            return { term: { [fieldName]: newValue } };
+          case 'equal':
+            return { [fieldName]: newValue };
+          case 'regexp':
+            return {
+              regexp: {
+                [fieldName]: { value: newValue, case_insensitive: true },
+              },
+            };
+          default:
+            return { [fieldName]: { value: newValue } };
+        }
+      },
     },
   };
   configOperators = {
@@ -117,7 +150,7 @@ class AdvancedSearchClassBase {
       elasticSearchQueryType: 'regexp',
       valueSources: ['value'],
     },
-  };
+  } as BasicConfig['operators'];
 
   mainWidgetProps = {
     fullWidth: true,
@@ -537,6 +570,8 @@ class AdvancedSearchClassBase {
 
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
+          showSearch: true,
+          ['data-testid']: 'advanced-search-field-select',
           // Adding filterOption to search by label
           // Since the default search behavior is by value which gives incorrect results
           // Ex. for search term 'name', it will return 'Task' in results as well
@@ -552,7 +587,7 @@ class AdvancedSearchClassBase {
   };
 
   public autoCompleteTier: (
-    tierOptions: Promise<AsyncFetchListValues>
+    tierOptions?: Promise<ListValues>
   ) => SelectFieldSettings['asyncFetch'] = (tierOptions) => {
     return async (search) => {
       const resolvedTierOptions = (await tierOptions) as ListItem[];
@@ -561,7 +596,11 @@ class AdvancedSearchClassBase {
         values: !search
           ? resolvedTierOptions
           : resolvedTierOptions.filter((tier) =>
-              tier.title?.toLowerCase()?.includes(search.toLowerCase())
+              tier.title
+                ?.toLowerCase()
+                ?.includes(
+                  toLower(Array.isArray(search) ? search.join(',') : search)
+                )
             ),
         hasMore: false,
       } as AsyncFetchListValuesResult;
@@ -570,12 +609,9 @@ class AdvancedSearchClassBase {
 
   public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
   }): Fields {
-    const {
-      entitySearchIndex = [SearchIndex.TABLE],
-      tierOptions = Promise.resolve([]),
-    } = args;
+    const { entitySearchIndex = [SearchIndex.TABLE], tierOptions } = args;
 
     return {
       [EntityFields.DISPLAY_NAME_KEYWORD]: {
@@ -848,11 +884,11 @@ class AdvancedSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions = Promise.resolve([]),
+    tierOptions,
     shouldAddServiceField = true,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
     shouldAddServiceField?: boolean;
   }) => {
     const serviceQueryBuilderFields: Fields = {
@@ -887,7 +923,7 @@ class AdvancedSearchClassBase {
    * Builds search index specific configuration for the query builder
    */
   public getQbConfigs: (
-    tierOptions: Promise<AsyncFetchListValues>,
+    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
   ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 import { LogoutPage } from './LogoutPage';
 
 const mockOnLogoutHandler = jest.fn();

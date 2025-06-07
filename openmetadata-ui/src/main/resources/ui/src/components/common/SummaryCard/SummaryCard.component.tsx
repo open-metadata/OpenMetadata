@@ -13,7 +13,7 @@
 import { Progress, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { progressBarFormatter } from '../../../utils/ProgressBar/ProgressBar.utils';
 import './summary-card.style.less';

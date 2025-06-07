@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import DraggableBodyRow from '../components/common/Draggable/DraggableBodyRow';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
 
@@ -34,19 +34,19 @@ export enum SUBSCRIPTION_WEBHOOK {
 
 export const SUBSCRIPTION_WEBHOOK_OPTIONS = [
   {
-    label: t('label.none'),
+    label: i18n.t('label.none'),
     value: '',
   },
   {
-    label: t('label.ms-team-plural'),
+    label: i18n.t('label.ms-team-plural'),
     value: SUBSCRIPTION_WEBHOOK.MS_TEAMS,
   },
   {
-    label: t('label.slack'),
+    label: i18n.t('label.slack'),
     value: SUBSCRIPTION_WEBHOOK.SLACK,
   },
   {
-    label: t('label.g-chat'),
+    label: i18n.t('label.g-chat'),
     value: SUBSCRIPTION_WEBHOOK.G_CHAT,
   },
 ];

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import CopyToClipboardButton from './CopyToClipboardButton';
 
 const clipboardWriteTextMock = jest.fn();
@@ -57,7 +62,9 @@ describe('Test CopyToClipboardButton Component', () => {
     fireEvent.mouseOver(screen.getByTestId('copy-secret'));
     jest.advanceTimersByTime(1000);
 
-    expect(screen.getByTestId('copy-success')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('copy-success')).toBeInTheDocument();
+    });
   });
 
   it('Should have copied text in clipboard', async () => {
@@ -84,6 +91,8 @@ describe('Test CopyToClipboardButton Component', () => {
     });
 
     // not show the success message if clipboard API has error
-    expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
+    });
   });
 });

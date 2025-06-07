@@ -16,7 +16,7 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -44,7 +44,7 @@ export interface Props extends FormProps {
   useSelectWidget?: boolean;
 }
 
-const FormBuilder: FunctionComponent<Props> = forwardRef(
+const FormBuilder = forwardRef<Form, Props>(
   (
     {
       formData,

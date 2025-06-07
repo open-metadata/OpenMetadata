@@ -12,7 +12,7 @@
  */
 import { FieldErrorProps } from '@rjsf/utils';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 
 export const FieldErrorTemplate: FC<FieldErrorProps> = (props) => {
   const errorList = [...new Set(props.errors ?? [])];

@@ -15,6 +15,7 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../../constant/customProperty';
 import { GlobalSettingOptions } from '../../../constant/settings';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { selectOption } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -122,7 +123,14 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         .getByText('Owner')
         .click();
 
-      await page.getByTitle('Custom Properties').click();
+      const ruleLocator = page.locator('.rule').nth(0);
+
+      // Perform click on rule field
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Custom Properties'
+      );
 
       // Select Custom Property Field when we want filter
       await page

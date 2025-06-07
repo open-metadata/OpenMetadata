@@ -136,7 +136,7 @@ export const getSearchIndexVersions = async (id: string) => {
   return response.data;
 };
 
-export const getSearchIndexVersion = async (id: string, version: string) => {
+export const getSearchIndexVersion = async (id: string, version?: string) => {
   const url = `/searchIndexes/${id}/versions/${version}`;
 
   const response = await APIClient.get<SearchIndex>(url);

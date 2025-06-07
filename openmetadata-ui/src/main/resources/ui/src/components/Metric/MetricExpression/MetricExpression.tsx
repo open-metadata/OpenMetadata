@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -29,8 +29,8 @@ const MetricExpression: FC = () => {
   const { data: metricDetails, onUpdate: onMetricUpdate } =
     useGenericContext<Metric>();
 
-  const [isUpdating, setIsUpdating] = React.useState(false);
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const selectedLanguage = Form.useWatch('language', form);
 

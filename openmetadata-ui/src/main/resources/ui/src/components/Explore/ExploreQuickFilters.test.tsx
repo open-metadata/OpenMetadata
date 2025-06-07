@@ -13,7 +13,6 @@
 
 import { act, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { SearchIndex } from '../../enums/search.enum';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
@@ -30,7 +29,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),

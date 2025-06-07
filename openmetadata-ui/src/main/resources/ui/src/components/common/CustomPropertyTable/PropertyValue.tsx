@@ -16,7 +16,6 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Form,
   Input,
   Row,
@@ -28,7 +27,6 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   isArray,
   isEmpty,
@@ -38,15 +36,10 @@ import {
   omitBy,
   toNumber,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
-import React, {
-  CSSProperties,
-  FC,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
@@ -74,6 +67,7 @@ import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -111,6 +105,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     };
   }, [property, extension]);
 
+  const { t } = useTranslation();
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -284,7 +279,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
 
         const initialValues = {
-          dateTimeValue: value ? moment(value, format) : undefined,
+          dateTimeValue: value ? DateTime.fromFormat(value, format) : undefined,
         };
 
         const formId = `dateTime-form-${propertyName}`;
@@ -304,10 +299,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               id={formId}
               initialValues={initialValues}
               layout="vertical"
-              onFinish={(values: { dateTimeValue: Moment }) => {
+              onFinish={(values: { dateTimeValue: DateTime }) => {
                 onInputSave(
                   values.dateTimeValue
-                    ? values.dateTimeValue.format(format)
+                    ? values.dateTimeValue.toFormat(format)
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
               }}>

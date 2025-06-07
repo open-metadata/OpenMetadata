@@ -27,9 +27,9 @@ import {
 } from 'lodash';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
@@ -82,7 +82,7 @@ import { useTableProfiler } from '../TableProfilerProvider';
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const {
     isTestsLoading,
@@ -125,7 +125,9 @@ const ColumnProfileTable = () => {
   }, [permissions]);
 
   const updateActiveColumnFqn = (key: string) =>
-    history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
+    navigate({
+      search: Qs.stringify({ activeColumnFqn: key, activeTab }),
+    });
 
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
@@ -279,7 +281,7 @@ const ColumnProfileTable = () => {
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
       key: 'test-case',
       onClick: () => {
-        history.push({
+        navigate({
           pathname: getAddDataQualityTableTestPath(
             ProfilerDashboardType.COLUMN,
             fqn
@@ -292,7 +294,7 @@ const ColumnProfileTable = () => {
       label: <TabsLabel id="custom-metric" name={t('label.custom-metric')} />,
       key: 'custom-metric',
       onClick: () => {
-        history.push({
+        navigate({
           pathname: getAddCustomMetricPath(ProfilerDashboardType.COLUMN, fqn),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
@@ -326,7 +328,7 @@ const ColumnProfileTable = () => {
           className="p-0 text-md font-medium"
           type="link"
           onClick={() =>
-            history.push({
+            navigate({
               search: Qs.stringify({
                 activeTab: TableProfilerTab.COLUMN_PROFILE,
               }),

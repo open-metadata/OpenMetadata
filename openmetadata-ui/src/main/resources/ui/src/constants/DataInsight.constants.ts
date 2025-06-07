@@ -126,7 +126,7 @@ export const ENTITIES_SUMMARY_LIST = [
   },
 ];
 
-export const KPI_DATE_PICKER_FORMAT = 'YYYY-MM-DD';
+export const KPI_DATE_PICKER_FORMAT = 'yyyy-MM-dd';
 
 export const BASE_COLORS = [
   '#E57373',

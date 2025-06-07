@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
 import { User, UserManager, WebStorageStateStore } from 'oidc-client';
-import React, {
+import {
   ComponentType,
   forwardRef,
   Fragment,
@@ -22,7 +21,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -52,20 +51,42 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
   })(type);
 };
 
+const OidcCallbackWrapper = ({
+  userManager,
+  onError,
+  onSuccess,
+}: {
+  userManager: UserManager;
+  onError: (error: Error) => void;
+  onSuccess: (user: User) => void;
+}) => {
+  const CallbackComponent = Callback as unknown as ComponentType<{
+    userManager: UserManager;
+    onError: (error: Error) => void;
+    onSuccess: (user: User) => void;
+  }>;
+
+  return (
+    <CallbackComponent
+      userManager={userManager}
+      onError={onError}
+      onSuccess={onSuccess}
+    />
+  );
+};
+
 const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ childComponentType, children, userConfig }: Props, ref) => {
     const {
       isAuthenticated,
       isSigningUp,
       setIsSigningUp,
-      currentUser,
-      newUser,
       isApplicationLoading,
     } = useApplicationStore();
     const {
-      handleSuccessfulLogout,
       handleFailedLogin,
       handleSuccessfulLogin,
+      handleSuccessfulLogout,
       updateAxiosInterceptors,
     } = useAuthProvider();
 
@@ -148,76 +169,83 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       renewIdToken: signInSilently,
     }));
 
-    const AppWithAuth = getAuthenticator(childComponentType, userManager);
+    const AppWithAuth = getAuthenticator(
+      childComponentType,
+      userManager
+    ) as unknown as ComponentType;
 
     return (
       <>
-        <Switch>
+        <Routes>
           {/* render sign in page if user is not authenticated and not signing up
            * else redirect to my data page as user is authenticated and not signing up
            */}
-          <Route exact path={ROUTES.HOME}>
-            {!isAuthenticated && !isSigningUp ? (
-              <Redirect to={ROUTES.SIGNIN} />
-            ) : (
-              <Redirect to={ROUTES.MY_DATA} />
-            )}
-          </Route>
-
+          <Route
+            element={
+              !isAuthenticated && !isSigningUp ? (
+                <Navigate to={ROUTES.SIGNIN} />
+              ) : (
+                <Navigate to={ROUTES.MY_DATA} />
+              )
+            }
+            path={ROUTES.HOME}
+          />
           {/* render the sign in route only if user is not signing up */}
-          {!isSigningUp ? (
-            <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
-          ) : null}
-
+          <Route
+            element={isSigningUp ? <AppWithAuth /> : <SignInPage />}
+            path={ROUTES.SIGNIN}
+          />
           {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
+            element={
+              <OidcCallbackWrapper
+                userManager={userManager}
+                onError={(error: Error) => {
+                  showErrorToast(error?.message);
+                  handleFailedLogin();
+                }}
+                onSuccess={(user: User) => {
+                  setOidcToken(user.id_token);
+                  handleSuccessfulLogin(user as OidcUser);
+                }}
+              />
+            }
             path={ROUTES.CALLBACK}
-            render={() => (
-              <>
-                <Callback
-                  userManager={userManager}
-                  onError={(error) => {
-                    showErrorToast(error?.message);
-                    handleFailedLogin();
-                  }}
-                  onSuccess={(user) => {
-                    setOidcToken(user.id_token);
-                    handleSuccessfulLogin(user as OidcUser);
-                  }}
-                />
-              </>
-            )}
           />
-
           {/* silent callback route to handle the silent auth flow */}
           <Route
-            path={ROUTES.SILENT_CALLBACK}
-            render={() => (
-              <Callback
+            element={
+              <OidcCallbackWrapper
                 userManager={userManager}
                 onError={handleSilentSignInFailure}
                 onSuccess={handleSilentSignInSuccess}
               />
-            )}
+            }
+            path={ROUTES.SILENT_CALLBACK}
           />
 
-          {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
-            // render the children only if user is authenticated
-            (isAuthenticated ? (
-              !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
-                <Fragment>{children}</Fragment>
-              )
-            ) : // render the sign in page if user is not authenticated and not signing up
-            !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
-              <Redirect to={ROUTES.SIGNIN} />
-            ) : (
-              // render the authenticator component to handle the auth flow while user is signing in
-              <AppWithAuth />
-            ))}
-        </Switch>
+          <Route
+            element={
+              !location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+              // render the children only if user is authenticated
+              (isAuthenticated ? (
+                !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+                  <Fragment>{children}</Fragment>
+                )
+              ) : (
+                <Navigate to={ROUTES.SIGNIN} />
+              ))
+            }
+            path="*"
+          />
+        </Routes>
 
         {/* show loader when application is loading and user is signing up*/}
-        {isApplicationLoading && isSigningUp && <Loader fullScreen />}
+        {isApplicationLoading && isSigningUp && (
+          <Fragment>
+            <Loader fullScreen />
+          </Fragment>
+        )}
       </>
     );
   }
