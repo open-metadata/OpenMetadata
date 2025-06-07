@@ -24,8 +24,8 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
-  private serviceName = `pw-api-service-${uuid()}`;
-  private apiCollectionName = `pw-api-collection-${uuid()}`;
+  private serviceName = `pw.api%service-${uuid()}`;
+  private apiCollectionName = `pw.api%collection-${uuid()}`;
   service = {
     name: this.serviceName,
     serviceType: 'Rest',
@@ -42,7 +42,7 @@ export class ApiEndpointClass extends EntityClass {
     service: this.service.name,
   };
 
-  private apiEndpointName = `pw-api-endpoint-${uuid()}`;
+  private apiEndpointName = `pw.api%endpoint-${uuid()}`;
   private fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}`;
 
   children = [
