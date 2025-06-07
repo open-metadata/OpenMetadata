@@ -473,7 +473,7 @@ class EntityUtilClassBase {
   }
 
   public getFormattedEntityType(entityType: string): string {
-    const normalizedKey = entityType.toLowerCase();
+    const normalizedKey = entityType?.toLowerCase();
 
     return (
       this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
