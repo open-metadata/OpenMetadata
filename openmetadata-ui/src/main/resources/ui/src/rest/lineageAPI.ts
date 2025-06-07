@@ -75,7 +75,8 @@ export const getLineageDataByFQN = async ({
     params: {
       fqn,
       type: entityType,
-      upstreamDepth,
+      // upstreamDepth depth in BE is n+1 rather than exactly n, so we need to subtract 1 to get the correct depth
+      upstreamDepth: upstreamDepth - 1,
       downstreamDepth,
       query_filter: queryFilter,
       includeDeleted: false,
