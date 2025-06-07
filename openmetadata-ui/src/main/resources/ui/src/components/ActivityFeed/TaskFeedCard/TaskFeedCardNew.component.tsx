@@ -37,7 +37,6 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
 import { AxiosError } from 'axios';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
@@ -358,7 +357,6 @@ const TaskFeedCard = ({
                       ? 'task-card-assignee'
                       : ''
                   }`}>
-                  <Icon component={AssigneesIcon} style={{ fontSize: 16 }} />
                   <OwnerLabel
                     isAssignee
                     avatarSize={24}
