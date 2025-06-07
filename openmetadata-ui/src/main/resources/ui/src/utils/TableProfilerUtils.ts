@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findLast, isUndefined, last, sortBy } from 'lodash';
+import { isUndefined, last, sortBy } from 'lodash';
 import { MetricChartType } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { Table, TableProfile } from '../generated/entity/data/table';
@@ -30,10 +30,11 @@ export const calculateRowCountMetrics = (
   profiler: TableProfile[],
   currentMetrics: MetricChartType
 ): MetricChartType => {
-  const updateProfilerData = sortBy(profiler, 'timestamp');
   const rowCountMetricData: MetricChartType['data'] = [];
 
-  updateProfilerData.forEach((data) => {
+  // reverse the profiler data to show the latest data at the top
+  for (let i = profiler.length - 1; i >= 0; i--) {
+    const data = profiler[i];
     const timestamp = customFormatDateTime(
       data.timestamp,
       DATE_TIME_12_HOUR_FORMAT
@@ -44,7 +45,8 @@ export const calculateRowCountMetrics = (
       timestamp: data.timestamp,
       rowCount: data.rowCount,
     });
-  });
+  }
+
   const countMetricInfo = currentMetrics.information.map((item) => ({
     ...item,
     latestValue:
@@ -59,15 +61,22 @@ export const calculateSystemMetrics = (
   currentMetrics: MetricChartType,
   stackId?: string
 ) => {
-  const updateProfilerData = sortBy(profiler, 'timestamp');
   const operationMetrics: MetricChartType['data'] = [];
   const operationDateMetrics: MetricChartType['data'] = [];
+  const latestOperations = new Map<string, SystemProfile>();
 
-  updateProfilerData.forEach((data) => {
+  // reverse the profiler data to show the latest data at the top
+  for (let i = profiler.length - 1; i >= 0; i--) {
+    const data = profiler[i];
     const timestamp = customFormatDateTime(
       data.timestamp,
       DATE_TIME_12_HOUR_FORMAT
     );
+
+    // Store latest operation if not already stored
+    if (data.operation) {
+      latestOperations.set(data.operation, data);
+    }
 
     operationMetrics.push({
       name: timestamp,
@@ -80,33 +89,24 @@ export const calculateSystemMetrics = (
       data: data.rowsAffected,
       [data.operation ?? 'value']: 5,
     });
-  });
-  const operationMetricsInfo = currentMetrics.information.map((item) => {
-    const operation = findLast(
-      updateProfilerData,
-      (value) => value.operation === item.dataKey
-    );
+  }
 
-    return {
-      ...item,
-      stackId: stackId,
-      latestValue: operation?.rowsAffected,
-    };
-  });
-  const operationDateMetricsInfo = currentMetrics.information.map((item) => {
-    const operation = findLast(
-      updateProfilerData,
-      (value) => value.operation === item.dataKey
-    );
+  const operationMetricsInfo = currentMetrics.information.map((item) => ({
+    ...item,
+    stackId,
+    latestValue: latestOperations.get(item.dataKey)?.rowsAffected,
+  }));
 
-    return {
-      ...item,
-      stackId: stackId,
-      latestValue: operation?.timestamp
-        ? customFormatDateTime(operation?.timestamp, DATE_TIME_12_HOUR_FORMAT)
-        : '--',
-    };
-  });
+  const operationDateMetricsInfo = currentMetrics.information.map((item) => ({
+    ...item,
+    stackId,
+    latestValue: latestOperations.get(item.dataKey)?.timestamp
+      ? customFormatDateTime(
+          latestOperations.get(item.dataKey)?.timestamp,
+          DATE_TIME_12_HOUR_FORMAT
+        )
+      : '--',
+  }));
 
   return {
     operationMetrics: {
