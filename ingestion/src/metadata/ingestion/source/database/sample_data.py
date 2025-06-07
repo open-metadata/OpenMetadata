@@ -23,6 +23,8 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
+from metadata.ingestion.models.table_metadata import ColumnDescription
+from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -629,6 +631,13 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.domain = json.load(
+            open(
+                sample_data_folder + "/domains/domain.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -647,6 +656,7 @@ class SampleDataSource(
         """Nothing to prepare"""
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
+        yield from self.ingest_domains()
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_tables()
@@ -674,6 +684,42 @@ class SampleDataSource(
         yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
         yield from self.ingest_ometa_api_service()
+        self.modify_column_descriptions()
+
+    def ingest_domains(self):
+        
+        
+            domain_request = CreateDomainRequest(
+                **self.domain
+            )
+            yield Either(right=domain_request)
+        
+        
+        
+    def modify_column_descriptions(self):
+        """
+        Modify column descriptions to include the table name
+        """
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn="mysql_sample.default.posts_db.Tags"
+        )
+        col_desc_list = []
+        for column in table.columns:
+            column.description = f"{table.name} - {column.name}"
+            col_desc_list.append(ColumnDescription(column_fqn=column.fullyQualifiedName.root, description=column.description))
+            
+        self.metadata.patch_column_descriptions(
+                table=table,
+                column_descriptions=col_desc_list,
+            )
+        self.metadata.patch_column_descriptions(
+                table=table,
+                column_descriptions=[ColumnDescription(column_fqn=column.fullyQualifiedName.root, description=None) for column in table.columns],
+            )
+        self.metadata.patch_column_descriptions(
+                table=table,
+                column_descriptions=col_desc_list,
+            )
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -752,6 +798,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
                 sourceUrl=table.get("sourceUrl"),
+                domain="TestDomain"
             )
             yield Either(right=table_request)
 
