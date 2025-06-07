@@ -205,16 +205,16 @@ export class EntityClass {
 
   async tier(page: Page, tier1: string, tier2: string, entity?: EntityClass) {
     await assignTier(page, tier1, this.endpoint);
+    await assignTier(page, tier2, this.endpoint);
     if (entity) {
       await checkExploreSearchFilter(
         page,
         'Tier',
         'tier.tagFQN',
-        `Tier.${tier1}`,
+        `Tier.${tier2}`,
         entity
       );
     }
-    await assignTier(page, tier2, this.endpoint);
     await removeTier(page, this.endpoint);
   }
 
