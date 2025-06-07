@@ -676,10 +676,10 @@ base.describe('Activity feed with Data Consumer User', () => {
         '[data-testid="editor-wrapper"] .ql-editor',
         'Closing the task with comment'
       );
-      await page1
-        .locator('.activity-feed-editor-send-btn')
-        .scrollIntoViewIfNeeded();
+
+      const commentPostResponse = page1.waitForResponse('/api/v1/feed/*/posts');
       await page1.locator('.activity-feed-editor-send-btn').click();
+      await commentPostResponse;
       const commentWithCloseTask = page1.waitForResponse(
         '/api/v1/feed/tasks/*/close'
       );
