@@ -582,6 +582,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
