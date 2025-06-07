@@ -72,7 +72,7 @@ def set_verify_ssl(connection: TableauConnection) -> Union[bool, str]:
             return connection.sslConfig.root.caCertificate.get_secret_value()
         if connection.sslConfig.root.sslCertificate:
             return connection.sslConfig.root.sslCertificate.get_secret_value()
-    if connection.verifySSL.value in ["no_ssl", "ignore"]:
+    if connection.verifySSL.value == "ignore":
         return False
     return None
 

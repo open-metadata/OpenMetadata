@@ -127,7 +127,7 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[Iterable[TableauDashboard]]:
+    def get_dashboards_list(self) -> Iterable[TableauDashboard]:
         yield from self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
