@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+@import (reference) url('../../../styles/variables.less');
 
 .frequently-joint-data-container {
-  max-height: 200px;
-  overflow-y: scroll;
-
   .frequently-joint-data {
-    .frequently-joint-name {
-      font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    > a {
+      flex: 1;
+      min-width: 0;
     }
   }
 }

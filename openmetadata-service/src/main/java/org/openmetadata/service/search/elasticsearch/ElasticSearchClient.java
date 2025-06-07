@@ -39,13 +39,16 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
+import es.org.elasticsearch.client.ResponseException;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
+import es.org.elasticsearch.client.indices.DeleteDataStreamRequest;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
@@ -119,6 +122,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -2359,5 +2363,248 @@ public class ElasticSearchClient implements SearchClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return new ElasticSearchSourceBuilderFactory(searchSettings);
+  }
+
+  @Override
+  public List<String> getDataStreams(String prefix) throws IOException {
+    try {
+      // Use low-level client to get data streams
+      Request request = new Request("GET", "/_data_stream/" + prefix);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+
+      // Parse the response body
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode jsonNode = JsonUtils.readTree(responseBody);
+      JsonNode dataStreams = jsonNode.get("data_streams");
+
+      List<String> streams = new ArrayList<>();
+      if (dataStreams != null && dataStreams.isArray()) {
+        for (JsonNode stream : dataStreams) {
+          streams.add(stream.get("name").asText());
+        }
+      }
+
+      return streams;
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
+        return Collections.emptyList();
+      } else {
+        throw new IOException(
+            "Failed to find DataStreams: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to get data streams for prefix {}", prefix, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteDataStream(String dataStreamName) throws IOException {
+    try {
+      DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
+      client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted data stream {}", dataStreamName);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status().getStatus() == 404) {
+        LOG.warn("Data Stream {} does not exist. Skipping Deletion.", dataStreamName);
+      } else {
+        LOG.error("Failed to delete data stream {}", dataStreamName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete data stream {}", dataStreamName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteILMPolicy(String policyName) throws IOException {
+    try {
+      // Elasticsearch uses the low-level REST client for ILM operations
+      Request request = new Request("DELETE", "/_ilm/policy/" + policyName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted ILM policy {}", policyName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        LOG.error(
+            "Failed to delete ILM policy {}. Status: {}",
+            policyName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete ILM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        throw new IOException(
+            "Failed to delete ILM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete ILM policy {}", policyName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteIndexTemplate(String templateName) throws IOException {
+    try {
+      // Elasticsearch uses the low-level REST client for index template operations
+      Request request = new Request("DELETE", "/_index_template/" + templateName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted index template {}", templateName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        LOG.error(
+            "Failed to delete index template {}. Status: {}",
+            templateName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        throw new IOException(
+            "Failed to delete index template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index template {}", templateName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully deleted component template: {}", componentTemplateName);
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to delete component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting component template: {}", componentTemplateName, e);
+      throw new IOException("Failed to delete component template: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    try {
+      // 1. Get all indices matching the pattern
+      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
+      catRequest.addParameter("format", "json");
+      es.org.elasticsearch.client.Response catResponse =
+          client.getLowLevelClient().performRequest(catRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode indices =
+          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+      if (!indices.isArray()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
+      }
+      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
+        String indexName = indexNode.get("index").asText();
+        try {
+          // 2. Remove ILM policy by updating settings
+          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
+          putSettings.setJsonEntity("{\"index.lifecycle.name\": null}");
+          es.org.elasticsearch.client.Response putResponse =
+              client.getLowLevelClient().performRequest(putSettings);
+          if (putResponse.getStatusLine().getStatusCode() == 200) {
+            LOG.info("Detached ILM policy from index: {}", indexName);
+          } else {
+            LOG.warn(
+                "Failed to detach ILM policy from index: {}. Status: {}",
+                indexName,
+                putResponse.getStatusLine().getStatusCode());
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ILM policy from index: {}", indexName, e);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
+      throw new IOException("Failed to detach ILM policy from indexes: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      // 1. Get the existing component template
+      Request getRequest = new Request("GET", "/_component_template/" + componentTemplateName);
+      es.org.elasticsearch.client.Response getResponse =
+          client.getLowLevelClient().performRequest(getRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode templateNode =
+          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+
+      if (!templateNode.has("component_templates")
+          || templateNode.get("component_templates").isEmpty()) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+
+      // 2. Update the template in place
+      com.fasterxml.jackson.databind.JsonNode template =
+          templateNode.get("component_templates").get(0).get("component_template");
+      if (template.has("template") && template.get("template").has("settings")) {
+        ((com.fasterxml.jackson.databind.node.ObjectNode) template.get("template").get("settings"))
+            .put("index.lifecycle.name", (String) null);
+      }
+
+      // 3. Update the component template
+      Request putRequest = new Request("PUT", "/_component_template/" + componentTemplateName);
+      putRequest.setJsonEntity(template.toString());
+      es.org.elasticsearch.client.Response putResponse =
+          client.getLowLevelClient().performRequest(putRequest);
+
+      if (putResponse.getStatusLine().getStatusCode() == 200) {
+        LOG.info(
+            "Successfully removed ILM policy from component template: {}", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to update component template: "
+                + putResponse.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to remove ILM from component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
+      throw new IOException(
+          "Failed to remove ILM policy from component template: " + e.getMessage());
+    }
   }
 }
