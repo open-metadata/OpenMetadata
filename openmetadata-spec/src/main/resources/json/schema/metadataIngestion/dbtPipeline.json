@@ -90,6 +90,11 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "tagFilterPattern": {
+      "description": "Regex to only fetch tags that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Tag Filter Pattern"
     }
   },
   "additionalProperties": false,
