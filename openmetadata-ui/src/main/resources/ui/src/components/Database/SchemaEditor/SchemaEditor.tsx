@@ -51,7 +51,6 @@ const SchemaEditor = ({
   onFocus,
   refreshEditor,
 }: SchemaEditorProps) => {
-  const editorRef = useRef<Editor>();
   const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
   const defaultOptions = {
@@ -94,16 +93,16 @@ const SchemaEditor = ({
   };
 
   const editorWillUnmount = useCallback(() => {
-    const editorWrapper = (
-      editorRef as React.MutableRefObject<CodeMirror.Editor>
-    ).current.getWrapperElement();
-    if (editorWrapper) {
-      editorWrapper.remove();
+    if (editorInstance.current) {
+      const editorWrapper = editorInstance.current.getWrapperElement();
+      if (editorWrapper) {
+        editorWrapper.remove();
+      }
     }
     if (wrapperRef.current) {
       (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
     }
-  }, [editorRef, wrapperRef]);
+  }, [editorInstance, wrapperRef]);
 
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));

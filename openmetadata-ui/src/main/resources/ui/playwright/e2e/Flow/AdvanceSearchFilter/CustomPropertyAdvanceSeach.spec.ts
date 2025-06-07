@@ -151,15 +151,17 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
+      await page.waitForLoadState('networkidle');
+
       // Validate if filter dashboard appeared
 
       expect(page.getByTestId('advance-search-filter-text')).toContainText(
         `extension.${propertyName} = '${propertyValue}'`
       );
 
-      expect(page.getByTestId('entity-header-display-name')).toContainText(
-        dashboardEntity.entity.displayName
-      );
+      expect(
+        page.getByTestId('entity-header-display-name').first()
+      ).toContainText(dashboardEntity.entity.displayName);
     }
   );
 
