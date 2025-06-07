@@ -1459,7 +1459,7 @@ test.describe('Glossary tests', () => {
     await expect(
       dataConsumerPage.getByTestId('permission-error-placeholder')
     ).toHaveText(
-      'You don’t have access, please check with the admin to get permissions'
+      "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
     );
 
     await consumerAfterAction();

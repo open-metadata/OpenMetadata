@@ -60,6 +60,7 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
+import { EntityDataClass } from './EntityDataClass';
 
 export class EntityClass {
   type = '';
@@ -211,7 +212,7 @@ export class EntityClass {
         page,
         'Tier',
         'tier.tagFQN',
-        `Tier.${tier2}`,
+        EntityDataClass.tierTag1.data.name,
         entity
       );
     }
