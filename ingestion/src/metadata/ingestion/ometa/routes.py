@@ -167,6 +167,7 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.settings.settings import Settings
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -264,6 +265,7 @@ ROUTES = {
     TestSuite.__name__: "/dataQuality/testSuites",
     CreateTestSuiteRequest.__name__: "/dataQuality/testSuites",
     TestCase.__name__: "/dataQuality/testCases",
+    TestCaseResult.__name__: "/dataQuality/testCases/testCaseResults",
     CreateTestCaseRequest.__name__: "/dataQuality/testCases",
     # Analytics
     WebAnalyticEventData.__name__: "/analytics/web/events/collect",
