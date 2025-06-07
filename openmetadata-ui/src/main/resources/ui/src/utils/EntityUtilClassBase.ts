@@ -484,8 +484,8 @@ class EntityUtilClassBase {
     const normalizedKey = serviceType.toLowerCase();
 
     return (
-      this.getServiceTypeLookupMap().get(normalizedKey) ||
-      this.getEntityTypeLookupMap().get(normalizedKey) ||
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
       serviceType
     );
   }
