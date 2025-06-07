@@ -463,9 +463,9 @@ class PowerbiSource(DashboardServiceSource):
         for column in table.columns or []:
             try:
                 parsed_column = {
-                    "dataTypeDisplay": column.dataType
-                    if column.dataType
-                    else DataType.UNKNOWN.value,
+                    "dataTypeDisplay": (
+                        column.dataType if column.dataType else DataType.UNKNOWN.value
+                    ),
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
@@ -543,9 +543,11 @@ class PowerbiSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(dataset.id),
                         displayName=dataset.name,
-                        description=Markdown(dataset.description)
-                        if dataset.description
-                        else None,
+                        description=(
+                            Markdown(dataset.description)
+                            if dataset.description
+                            else None
+                        ),
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
@@ -899,6 +901,7 @@ class PowerbiSource(DashboardServiceSource):
         self,
         dashboard_details: Group,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below

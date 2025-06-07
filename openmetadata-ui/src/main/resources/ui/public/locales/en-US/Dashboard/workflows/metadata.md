@@ -64,6 +64,17 @@ You can enter a list of Database Services that are hosting the tables used to cr
 $$
 
 $$section
+### Database Service Prefixes $(id="dbServicePrefixes")
+
+When processing Dashboards and Charts we can extract information on which tables are used to create them.
+
+In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
+
+List of service path prefixes for lineage matching. Supported formats: <DBServiceName>, <DBServiceName>.<DatabaseName>, <DBServiceName>.<DatabaseName>.<SchemaName>, or <DBServiceName>.<DatabaseName>.<SchemaName>.<TableName>
+$$
+
+
+$$section
 ### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.

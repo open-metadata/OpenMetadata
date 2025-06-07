@@ -237,6 +237,7 @@ class QlikcloudSource(QliksenseSource):
         self,
         dashboard_details: QlikApp,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         for datamodel in self.data_models or []:

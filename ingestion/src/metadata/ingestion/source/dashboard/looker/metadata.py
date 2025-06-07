@@ -247,7 +247,7 @@ class LookerSource(DashboardServiceSource):
                 BitBucketCredentials,
                 GitlabCredentials,
             ]
-        ]
+        ],
     ) -> "LookMLRepo":
         repo_name = (
             f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
@@ -471,9 +471,9 @@ class LookerSource(DashboardServiceSource):
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
-                    description=Markdown(model.description)
-                    if model.description
-                    else None,
+                    description=(
+                        Markdown(model.description) if model.description else None
+                    ),
                     service=self.context.get().dashboard_service,
                     tags=get_tag_labels(
                         metadata=self.metadata,
@@ -586,9 +586,9 @@ class LookerSource(DashboardServiceSource):
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,
-                    description=Markdown(view.description)
-                    if view.description
-                    else None,
+                    description=(
+                        Markdown(view.description) if view.description else None
+                    ),
                     service=self.context.get().dashboard_service,
                     tags=get_tag_labels(
                         metadata=self.metadata,
@@ -968,9 +968,11 @@ class LookerSource(DashboardServiceSource):
         dashboard_request = CreateDashboardRequest(
             name=EntityName(clean_dashboard_name(dashboard_details.id)),
             displayName=dashboard_details.title,
-            description=Markdown(dashboard_details.description)
-            if dashboard_details.description
-            else None,
+            description=(
+                Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None
+            ),
             charts=[
                 FullyQualifiedEntityName(
                     fqn.build(
@@ -1095,7 +1097,8 @@ class LookerSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LookerDashboard,
-        _: Optional[str] = None,
+        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.

@@ -12,13 +12,18 @@
 import traceback
 from typing import Iterable, List, Optional
 
+from collate_sqllineage.core.models import Table as SqlLineageTable
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -29,9 +34,15 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     SourceUrl,
+    Uuid,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.microstrategy.models import (
@@ -41,6 +52,7 @@ from metadata.ingestion.source.dashboard.microstrategy.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -162,8 +174,129 @@ class MicrostrategySource(DashboardServiceSource):
         self,
         dashboard_details: MstrDashboardDetails,
         db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
-        """Not Implemented"""
+        """
+        Get lineage between dashboard and data sources
+        """
+        if not db_service_prefix:
+            return
+
+        dashboard_fqn = fqn.build(
+            self.metadata,
+            entity_type=Dashboard,
+            service_name=self.context.get().dashboard_service,
+            dashboard_name=dashboard_details.id,
+        )
+        dashboard_entity = self.metadata.get_by_name(
+            entity=Dashboard, fqn=dashboard_fqn
+        )
+
+        prefix_parts = self.parse_db_service_prefix(db_service_prefix)
+        database_service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=prefix_parts[0]
+        )
+        dialect = ConnectionTypeDialectMapper.dialect_of(
+            database_service.serviceType.value
+        )
+
+        for dataset in dashboard_details.datasets:
+            cube_sql = self.client.get_cube_sql_details(
+                dashboard_details.projectId, dataset.id
+            )
+            if not cube_sql:
+                continue
+
+            try:
+                lineage_parser = LineageParser(cube_sql, dialect=dialect)
+                for table in lineage_parser.source_tables:
+                    table_entity = self._get_table_entity_by_prefix(table, prefix_parts)
+                    if not table_entity:
+                        continue
+
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=Uuid(table_entity.id.root),
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=Uuid(dashboard_entity.id.root),
+                                    type="dashboard",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage
+                                ),
+                            )
+                        )
+                    )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Dashboard Lineage",
+                        error=f"Error to yield dashboard lineage details: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def _get_table_entity_by_prefix(
+        self, table: SqlLineageTable, prefix_parts: tuple
+    ) -> Optional[Table]:
+        """
+        Validates if the table matches prefix filters and returns the corresponding table entity if found
+        """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = prefix_parts
+
+        table_name = table.raw_name.lower()
+        schema_parts = table.schema.raw_name.lower().split(".")
+        schema_name = schema_parts[-1]
+        database_name = schema_parts[0] if len(schema_parts) > 1 else "*"
+
+        # Validate prefix filters
+        if prefix_table_name.lower() not in (table_name, "*"):
+            logger.debug(
+                f"Table {table_name} does not match prefix {prefix_table_name}"
+            )
+            return None
+
+        if prefix_schema_name.lower() not in (schema_name, "*"):
+            logger.debug(
+                f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+            )
+            return None
+
+        if prefix_database_name.lower() not in (database_name, "*"):
+            logger.debug(
+                f"Database {database_name} does not match prefix {prefix_database_name}"
+            )
+            return None
+
+        # Get table entity if validation passes
+        table_fqn = build_es_fqn_search_string(
+            service_name=prefix_service_name,
+            database_name=(
+                database_name if prefix_database_name == "*" else prefix_database_name
+            ),
+            schema_name=(
+                schema_name if prefix_schema_name == "*" else prefix_schema_name
+            ),
+            table_name=(table_name if prefix_table_name == "*" else prefix_table_name),
+        )
+
+        table_entities = self.metadata.es_search_from_fqn(
+            entity_type=Table, fqn_search_string=table_fqn, size=1
+        )
+        if not table_entities:
+            logger.debug(f"Table not found in metadata: {table_fqn}")
+            return None
+
+        return table_entities[0]
 
     def yield_dashboard_chart(
         self, dashboard_details: MstrDashboardDetails
