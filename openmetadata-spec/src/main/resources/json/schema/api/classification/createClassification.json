@@ -31,21 +31,9 @@
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
     },
-    "reviewers": {
-      "description": "User or Team references of the reviewers for this classification.",
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "owners": {
       "description": "Owners of this classification term.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "tags": {
-      "description": "Tags for this classification term.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/tagLabel.json"
-      },
       "default": null
     }
   },

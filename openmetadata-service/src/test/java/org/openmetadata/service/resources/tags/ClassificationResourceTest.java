@@ -126,14 +126,14 @@ public class ClassificationResourceTest
             ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(classification.getOwners());
-    assertTrue(classification.getTags().isEmpty());
 
-    fields = "owners,tags,usageCount";
+    fields = "owners,usageCount";
     classification =
         byName
             ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(classification.getUsageCount());
+    assertListNotNull(classification.getOwners());
     return classification;
   }
 
