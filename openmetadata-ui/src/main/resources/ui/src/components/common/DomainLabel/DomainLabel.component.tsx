@@ -243,7 +243,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <div className="d-flex   flex-col gap-2 justify-start">
+      <div className="d-flex flex-col domain-label-container gap-2 justify-start">
         {headerLayout && (
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
