@@ -18,7 +18,12 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, getApiContext } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   addPipelineBetweenNodes,
   fillLineageConfigForm,
@@ -59,7 +64,34 @@ test.describe('Lineage Settings Tests', () => {
       await addPipelineBetweenNodes(page, mlModel, searchIndex);
 
       await test.step(
-        'Update global lineage config and verify lineage',
+        'Lineage config should throw error if upstream depth is less than 0',
+        async () => {
+          await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+
+          await page.getByTestId('field-upstream').fill('-1');
+          await page.getByTestId('field-downstream').fill('-1');
+          await page.getByTestId('save-button').click();
+
+          await expect(
+            page.getByText('Upstream Depth size cannot be less than 0')
+          ).toBeVisible();
+          await expect(
+            page.getByText('Downstream Depth size cannot be less than 0')
+          ).toBeVisible();
+
+          await page.getByTestId('field-upstream').fill('0');
+          await page.getByTestId('field-downstream').fill('0');
+
+          const saveRes = page.waitForResponse('/api/v1/system/settings');
+          await page.getByTestId('save-button').click();
+          await saveRes;
+
+          await toastNotification(page, /Lineage Config updated successfully/);
+        }
+      );
+
+      await test.step(
+        'Update global lineage config and verify lineage for column layer',
         async () => {
           await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
           await fillLineageConfigForm(page, {
@@ -87,8 +119,45 @@ test.describe('Lineage Settings Tests', () => {
       );
 
       await test.step(
+        'Update global lineage config and verify lineage for entity layer',
+        async () => {
+          await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+          await fillLineageConfigForm(page, {
+            upstreamDepth: 1,
+            downstreamDepth: 1,
+            layer: 'Entity Lineage',
+          });
+
+          await dashboard.visitEntityPage(page);
+          await visitLineageTab(page);
+
+          await verifyNodePresent(page, dashboard);
+          await verifyNodePresent(page, mlModel);
+          await verifyNodePresent(page, topic);
+
+          const tableNode = page.locator(
+            `[data-testid="lineage-node-${get(
+              table,
+              'entityResponseData.fullyQualifiedName'
+            )}"]`
+          );
+
+          const searchIndexNode = page.locator(
+            `[data-testid="lineage-node-${get(
+              searchIndex,
+              'entityResponseData.fullyQualifiedName'
+            )}"]`
+          );
+
+          await expect(tableNode).not.toBeVisible();
+          await expect(searchIndexNode).not.toBeVisible();
+        }
+      );
+
+      await test.step(
         'Verify Upstream and Downstream expand collapse buttons',
         async () => {
+          await redirectToHomePage(page);
           await dashboard.visitEntityPage(page);
           await visitLineageTab(page);
           const closeIcon = page.getByTestId('entity-panel-close-icon');

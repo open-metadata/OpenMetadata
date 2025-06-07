@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row, Select, Typography } from 'antd';
+import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, {
   FocusEvent,
@@ -26,6 +26,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
@@ -150,6 +151,7 @@ const LineageConfigPage = () => {
                     id="lineage-config"
                     initialValues={lineageConfig}
                     layout="vertical"
+                    validateMessages={VALIDATION_MESSAGES}
                     onFinish={handleSave}
                     onFocus={handleFieldFocus}>
                     <Form.Item
@@ -159,14 +161,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.upstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-upstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
@@ -178,14 +181,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.downstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-downstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
