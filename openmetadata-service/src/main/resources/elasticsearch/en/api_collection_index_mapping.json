@@ -420,7 +420,6 @@
       "descriptionStatus": {
         "type": "keyword"
       },
-<<<<<<< Updated upstream
       "descriptionSources": {
         "type": "object"
       },
@@ -429,7 +428,7 @@
       },
       "tierSources": {
         "type": "object"
-=======
+      },
       "upstreamLineage": {
         "type": "object",
         "dynamic": false,
@@ -487,7 +486,6 @@
             "enabled": false
           }
         }
->>>>>>> Stashed changes
       },
       "certification": {
         "type": "object",
