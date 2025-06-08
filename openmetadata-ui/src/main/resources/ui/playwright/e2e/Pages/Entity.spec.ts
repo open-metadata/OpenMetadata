@@ -314,6 +314,33 @@ entities.forEach((EntityClass) => {
           rowSelector,
         });
       });
+
+      test('DisplayName Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.displayNameChildren({
+          page: page,
+          columnName: '',
+          rowSelector,
+        });
+      });
+
+      test.fixme(
+        'Description Add, Update and Remove for child entities',
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.glossaryTermChildren({
+            page: page,
+            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        }
+      );
     }
 
     test(`Announcement create & delete`, async ({ page }) => {

@@ -438,8 +438,8 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId(`tag-${tag}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -451,7 +451,7 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -522,8 +522,8 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const patchTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putTagRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -535,7 +535,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchTagRequest;
+    await putTagRequest;
 
     await expect(
       page
@@ -616,8 +616,8 @@ export const assignGlossaryTermToChildren = async ({
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -631,7 +631,7 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -707,8 +707,8 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -720,7 +720,7 @@ export const removeGlossaryTermFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchRequest;
+    await putRequest;
 
     expect(
       page
@@ -1010,6 +1010,78 @@ export const updateDisplayNameForEntity = async (
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toHaveText(displayName);
+};
+
+export const updateDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: { oldDisplayName: string; newDisplayName: string },
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(
+    displayName.oldDisplayName
+  );
+
+  await page.locator('#displayName').fill(displayName.newDisplayName);
+
+  const putRequest = page.waitForResponse(
+    `/api/v1/columns/name/${rowId}?entityType=*`
+  );
+
+  await page.click('[data-testid="save-button"]');
+  await putRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).toHaveText(displayName.newDisplayName);
+};
+
+export const removeDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: string,
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(page.locator('#displayName')).toHaveText(displayName);
+
+  await page.locator('#displayName').fill('');
+
+  const putRequest = page.waitForResponse(
+    `/api/v1/columns/name/${rowId}?entityType=*`
+  );
+
+  await page.click('[data-testid="save-button"]');
+  await putRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).not.toBeVisible();
 };
 
 export const checkForEditActions = async ({

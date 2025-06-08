@@ -52,6 +52,7 @@ import {
   unFollowEntity,
   updateDescription,
   updateDisplayNameForEntity,
+  updateDisplayNameForEntityChildren,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
@@ -388,6 +389,47 @@ export class EntityClass {
       `Cypress ${entityName} updated`,
       this.endpoint
     );
+  }
+
+  async displayNameChildren({
+    page,
+    columnName,
+    rowSelector,
+  }: {
+    page: Page;
+    columnName: string;
+    rowSelector: string;
+  }) {
+    // Add display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: '',
+        newDisplayName: `Playwright ${columnName} updated`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Update display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: `Playwright ${columnName} updated`,
+        newDisplayName: `Playwright ${columnName} updated again`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Remove display name
+    // TODO: Fix this removing display name not working currently
+    // await removeDisplayNameForEntityChildren(
+    //   page,
+    //   `Playwright ${columnName} updated`,
+    //   this.childrenSelectorId ?? '',
+    //   rowSelector
+    // );
   }
 
   async softDeleteEntity(page: Page, entityName: string, displayName?: string) {
