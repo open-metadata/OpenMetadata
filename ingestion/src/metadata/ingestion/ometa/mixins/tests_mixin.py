@@ -74,8 +74,8 @@ class OMetaTestsMixin:
         Returns:
             _type_: _description_
         """
-        resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn)}/testCaseResult",
+        resp = self.client.post(
+            f"{self.get_suffix(TestCaseResult)}/{quote(test_case_fqn)}",
             test_results.model_dump_json(),
         )
 
@@ -251,7 +251,7 @@ class OMetaTestsMixin:
         }
 
         resp = self.client.get(
-            f"/dataQuality/testCases/{test_case_fqn}/testCaseResult",
+            f"{self.get_suffix(TestCaseResult)}/{test_case_fqn}",
             params,
         )
 
