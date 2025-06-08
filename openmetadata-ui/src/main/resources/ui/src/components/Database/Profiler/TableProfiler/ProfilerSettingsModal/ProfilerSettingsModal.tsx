@@ -543,6 +543,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
               data-testid="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
+              refreshEditor={visible}
               value={state?.sqlQuery ?? ''}
               onChange={handleCodeMirrorChange}
             />
