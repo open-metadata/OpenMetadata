@@ -1280,7 +1280,27 @@ export const softDeleteEntity = async (
   await page.reload();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  // Retry mechanism for checking deleted badge
+  let deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (attempts < maxAttempts) {
+    const isVisible = await deletedBadge.isVisible();
+    if (isVisible) {
+      break;
+    }
+
+    attempts++;
+    if (attempts < maxAttempts) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      deletedBadge = page.locator('[data-testid="deleted-badge"]');
+    }
+  }
 
   await expect(deletedBadge).toHaveText('Deleted');
 

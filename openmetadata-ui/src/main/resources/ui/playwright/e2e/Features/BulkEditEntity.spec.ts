@@ -512,7 +512,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow();
+    test.slow(true);
 
     const tableEntity = new TableClass();
 
