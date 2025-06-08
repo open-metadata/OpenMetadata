@@ -15,6 +15,10 @@
  */
 export interface TableauConnection {
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;

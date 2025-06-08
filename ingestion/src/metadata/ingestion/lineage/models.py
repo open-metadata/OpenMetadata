@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeType,
 )
+from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
+    ExasolType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveType,
 )
@@ -73,8 +76,14 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
     TeradataType,
 )
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoType,
+)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     DatabricksType as UnityCatalogType,
+)
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaType,
 )
 from metadata.utils.singleton import Singleton
 
@@ -106,6 +115,8 @@ class Dialect(Enum):
     TERADATA = "teradata"
     TSQL = "tsql"
     MARIADB = "mariadb"
+    TRINO = "trino"
+    VERTICA = "vertica"
 
 
 MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
@@ -129,6 +140,9 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(TeradataType.Teradata.value): Dialect.TERADATA,
     str(MariaDBType.MariaDB.value): Dialect.MARIADB,
     str(SingleStoreType.SingleStore.value): Dialect.MYSQL,
+    str(ExasolType.Exasol.value): Dialect.EXASOL,
+    str(TrinoType.Trino.value): Dialect.TRINO,
+    str(VerticaType.Vertica.value): Dialect.VERTICA,
 }
 
 
