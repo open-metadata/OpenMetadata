@@ -29,8 +29,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       Pattern.compile(
           "\\w+\\s*:\\s*\\w+|"
               + // Field queries (field:value)
-              "\\b(?i)(?:AND|OR|NOT)\\b|"
-              + // Boolean operators
+              "\\b(?:AND|OR|NOT)\\b|"
+              + // Boolean operators (uppercase only)
               "[*?]|"
               + // Wildcards
               "[()]|"

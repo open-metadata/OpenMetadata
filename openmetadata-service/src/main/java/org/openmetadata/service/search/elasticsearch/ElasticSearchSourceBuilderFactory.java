@@ -51,6 +51,7 @@ public class ElasticSearchSourceBuilderFactory
         .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
         .defaultOperator(Operator.AND)
         .fuzziness(Fuzziness.AUTO)
+        .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(3)
         .tieBreaker(0.5f);
   }
@@ -130,7 +131,8 @@ public class ElasticSearchSourceBuilderFactory
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .fields(SearchIndex.getAllFields())
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -160,6 +162,7 @@ public class ElasticSearchSourceBuilderFactory
               .defaultOperator(Operator.AND)
               .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
               .fuzziness(Fuzziness.AUTO)
+              .fuzzyMaxExpansions(10)
               .fuzzyPrefixLength(1)
               .tieBreaker(0.3f);
 
@@ -186,6 +189,7 @@ public class ElasticSearchSourceBuilderFactory
             QueryBuilders.multiMatchQuery(query)
                 .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
                 .fuzziness(Fuzziness.AUTO)
+                .maxExpansions(10)
                 .prefixLength(1)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f);
@@ -198,7 +202,8 @@ public class ElasticSearchSourceBuilderFactory
             QueryBuilders.multiMatchQuery(query)
                 .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
                 .operator(Operator.AND)
-                .tieBreaker(0.3f);
+                .tieBreaker(0.3f)
+                .fuzziness(Fuzziness.ZERO);
         nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
