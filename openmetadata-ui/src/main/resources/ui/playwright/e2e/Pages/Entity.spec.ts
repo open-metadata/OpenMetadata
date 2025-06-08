@@ -211,6 +211,7 @@ entities.forEach((EntityClass) => {
         page,
         'Tier1',
         EntityDataClass.tierTag1.data.displayName,
+        EntityDataClass.tierTag1.data.name,
         entity
       );
     });

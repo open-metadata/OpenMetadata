@@ -60,7 +60,6 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
-import { EntityDataClass } from './EntityDataClass';
 
 export class EntityClass {
   type = '';
@@ -204,15 +203,21 @@ export class EntityClass {
     }
   }
 
-  async tier(page: Page, tier1: string, tier2: string, entity?: EntityClass) {
+  async tier(
+    page: Page,
+    tier1: string,
+    tier2: string,
+    tierName?: string,
+    entity?: EntityClass
+  ) {
     await assignTier(page, tier1, this.endpoint);
     await assignTier(page, tier2, this.endpoint);
-    if (entity) {
+    if (entity && tierName) {
       await checkExploreSearchFilter(
         page,
         'Tier',
         'tier.tagFQN',
-        EntityDataClass.tierTag1.data.name,
+        `Tier.${tierName}`,
         entity
       );
     }
@@ -229,10 +234,10 @@ export class EntityClass {
 
   async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
     await assignTag(page, tag1);
-    if (entity) {
-      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag1, entity);
-    }
     await assignTag(page, tag2, 'Edit');
+    if (entity) {
+      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag2, entity);
+    }
     await removeTag(page, [tag2]);
     await removeTag(page, [tag1]);
 
