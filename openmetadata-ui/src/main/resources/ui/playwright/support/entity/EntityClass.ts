@@ -51,6 +51,7 @@ import {
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDescriptionForChildren,
   updateDisplayNameForEntity,
   updateDisplayNameForEntityChildren,
   updateOwner,
@@ -225,6 +226,37 @@ export class EntityClass {
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     await updateDescription(page, description);
+  }
+
+  async descriptionUpdateChildren(
+    page: Page,
+    rowId: string,
+    rowSelector: string
+  ) {
+    const description =
+      // eslint-disable-next-line max-len
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
+
+    // Add description
+    await updateDescriptionForChildren(
+      page,
+      description,
+
+      rowId,
+      rowSelector
+    );
+
+    // Update description
+    await updateDescriptionForChildren(
+      page,
+      description + ' updated',
+
+      rowId,
+      rowSelector
+    );
+
+    // Remove description
+    // await updateDescriptionForChildren(page, '', rowId, rowSelector);
   }
 
   async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {

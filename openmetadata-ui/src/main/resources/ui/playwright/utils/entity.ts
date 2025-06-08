@@ -371,6 +371,38 @@ export const updateDescription = async (
       ).toContainText(description);
 };
 
+export const updateDescriptionForChildren = async (
+  page: Page,
+  description: string,
+  rowId: string,
+  rowSelector: string
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-button')
+    .click();
+
+  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
+  await page.getByTestId('save').click();
+
+  isEmpty(description)
+    ? await expect(
+        page
+          .locator(`[${rowSelector}="${rowId}"]`)
+          .getByTestId('viewer-container')
+      ).toContainText('No description')
+    : await expect(
+        page
+          .locator(`[${rowSelector}="${rowId}"]`)
+          .getByTestId('viewer-container')
+          .getByRole('paragraph')
+      ).toContainText(description);
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
@@ -1036,7 +1068,7 @@ export const updateDisplayNameForEntityChildren = async (
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
   const putRequest = page.waitForResponse(
-    `/api/v1/columns/name/${rowId}?entityType=*`
+    `/api/v1/columns/name/*?entityType=*`
   );
 
   await page.click('[data-testid="save-button"]');

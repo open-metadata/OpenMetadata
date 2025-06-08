@@ -148,7 +148,7 @@ export const updateDataModelColumn = async (
   fqn: string,
   column: Partial<Column>
 ) => {
-  const response = await APIClient.patch<Column>(
+  const response = await APIClient.put<Column>(
     `/columns/name/${getEncodedFqn(fqn)}?entityType=dashboardDataModel`,
     column
   );

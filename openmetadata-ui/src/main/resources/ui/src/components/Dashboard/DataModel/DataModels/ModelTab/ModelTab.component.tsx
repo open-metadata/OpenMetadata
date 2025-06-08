@@ -202,6 +202,8 @@ const ModelTab = () => {
         await updateColumnDetails(editColumnDescription.fullyQualifiedName, {
           description: updatedDescription,
         });
+
+        setEditColumnDescription(undefined);
       }
     },
     [updateColumnDetails, editColumnDescription]
@@ -271,8 +273,8 @@ const ModelTab = () => {
 
           return (
             <DisplayName
-              allowRename={editDisplayNamePermission}
               displayName={displayName}
+              hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}
               onEditDisplayName={handleEditColumnData}

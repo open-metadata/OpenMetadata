@@ -315,32 +315,31 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      test('DisplayName Add, Update and Remove for child entities', async ({
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page: page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
         page,
       }) => {
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.displayNameChildren({
-          page: page,
-          columnName: '',
-          rowSelector,
-        });
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector
+        );
       });
-
-      test.fixme(
-        'Description Add, Update and Remove for child entities',
-        async ({ page }) => {
-          await page.getByTestId(entity.childrenTabId ?? '').click();
-
-          await entity.glossaryTermChildren({
-            page: page,
-            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
-            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
-            rowId: entity.childrenSelectorId ?? '',
-            rowSelector,
-          });
-        }
-      );
     }
 
     test(`Announcement create & delete`, async ({ page }) => {
