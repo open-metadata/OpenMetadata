@@ -5,9 +5,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -20,10 +18,8 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataRe
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
@@ -41,14 +37,9 @@ public class DataRetention extends AbstractNativeApplication {
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
   private Map<String, Object> failureDetails = null;
 
-  private final FeedRepository feedRepository;
-  private final CollectionDAO.FeedDAO feedDAO;
-
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
-    this.feedRepository = Entity.getFeedRepository();
-    this.feedDAO = Entity.getCollectionDAO().feedDAO();
   }
 
   @Override
@@ -98,7 +89,6 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("successful_sent_change_events", new StepStats());
     entityStats.withAdditionalProperty("change_events", new StepStats());
     entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
-    entityStats.withAdditionalProperty("activity_threads", new StepStats());
     retentionStats.setEntityStats(entityStats);
   }
 
@@ -110,33 +100,6 @@ public class DataRetention extends AbstractNativeApplication {
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
     cleanChangeEvents(retentionPeriod);
-
-    int threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
-    LOG.info(
-        "Starting cleanup for activity threads with retention period: {} days.",
-        threadRetentionPeriod);
-    cleanActivityThreads(threadRetentionPeriod);
-  }
-
-  @Transaction
-  private void cleanActivityThreads(int retentionPeriod) {
-    LOG.info("Initiating activity threads cleanup: Retention = {} days.", retentionPeriod);
-    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
-
-    List<UUID> threadIdsToDelete =
-        feedDAO.fetchConversationThreadIdsOlderThan(cutoffMillis, BATCH_SIZE);
-
-    if (threadIdsToDelete.isEmpty()) {
-      LOG.info(
-          "No activity threads found older than retention period of {} days, skipping cleanup.",
-          retentionPeriod);
-      return;
-    }
-
-    executeWithStatsTracking(
-        "activity_threads", () -> feedRepository.deleteThreadsInBatch(threadIdsToDelete));
-
-    LOG.info("Activity threads cleanup complete.");
   }
 
   @Transaction

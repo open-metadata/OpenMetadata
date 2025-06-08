@@ -59,7 +59,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -550,22 +549,6 @@ public class FeedRepository {
 
     // Finally, delete the thread
     dao.feedDAO().delete(id);
-  }
-
-  @Transaction
-  public int deleteThreadsInBatch(List<UUID> threadUUIDs) {
-    if (CommonUtil.nullOrEmpty(threadUUIDs)) return 0;
-
-    List<String> threadIds = threadUUIDs.stream().map(UUID::toString).toList();
-
-    // Delete all the relationships to other entities
-    dao.relationshipDAO().deleteAllByThreadIds(threadIds, Entity.THREAD);
-
-    // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefixes(threadIds);
-
-    // Delete the thread and return the count
-    return dao.feedDAO().deleteByIds(threadIds);
   }
 
   public void deleteByAbout(UUID entityId) {
