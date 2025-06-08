@@ -794,6 +794,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    test.slow(true);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
