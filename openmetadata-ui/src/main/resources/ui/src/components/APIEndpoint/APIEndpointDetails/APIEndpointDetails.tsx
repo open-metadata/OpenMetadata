@@ -179,6 +179,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    editAllPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -190,6 +191,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           apiEndpointPermissions.EditLineage) &&
         !deleted,
       viewAllPermission: apiEndpointPermissions.ViewAll,
+      editAllPermission: apiEndpointPermissions.EditAll,
     }),
     [apiEndpointPermissions, deleted]
   );
@@ -211,6 +213,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       editCustomAttributePermission,
       viewAllPermission,
       editLineagePermission,
+      editAllPermission,
     });
 
     return getDetailsTabWithNewLabel(

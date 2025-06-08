@@ -42,6 +42,7 @@ export const getStoredProcedureDetailsPageTabs = ({
   getEntityFeedCount,
   fetchStoredProcedureDetails,
   handleFeedCount,
+  editAllPermission,
 }: StoredProcedureDetailPageTabProps) => {
   return [
     {
@@ -73,6 +74,7 @@ export const getStoredProcedureDetailsPageTabs = ({
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={storedProcedure?.owners}
+          permissions={editAllPermission}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchStoredProcedureDetails}
           onUpdateFeedCount={handleFeedCount}
