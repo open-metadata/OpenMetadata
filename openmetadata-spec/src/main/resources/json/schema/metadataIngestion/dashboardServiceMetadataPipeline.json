@@ -25,14 +25,6 @@
       "type": "object",
       "title": "Lineage Information",
       "properties": {
-        "dbServiceNames": {
-          "title": "Database Service Names List",
-          "description": "List of Database Service Names for creation of lineage",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "dbServicePrefixes": {
           "title": "Database Service Path Prefixes",
           "description": "List of service path prefixes for lineage matching. Supported formats: <DBServiceName>, <DBServiceName>.<DatabaseName>, <DBServiceName>.<DatabaseName>.<SchemaName>, or <DBServiceName>.<DatabaseName>.<SchemaName>.<TableName>",

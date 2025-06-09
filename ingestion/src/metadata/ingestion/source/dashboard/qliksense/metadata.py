@@ -314,10 +314,15 @@ class QliksenseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikDashboard,
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
@@ -332,11 +337,51 @@ class QliksenseSource(DashboardServiceSource):
                         database_name = None
                     else:
                         schema_name, database_name = None, None
+
+                    if prefix_table_name.lower() not in (
+                        (datamodel.tableName or "").lower(),
+                        "*",
+                    ):
+                        logger.debug(
+                            f"Table {datamodel.tableName} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
+                    if prefix_schema_name.lower() not in (
+                        (schema_name or "").lower(),
+                        "*",
+                    ):
+                        logger.debug(
+                            f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+
+                    if prefix_database_name.lower() not in (
+                        (database_name or "").lower(),
+                        "*",
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=database_name,
-                        schema_name=schema_name,
-                        service_name=db_service_name or "*",
-                        table_name=datamodel.tableName,
+                        database_name=(
+                            database_name
+                            if prefix_database_name == "*"
+                            else prefix_database_name
+                        ),
+                        schema_name=(
+                            schema_name
+                            if prefix_schema_name == "*"
+                            else prefix_schema_name
+                        ),
+                        service_name=prefix_service_name or "*",
+                        table_name=(
+                            datamodel.tableName
+                            if prefix_table_name == "*"
+                            else prefix_table_name
+                        ),
                     )
                     om_table = self.metadata.search_in_any_service(
                         entity_type=Table,
@@ -358,7 +403,7 @@ class QliksenseSource(DashboardServiceSource):
                         name=f"{dashboard_details.qDocName} Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {err}"
+                            f"service name [{prefix_service_name}]: {err}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )

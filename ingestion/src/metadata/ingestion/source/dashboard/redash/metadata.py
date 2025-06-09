@@ -200,7 +200,6 @@ class RedashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: dict,
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -208,6 +207,13 @@ class RedashSource(DashboardServiceSource):
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -234,11 +240,52 @@ class RedashSource(DashboardServiceSource):
                         )
                         if not database_schema_table.get("table"):
                             continue
+
+                        if prefix_table_name.lower() not in (
+                            (database_schema_table.get("table") or "").lower(),
+                            "*",
+                        ):
+                            logger.debug(
+                                f"Table {database_schema_table.get('table')} does not match prefix {prefix_table_name}"
+                            )
+                            continue
+
+                        if prefix_schema_name.lower() not in (
+                            (database_schema_name or "").lower(),
+                            "*",
+                        ):
+                            logger.debug(
+                                f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            )
+                            continue
+
+                        if prefix_database_name.lower() not in (
+                            (database_schema_table.get("database") or "").lower(),
+                            "*",
+                        ):
+                            logger.debug(
+                                f"""Database {database_schema_table.get('database')} does 
+                                not match prefix {prefix_database_name}"""
+                            )
+                            continue
+
                         fqn_search_string = build_es_fqn_search_string(
-                            database_name=database_schema_table.get("database"),
-                            schema_name=database_schema_name,
-                            service_name=db_service_name or "*",
-                            table_name=database_schema_table.get("table"),
+                            database_name=(
+                                database_schema_table.get("database")
+                                if prefix_database_name == "*"
+                                else prefix_database_name
+                            ),
+                            schema_name=(
+                                database_schema_name
+                                if prefix_schema_name == "*"
+                                else prefix_schema_name
+                            ),
+                            service_name=prefix_service_name,
+                            table_name=(
+                                database_schema_table.get("table")
+                                if prefix_table_name == "*"
+                                else prefix_table_name
+                            ),
                         )
                         from_entity = self.metadata.search_in_any_service(
                             entity_type=Table,
@@ -254,7 +301,7 @@ class RedashSource(DashboardServiceSource):
                         name="Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {exc}"
+                            f"service name [{prefix_service_name}]: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -275,6 +322,7 @@ class RedashSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart_display_name, "Chart Pattern not allowed")
                     continue
+
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(str(widgets["id"])),

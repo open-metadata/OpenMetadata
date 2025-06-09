@@ -244,14 +244,16 @@ class SupersetSourceMixin(DashboardServiceSource):
         self,
         from_entities: List[Tuple[FetchChart, Dict[str, List[str]]]],
         to_entity: DashboardDataModel,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
     ):
         result = []
+
+        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
 
         for from_entity in from_entities:
             input_table, _column_lineage = from_entity
             datasource_fqn = self._get_datasource_fqn_for_lineage(
-                input_table, db_service_name
+                input_table, prefix_service_name
             )
             from_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -308,7 +310,6 @@ class SupersetSourceMixin(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -327,7 +328,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                 if to_entity:
                     _input_tables = self._get_input_tables(chart_json)
                     input_tables = self._enrich_raw_input_tables(
-                        _input_tables, to_entity, db_service_name
+                        _input_tables, to_entity, db_service_prefix
                     )
                     for input_table in input_tables:
                         from_entity_table, column_lineage = input_table
@@ -343,7 +344,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         name="Dashboard Lineage Details",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {exc}"
+                            f"service prefix [{db_service_prefix}]: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )

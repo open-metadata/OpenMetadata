@@ -254,7 +254,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Any,
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -344,16 +343,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
                     )
 
-    def get_db_service_names(self) -> List[str]:
-        """
-        Get the list of db service names
-        """
-        return (
-            self.source_config.lineageInformation.dbServiceNames or []
-            if self.source_config.lineageInformation
-            else []
-        )
-
     def get_db_service_prefixes(self) -> List[str]:
         """
         Get the list of db service prefixes
@@ -365,14 +354,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def parse_db_service_prefix(
-        self, db_service_prefix: str
+        self, db_service_prefix: Optional[str]
     ) -> Tuple[str, str, str, str]:
         """
         Parse the db service prefix
         Returns:
             Tuple[str, str, str, str]: service, database, schema, table
         """
-        return (db_service_prefix.split(".") + ["*", "*", "*"])[:4]
+        return ((db_service_prefix or "").split(".") + ["*", "*", "*", "*"])[:4]
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
@@ -388,20 +377,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield from self.yield_lineage_request(lineage)
 
         # yield datamodel lineage with tables from db services
-        db_service_names = self.get_db_service_names()
         db_service_prefixes = self.get_db_service_prefixes()
 
-        if not db_service_prefixes and not db_service_names:
+        if not db_service_prefixes:
             for lineage in (
                 self.yield_dashboard_lineage_details(dashboard_details) or []
-            ):
-                yield from self.yield_lineage_request(lineage)
-
-        # TODO: Remove service names once we will implement the db service prefixes for all the dashboards
-        for db_service_name in db_service_names or []:
-            for lineage in (
-                self.yield_dashboard_lineage_details(dashboard_details, db_service_name)
-                or []
             ):
                 yield from self.yield_lineage_request(lineage)
 

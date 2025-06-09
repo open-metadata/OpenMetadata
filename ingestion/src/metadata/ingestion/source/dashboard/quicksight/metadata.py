@@ -256,11 +256,12 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
-        if db_service_name:
+        if db_service_prefix:
+            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             db_service_entity = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=db_service_name
             )
@@ -395,10 +396,11 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
+            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             schema_name = data_source_resp.data_source_resp.schema_name
             table_name = data_source_resp.data_source_resp.table_name
             if data_source_resp and data_source_resp.DataSourceParameters:
@@ -450,12 +452,12 @@ class QuicksightSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: DashboardDetail,
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
+        db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
@@ -468,7 +470,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_name,
+                        db_service_prefix,
                     )
                 elif isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespS3
@@ -481,7 +483,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_name,
+                        db_service_prefix,
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(

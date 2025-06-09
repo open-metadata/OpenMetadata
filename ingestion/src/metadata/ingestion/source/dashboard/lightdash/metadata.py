@@ -196,7 +196,7 @@ class LightdashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LightdashDashboard,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
         _: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method

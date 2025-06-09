@@ -816,12 +816,15 @@ class LookerSource(DashboardServiceSource):
                     " while processing view lineage."
                 )
 
-            db_service_names = self.get_db_service_names()
+            db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
                 sql_table_name = self._render_table_name(view.sql_table_name)
 
-                for db_service_name in db_service_names or []:
+                for db_service_prefix in db_service_prefixes or []:
+                    db_service_name, *_ = self.parse_db_service_prefix(
+                        db_service_prefix
+                    )
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
@@ -870,7 +873,8 @@ class LookerSource(DashboardServiceSource):
         """
         Parse the SQL query and build lineage for the view.
         """
-        for db_service_name in self.get_db_service_names() or []:
+        for db_service_prefix in self.get_db_service_prefixes() or []:
+            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             lineage_parser = LineageParser(
                 f"create view {view_name} as {sql_query}",
                 self._get_db_dialect(db_service_name),
@@ -1097,7 +1101,6 @@ class LookerSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LookerDashboard,
-        db_service_name: Optional[str] = None,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
