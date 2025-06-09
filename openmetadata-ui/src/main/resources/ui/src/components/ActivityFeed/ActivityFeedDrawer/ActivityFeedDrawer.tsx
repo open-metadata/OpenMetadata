@@ -14,7 +14,7 @@
 import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -30,6 +30,10 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { hideDrawer, selectedThread } = useActivityFeedProvider();
+
+  if (!selectedThread) {
+    return null;
+  }
 
   return (
     <Drawer
@@ -57,7 +61,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
               showThreadIcon: false,
               showRepliesContainer: false,
             }}
-            feed={selectedThread as Thread}
+            feed={selectedThread}
             hidePopover={false}
           />
         </Col>

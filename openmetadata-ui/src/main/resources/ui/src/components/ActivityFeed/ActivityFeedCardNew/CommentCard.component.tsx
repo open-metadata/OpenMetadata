@@ -128,6 +128,7 @@ const CommentCard = ({
       className={classNames('d-flex justify-start relative reply-card', {
         'reply-card-border-bottom': !isLastReply,
       })}
+      data-testid="feed-reply-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">

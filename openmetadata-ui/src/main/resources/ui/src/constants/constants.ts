@@ -369,6 +369,10 @@ export const VALIDATION_MESSAGES = {
       min: '${min}',
       max: '${max}',
     }),
+    min: i18n.t('message.entity-size-less-than', {
+      entity: '${label}',
+      min: '${min}',
+    }),
   },
 };
 
