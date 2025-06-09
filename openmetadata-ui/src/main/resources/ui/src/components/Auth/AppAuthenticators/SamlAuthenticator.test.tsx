@@ -20,13 +20,18 @@ jest.mock('../../../hooks/useApplicationStore', () => {
   return {
     useApplicationStore: jest.fn(() => ({
       authConfig: {},
-      getOidcToken: jest.fn().mockReturnValue({ isExpired: false }),
-      setOidcToken: jest.fn(),
-      getRefreshToken: jest.fn().mockReturnValue('refresh'),
-      setRefreshToken: jest.fn(),
     })),
   };
 });
+
+jest.mock('../AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    handleSuccessfulLogout: jest.fn(),
+    handleFailedLogin: jest.fn(),
+    handleSuccessfulLogin: jest.fn(),
+    updateAxiosInterceptors: jest.fn(),
+  })),
+}));
 
 jest.mock('../../../rest/auth-API', () => {
   return {
@@ -42,10 +47,9 @@ jest.mock('../../../rest/auth-API', () => {
 
 describe('Test SamlAuthenticator component', () => {
   it('Checks if the SamlAuthenticator renders', async () => {
-    const onLogoutMock = jest.fn();
     const authenticatorRef = null;
     render(
-      <SamlAuthenticator ref={authenticatorRef} onLogoutSuccess={onLogoutMock}>
+      <SamlAuthenticator ref={authenticatorRef}>
         <p data-testid="children" />
       </SamlAuthenticator>,
       {
@@ -58,11 +62,10 @@ describe('Test SamlAuthenticator component', () => {
   });
 
   it('Rejects promise when renew id token is called', async () => {
-    const onLogoutMock = jest.fn();
     const authenticatorRef = React.createRef<AuthenticatorRef>();
 
     render(
-      <SamlAuthenticator ref={authenticatorRef} onLogoutSuccess={onLogoutMock}>
+      <SamlAuthenticator ref={authenticatorRef}>
         <p data-testid="children" />
       </SamlAuthenticator>,
       {

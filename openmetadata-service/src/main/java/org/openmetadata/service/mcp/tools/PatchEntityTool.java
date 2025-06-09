@@ -1,12 +1,13 @@
 package org.openmetadata.service.mcp.tools;
 
+import jakarta.json.JsonPatch;
 import java.util.Map;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -30,7 +31,21 @@ public class PatchEntityTool implements McpTool {
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     RestUtil.PatchResponse<? extends EntityInterface> response =
-        repository.patch(null, entityFqn, "admin", patch, ChangeSource.MANUAL);
+        repository.patch(
+            null,
+            entityFqn,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            ChangeSource.MANUAL);
     return JsonUtils.convertValue(response, Map.class);
+  }
+
+  @Override
+  public Map<String, Object> execute(
+      Authorizer authorizer,
+      Limits limits,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params) {
+    throw new UnsupportedOperationException("PatchEntityTool does not support limits enforcement.");
   }
 }

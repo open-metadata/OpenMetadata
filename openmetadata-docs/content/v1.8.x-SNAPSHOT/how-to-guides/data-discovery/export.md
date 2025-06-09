@@ -1,12 +1,11 @@
 ---
 title: Export Data Asset
 slug: /how-to-guides/data-discovery/export
-collate: true
 ---
 
 # Export Data Asset
 
-Exporting a Data Asset from Collate is simple. Below are the steps to bulk export various data assets, such as Database Services, Databases, Schemas, and Tables.
+Exporting a Data Asset is simple. Below are the steps to bulk export various data assets, such as Database Services, Databases, Schemas, and Tables.
 
 ## How to Bulk Export a Database Service
 

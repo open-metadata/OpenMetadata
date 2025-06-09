@@ -13,6 +13,7 @@
 Test Bigquery connector with CLI
 """
 import random
+from datetime import datetime
 from typing import List, Tuple
 
 import pytest
@@ -20,15 +21,15 @@ import pytest
 from ingestion.tests.cli_e2e.base.e2e_types import E2EType
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
     DmlOperationType,
     ProfileSampleType,
     SystemProfile,
-    Table,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
+from metadata.generated.schema.type.basic import Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -223,11 +224,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.run_command()
 
         self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})
+        start_ts = int(datetime.now().timestamp() * 1000)
         self.run_command("profile")
-        table: Table = self.openmetadata.get_latest_table_profile(
-            FullyQualifiedEntityName(
-                "local_bigquery.open-metadata-beta.w_partition.w_time_partition"
-            )
-        )
+        end_ts = int(datetime.now().timestamp() * 1000)
+        column_profile = self.openmetadata.get_profile_data(
+            "local_bigquery.open-metadata-beta.w_partition.w_time_partition.id",
+            start_ts,
+            end_ts,
+            profile_type=ColumnProfile,
+        ).entities[0]
         # We ingest 1 row for each day and the profiler should default to the latest partition
-        assert table.profile.rowCount == 1
+        assert column_profile.valuesCount == 1
