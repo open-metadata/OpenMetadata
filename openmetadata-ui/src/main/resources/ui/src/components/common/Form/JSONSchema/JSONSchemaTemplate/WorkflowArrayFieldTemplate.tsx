@@ -73,9 +73,19 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         const parsedValue = JSON.parse(text);
         if (Array.isArray(parsedValue)) {
           props.onChange(parsedValue);
+
+          return;
         }
-      } catch (error) {
-        // Do nothing
+      } catch {
+        const values =
+          text.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map((val) => {
+            // Remove quotes if present and unescape internal quotes
+            return val.replace(/^"(.*)"$/, '$1').replace(/""/g, '"');
+          }) ?? [];
+
+        if (values.length > 0) {
+          props.onChange(values);
+        }
       }
     }
   };
@@ -99,7 +109,6 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           open={options ? undefined : false}
           options={options}
           placeholder={placeholder}
-          tokenSeparators={[',']}
           value={value}
           onBlur={() => props.onBlur(id, value)}
           onChange={(value) => props.onChange(value)}
@@ -108,6 +117,13 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
               e.preventDefault();
               handlePaste();
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const inputValue = (e.target as HTMLInputElement).value;
+              if (inputValue) {
+                props.onChange([...value, inputValue]);
+              }
             }
           }}
         />
