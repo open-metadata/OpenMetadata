@@ -399,6 +399,8 @@ export const assignTag = async (
 
   await page.getByTestId('saveAssociatedTag').click();
 
+  await page.waitForLoadState('networkidle');
+
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(

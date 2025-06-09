@@ -104,6 +104,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tag(page, 'PersonalData.Personal', 'PII.None');
     });
 
