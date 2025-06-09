@@ -44,6 +44,7 @@ const ConfigureService = ({
       ],
       props: {
         'data-testid': 'service-name',
+        autoFocus: true,
       },
       placeholder: t('label.service-name'),
       formItemProps: {
