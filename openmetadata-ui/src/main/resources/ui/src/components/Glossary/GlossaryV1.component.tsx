@@ -356,7 +356,7 @@ const GlossaryV1 = ({
         <div className="d-flex justify-center items-center full-height">
           <ErrorPlaceHolder
             className="mt-0-important border-none"
-            permissionValue={t('label.view-entity', {
+            permission={t('label.view-entity', {
               entity: t('label.glossary'),
             })}
             size={SIZE.X_LARGE}
