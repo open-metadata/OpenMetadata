@@ -141,10 +141,7 @@ public class SearchUtil {
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
-      case "team_search_index", Entity.TEAM -> Entity.TEAM;
-      case "user_Search_index", Entity.USER -> Entity.USER;
-      case "dataAsset" -> "dataAsset";
-      default -> "dataAsset";
+      default -> "default";
     };
   }
 
