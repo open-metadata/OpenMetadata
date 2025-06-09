@@ -383,8 +383,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (nullOrEmpty(certificationTag)) {
       return null;
     }
-    // Dates are populated by default, this will be modified based on the assetCertification
-    // settings during import
     TagLabel certificationLabel =
         new TagLabel().withTagFQN(certificationTag).withSource(TagLabel.TagSource.CLASSIFICATION);
 

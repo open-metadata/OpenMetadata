@@ -534,12 +534,6 @@ public class SearchRepository {
   private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
-  /**
-   * Propagate certification tag updates to search index
-   * @param entityType Type of the entity being updated
-   * @param entity The entity being updated
-   * @param changeDescription Description of the changes made to the entity
-   */
   public void propagateCertificationTags(
       String entityType, EntityInterface entity, ChangeDescription changeDescription) {
     if (changeDescription == null) {
