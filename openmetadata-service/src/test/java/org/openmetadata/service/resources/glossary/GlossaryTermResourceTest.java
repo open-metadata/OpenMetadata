@@ -1484,8 +1484,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             false);
 
     WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
-    BulkOperationResult result =
-        TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
 
     Table updatedTable = tableResourceTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
     assertTrue(
