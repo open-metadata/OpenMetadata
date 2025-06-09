@@ -55,6 +55,9 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -83,7 +86,9 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureCode,
 )
 from metadata.generated.schema.entity.data.table import (
+    Column,
     ColumnProfile,
+    DataType,
     SystemProfile,
     Table,
     TableData,
@@ -95,8 +100,15 @@ from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -152,6 +164,17 @@ COLUMN_NAME = "Column"
 KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
+NUM_SERVICES = 1
+DATABASES_PER_SERVICE = 5
+SCHEMAS_PER_DATABASE = 5
+TABLES_PER_SCHEMA = 10
+COLUMNS_PER_TABLE = 50
+NUM_THREADS = 10
+BATCH_SIZE = 10
+COLUMNS = [
+                Column(name=f"column_{i}", dataType=DataType.STRING)
+                for i in range(COLUMNS_PER_TABLE)
+            ]
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
@@ -685,6 +708,7 @@ class SampleDataSource(
         yield from self.ingest_api_service()
         yield from self.ingest_ometa_api_service()
         self.modify_column_descriptions()
+        yield from self.process_service_batch()
 
     def ingest_domains(self):
 
@@ -1892,3 +1916,127 @@ class SampleDataSource(
         for endpoint in self.ometa_api_endpoint.get("endpoints"):
             endpoint_request = CreateAPIEndpointRequest(**endpoint)
             yield Either(right=endpoint_request)
+
+    def create_database_service(
+        self, service_idx: int
+    ) -> None:
+        """Create a database service and its databases.
+
+        Args:
+            service_idx: Service index
+        """
+        service_name = f"openmetadata-{service_idx}"
+
+        try:
+            # Create minimal Snowflake connection
+            connection = DatabaseConnection(
+                config=SnowflakeConnection(
+                    username="dummy",
+                    password="dummy",  # This will be handled by the library
+                    account="dummy",
+                    database="dummy",
+                    warehouse="dummy",
+                )
+            )
+
+            # Create service with minimal required fields
+            yield Either(right=CreateDatabaseServiceRequest(
+                name=service_name,
+                serviceType=DatabaseServiceType.Snowflake,
+                connection=connection,
+            ))
+
+            logger.info(f"Created database service {service_name} ({NUM_SERVICES})")
+            tasks = []
+            # Create databases sequentially
+            for db_idx in range(DATABASES_PER_SERVICE):
+                yield from self.create_database( service_name, db_idx)
+
+            
+
+        except Exception as e:
+            logger.error(f"Failed to create database service {service_name}: {e}")
+
+    def process_service_batch(
+        self
+    ) -> None:
+        """Process a batch of services.
+
+        Args:
+            start_idx: Start index of service batch
+            end_idx: End index of service batch
+        """
+        
+        services_per_thread = NUM_SERVICES // NUM_THREADS
+        # Create tasks for each thread
+        for service_idx in range(NUM_SERVICES):
+            yield from self.create_database_service( service_idx)
+            
+    def create_database(
+        self, service_name: str, db_idx: int
+    ) -> None:
+        """Create a database.
+
+        Args:
+            service_name: Service name
+            db_idx: Database index
+        """
+        db_name = f"openmetadata-db-{db_idx}"
+
+        try:
+            # Create with minimal required fields
+            db_request = Either(right=CreateDatabaseRequest(name=db_name, service=service_name))
+            yield db_request
+            database_fqn = f"{service_name}.{db_name}"
+
+            # Create schemas sequentially to avoid overwhelming the API
+            for schema_idx in range(SCHEMAS_PER_DATABASE):
+                yield from self.create_schema( database_fqn, schema_idx)
+
+        except Exception as e:
+            logger.error(f"Failed to create database {db_name}: {e}")
+
+    def create_schema(
+        self, database_fqn: str, schema_idx: int
+    ) -> None:
+        """Create a schema.
+
+        Args:
+            database_fqn: Database FQN
+            schema_idx: Schema index
+        """
+        schema_name = f"openmetadata-schema-{schema_idx}"
+
+        try:
+            # Create with minimal required fields
+            schema_request = Either(right=CreateDatabaseSchemaRequest(
+                name=schema_name, database=database_fqn
+            ))
+            yield schema_request
+            schema_name = f"{database_fqn}.{schema_name}"
+            # Create tables sequentially to avoid overwhelming the API
+            yield from self.create_table( schema_name)
+
+        except Exception as e:
+            logger.error(f"Failed to create schema {schema_name}: {e}")
+
+    def create_table(
+        self, schema_fqn: str
+    ) -> None:
+        """Create a batch of tables for a schema.
+
+        Args:
+            schema_fqn: Fully qualified schema name
+        """
+        # Create table requests
+        for i in range(TABLES_PER_SCHEMA):
+            table_name = f"openmetadata-table-{i}"
+
+            # Create with minimal required fields
+            try:
+                table_request = Either(right=CreateTableRequest(
+                    name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
+                ))
+                yield table_request
+            except Exception as e:
+                logger.warning(f"Error creating table request: {e}")
