@@ -233,7 +233,14 @@ entities.forEach((EntityClass) => {
     test('Tag Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
+      await entity.tag(
+        page,
+        'PersonalData.Personal',
+        EntityDataClass.tag1.data.displayName,
+        EntityDataClass.tag1.data.name,
+        EntityDataClass.tag1.data.classification,
+        entity
+      );
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {

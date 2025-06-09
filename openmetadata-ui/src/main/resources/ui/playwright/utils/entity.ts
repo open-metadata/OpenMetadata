@@ -375,6 +375,8 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
+  tagName?: string,
+  classification?: string,
   parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
@@ -388,7 +390,9 @@ export const assignTag = async (
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
+  await page
+    .getByTestId(`tag-${classification ? `${classification}.${tagName}` : tag}`)
+    .click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -405,7 +409,9 @@ export const assignTag = async (
     page
       .getByTestId(parentId)
       .getByTestId('tags-container')
-      .getByTestId(`tag-${tag}`)
+      .getByTestId(
+        `tag-${classification ? `${classification}.${tagName}` : tag}`
+      )
   ).toBeVisible();
 };
 

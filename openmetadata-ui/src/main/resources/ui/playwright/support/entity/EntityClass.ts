@@ -232,13 +232,30 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
-  async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
+  async tag(
+    page: Page,
+    tag1: string,
+    tag2: string,
+    tag2Name?: string,
+    tag2Classification?: string,
+    entity?: EntityClass
+  ) {
     await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit');
-    if (entity) {
-      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag2, entity);
+    await assignTag(page, tag2, 'Edit', tag2Name, tag2Classification);
+    if (entity && tag2Classification) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        `${tag2Classification}.${tag2Name}`,
+        entity
+      );
     }
-    await removeTag(page, [tag2]);
+    if (tag2Classification && tag2Name) {
+      await removeTag(page, [`${tag2Classification}.${tag2Name}`]);
+    } else {
+      await removeTag(page, [tag2]);
+    }
     await removeTag(page, [tag1]);
 
     await page
