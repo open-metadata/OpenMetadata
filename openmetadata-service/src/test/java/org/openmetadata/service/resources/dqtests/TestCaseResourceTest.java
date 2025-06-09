@@ -3841,7 +3841,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           createRequest(testInfo)
               .withName("adminTestCase")
               .withEntityLink(TABLE_LINK)
-              .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
               .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
       TestCase adminTestCase = createAndCheckEntity(adminTestCaseReq, ADMIN_AUTH_HEADERS);
 
@@ -3850,7 +3849,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           createRequest(testInfo)
               .withName("testUserTestCase")
               .withEntityLink(TABLE_LINK)
-              .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
               .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
       TestCase testUserTestCase =
           createAndCheckEntity(testUserTestCaseReq, INGESTION_BOT_AUTH_HEADERS);
