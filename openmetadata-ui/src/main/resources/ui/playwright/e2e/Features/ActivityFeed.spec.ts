@@ -365,6 +365,52 @@ test.describe('Activity feed', () => {
     await checkTaskCountInActivityFeed(page, 0, 1);
   });
 
+  test('Replies should be visible in the task feed', async ({ page }) => {
+    const value: TaskDetails = {
+      term: entity2.entity.displayName,
+      assignee: user1.responseData.name,
+    };
+    await redirectToHomePage(page);
+
+    await entity2.visitEntityPage(page);
+
+    await page.getByTestId('request-description').click();
+
+    await createDescriptionTask(page, value);
+
+    // Task 1 - Update Description right panel check
+    const descriptionTask = await page.getByTestId('task-title').innerText();
+
+    expect(descriptionTask).toContain('Request to update description');
+
+    for (let i = 0; i < 10; i++) {
+      const commentInput = page.locator('[data-testid="comments-input-field"]');
+      commentInput.click();
+
+      await page.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        `Reply message ${i}`
+      );
+      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+      await page.getByTestId('send-button').click({ force: true });
+      await sendReply;
+    }
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'hidden',
+    });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('feed-reply-card')).toHaveCount(10);
+
+    for (let i = 0; i < 10; i++) {
+      await expect(
+        page.locator('.right-container [data-testid="feed-replies"]')
+      ).toContainText(`Reply message ${i}`);
+    }
+  });
+
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
     page,
   }) => {

@@ -487,6 +487,7 @@
     "enter-entity-name": "ป้อนชื่อ {{entity}}",
     "enter-entity-value": "ป้อนค่าของ {{entity}}",
     "enter-field-description": "ป้อนคำอธิบาย {{field}}",
+    "enter-file-content": "ป้อนเนื้อหาของไฟล์",
     "enter-property-value": "ป้อนค่าของคุณสมบัติ",
     "enter-type-password": "ป้อนรหัสผ่าน {{type}}",
     "entity": "เอนทิตี",
