@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.config.MCPConfiguration;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
@@ -49,24 +50,25 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private static final String SESSION_HEADER = "Mcp-Session-Id";
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String CONTENT_TYPE_SSE = "text/event-stream";
-  private ObjectMapper objectMapper = new ObjectMapper();
-  private Map<String, MCPSession> sessions = new ConcurrentHashMap<>();
-  private Map<String, SSEConnection> sseConnections = new ConcurrentHashMap<>();
-  private SecureRandom secureRandom = new SecureRandom();
-  private ExecutorService executorService =
+
+  private final transient ObjectMapper objectMapper = new ObjectMapper();
+  private final transient Map<String, MCPSession> sessions = new ConcurrentHashMap<>();
+  private final transient Map<String, SSEConnection> sseConnections = new ConcurrentHashMap<>();
+  private final transient SecureRandom secureRandom = new SecureRandom();
+  private final transient ExecutorService executorService =
       Executors.newCachedThreadPool(
           r -> {
             Thread t = new Thread(r, "MCP-Worker-Streamable");
             t.setDaemon(true);
             return t;
           });
-  private McpServerSession.Factory sessionFactory;
-  private final JwtFilter jwtFilter;
-  private final Authorizer authorizer;
-  private final List<McpSchema.Tool> tools = new ArrayList<>();
-  private final Limits limits;
-  private final DefaultToolContext toolContext;
-  private final MCPConfiguration mcpConfiguration;
+  private transient McpServerSession.Factory sessionFactory;
+  private final transient JwtFilter jwtFilter;
+  private final transient Authorizer authorizer;
+  private final transient List<McpSchema.Tool> tools = new ArrayList<>();
+  private final transient Limits limits;
+  private final transient DefaultToolContext toolContext;
+  private final transient MCPConfiguration mcpConfiguration;
 
   public MCPStreamableHttpServlet(
       MCPConfiguration mcpConfiguration,
@@ -117,15 +119,12 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-
-    // Security: Validate Origin header
     String origin = request.getHeader("Origin");
-    if (!isValidOrigin(origin)) {
+    if (origin != null && !isValidOrigin(origin)) {
       sendError(response, HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
       return;
     }
 
-    // Validate Accept header - MUST include both application/json and text/event-stream
     String acceptHeader = request.getHeader("Accept");
     if (acceptHeader == null
         || !acceptHeader.contains(CONTENT_TYPE_JSON)
@@ -146,15 +145,478 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           getJsonRpcMessageWithAuthorizationParam(this.objectMapper, request, requestBody);
       JsonNode jsonNode = objectMapper.valueToTree(message);
 
-      // TODO: here we need to see how to handle the batch request from the Spec
       if (jsonNode.isArray()) {
         handleBatchRequest(request, response, jsonNode, sessionId);
       } else {
-        handleSingleRequest(request, response, jsonNode, sessionId);
+        handleSingleMessage(request, response, jsonNode, sessionId);
       }
     } catch (Exception e) {
       log("Error handling POST request", e);
       sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
+    }
+  }
+
+  /**
+   * Handle a single JSON-RPC message according to MCP specification
+   */
+  private void handleSingleMessage(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      JsonNode jsonMessage,
+      String sessionId)
+      throws IOException {
+
+    String method = jsonMessage.has("method") ? jsonMessage.get("method").asText() : null;
+    boolean hasId = jsonMessage.has("id");
+    boolean isResponse = jsonMessage.has("result") || jsonMessage.has("error");
+
+    // Handle initialization specially
+    if ("initialize".equals(method)) {
+      handleInitialize(response, jsonMessage);
+      return;
+    }
+
+    // Validate session for non-initialization requests (except for responses/notifications)
+    if (sessionId != null && !sessions.containsKey(sessionId) && !isResponse) {
+      sendError(response, HttpServletResponse.SC_NOT_FOUND, "Session not found");
+      return;
+    }
+
+    if (isResponse || (!hasId && method != null)) {
+      // This is either a response or a notification
+      handleResponseOrNotification(response, jsonMessage, sessionId, isResponse);
+    } else if (hasId && method != null) {
+      // This is a request - may return JSON or start SSE stream
+      handleRequest(request, response, jsonMessage, sessionId);
+    } else {
+      sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON-RPC message format");
+    }
+  }
+
+  /**
+   * Handle responses and notifications from client
+   */
+  private void handleResponseOrNotification(
+      HttpServletResponse response, JsonNode message, String sessionId, boolean isResponse)
+      throws IOException {
+
+    try {
+      if (isResponse) {
+        processClientResponse(message, sessionId);
+        log("Processed client response for session: " + sessionId);
+      } else {
+        processNotification(message, sessionId);
+        log("Processed client notification for session: " + sessionId);
+      }
+
+      response.setStatus(HttpServletResponse.SC_ACCEPTED);
+      response.setContentLength(0);
+
+    } catch (Exception e) {
+      log("Error processing response/notification", e);
+      sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Failed to process message");
+    }
+  }
+
+  /**
+   * Handle JSON-RPC requests from client
+   */
+  private void handleRequest(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      JsonNode jsonRequest,
+      String sessionId)
+      throws IOException {
+
+    String acceptHeader = request.getHeader("Accept");
+    boolean supportsSSE = acceptHeader != null && acceptHeader.contains(CONTENT_TYPE_SSE);
+
+    // Determine whether to use SSE stream or direct JSON response
+    boolean useSSE = supportsSSE && shouldUseSSEForRequest(jsonRequest, sessionId);
+
+    if (useSSE) {
+      // Initiate SSE stream and process request asynchronously
+      startSSEStreamForRequest(request, response, jsonRequest, sessionId);
+    } else {
+      // Send direct JSON response
+      sendDirectJSONResponse(response, jsonRequest, sessionId);
+    }
+  }
+
+  /**
+   * Send direct JSON response for requests
+   */
+  private void sendDirectJSONResponse(
+      HttpServletResponse response, JsonNode request, String sessionId) throws IOException {
+
+    Map<String, Object> jsonResponse = processRequest(request, sessionId);
+    String responseJson = objectMapper.writeValueAsString(jsonResponse);
+
+    response.setContentType(CONTENT_TYPE_JSON);
+    response.setStatus(HttpServletResponse.SC_OK);
+
+    // Include session ID in response if present
+    if (sessionId != null) {
+      response.setHeader(SESSION_HEADER, sessionId);
+    }
+
+    response.getWriter().write(responseJson);
+    response.getWriter().flush();
+  }
+
+  /**
+   * Start SSE stream for processing requests
+   */
+  private void startSSEStreamForRequest(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      JsonNode jsonRequest,
+      String sessionId)
+      throws IOException {
+
+    // Set up SSE response headers
+    response.setContentType(CONTENT_TYPE_SSE);
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+    response.setHeader("Access-Control-Allow-Origin", "*");
+
+    // Include session ID in response if present
+    if (sessionId != null) {
+      response.setHeader(SESSION_HEADER, sessionId);
+    }
+
+    response.setStatus(HttpServletResponse.SC_OK);
+
+    // Start async processing
+    AsyncContext asyncContext = request.startAsync();
+    asyncContext.setTimeout(300000); // 5 minutes timeout
+
+    SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
+    String connectionId = UUID.randomUUID().toString();
+    sseConnections.put(connectionId, connection);
+
+    // Process request asynchronously
+    executorService.submit(
+        () -> {
+          try {
+            // Send server-initiated messages first
+            // sendServerInitiatedMessages(connection);
+
+            // Process the actual request and send response
+            Map<String, Object> jsonResponse = processRequest(jsonRequest, sessionId);
+            String eventId = generateEventId();
+            connection.sendEventWithId(eventId, objectMapper.writeValueAsString(jsonResponse));
+
+            // Close the stream after sending response
+            connection.close();
+
+          } catch (Exception e) {
+            log("Error in SSE stream processing for request", e);
+            try {
+              // Send error response before closing
+              Map<String, Object> errorResponse =
+                  createErrorResponse(
+                      jsonRequest.get("id"), -32603, "Internal error: " + e.getMessage());
+              connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+              connection.close();
+            } catch (Exception ex) {
+              log("Error sending error response in SSE stream", ex);
+            }
+          } finally {
+            try {
+              asyncContext.complete();
+            } catch (Exception e) {
+              log("Error completing async context", e);
+            }
+            sseConnections.remove(connectionId);
+          }
+        });
+  }
+
+  /**
+   * Handle batch requests according to MCP specification
+   */
+  private void handleBatchRequest(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      JsonNode batchRequest,
+      String sessionId)
+      throws IOException {
+
+    if (!batchRequest.isArray() || batchRequest.size() == 0) {
+      sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid batch request format");
+      return;
+    }
+
+    // Analyze the batch to determine message types
+    boolean hasRequests = false;
+    boolean hasResponsesOrNotifications = false;
+
+    for (JsonNode message : batchRequest) {
+      boolean hasId = message.has("id");
+      boolean isResponse = message.has("result") || message.has("error");
+      boolean hasMethod = message.has("method");
+
+      if (hasId && hasMethod && !isResponse) {
+        hasRequests = true;
+      } else if (isResponse || (!hasId && hasMethod)) {
+        hasResponsesOrNotifications = true;
+      }
+    }
+
+    if (hasRequests && hasResponsesOrNotifications) {
+      sendError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "Batch cannot mix requests with responses/notifications");
+      return;
+    }
+
+    if (hasResponsesOrNotifications) {
+      // Process responses and notifications, return 202 Accepted
+      processBatchResponsesOrNotifications(batchRequest, sessionId);
+      response.setStatus(HttpServletResponse.SC_ACCEPTED);
+      response.setContentLength(0);
+    } else if (hasRequests) {
+      // Process batch requests - determine if SSE or direct JSON
+      String acceptHeader = request.getHeader("Accept");
+      boolean supportsSSE = acceptHeader != null && acceptHeader.contains(CONTENT_TYPE_SSE);
+
+      if (supportsSSE && shouldUseSSEForBatch(batchRequest, sessionId)) {
+        startSSEStreamForBatchRequests(request, response, batchRequest, sessionId);
+      } else {
+        sendBatchJSONResponse(response, batchRequest, sessionId);
+      }
+    } else {
+      sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid batch content");
+    }
+  }
+
+  /**
+   * Process client responses (for server-initiated requests)
+   */
+  private void processClientResponse(JsonNode response, String sessionId) {
+    // Handle responses to server-initiated requests
+    Object id = response.has("id") ? response.get("id") : null;
+    LOG.info("Received client response for request ID: " + id + " (session: " + sessionId + ")");
+
+    // TODO: Match with pending server requests and complete them
+    // This would involve maintaining a map of pending requests by ID
+  }
+
+  /**
+   * Determine if SSE should be used for a specific request
+   */
+  private boolean shouldUseSSEForRequest(JsonNode request, String sessionId) {
+    // TODO: This is good for now, but we can enhance this logic later
+    // Use SSE for requests that are streaming operations or have specific methods
+    MCPSession session = sessions.get(sessionId);
+    return session != null;
+  }
+
+  /**
+   * Determine if SSE should be used for batch requests
+   */
+  private boolean shouldUseSSEForBatch(JsonNode batchRequest, String sessionId) {
+    // Use SSE for batches containing streaming operations
+    for (JsonNode request : batchRequest) {
+      if (shouldUseSSEForRequest(request, sessionId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Process batch responses and notifications
+   */
+  private void processBatchResponsesOrNotifications(JsonNode batch, String sessionId) {
+    for (JsonNode message : batch) {
+      boolean isResponse = message.has("result") || message.has("error");
+      if (isResponse) {
+        processClientResponse(message, sessionId);
+      } else {
+        processNotification(message, sessionId);
+      }
+    }
+  }
+
+  /**
+   * Send batch JSON response
+   */
+  private void sendBatchJSONResponse(
+      HttpServletResponse response, JsonNode batchRequest, String sessionId) throws IOException {
+
+    List<Map<String, Object>> responses = new ArrayList<>();
+
+    for (JsonNode request : batchRequest) {
+      Map<String, Object> jsonResponse = processRequest(request, sessionId);
+      responses.add(jsonResponse);
+    }
+
+    String responseJson = objectMapper.writeValueAsString(responses);
+
+    response.setContentType(CONTENT_TYPE_JSON);
+    response.setStatus(HttpServletResponse.SC_OK);
+
+    if (sessionId != null) {
+      response.setHeader(SESSION_HEADER, sessionId);
+    }
+
+    response.getWriter().write(responseJson);
+    response.getWriter().flush();
+  }
+
+  /**
+   * Start SSE stream for batch requests
+   */
+  private void startSSEStreamForBatchRequests(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      JsonNode batchRequest,
+      String sessionId)
+      throws IOException {
+
+    // Set up SSE response headers
+    response.setContentType(CONTENT_TYPE_SSE);
+    response.setHeader("Cache-Control", "no-cache");
+    response.setHeader("Connection", "keep-alive");
+    response.setHeader("Access-Control-Allow-Origin", "*");
+
+    if (sessionId != null) {
+      response.setHeader(SESSION_HEADER, sessionId);
+    }
+
+    response.setStatus(HttpServletResponse.SC_OK);
+
+    AsyncContext asyncContext = request.startAsync();
+    asyncContext.setTimeout(300000); // 5 minutes timeout
+
+    SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
+    String connectionId = UUID.randomUUID().toString();
+    sseConnections.put(connectionId, connection);
+
+    // Process batch asynchronously
+    executorService.submit(
+        () -> {
+          try {
+            // Send server-initiated messages first
+            // sendServerInitiatedMessages(connection);
+
+            // Process each request in the batch
+            List<Map<String, Object>> responses = new ArrayList<>();
+            for (JsonNode req : batchRequest) {
+              Map<String, Object> jsonResponse = processRequest(req, sessionId);
+              responses.add(jsonResponse);
+            }
+
+            // Send batch response
+            String eventId = generateEventId();
+            connection.sendEventWithId(eventId, objectMapper.writeValueAsString(responses));
+
+            connection.close();
+
+          } catch (Exception e) {
+            log("Error in SSE stream processing for batch", e);
+            try {
+              Map<String, Object> errorResponse =
+                  createErrorResponse(null, -32603, "Internal error: " + e.getMessage());
+              connection.sendEvent(objectMapper.writeValueAsString(errorResponse));
+              connection.close();
+            } catch (Exception ex) {
+              log("Error sending error response in batch SSE stream", ex);
+            }
+          } finally {
+            try {
+              asyncContext.complete();
+            } catch (Exception e) {
+              log("Error completing async context for batch", e);
+            }
+            sseConnections.remove(connectionId);
+          }
+        });
+  }
+
+  /**
+   * Create error response object
+   */
+  private Map<String, Object> createErrorResponse(JsonNode id, int code, String message) {
+    Map<String, Object> response = new HashMap<>();
+    response.put("jsonrpc", "2.0");
+    response.put("id", id);
+    response.put("error", createError(code, message));
+    return response;
+  }
+
+  /**
+   * Generate unique event ID for SSE
+   */
+  private String generateEventId() {
+    return UUID.randomUUID().toString();
+  }
+
+  /**
+   * Enhanced SSE connection class with event ID support
+   */
+  public static class SSEConnection {
+    private final PrintWriter writer;
+    private final String sessionId;
+    private volatile boolean closed = false;
+    private int eventCounter = 0;
+
+    public SSEConnection(PrintWriter writer, String sessionId) {
+      this.writer = writer;
+      this.sessionId = sessionId;
+    }
+
+    public synchronized void sendEvent(String data) throws IOException {
+      if (closed) return;
+
+      writer.printf("id: %d%n", ++eventCounter);
+      writer.printf("data: %s%n%n", data);
+      writer.flush();
+
+      if (writer.checkError()) {
+        throw new IOException("SSE write error");
+      }
+    }
+
+    public synchronized void sendEventWithId(String id, String data) throws IOException {
+      if (closed) return;
+
+      writer.printf("id: %s%n", id);
+      writer.printf("data: %s%n%n", data);
+      writer.flush();
+
+      if (writer.checkError()) {
+        throw new IOException("SSE write error");
+      }
+    }
+
+    public synchronized void sendComment(String comment) throws IOException {
+      if (closed) return;
+
+      writer.printf(": %s%n%n", comment);
+      writer.flush();
+
+      if (writer.checkError()) {
+        throw new IOException("SSE write error");
+      }
+    }
+
+    public void close() throws IOException {
+      closed = true;
+      if (writer != null) {
+        writer.close();
+      }
+    }
+
+    public boolean isClosed() {
+      return closed;
+    }
+
+    public String getSessionId() {
+      return sessionId;
     }
   }
 
@@ -184,60 +646,20 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   @Override
   protected void doDelete(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-
     String sessionId = request.getHeader(SESSION_HEADER);
+    removeMCPSession(sessionId);
+    response.setStatus(HttpServletResponse.SC_OK);
+  }
 
+  private void removeMCPSession(String sessionId) {
     if (sessionId == null) {
-      sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Session ID required");
-      return;
+      throw BadRequestException.of("Session ID required");
     }
 
     // Terminate session
     MCPSession session = sessions.remove(sessionId);
     if (session != null) {
-      log("Session terminated: " + sessionId);
-    }
-
-    response.setStatus(HttpServletResponse.SC_OK);
-  }
-
-  private void handleSingleRequest(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      JsonNode jsonRequest,
-      String sessionId)
-      throws IOException {
-
-    String method = jsonRequest.has("method") ? jsonRequest.get("method").asText() : null;
-    boolean hasId = jsonRequest.has("id");
-
-    // Handle initialization
-    if ("initialize".equals(method)) {
-      handleInitialize(response, jsonRequest);
-      return;
-    }
-
-    //  Validate session for non-initialization requests
-    if (sessionId != null && !sessions.containsKey(sessionId)) {
-      sendError(response, HttpServletResponse.SC_NOT_FOUND, "Session not found");
-      return;
-    }
-
-    // Handle different message types
-    if (!hasId) {
-      // Notification - return 202 Accepted
-      processNotification(jsonRequest, sessionId);
-      response.setStatus(HttpServletResponse.SC_ACCEPTED);
-    } else {
-      // Request - may return JSON or start SSE stream
-      String acceptHeader = request.getHeader("Accept");
-      boolean supportsSSE = acceptHeader != null && acceptHeader.contains(CONTENT_TYPE_SSE);
-
-      if (supportsSSE && shouldUseSSE()) {
-        startSSEStream(request, response, jsonRequest, sessionId);
-      } else {
-        sendJSONResponse(response, jsonRequest, sessionId);
-      }
+      LOG.info("Session terminated: " + sessionId);
     }
   }
 
@@ -266,57 +688,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     response.getWriter().write(responseJson);
 
     log("New session initialized: " + sessionId);
-  }
-
-  private void startSSEStream(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      JsonNode jsonRequest,
-      String sessionId)
-      throws IOException {
-
-    // Set up SSE response headers
-    response.setContentType(CONTENT_TYPE_SSE);
-    response.setHeader("Cache-Control", "no-cache");
-    response.setHeader("Connection", "keep-alive");
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setStatus(HttpServletResponse.SC_OK);
-
-    // Start async processing
-    AsyncContext asyncContext = request.startAsync();
-    asyncContext.setTimeout(0); // 5 minutes timeout
-
-    SSEConnection connection = new SSEConnection(response.getWriter(), sessionId);
-    String connectionId = UUID.randomUUID().toString();
-    sseConnections.put(connectionId, connection);
-
-    // Process request asynchronously
-    executorService.submit(
-        () -> {
-          try {
-            // Send any server-initiated messages first (if needed)
-            //            sendServerInitiatedMessages(connection);
-
-            // Process the actual request
-            Map<String, Object> jsonResponse = processRequest(jsonRequest, sessionId);
-            connection.sendEvent(objectMapper.writeValueAsString(jsonResponse));
-
-            // Close the stream after sending response
-            connection.close();
-            asyncContext.complete();
-
-          } catch (Exception e) {
-            log("Error in SSE stream processing", e);
-            try {
-              connection.close();
-              asyncContext.complete();
-            } catch (Exception ex) {
-              log("Error closing SSE connection", ex);
-            }
-          } finally {
-            sseConnections.remove(connectionId);
-          }
-        });
   }
 
   private void startSSEStreamForGet(
@@ -395,65 +766,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     return Flux.fromIterable(sessions.values()).flatMap(MCPSession::closeGracefully).then();
   }
 
-  private static class SSEConnection {
-    private final PrintWriter writer;
-    private final String sessionId;
-    private volatile boolean closed = false;
-    private int eventId = 0;
-
-    public SSEConnection(PrintWriter writer, String sessionId) {
-      this.writer = writer;
-      this.sessionId = sessionId;
-    }
-
-    public synchronized void sendEvent(String data) throws IOException {
-      if (closed) return;
-
-      writer.printf("id: %d%n", ++eventId);
-      writer.printf("data: %s%n%n", data);
-      writer.flush();
-
-      if (writer.checkError()) {
-        throw new IOException("SSE write error");
-      }
-    }
-
-    private void sendEvent(String eventType, String data) throws IOException {
-      writer.write("event: " + eventType + "\n");
-      writer.write("data: " + data + "\n\n");
-      writer.flush();
-      if (writer.checkError()) {
-        throw new IOException("Client disconnected");
-      }
-    }
-
-    public synchronized void sendComment(String comment) throws IOException {
-      if (closed) return;
-
-      writer.printf(": %s%n%n", comment);
-      writer.flush();
-
-      if (writer.checkError()) {
-        throw new IOException("SSE write error");
-      }
-    }
-
-    public void close() throws IOException {
-      closed = true;
-      if (writer != null) {
-        writer.close();
-      }
-    }
-
-    public boolean isClosed() {
-      return closed;
-    }
-
-    public String getSessionId() {
-      return sessionId;
-    }
-  }
-
   private static class MCPSession {
     @Getter private final String sessionId;
     private final long createdAt;
@@ -520,8 +832,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           break;
 
         case "resources/list":
-          // TODO: Implement resource reading logic
-          response.put("result", getResourcesList());
+          response.put("result", new McpSchema.ListResourcesResult(new ArrayList<>(), null));
           break;
 
         case "resources/read":
@@ -569,8 +880,9 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         LOG.info("Client initialized for session: {}", sessionId);
         break;
       case "notifications/cancelled":
+        // TODO: Check this
         LOG.info("Client sent a cancellation request for session: {}", sessionId);
-        // Handle cancellation
+        removeMCPSession(sessionId);
         break;
       default:
         log("Unknown notification: " + method);
@@ -585,15 +897,10 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   private boolean isValidOrigin(String origin) {
-    if(null == origin || origin.isEmpty()) {
+    if (null == origin || origin.isEmpty()) {
       return false;
     }
     return origin.startsWith(mcpConfiguration.getOriginHeaderUri());
-  }
-
-  private boolean shouldUseSSE() {
-    // TODO: Decide when to use SSE vs direct JSON response
-    return false;
   }
 
   private String readRequestBody(HttpServletRequest request) throws IOException {
@@ -618,27 +925,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     response.getWriter().write(errorJson);
   }
 
-  private void sendJSONResponse(HttpServletResponse response, JsonNode request, String sessionId)
-      throws IOException {
-    Map<String, Object> jsonResponse = processRequest(request, sessionId);
-    String responseJson = objectMapper.writeValueAsString(jsonResponse);
-
-    response.setContentType(CONTENT_TYPE_JSON);
-    response.setStatus(HttpServletResponse.SC_OK);
-    response.getWriter().write(responseJson);
-    response.getWriter().flush();
-  }
-
-  private void handleBatchRequest(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      JsonNode batchRequest,
-      String sessionId)
-      throws IOException {
-    // TODO: Handle this
-    sendError(response, HttpServletResponse.SC_NOT_IMPLEMENTED, "Batch requests not implemented");
-  }
-
   private Map<String, Object> createError(int code, String message) {
     Map<String, Object> error = new HashMap<>();
     error.put("code", code);
@@ -646,42 +932,16 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     return error;
   }
 
-  private Map<String, Object> getServerCapabilities() {
-    Map<String, Object> capabilities = new HashMap<>();
-
-    // Resources capability
-    Map<String, Object> resources = new HashMap<>();
-    resources.put("subscribe", true);
-    resources.put("listChanged", true);
-    capabilities.put("resources", resources);
-
-    // Tools
-    Map<String, Object> tools = new HashMap<>();
-    tools.put("listChanged", true);
-    capabilities.put("tools", tools);
-
-    return capabilities;
+  private McpSchema.ServerCapabilities getServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder()
+        .tools(true)
+        .prompts(true)
+        .resources(true, true)
+        .build();
   }
 
-  private Map<String, Object> getServerInfo() {
-    Map<String, Object> serverInfo = new HashMap<>();
-    serverInfo.put("name", "OpenMetadata MCP Server - Streamable");
-    serverInfo.put("version", "1.0.0");
-    return serverInfo;
-  }
-
-  private Map<String, Object> getResourcesList() {
-    return new HashMap<>();
-  }
-
-  private Map<String, Object> createResource(
-      String uri, String name, String mimeType, String description) {
-    Map<String, Object> resource = new HashMap<>();
-    resource.put("uri", uri);
-    resource.put("name", name);
-    resource.put("mimeType", mimeType);
-    resource.put("description", description);
-    return resource;
+  private McpSchema.Implementation getServerInfo() {
+    return new McpSchema.Implementation("OpenMetadata MCP Server - Streamable", "1.0.0");
   }
 
   /**
