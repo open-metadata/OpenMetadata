@@ -374,7 +374,7 @@ public class LineageRepository {
     EsLineageData lineageData =
         new EsLineageData()
             .withDocId(getDocumentIdWithFqn(fromEntity, toEntity, lineageDetails))
-            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity, lineageDetails))
+            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity))
             .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details
@@ -408,16 +408,8 @@ public class LineageRepository {
     }
   }
 
-  public static String getDocumentUniqueId(
-      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
-      EntityReference ref = lineageDetails.getPipeline();
-      return String.format(
-          "%s--->%s:%s--->%s",
-          fromEntity.getId(), ref.getType(), ref.getId().toString(), toEntity.getId().toString());
-    } else {
-      return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
-    }
+  public static String getDocumentUniqueId(EntityReference fromEntity, EntityReference toEntity) {
+    return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
   }
 
   public static void addPipelineDetails(EsLineageData lineageData, EntityReference pipelineRef) {
@@ -1086,7 +1078,7 @@ public class LineageRepository {
 
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
