@@ -78,9 +78,6 @@ const App: FC = () => {
 
     content.forEach((data) => {
       preloadImage(data.image);
-      data.image1?.image && preloadImage(data.image1.image);
-      data.image2?.image && preloadImage(data.image2.image);
-      data.image3?.image && preloadImage(data.image3.image);
     });
   }, []);
 

@@ -23,7 +23,9 @@ const LoginCarousel = () => {
 
   return (
     <Carousel
+      autoplay
       dots
+      autoplaySpeed={2000}
       beforeChange={(_, next) => setCurrentIndex(next)}
       easing="ease-in-out"
       effect="fade">
@@ -32,7 +34,7 @@ const LoginCarousel = () => {
           className="slider-container"
           data-testid="slider-container"
           key={uniqueId() + '-' + currentIndex + '-' + idx}>
-          <div className="d-flex flex-col gap-9">
+          <div className="d-flex flex-col gap-4">
             <Typography.Title
               className="carousel-header"
               level={1}
@@ -55,20 +57,6 @@ const LoginCarousel = () => {
           </div>
           <div className="image-container">
             <img alt="slider" className="main-image" src={data.image} />
-            {data.image2 && (
-              <img
-                alt="slider"
-                className="floating-image2"
-                src={data.image2.image}
-              />
-            )}
-            {data.image3 && (
-              <img
-                alt="slider"
-                className="floating-image3"
-                src={data.image3.image}
-              />
-            )}
           </div>
         </div>
       ))}

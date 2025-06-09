@@ -275,7 +275,7 @@ const SignInPage = () => {
               )}
             </div>
           ) : (
-            <div className="m-t-md">
+            <div className=" login-form">
               <Typography.Text className="text-xl text-grey-muted m-t-lg">
                 {t('message.om-description')}
               </Typography.Text>
