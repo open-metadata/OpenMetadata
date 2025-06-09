@@ -22,16 +22,10 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMigration;
 
-/**
- * Cached decorator for TagUsageDAO that implements write-through caching
- * for tag and glossary term relationships.
- */
 @Slf4j
 public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
   private final CollectionDAO.TagUsageDAO delegate;
-
-  // Cache key prefixes
   private static final String TAG_CACHE_PREFIX = "tags:";
   private static final String TAG_PREFIX_CACHE_PREFIX = "tags:prefix:";
   private static final String TAG_BATCH_CACHE_PREFIX = "tags:batch:";
@@ -49,16 +43,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       int labelType,
       int state) {
     try {
-      // Apply the tag first
       delegate.applyTag(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state);
-
-      // Invalidate relevant cache entries
       if (RelationshipCache.isAvailable()) {
         invalidateTagCaches(targetFQNHash);
-
-        // Update tag usage counter
         RelationshipCache.bumpTag(tagFQN, 1);
-
         LOG.debug("Applied tag {} to entity {} and invalidated cache", tagFQN, targetFQNHash);
       }
     } catch (Exception e) {
@@ -72,11 +60,9 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     if (!RelationshipCache.isAvailable()) {
       return delegate.getTags(targetFQN);
     }
-
     String cacheKey = TAG_CACHE_PREFIX + targetFQN;
 
     try {
-      // Try to get from cache first
       Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
       if (cachedData != null) {
         @SuppressWarnings("unchecked")
@@ -87,12 +73,8 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
         }
       }
 
-      // Cache miss - fetch from database
       List<TagLabel> tags = delegate.getTags(targetFQN);
-
-      // Store in cache if not empty
       if (tags != null && !tags.isEmpty()) {
-        // Convert tags to a Map for caching
         Map<String, Object> cacheData = new HashMap<>();
         cacheData.put("tags", tags);
         RelationshipCache.put(cacheKey, cacheData);
@@ -103,7 +85,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
     } catch (Exception e) {
       LOG.error("Error retrieving tags for entity {}: {}", targetFQN, e.getMessage(), e);
-      // Fallback to database on cache error
       return delegate.getTags(targetFQN);
     }
   }
@@ -115,13 +96,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       return delegate.getTagsInternalBatch(targetFQNHashes);
     }
 
-    // For batch operations, we'll cache the entire batch result
-    // Generate cache key based on sorted hash list for consistency
     String batchKey =
         TAG_BATCH_CACHE_PREFIX + String.join(",", targetFQNHashes.stream().sorted().toList());
 
     try {
-      // Try to get from cache first
       Map<String, Object> cachedData = RelationshipCache.get(batchKey);
       if (cachedData != null) {
         @SuppressWarnings("unchecked")
@@ -133,11 +111,9 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
         }
       }
 
-      // Cache miss - fetch from database
       List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchTags =
           delegate.getTagsInternalBatch(targetFQNHashes);
 
-      // Store in cache
       if (batchTags != null) {
         Map<String, Object> cacheData = new HashMap<>();
         cacheData.put("batchTags", batchTags);
@@ -167,13 +143,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     if (!RelationshipCache.isAvailable()) {
       return delegate.getTagsByPrefix(targetFQNPrefix, postfix, requiresFqnHash);
     }
-
-    // Create cache key from prefix parameters
     String prefixKey =
         TAG_PREFIX_CACHE_PREFIX + targetFQNPrefix + ":" + postfix + ":" + requiresFqnHash;
 
     try {
-      // Try to get from cache first
       Map<String, Object> cachedData = RelationshipCache.get(prefixKey);
       if (cachedData != null) {
         @SuppressWarnings("unchecked")
@@ -185,11 +158,9 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
         }
       }
 
-      // Cache miss - fetch from database
       Map<String, List<TagLabel>> prefixTags =
           delegate.getTagsByPrefix(targetFQNPrefix, postfix, requiresFqnHash);
 
-      // Store in cache
       if (prefixTags != null && !prefixTags.isEmpty()) {
         Map<String, Object> cacheData = new HashMap<>();
         cacheData.put("prefixTags", prefixTags);
@@ -204,7 +175,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
 
     } catch (Exception e) {
       LOG.error("Error retrieving tags by prefix {}: {}", targetFQNPrefix, e.getMessage(), e);
-      // Fallback to database on cache error
       return delegate.getTagsByPrefix(targetFQNPrefix, postfix, requiresFqnHash);
     }
   }
@@ -212,10 +182,7 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   @Override
   public void deleteTagsByTarget(String targetFQNHash) {
     try {
-      // Delete from database first
       delegate.deleteTagsByTarget(targetFQNHash);
-
-      // Invalidate relevant cache entries
       if (RelationshipCache.isAvailable()) {
         invalidateTagCaches(targetFQNHash);
         LOG.debug("Deleted tags for entity {} and invalidated cache", targetFQNHash);
@@ -229,11 +196,7 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   @Override
   public void deleteTagLabelsByFqn(String tagFQNHash) {
     try {
-      // Delete from database first
       delegate.deleteTagLabelsByFqn(tagFQNHash);
-
-      // Invalidate all tag-related cache entries
-      // Since we don't know which entities had this tag, clear all tag caches
       if (RelationshipCache.isAvailable()) {
         invalidateAllTagCaches();
         LOG.debug("Deleted tag {} and invalidated all tag caches", tagFQNHash);
@@ -247,13 +210,8 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   @Override
   public void deleteTagLabels(int source, String tagFQNHash) {
     try {
-      // Get the count of tags to be deleted before deletion for counter update
       int deletedCount = delegate.getTagCount(source, tagFQNHash);
-
-      // Delete from database first
       delegate.deleteTagLabels(source, tagFQNHash);
-
-      // Invalidate all tag-related cache entries and update counters
       if (RelationshipCache.isAvailable()) {
         invalidateAllTagCaches();
 
@@ -370,21 +328,11 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     return delegate.getTargetFQNHashForTagPrefix(tagFQNHashPrefix);
   }
 
-  /**
-   * Invalidate all tag-related cache entries
-   */
   private void invalidateAllTagCaches() {
     try {
-      // For comprehensive invalidation, we would need to track all tag cache keys
-      // Since Redis doesn't support efficient wildcard deletion without SCAN,
-      // this is a simplified approach that logs the operation
-
       LOG.warn(
           "Full tag cache invalidation requested - consider implementing key tracking for efficiency");
-
-      // Alternative: Clear entire cache (use with caution in production)
-      // RelationshipCache.clearAll();
-
+      RelationshipCache.clearAll();
     } catch (Exception e) {
       LOG.warn("Error invalidating all tag caches: {}", e.getMessage());
     }

@@ -34,6 +34,7 @@
     <jetty.version>11.0.24</jetty.version>
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
+    <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
   </properties>
 
   <dependencyManagement>
@@ -864,11 +865,10 @@
       <version>33.4.8-jre</version>
       <scope>compile</scope>
     </dependency>
-    <!-- Resilience4j for production-ready rate limiting -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-ratelimiter</artifactId>
-      <version>2.2.0</version>
+      <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
