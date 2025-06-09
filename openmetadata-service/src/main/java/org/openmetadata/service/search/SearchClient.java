@@ -421,8 +421,13 @@ public interface SearchClient {
   void close();
 
   default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end) throws IOException {
+      DataInsightCustomChart diChart, long start, long end, boolean live) throws IOException {
     return null;
+  }
+
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
+    return buildDIChart(diChart, start, end, false);
   }
 
   default List<Map<String, String>> fetchDIChartFields() throws IOException {

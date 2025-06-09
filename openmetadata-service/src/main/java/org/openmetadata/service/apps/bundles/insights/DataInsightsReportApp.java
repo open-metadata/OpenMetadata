@@ -423,7 +423,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false);
     return systemChartMap.get(chartName).getResults().stream()
         .filter(
             result ->
@@ -449,7 +449,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false);
     return systemChartMap.get(chartName).getResults().stream()
         .map(
             result -> {
