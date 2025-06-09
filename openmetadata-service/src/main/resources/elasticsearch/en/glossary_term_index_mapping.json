@@ -446,6 +446,15 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
       "childrenCount": {
         "type": "integer"
       }
