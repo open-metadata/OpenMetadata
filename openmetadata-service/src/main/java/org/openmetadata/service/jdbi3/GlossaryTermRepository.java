@@ -64,6 +64,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -417,19 +418,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public BulkOperationResult validateGlossaryTagsAddition(
-      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+      UUID glossaryTermId, ValidateGlossaryTagsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
-    EntityRepository<?> glossaryRepository =
-        Entity.getEntityRepository(term.getGlossary().getType());
-    EntityInterface glossary =
-        glossaryRepository.get(
-            null, term.getGlossary().getId(), glossaryRepository.getFields("tags"));
-
-    List<TagLabel> glossaryTagsToValidate = glossary.getTags();
+    List<TagLabel> glossaryTagsToValidate = request.getGlossaryTags();
 
     // Check if the tags are mutually exclusive for the glossary
-    checkMutuallyExclusive(glossary.getTags());
+    checkMutuallyExclusive(request.getGlossaryTags());
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(true);
     List<BulkResponse> failures = new ArrayList<>();
