@@ -212,7 +212,7 @@ test.describe('Domains', () => {
       ).toContainText(dataProduct1.data.displayName);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain.data, dataProduct2.data);
+      await selectDataProduct(page, domain.data, dataProduct1.data);
       await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
       await redirectToHomePage(page);
 
@@ -222,7 +222,7 @@ test.describe('Domains', () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).not.toContainText(dataProduct2.data.displayName);
+      ).not.toContainText(dataProduct1.data.displayName);
     });
 
     await test.step('Add assets to DataProducts', async () => {
