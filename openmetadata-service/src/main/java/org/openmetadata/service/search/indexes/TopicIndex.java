@@ -66,6 +66,8 @@ public class TopicIndex implements SearchIndex {
         }
       }
       doc.put("fieldNames", fieldsWithChildrenName);
+      // Add flat field names for fuzzy search to avoid array-based clause multiplication
+      doc.put("fieldNamesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
