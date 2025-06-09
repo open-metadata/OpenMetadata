@@ -1,8 +1,5 @@
 package org.openmetadata.service.mcp;
 
-import static org.openmetadata.service.mcp.McpUtils.callTool;
-import static org.openmetadata.service.mcp.McpUtils.getToolProperties;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
@@ -17,6 +14,7 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
@@ -26,8 +24,11 @@ public class McpServer {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
   private Limits limits;
+  protected DefaultToolContext toolContext;
 
-  public McpServer() {}
+  public McpServer(DefaultToolContext toolContext) {
+    this.toolContext = toolContext;
+  }
 
   public void initializeMcpServer(
       Environment environment,
@@ -43,9 +44,13 @@ public class McpServer {
         new McpAuthFilter(
             new JwtFilter(
                 config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
-    List<McpSchema.Tool> tools = loadToolsDefinitionsFromJson();
+    List<McpSchema.Tool> tools = getTools();
     addSSETransport(contextHandler, authFilter, tools);
     addStreamableHttpServlet(contextHandler, authFilter, tools);
+  }
+
+  protected List<McpSchema.Tool> getTools() {
+    return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
   }
 
   private void addSSETransport(
@@ -83,7 +88,7 @@ public class McpServer {
       List<McpSchema.Tool> tools) {
     // Streamable HTTP servlet for MCP
     MCPStreamableHttpServlet streamableHttpServlet =
-        new MCPStreamableHttpServlet(jwtFilter, authorizer, limits, tools);
+        new MCPStreamableHttpServlet(jwtFilter, authorizer, limits, toolContext, tools);
     ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
     contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 
@@ -97,10 +102,6 @@ public class McpServer {
     }
   }
 
-  protected List<McpSchema.Tool> loadToolsDefinitionsFromJson() {
-    return getToolProperties("json/data/mcp/tools.json");
-  }
-
   private McpServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpServerFeatures.SyncToolSpecification(
         tool,
@@ -108,7 +109,7 @@ public class McpServer {
           McpSchema.Content content =
               new McpSchema.TextContent(
                   JsonUtils.pojoToJson(
-                      callTool(authorizer, jwtFilter, limits, tool.name(), arguments)));
+                      toolContext.callTool(authorizer, jwtFilter, limits, tool.name(), arguments)));
           return new McpSchema.CallToolResult(List.of(content), false);
         });
   }

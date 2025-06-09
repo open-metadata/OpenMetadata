@@ -1,7 +1,5 @@
 package org.openmetadata.service.mcp;
 
-import static org.openmetadata.service.search.SearchUtil.searchMetadata;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -12,15 +10,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.tools.GlossaryTermTool;
-import org.openmetadata.service.mcp.tools.GlossaryTool;
-import org.openmetadata.service.mcp.tools.PatchEntityTool;
-import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -75,53 +65,6 @@ public class McpUtils {
     } catch (Exception ex) {
       LOG.error("Error loading JSON file: {}", path, ex);
       return null;
-    }
-  }
-
-  public static Object callTool(
-      Authorizer authorizer,
-      JwtFilter jwtFilter,
-      Limits limits,
-      String toolName,
-      Map<String, Object> params) {
-    CatalogSecurityContext securityContext =
-        jwtFilter.getCatalogSecurityContext((String) params.get("Authorization"));
-    LOG.info(
-        "Catalog Principal: {} is trying to call the tool: {}",
-        securityContext.getUserPrincipal().getName(),
-        toolName);
-    Object result;
-    try {
-      switch (toolName) {
-        case "search_metadata":
-          result = searchMetadata(params);
-          break;
-        case "get_entity_details":
-          result = EntityUtil.getEntityDetails(params);
-          break;
-        case "create_glossary":
-          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "patch_entity":
-          result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
-          break;
-        default:
-          result = Map.of("error", "Unknown function: " + toolName);
-          break;
-      }
-
-      return result;
-    } catch (AuthorizationException ex) {
-      LOG.error("Authorization error: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Authorization error: %s", ex.getMessage()), "statusCode", 403);
-    } catch (Exception ex) {
-      LOG.error("Error executing tool: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Error executing tool: %s", ex.getMessage()), "statusCode", 500);
     }
   }
 

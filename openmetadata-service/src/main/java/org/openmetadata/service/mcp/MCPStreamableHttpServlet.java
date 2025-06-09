@@ -1,6 +1,5 @@
 package org.openmetadata.service.mcp;
 
-import static org.openmetadata.service.mcp.McpUtils.callTool;
 import static org.openmetadata.service.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
@@ -48,7 +48,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private static final String SESSION_HEADER = "Mcp-Session-Id";
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String CONTENT_TYPE_SSE = "text/event-stream";
-
   private ObjectMapper objectMapper = new ObjectMapper();
   private Map<String, MCPSession> sessions = new ConcurrentHashMap<>();
   private Map<String, SSEConnection> sseConnections = new ConcurrentHashMap<>();
@@ -65,12 +64,18 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final Authorizer authorizer;
   private final List<McpSchema.Tool> tools = new ArrayList<>();
   private final Limits limits;
+  private final DefaultToolContext toolContext;
 
   public MCPStreamableHttpServlet(
-      JwtFilter jwtFilter, Authorizer authorizer, Limits limits, List<McpSchema.Tool> tools) {
+      JwtFilter jwtFilter,
+      Authorizer authorizer,
+      Limits limits,
+      DefaultToolContext toolContext,
+      List<McpSchema.Tool> tools) {
     this.jwtFilter = jwtFilter;
     this.authorizer = authorizer;
     this.limits = limits;
+    this.toolContext = toolContext;
     this.tools.addAll(tools);
   }
 
@@ -531,7 +536,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
             McpSchema.Content content =
                 new McpSchema.TextContent(
                     JsonUtils.pojoToJson(
-                        callTool(
+                        toolContext.callTool(
                             authorizer, jwtFilter, limits, toolName, JsonUtils.getMap(arguments))));
             response.put("result", new McpSchema.CallToolResult(List.of(content), false));
           } else {
