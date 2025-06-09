@@ -45,15 +45,36 @@ public class OpenSearchSourceBuilderFactory
   }
 
   @Override
-  public QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query)
-        .fields(fields)
-        .type(MOST_FIELDS)
-        .defaultOperator(Operator.AND)
-        .fuzziness(Fuzziness.AUTO)
-        .fuzzyMaxExpansions(10)
-        .fuzzyPrefixLength(3)
-        .tieBreaker(0.5f);
+  public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    Map<String, Float> fuzzyFields =
+        fields.entrySet().stream()
+            .filter(e -> !e.getKey().endsWith(".ngram"))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    Map<String, Float> nonFuzzyFields =
+        fields.entrySet().stream()
+            .filter(e -> e.getKey().endsWith(".ngram"))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    QueryStringQueryBuilder fuzzyQueryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(fuzzyFields)
+            .type(MOST_FIELDS)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10)
+            .fuzzyPrefixLength(3)
+            .tieBreaker(0.5f);
+
+    MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+        QueryBuilders.multiMatchQuery(query)
+            .fields(nonFuzzyFields)
+            .type(MOST_FIELDS)
+            .operator(Operator.AND)
+            .tieBreaker(0.5f)
+            .fuzziness(Fuzziness.ZERO);
+
+    return QueryBuilders.boolQuery().must(fuzzyQueryBuilder).should(nonFuzzyQueryBuilder);
   }
 
   @Override
@@ -71,7 +92,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, UserIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, UserIndex.getFields());
     return searchBuilder(queryBuilder, null, from, size);
   }
 
@@ -90,8 +111,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, TestCaseIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseIndex.getFields());
     HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -104,7 +124,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseResolutionStatusSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
@@ -112,16 +132,14 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   @Override
   public SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -156,17 +174,38 @@ public class OpenSearchSourceBuilderFactory
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
     } else if (containsQuerySyntax(query)) {
-      QueryStringQueryBuilder queryStringBuilder =
+      Map<String, Float> fuzzyFields =
+          fields.entrySet().stream()
+              .filter(e -> !e.getKey().endsWith(".ngram"))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      Map<String, Float> nonFuzzyFields =
+          fields.entrySet().stream()
+              .filter(e -> e.getKey().endsWith(".ngram"))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+      QueryStringQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.queryStringQuery(query)
-              .fields(fields)
+              .fields(fuzzyFields)
               .defaultOperator(Operator.AND)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .type(MOST_FIELDS)
               .fuzziness(Fuzziness.AUTO)
               .fuzzyMaxExpansions(10)
               .fuzzyPrefixLength(1)
               .tieBreaker(0.3f);
 
-      baseQuery.must(queryStringBuilder);
+      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .fields(nonFuzzyFields)
+              .type(MOST_FIELDS)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f)
+              .fuzziness(Fuzziness.ZERO);
+
+      BoolQueryBuilder combinedQuery =
+          QueryBuilders.boolQuery().must(fuzzyQueryBuilder).should(nonFuzzyQueryBuilder);
+
+      baseQuery.must(combinedQuery);
     } else {
       Map<String, Float> fuzzyFields = new HashMap<>();
       Map<String, Float> nonFuzzyFields = new HashMap<>();
@@ -186,7 +225,7 @@ public class OpenSearchSourceBuilderFactory
       if (!fuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder fuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
-                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .type(MOST_FIELDS)
                 .fuzziness(Fuzziness.AUTO)
                 .maxExpansions(10)
                 .prefixLength(1)
@@ -199,7 +238,7 @@ public class OpenSearchSourceBuilderFactory
       if (!nonFuzzyFields.isEmpty()) {
         MultiMatchQueryBuilder nonFuzzyQueryBuilder =
             QueryBuilders.multiMatchQuery(query)
-                .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+                .type(MOST_FIELDS)
                 .operator(Operator.AND)
                 .tieBreaker(0.3f)
                 .fuzziness(Fuzziness.ZERO);
@@ -399,7 +438,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
+    QueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, getAllSearchFieldsFromSettings(searchSettings));
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
