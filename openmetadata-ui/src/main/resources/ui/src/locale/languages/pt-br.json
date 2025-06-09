@@ -107,6 +107,7 @@
     "asset": "Ativo",
     "asset-lowercase": "ativo",
     "asset-plural": "Ativos",
+    "asset-plural-lowercase": "ativos",
     "assigned": "Atribuído",
     "assigned-entity": "{{entity}} Atribuído",
     "assigned-to-me": "Atribuído a mim",
