@@ -375,8 +375,12 @@ const SchemaTable = () => {
       editColumnDisplayName.fullyQualifiedName
     ) {
       await updateColumnDetails(editColumnDisplayName.fullyQualifiedName, {
-        displayName: isEmpty(displayName) ? undefined : displayName,
-        constraint: isEmpty(constraint) ? undefined : constraint,
+        displayName: displayName,
+        ...(isEmpty(constraint)
+          ? {
+              removeConstraint: true,
+            }
+          : { constraint }),
       });
 
       setEditColumnDisplayName(undefined);
@@ -563,6 +567,7 @@ const SchemaTable = () => {
       })}
       name="constraint">
       <Select
+        allowClear
         data-testid="constraint-type-select"
         options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
         placeholder={t('label.select-entity', {

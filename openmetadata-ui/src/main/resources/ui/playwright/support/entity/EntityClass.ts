@@ -41,6 +41,7 @@ import {
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeDisplayNameForEntityChildren,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -256,7 +257,7 @@ export class EntityClass {
     );
 
     // Remove description
-    // await updateDescriptionForChildren(page, '', rowId, rowSelector);
+    await updateDescriptionForChildren(page, '', rowId, rowSelector);
   }
 
   async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
@@ -455,13 +456,12 @@ export class EntityClass {
     );
 
     // Remove display name
-    // TODO: Fix this removing display name not working currently
-    // await removeDisplayNameForEntityChildren(
-    //   page,
-    //   `Playwright ${columnName} updated`,
-    //   this.childrenSelectorId ?? '',
-    //   rowSelector
-    // );
+    await removeDisplayNameForEntityChildren(
+      page,
+      `Playwright ${columnName} updated`,
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
   }
 
   async softDeleteEntity(page: Page, entityName: string, displayName?: string) {
