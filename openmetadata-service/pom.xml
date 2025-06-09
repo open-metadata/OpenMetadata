@@ -414,6 +414,17 @@
       <artifactId>azure-identity-extensions</artifactId>
       <version>${azure-identity-extensions.version}</version>
     </dependency>
+    
+    <!-- Redis/Cache dependencies -->
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>elasticache</artifactId>
+    </dependency>
+    
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
@@ -850,8 +861,14 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.3.1-jre</version>
+      <version>33.4.8-jre</version>
       <scope>compile</scope>
+    </dependency>
+    <!-- Resilience4j for production-ready rate limiting -->
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-ratelimiter</artifactId>
+      <version>2.2.0</version>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
