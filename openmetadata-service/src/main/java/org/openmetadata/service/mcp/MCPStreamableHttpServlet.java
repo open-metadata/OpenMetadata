@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.security.Authorizer;
@@ -65,13 +66,16 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final List<McpSchema.Tool> tools = new ArrayList<>();
   private final Limits limits;
   private final DefaultToolContext toolContext;
+  private final MCPConfiguration mcpConfiguration;
 
   public MCPStreamableHttpServlet(
+      MCPConfiguration mcpConfiguration,
       JwtFilter jwtFilter,
       Authorizer authorizer,
       Limits limits,
       DefaultToolContext toolContext,
       List<McpSchema.Tool> tools) {
+    this.mcpConfiguration = mcpConfiguration;
     this.jwtFilter = jwtFilter;
     this.authorizer = authorizer;
     this.limits = limits;
@@ -116,7 +120,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
 
     // Security: Validate Origin header
     String origin = request.getHeader("Origin");
-    if (origin != null && !isValidOrigin(origin)) {
+    if (!isValidOrigin(origin)) {
       sendError(response, HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
       return;
     }
@@ -581,10 +585,10 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   private boolean isValidOrigin(String origin) {
-    // Implement your origin validation logic
-    return origin.startsWith("http://localhost")
-        || origin.startsWith("https://localhost")
-        || origin.startsWith("https://yourdomain.com");
+    if(null == origin || origin.isEmpty()) {
+      return false;
+    }
+    return origin.startsWith(mcpConfiguration.getOriginHeaderUri());
   }
 
   private boolean shouldUseSSE() {
