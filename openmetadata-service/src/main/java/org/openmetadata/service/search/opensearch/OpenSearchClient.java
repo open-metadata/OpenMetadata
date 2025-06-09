@@ -211,11 +211,6 @@ import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
-import os.org.opensearch.search.suggest.Suggest;
-import os.org.opensearch.search.suggest.SuggestBuilder;
-import os.org.opensearch.search.suggest.SuggestBuilders;
-import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
-import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -1542,42 +1537,6 @@ public class OpenSearchClient implements SearchClient {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
-  }
-
-  public Response suggest(SearchRequest request) throws IOException {
-    String fieldName = request.getFieldName();
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder =
-        SuggestBuilders.completionSuggestion(fieldName)
-            .prefix(request.getQuery(), Fuzziness.AUTO)
-            .size(request.getSize())
-            .skipDuplicates(true);
-    if (fieldName.equalsIgnoreCase("suggest")) {
-      suggestionBuilder.contexts(
-          Collections.singletonMap(
-              "deleted",
-              Collections.singletonList(
-                  CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.getDeleted()))
-                      .build())));
-    }
-    SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder
-        .suggest(suggestBuilder)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS))
-        .fetchSource(
-            new FetchSourceContext(
-                request.getFetchSource(),
-                request.getIncludeSourceFields().toArray(String[]::new),
-                new String[] {}));
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-            .source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    Suggest suggest = searchResponse.getSuggest();
-    return Response.status(OK).entity(suggest.toString()).build();
   }
 
   private static QueryStringQueryBuilder buildSearchQueryBuilder(

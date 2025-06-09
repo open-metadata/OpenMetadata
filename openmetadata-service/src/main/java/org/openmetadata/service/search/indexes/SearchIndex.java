@@ -41,7 +41,6 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -49,6 +48,7 @@ public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
       Set.of(
           "changeDescription",
+          "votes",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
           "upstreamLineage.pipeline.incrementalChangeDescription",
@@ -88,10 +88,6 @@ public interface SearchIndex {
   }
 
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
-
-  default List<SearchSuggest> getSuggest() {
-    return null;
-  }
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();

@@ -269,8 +269,6 @@ public interface SearchClient {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  Response suggest(SearchRequest request) throws IOException;
-
   void createEntity(String indexName, String docId, String doc);
 
   void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
