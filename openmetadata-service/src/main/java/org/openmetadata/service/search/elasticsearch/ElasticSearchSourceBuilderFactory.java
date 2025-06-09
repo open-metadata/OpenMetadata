@@ -49,12 +49,12 @@ public class ElasticSearchSourceBuilderFactory
   public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
-            .filter(e -> !e.getKey().endsWith(".ngram"))
+            .filter(entry -> isFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     Map<String, Float> nonFuzzyFields =
         fields.entrySet().stream()
-            .filter(e -> e.getKey().endsWith(".ngram"))
+            .filter(entry -> !isFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     QueryStringQueryBuilder fuzzyQueryBuilder =
@@ -75,7 +75,10 @@ public class ElasticSearchSourceBuilderFactory
             .tieBreaker(0.5f)
             .fuzziness(Fuzziness.ZERO);
 
-    return QueryBuilders.boolQuery().must(fuzzyQueryBuilder).should(nonFuzzyQueryBuilder);
+    return QueryBuilders.boolQuery()
+        .should(fuzzyQueryBuilder)
+        .should(nonFuzzyQueryBuilder)
+        .minimumShouldMatch(1);
   }
 
   @Override
@@ -160,31 +163,37 @@ public class ElasticSearchSourceBuilderFactory
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
-    Map<String, Float> fields;
+    Map<String, Float> fuzzyFields;
+    Map<String, Float> nonFuzzyFields;
     if (assetConfig.getSearchFields() != null && !assetConfig.getSearchFields().isEmpty()) {
-      fields = new HashMap<>();
+      fuzzyFields = new HashMap<>();
+      nonFuzzyFields = new HashMap<>();
       assetConfig
-          .getSearchFields()
+          .getFuzzyFields()
           .forEach(
-              fieldBoost -> fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+              fieldBoost ->
+                  fuzzyFields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+      assetConfig
+          .getNonFuzzyFields()
+          .forEach(
+              fieldBoost ->
+                  nonFuzzyFields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
     } else {
-      fields = SearchIndex.getDefaultFields();
+      Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
+      fuzzyFields =
+          defaultFields.entrySet().stream()
+              .filter(entry -> isFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      nonFuzzyFields =
+          defaultFields.entrySet().stream()
+              .filter(entry -> !isFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
-    BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
 
+    BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
     } else if (containsQuerySyntax(query)) {
-      Map<String, Float> fuzzyFields =
-          fields.entrySet().stream()
-              .filter(e -> !e.getKey().endsWith(".ngram"))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-      Map<String, Float> nonFuzzyFields =
-          fields.entrySet().stream()
-              .filter(e -> e.getKey().endsWith(".ngram"))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
       QueryStringQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.queryStringQuery(query)
               .fields(fuzzyFields)
@@ -204,24 +213,13 @@ public class ElasticSearchSourceBuilderFactory
               .fuzziness(Fuzziness.ZERO);
 
       BoolQueryBuilder combinedQuery =
-          QueryBuilders.boolQuery().must(fuzzyQueryBuilder).should(nonFuzzyQueryBuilder);
+          QueryBuilders.boolQuery()
+              .should(fuzzyQueryBuilder)
+              .should(nonFuzzyQueryBuilder)
+              .minimumShouldMatch(1);
 
       baseQuery.must(combinedQuery);
     } else {
-      Map<String, Float> fuzzyFields = new HashMap<>();
-      Map<String, Float> nonFuzzyFields = new HashMap<>();
-
-      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
-        String fieldName = fieldEntry.getKey();
-        Float boost = fieldEntry.getValue();
-
-        if (fieldName.contains(".ngram")) {
-          nonFuzzyFields.put(fieldName, boost);
-        } else {
-          fuzzyFields.put(fieldName, boost);
-        }
-      }
-
       BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
       if (!fuzzyFields.isEmpty()) {

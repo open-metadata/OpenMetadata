@@ -212,4 +212,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     query = query.replace("%20", " ").trim();
     return QUERY_SYNTAX_PATTERN.matcher(query).find();
   }
+
+  default boolean isFuzzyField(String key) {
+    return key.endsWith(".ngram") || key.contains("fqnParts");
+  }
 }

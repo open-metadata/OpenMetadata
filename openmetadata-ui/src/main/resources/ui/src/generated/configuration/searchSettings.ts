@@ -98,9 +98,18 @@ export interface AssetTypeConfiguration {
      */
     fieldValueBoosts?: FieldValueBoost[];
     /**
+     * Which fields to search with fuzziness enabled for this asset, along with their boost
+     * values.
+     */
+    fuzzyFields?: FieldBoost[];
+    /**
      * Which fields to highlight for this asset.
      */
     highlightFields?: string[];
+    /**
+     * Which fields to search without fuzziness for this asset, along with their boost values.
+     */
+    nonFuzzyFields?: FieldBoost[];
     /**
      * How to combine function scores if multiple boosts are applied.
      */
@@ -215,6 +224,17 @@ export enum Modifier {
     Square = "square",
 }
 
+export interface FieldBoost {
+    /**
+     * Relative boost factor for the above field.
+     */
+    boost?: number;
+    /**
+     * Field name to search/boost.
+     */
+    field: string;
+}
+
 /**
  * How to combine function scores if multiple boosts are applied.
  */
@@ -225,17 +245,6 @@ export enum ScoreMode {
     Min = "min",
     Multiply = "multiply",
     Sum = "sum",
-}
-
-export interface FieldBoost {
-    /**
-     * Relative boost factor for the above field.
-     */
-    boost?: number;
-    /**
-     * Field name to search/boost.
-     */
-    field: string;
 }
 
 export interface TermBoost {
