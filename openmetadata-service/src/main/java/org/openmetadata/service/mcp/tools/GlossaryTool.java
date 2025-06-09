@@ -25,7 +25,7 @@ public class GlossaryTool implements McpTool {
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
-    throw new UnsupportedOperationException("GlossaryTermTool requires limit validation.");
+    throw new UnsupportedOperationException("GlossaryTool requires limit validation.");
   }
 
   @Override
