@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface DataRetentionConfigurationClass {
-    /**
-     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
-     * (e.g., 30 for one month, 60 for two months).
-     */
-    activityThreadsRetentionPeriod: number;
-    /**
-     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
-     * one month).
-     */
-    changeEventRetentionPeriod: number;
+
+export enum CertificationInputType {
+  FILE_UPLOAD = 'file-upload',
+  FILE_PATH = 'file-path',
 }
