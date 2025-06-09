@@ -88,7 +88,7 @@ public class McpServer {
     contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 
     contextHandler.addFilter(
-        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+        new FilterHolder(authFilter), "/mcp", EnumSet.of(DispatcherType.REQUEST));
   }
 
   public void addToolsToServer(McpSyncServer server, List<McpSchema.Tool> tools) {
