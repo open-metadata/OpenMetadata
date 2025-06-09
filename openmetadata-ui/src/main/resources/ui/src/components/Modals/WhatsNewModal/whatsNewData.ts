@@ -1754,9 +1754,9 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
     description: 'Released on 10th June 2025.',
     features: [],
     changeLogs: {
-      Improvements: `-  Add Databricks Sampler, Refactor Unity Catalog Sampler.
--  Looker explore to view Column Lineage.
--  Looker column level lineage.
+      Improvements: `-  Add Databricks Sampler and refactor Unity Catalog Sampler.
+-  Added Looker column lineage between views and tables.
+-  Added Looker column lineage between explores and views.
 -  Add  dbt tags Filter.
 -  Add a tool to openmetadata-ops.sh to delete orphaned relations.
 -  Add lineage dialect for Exasol, Trino and Vertica.
@@ -1768,8 +1768,12 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 -  Add logic to handle WorkflowContext on Ingestion.
 -  Pendo Integration key in api response.
 -  SSIS Connector.
--  Improve pdf export image file and supported dynamic spacing.`,
+-  Improve pdf export image file and supported dynamic spacing.
+-  Reverse Metadata Extensions.`,
       Fixes: `
+- db2 custom driver installation.
+- Domain not getting removed through import.
+- Freshness test timestamp display to show correct time values.
 - Update the file upload option input for service config.      
 - Remove the type not wanted in pdfLayout config.
 - Profile config plus icon misaligned.
@@ -1778,7 +1782,7 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Tableau Validation Errors.
 - Looker cll parsing issue. 
 - Looker CLL errors.
-- Domain truncate issue || consistent Domain UX.
+- Domain truncate issue and consistent Domain UX.
 - Issue related to SQL query viewer.
 - Profile redirection issue for displayname.
 - Entity header truncate issue.
