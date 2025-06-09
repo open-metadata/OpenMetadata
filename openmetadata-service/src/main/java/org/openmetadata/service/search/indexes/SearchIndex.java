@@ -33,9 +33,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -106,9 +109,21 @@ public interface SearchIndex {
             : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
     map.put("totalVotes", totalVotes);
     map.put("descriptionStatus", getDescriptionStatus(entity));
+
+    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
+    map.put(
+        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(entity);
+    map.put("tagSources", tagAndTierSources.getTagSources());
+    map.put("tierSources", tagAndTierSources.getTierSources());
+
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
-
+    TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
+    Optional.ofNullable(tierTag)
+        .filter(tier -> tier.getTagFQN() != null && !tier.getTagFQN().isEmpty())
+        .ifPresent(tier -> map.put("tier", tier));
     Optional.ofNullable(entity.getCertification())
         .ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
