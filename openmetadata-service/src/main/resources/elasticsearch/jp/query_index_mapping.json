@@ -379,12 +379,6 @@
         "type": "keyword"
       },
 
-      "column_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "tier": {
         "properties": {
           "description": {

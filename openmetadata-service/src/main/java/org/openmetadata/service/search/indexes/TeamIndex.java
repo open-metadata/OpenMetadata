@@ -1,12 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.models.SearchSuggest;
 
 public class TeamIndex implements SearchIndex {
   final Team team;
@@ -14,14 +11,6 @@ public class TeamIndex implements SearchIndex {
 
   public TeamIndex(Team team) {
     this.team = team;
-  }
-
-  @Override
-  public List<SearchSuggest> getSuggest() {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(team.getName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
-    return suggest;
   }
 
   @Override

@@ -342,9 +342,6 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "suggest": {
-        "type": "completion"
-      },
       "table": {
         "properties": {
           "id": {
