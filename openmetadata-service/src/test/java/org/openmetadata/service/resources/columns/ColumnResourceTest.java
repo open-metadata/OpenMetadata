@@ -75,7 +75,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class ColumnResourceTest extends OpenMetadataApplicationTest {
+class ColumnResourceTest extends OpenMetadataApplicationTest {
 
   private Table table;
   private DashboardDataModel dashboardDataModel;
@@ -142,7 +142,6 @@ public class ColumnResourceTest extends OpenMetadataApplicationTest {
             .withClassification(piiClassification.getFullyQualifiedName());
     piiTag = tagTest.createEntity(createPiiTag, ADMIN_AUTH_HEADERS);
 
-    // Create glossary and terms
     GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
     CreateGlossary createGlossary =
         new CreateGlossary()
@@ -513,7 +512,7 @@ public class ColumnResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void test_updateColumn_emptyStringValuesIgnored() throws IOException {
+  void test_updateColumn_emptyStringValuesDeleteFields() throws IOException {
     String columnFQN = table.getFullyQualifiedName() + ".name";
 
     // First set some values
@@ -527,17 +526,18 @@ public class ColumnResourceTest extends OpenMetadataApplicationTest {
     initialUpdate.setTags(listOf(testTag));
     updateColumnByFQN(columnFQN, initialUpdate);
 
-    // Now try to "update" with empty string values - should be ignored
+    // Now try to "update" with empty string values - should delete the fields
     UpdateColumn emptyUpdate = new UpdateColumn();
-    emptyUpdate.setDisplayName(""); // Empty string should be ignored
-    emptyUpdate.setDescription("   "); // Whitespace only should be ignored
+    emptyUpdate.setDisplayName(""); // Empty string should delete displayName
+    emptyUpdate.setDescription("   "); // Whitespace only should delete description
     // Don't set tags - null tags should be ignored, but empty array should remove tags
 
     Column updatedColumn = updateColumnByFQN(columnFQN, emptyUpdate);
 
-    // String values should remain unchanged, tags should remain since we didn't send tags field
-    assertEquals("Initial Display Name", updatedColumn.getDisplayName());
-    assertEquals("Initial description", updatedColumn.getDescription());
+    // String values should be deleted (set to null), tags should remain since we didn't send tags
+    // field
+    assertNull(updatedColumn.getDisplayName());
+    assertNull(updatedColumn.getDescription());
     assertEquals(1, updatedColumn.getTags().size());
   }
 
@@ -857,6 +857,180 @@ public class ColumnResourceTest extends OpenMetadataApplicationTest {
         personalDataTag.getFullyQualifiedName(), persistedColumn.getTags().get(0).getTagFQN());
 
     assertTrue(persistedTable.getVersion() > table.getVersion());
+  }
+
+  @Test
+  void test_deleteTableColumn_displayName() throws IOException {
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    // First set a display name
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Full Name");
+    updateColumnByFQN(columnFQN, updateColumn);
+
+    // Verify display name was set
+    Table tableWithDisplayName =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column nameColumn =
+        tableWithDisplayName.getColumns().stream()
+            .filter(c -> c.getName().equals("name"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("Full Name", nameColumn.getDisplayName());
+
+    // Now try to delete the display name by sending empty string
+    UpdateColumn deleteDisplayName = new UpdateColumn();
+    deleteDisplayName.setDisplayName("");
+    Column updatedColumn = updateColumnByFQN(columnFQN, deleteDisplayName);
+
+    // Verify display name is deleted/null
+    assertNull(updatedColumn.getDisplayName());
+
+    // Verify persistence in table
+    Table tableAfterDelete =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column nameColumnAfterDelete =
+        tableAfterDelete.getColumns().stream()
+            .filter(c -> c.getName().equals("name"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(nameColumnAfterDelete.getDisplayName());
+  }
+
+  @Test
+  void test_deleteTableColumn_description() throws IOException {
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+
+    // First set a description
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("User's email address");
+    updateColumnByFQN(columnFQN, updateColumn);
+
+    // Verify description was set
+    Table tableWithDescription =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column emailColumn =
+        tableWithDescription.getColumns().stream()
+            .filter(c -> c.getName().equals("email"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("User's email address", emailColumn.getDescription());
+
+    // Now try to delete the description by sending empty string
+    UpdateColumn deleteDescription = new UpdateColumn();
+    deleteDescription.setDescription("");
+    Column updatedColumn = updateColumnByFQN(columnFQN, deleteDescription);
+
+    // Verify description is deleted/null
+    assertNull(updatedColumn.getDescription());
+
+    // Verify persistence in table
+    Table tableAfterDelete =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column emailColumnAfterDelete =
+        tableAfterDelete.getColumns().stream()
+            .filter(c -> c.getName().equals("email"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(emailColumnAfterDelete.getDescription());
+  }
+
+  @Test
+  void test_deleteTableColumn_constraint() throws IOException {
+    String columnFQN = table.getFullyQualifiedName() + ".email";
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setConstraint(ColumnConstraint.UNIQUE);
+    updateColumnByFQN(columnFQN, updateColumn);
+
+    Table tableWithConstraint =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column emailColumn =
+        tableWithConstraint.getColumns().stream()
+            .filter(c -> c.getName().equals("email"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ColumnConstraint.UNIQUE, emailColumn.getConstraint());
+
+    UpdateColumn deleteConstraint = new UpdateColumn();
+    deleteConstraint.setRemoveConstraint(true);
+    Column updatedColumn = updateColumnByFQN(columnFQN, deleteConstraint);
+
+    assertNull(updatedColumn.getConstraint());
+
+    Table tableAfterDelete =
+        tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column emailColumnAfterDelete =
+        tableAfterDelete.getColumns().stream()
+            .filter(c -> c.getName().equals("email"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(emailColumnAfterDelete.getConstraint());
+  }
+
+  @Test
+  void test_deleteDashboardDataModelColumn_displayName() throws IOException {
+    String columnFQN = dashboardDataModel.getFullyQualifiedName() + ".metric1";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDisplayName("Sales Metric");
+    updateColumnByFQN(columnFQN, updateColumn, "dashboardDataModel");
+
+    DashboardDataModel dataModelWithDisplayName =
+        dataModelResourceTest.getEntity(dashboardDataModel.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column metric1Column =
+        dataModelWithDisplayName.getColumns().stream()
+            .filter(c -> c.getName().equals("metric1"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("Sales Metric", metric1Column.getDisplayName());
+
+    UpdateColumn deleteDisplayName = new UpdateColumn();
+    deleteDisplayName.setDisplayName("");
+    Column updatedColumn = updateColumnByFQN(columnFQN, deleteDisplayName, "dashboardDataModel");
+
+    assertNull(updatedColumn.getDisplayName());
+
+    DashboardDataModel dataModelAfterDelete =
+        dataModelResourceTest.getEntity(dashboardDataModel.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column metric1ColumnAfterDelete =
+        dataModelAfterDelete.getColumns().stream()
+            .filter(c -> c.getName().equals("metric1"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(metric1ColumnAfterDelete.getDisplayName());
+  }
+
+  @Test
+  void test_deleteDashboardDataModelColumn_description() throws IOException {
+    String columnFQN = dashboardDataModel.getFullyQualifiedName() + ".dimension1";
+
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setDescription("Customer dimension for analysis");
+    updateColumnByFQN(columnFQN, updateColumn, "dashboardDataModel");
+
+    DashboardDataModel dataModelWithDescription =
+        dataModelResourceTest.getEntity(dashboardDataModel.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column dimension1Column =
+        dataModelWithDescription.getColumns().stream()
+            .filter(c -> c.getName().equals("dimension1"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("Customer dimension for analysis", dimension1Column.getDescription());
+
+    UpdateColumn deleteDescription = new UpdateColumn();
+    deleteDescription.setDescription("");
+    Column updatedColumn = updateColumnByFQN(columnFQN, deleteDescription, "dashboardDataModel");
+
+    assertNull(updatedColumn.getDescription());
+
+    DashboardDataModel dataModelAfterDelete =
+        dataModelResourceTest.getEntity(dashboardDataModel.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column dimension1ColumnAfterDelete =
+        dataModelAfterDelete.getColumns().stream()
+            .filter(c -> c.getName().equals("dimension1"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(dimension1ColumnAfterDelete.getDescription());
   }
 
   private Column updateColumnByFQN(String columnFQN, UpdateColumn updateColumn, String entityType)

@@ -31,6 +31,12 @@ export interface UpdateColumn {
      */
     displayName?: string;
     /**
+     * Set to true to remove the existing column constraint. Only applicable to table columns,
+     * ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are
+     * provided, 'removeConstraint' takes precedence.
+     */
+    removeConstraint?: boolean;
+    /**
      * Tags and glossary terms associated with the column. Use source: 'Classification' for
      * classification tags and source: 'Glossary' for glossary terms. Provide an empty array to
      * remove all tags. Note: Invalid or non-existent tags/glossary terms will result in a 404

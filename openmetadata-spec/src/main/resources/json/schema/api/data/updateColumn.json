@@ -25,6 +25,11 @@
     "constraint": {
       "description": "Column level constraint. Only applicable to table columns, ignored for dashboard data model columns.",
       "$ref": "../../entity/data/table.json#/definitions/constraint"
+    },
+    "removeConstraint": {
+      "description": "Set to true to remove the existing column constraint. Only applicable to table columns, ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are provided, 'removeConstraint' takes precedence.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

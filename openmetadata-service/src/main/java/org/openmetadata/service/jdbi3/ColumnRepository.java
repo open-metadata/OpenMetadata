@@ -93,19 +93,30 @@ public class ColumnRepository {
       throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
     }
 
-    // Only update fields that are explicitly provided with non-empty values
-    // We don't support removal - only updates with actual values
-    if (updateColumn.getDisplayName() != null && !updateColumn.getDisplayName().trim().isEmpty()) {
-      column.setDisplayName(updateColumn.getDisplayName());
+    // Update fields that are explicitly provided
+    // Empty strings and special values indicate deletion
+    if (updateColumn.getDisplayName() != null) {
+      if (updateColumn.getDisplayName().trim().isEmpty()) {
+        column.setDisplayName(null); // Empty string = delete displayName
+      } else {
+        column.setDisplayName(updateColumn.getDisplayName());
+      }
     }
-    if (updateColumn.getDescription() != null && !updateColumn.getDescription().trim().isEmpty()) {
-      column.setDescription(updateColumn.getDescription());
+    if (updateColumn.getDescription() != null) {
+      if (updateColumn.getDescription().trim().isEmpty()) {
+        column.setDescription(null); // Empty string = delete description
+      } else {
+        column.setDescription(updateColumn.getDescription());
+      }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags());
+      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
     }
-    if (updateColumn.getConstraint() != null) {
-      column.setConstraint(updateColumn.getConstraint());
+    // Handle constraint updates and removal
+    if (updateColumn.getRemoveConstraint() != null && updateColumn.getRemoveConstraint()) {
+      column.setConstraint(null); // removeConstraint=true = delete constraint
+    } else if (updateColumn.getConstraint() != null) {
+      column.setConstraint(updateColumn.getConstraint()); // Set new constraint
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
@@ -141,14 +152,24 @@ public class ColumnRepository {
       throw new EntityNotFoundException(String.format("Column not found: %s", columnFQN));
     }
 
-    if (updateColumn.getDisplayName() != null && !updateColumn.getDisplayName().trim().isEmpty()) {
-      column.setDisplayName(updateColumn.getDisplayName());
+    // Update fields that are explicitly provided
+    // Empty strings indicate deletion (constraints not supported for dashboard data model columns)
+    if (updateColumn.getDisplayName() != null) {
+      if (updateColumn.getDisplayName().trim().isEmpty()) {
+        column.setDisplayName(null); // Empty string = delete displayName
+      } else {
+        column.setDisplayName(updateColumn.getDisplayName());
+      }
     }
-    if (updateColumn.getDescription() != null && !updateColumn.getDescription().trim().isEmpty()) {
-      column.setDescription(updateColumn.getDescription());
+    if (updateColumn.getDescription() != null) {
+      if (updateColumn.getDescription().trim().isEmpty()) {
+        column.setDescription(null); // Empty string = delete description
+      } else {
+        column.setDescription(updateColumn.getDescription());
+      }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags());
+      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
