@@ -116,6 +116,7 @@ const TeamsSelectable = ({
         treeDefaultExpandAll
         data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        getPopupContainer={(triggerNode) => triggerNode.parentElement}
         loading={isLoading}
         maxTagCount={maxValueCount}
         placeholder={placeholder}
