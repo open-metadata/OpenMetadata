@@ -27,8 +27,8 @@ import { settingClick, sidebarClick } from '../../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const dashboardEntity = new DashboardClass();
-const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
-const propertyValue = 'dashboardcustomproperty';
+const propertyName = `12${uuid()}`;
+const propertyValue = `dashboardcustomproperty_${uuid()}`;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -152,6 +152,10 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       await applyAdvanceFilter;
 
       await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Validate if filter dashboard appeared
 
