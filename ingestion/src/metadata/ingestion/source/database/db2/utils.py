@@ -21,15 +21,23 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+BASE_CLIDRIVER_URL = (
+    "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
+)
+
 
 class DB2CLIDriverVersions(Enum):
-    v11_1_4 = "11.1.4"
-    v11_5_4 = "11.5.4"
-    v11_5_5 = "11.5.5"
-    v11_5_6 = "11.5.6"
-    v11_5_8 = "11.5.8"
-    v11_5_9 = "11.5.9"
-    v12_1_0 = "12.1.0"
+    """
+    Enum for the DB2 CLI Driver versions
+    """
+
+    V11_1_4 = "11.1.4"
+    V11_5_4 = "11.5.4"
+    V11_5_5 = "11.5.5"
+    V11_5_6 = "11.5.6"
+    V11_5_8 = "11.5.8"
+    V11_5_9 = "11.5.9"
+    V12_1_0 = "12.1.0"
 
 
 @reflection.cache
@@ -89,6 +97,7 @@ def check_clidriver_version(clidriver_version: str):
     return DB2CLIDriverVersions(clidriver_version)
 
 
+# pylint: disable=too-many-statements,too-many-branches
 def install_clidriver(clidriver_version: str) -> None:
     """
     Install the CLI Driver for DB2
@@ -111,38 +120,42 @@ def install_clidriver(clidriver_version: str) -> None:
     def is_valid_url(url: str) -> bool:
         """Check if the URL is valid and accessible"""
         try:
-            urlopen(url)
-            return True
+            with urlopen(url) as _:
+                return True
         except URLError:
             return False
 
     if system == "darwin":  # macOS
         machine = platform.machine().lower()
         if machine == "arm64":  # Apple Silicon
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macarm64_odbc_cli.tar.gz"
-            clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macarm64_odbc_cli.tar.gz"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
+            clidriver_url = f"/{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
         elif machine == "x86_64":  # Intel
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"
-            clidriver_url = f"https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
+            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
     elif system == "linux":
         if is_64bits:
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxx64_odbc_cli.tar.gz"
-            clidriver_url = f"https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
+            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"
         else:
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxia32_odbc_cli.tar.gz"
-            clidriver_url = f"https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/linuxia32_odbc_cli.tar.gz"
+            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"
     elif system == "windows":
         if is_64bits:
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ntx64_odbc_cli.zip"
-            clidriver_url = f"https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/{str(clidriver_version)}/ntx64_odbc_cli.zip"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
+            clidriver_url = (
+                f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
+            )
         else:
-            default_clidriver_url = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/nt32_odbc_cli.zip"
-            clidriver_url = f"https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/{str(clidriver_version)}/nt32_odbc_cli.zip"
+            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
+            clidriver_url = (
+                f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
+            )
     else:
         logger.error(
             f"Unsupported operating system for db2 driver installation: {system}"
         )
-        return
+        return None
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
     os.environ["CLIDRIVER_VERSION"] = clidriver_version
