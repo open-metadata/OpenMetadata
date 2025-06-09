@@ -37,6 +37,6 @@ public class GetEntityTool implements McpTool {
       CatalogSecurityContext securityContext,
       Map<String, Object> params)
       throws IOException {
-    throw new UnsupportedOperationException("GetEntityTool requires limit validation.");
+    throw new UnsupportedOperationException("GetEntityTool does not requires limit validation.");
   }
 }
