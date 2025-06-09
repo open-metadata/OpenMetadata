@@ -116,6 +116,15 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
         tag_label=TagLabel(
+            tagFQN=TagFQN("General.Person"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
+    ),
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
+        tag_label=TagLabel(
             tagFQN=TagFQN("PII.Sensitive"),
             source="Classification",
             labelType="Automated",
@@ -125,7 +134,25 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
         tag_label=TagLabel(
+            tagFQN=TagFQN("General.DateTime"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
+    ),
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
+        tag_label=TagLabel(
             tagFQN=TagFQN("PII.NonSensitive"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
+    ),
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
+        tag_label=TagLabel(
+            tagFQN=TagFQN("General.Email"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
