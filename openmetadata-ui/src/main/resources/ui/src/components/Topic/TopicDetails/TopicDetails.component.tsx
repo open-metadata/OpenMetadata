@@ -154,8 +154,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -316,6 +315,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       queryViewerTab: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.CONFIG}
           sqlQuery={JSON.stringify(topicDetails.topicConfig)}
           title={t('label.config')}
         />
