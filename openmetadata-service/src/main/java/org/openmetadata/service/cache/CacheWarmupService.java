@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.cache;
 
-import com.google.common.util.concurrent.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterConfig;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -59,9 +61,18 @@ public class CacheWarmupService {
               return t;
             });
 
-    this.rateLimiter = RateLimiter.create(cacheConfig.getWarmupRateLimit());
+    // Create Resilience4j rate limiter to control warmup pace and prevent database overload
+    RateLimiterConfig rateLimiterConfig =
+        RateLimiterConfig.custom()
+            .limitForPeriod((int) cacheConfig.getWarmupRateLimit())
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofSeconds(60))
+            .build();
+
+    this.rateLimiter = RateLimiter.of("cache-warmup", rateLimiterConfig);
+
     LOG.info(
-        "CacheWarmupService initialized with rate limit: {} ops/sec",
+        "CacheWarmupService initialized with Resilience4j rate limiter: {} ops/sec",
         cacheConfig.getWarmupRateLimit());
   }
 
@@ -177,7 +188,7 @@ public class CacheWarmupService {
         for (UUID uuid : batch) {
           try {
             // Use rate limiter to control the pace of database queries
-            rateLimiter.acquire();
+            rateLimiter.acquirePermission();
 
             List<CollectionDAO.EntityRelationshipRecord> toRelations =
                 collectionDAO.relationshipDAO().findTo(uuid, entityType, List.of(1, 2, 3, 4, 5));
@@ -245,7 +256,7 @@ public class CacheWarmupService {
         for (String entityFQN : batch) {
           try {
             // Use rate limiter to control the pace of database queries
-            rateLimiter.acquire();
+            rateLimiter.acquirePermission();
 
             List<TagLabel> tags = collectionDAO.tagUsageDAO().getTags(entityFQN);
             tagsWarmed += tags.size();
@@ -289,7 +300,7 @@ public class CacheWarmupService {
           for (UUID uuid : entityIds) {
             try {
               // Use rate limiter to control the pace of database queries
-              rateLimiter.acquire();
+              rateLimiter.acquirePermission();
 
               collectionDAO.relationshipDAO().findTo(uuid, entityType, List.of(1, 2, 3));
               entitiesProcessed++;

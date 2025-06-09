@@ -42,18 +42,14 @@ class RateLimiterProductionReadinessTest {
     // Test Resilience4j RateLimiter
     testResilience4jRateLimiterProduction(targetRate, testOperations);
 
-    // Test SimpleRateLimiter
-    testSimpleRateLimiterProduction(targetRate, testOperations);
-
     LOG.info("=== PRODUCTION READINESS SUMMARY ===");
     LOG.info("✓ Guava RateLimiter: WORKS (v33.4.8-jre) - ⚠️ Marked @Beta");
     LOG.info("✓ Resilience4j RateLimiter: WORKS (v2.2.0) - ✅ Production Ready");
-    LOG.info("✓ SimpleRateLimiter: WORKS (custom) - ✅ Production Ready");
     LOG.info("");
-    LOG.info("RECOMMENDATION for production:");
-    LOG.info("1. Resilience4j RateLimiter - Best choice (production-ready, good metrics)");
-    LOG.info("2. SimpleRateLimiter - Good alternative (lightweight, custom implementation)");
-    LOG.info("3. Guava RateLimiter - Works but marked @Beta (use with caution)");
+    LOG.info("FINAL RECOMMENDATION for production:");
+    LOG.info(
+        "✅ CHOSEN: Resilience4j RateLimiter - Production-ready, excellent metrics, stable API");
+    LOG.info("⚠️  Alternative: Guava RateLimiter - Works but marked @Beta (use with caution)");
   }
 
   private void testGuavaRateLimiterProduction(double targetRate, int operations) throws Exception {
@@ -127,37 +123,6 @@ class RateLimiterProductionReadinessTest {
     assertTrue(metrics.getAvailablePermissions() >= 0, "Metrics should be available");
   }
 
-  private void testSimpleRateLimiterProduction(double targetRate, int operations) throws Exception {
-    LOG.info("\n--- Testing SimpleRateLimiter (custom implementation) ---");
-    LOG.info("Status: ✅ Production Ready - Custom implementation, fully under our control");
-
-    SimpleRateLimiter rateLimiter = SimpleRateLimiter.create(targetRate);
-
-    long startTime = System.currentTimeMillis();
-    for (int i = 0; i < operations; i++) {
-      rateLimiter.acquire();
-    }
-    long endTime = System.currentTimeMillis();
-
-    long duration = endTime - startTime;
-    double actualRate = (double) operations * 1000 / duration;
-
-    LOG.info("SimpleRateLimiter Results:");
-    LOG.info("  - Target Rate: {:.1f} ops/sec", targetRate);
-    LOG.info("  - Actual Rate: {:.1f} ops/sec", actualRate);
-    LOG.info("  - Duration: {}ms for {} operations", duration, operations);
-    LOG.info("  - Rate Accuracy: {:.1f}%", (actualRate / targetRate) * 100);
-    LOG.info("  - Configured Rate: {:.1f} ops/sec", rateLimiter.getRate());
-    LOG.info(
-        "  - Production Status: ✅ Custom implementation, lightweight, no external dependencies");
-
-    // Verify rate limiting works - allow more tolerance for test environment
-    assertTrue(actualRate <= targetRate * 1.5, "Rate should be reasonably close to target");
-    assertTrue(
-        duration >= (operations - 1) * 1000 / targetRate * 0.5, "Should take reasonable time");
-    assertEquals(targetRate, rateLimiter.getRate(), 0.1, "Rate getter should work");
-  }
-
   @Test
   @DisplayName("Cache warmup scenario simulation with all rate limiters")
   void testCacheWarmupScenarioSimulation() throws Exception {
@@ -171,10 +136,9 @@ class RateLimiterProductionReadinessTest {
         "Scenario: Cache warmup with {} database queries at max {} ops/sec", dbQueries, warmupRate);
     LOG.info("Expected duration: ~{} seconds", dbQueries / warmupRate);
 
-    // Test all three rate limiters in the cache warmup scenario
+    // Test rate limiters in the cache warmup scenario
     simulateCacheWarmupWithGuava(warmupRate, dbQueries);
     simulateCacheWarmupWithResilience4j(warmupRate, dbQueries);
-    simulateCacheWarmupWithSimpleRateLimiter(warmupRate, dbQueries);
 
     LOG.info("\n=== CACHE WARMUP SIMULATION COMPLETE ===");
     LOG.info("All rate limiters successfully controlled database load during warmup");
@@ -226,27 +190,6 @@ class RateLimiterProductionReadinessTest {
 
     LOG.info(
         "Resilience4j Warmup: {:.1f} seconds, {:.1f} queries/sec (target: {:.1f})",
-        duration,
-        actualRate,
-        rate);
-  }
-
-  private void simulateCacheWarmupWithSimpleRateLimiter(double rate, int queries) throws Exception {
-    LOG.info("\n--- Cache Warmup with SimpleRateLimiter ---");
-    SimpleRateLimiter rateLimiter = SimpleRateLimiter.create(rate);
-
-    long startTime = System.currentTimeMillis();
-    for (int i = 0; i < queries; i++) {
-      rateLimiter.acquire();
-      simulateDatabaseQuery(); // Simulate DB work
-    }
-    long endTime = System.currentTimeMillis();
-
-    double duration = (endTime - startTime) / 1000.0;
-    double actualRate = queries / duration;
-
-    LOG.info(
-        "SimpleRateLimiter Warmup: {:.1f} seconds, {:.1f} queries/sec (target: {:.1f})",
         duration,
         actualRate,
         rate);

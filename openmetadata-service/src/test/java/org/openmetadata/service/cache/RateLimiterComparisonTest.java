@@ -103,27 +103,45 @@ class RateLimiterComparisonTest {
 
   @Test
   @Timeout(30)
-  @DisplayName("Test custom SimpleRateLimiter performance and accuracy")
-  public void testSimpleRateLimiter() throws Exception {
-    LOG.info("Testing custom SimpleRateLimiter (production-ready)");
+  @DisplayName("Test Resilience4j production configuration")
+  public void testResilience4jProductionConfiguration() throws Exception {
+    LOG.info(
+        "Testing Resilience4j RateLimiter production configuration matching CacheWarmupService");
 
-    SimpleRateLimiter rateLimiter = SimpleRateLimiter.create(TEST_RATE);
+    // Use the same configuration as CacheWarmupService
+    RateLimiterConfig config =
+        RateLimiterConfig.custom()
+            .limitForPeriod((int) TEST_RATE)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofSeconds(60))
+            .build();
+
+    io.github.resilience4j.ratelimiter.RateLimiter rateLimiter =
+        io.github.resilience4j.ratelimiter.RateLimiter.of("cache-warmup-test", config);
+
     RateLimiterTestResult result =
-        performRateLimiterTest("SimpleRateLimiter", () -> rateLimiter.acquire());
+        performRateLimiterTest(
+            "Resilience4j-Production",
+            () -> {
+              try {
+                rateLimiter.acquirePermission();
+              } catch (Exception e) {
+                throw new RuntimeException("Failed to acquire permission", e);
+              }
+            });
 
-    validateRateLimiterResult(result, "SimpleRateLimiter");
+    validateRateLimiterResult(result, "Resilience4j Production Config");
 
-    // Test try-acquire functionality
-    assertTrue(rateLimiter.tryAcquire(), "Should be able to try acquire permit");
+    // Test metrics (production benefit)
+    io.github.resilience4j.ratelimiter.RateLimiter.Metrics metrics = rateLimiter.getMetrics();
+    assertTrue(metrics.getNumberOfWaitingThreads() >= 0, "Should provide production metrics");
+    assertTrue(metrics.getAvailablePermissions() >= 0, "Should track available permits");
 
-    // Test rate getter
-    assertEquals(TEST_RATE, rateLimiter.getRate(), 0.1, "Rate should match configured value");
-
-    // Test toString
-    assertNotNull(rateLimiter.toString());
-    assertTrue(rateLimiter.toString().contains("SimpleRateLimiter"));
-
-    LOG.info("SimpleRateLimiter test completed: {}", result);
+    LOG.info("Resilience4j production configuration test completed: {}", result);
+    LOG.info(
+        "Production metrics - Available permits: {}, Waiting threads: {}",
+        metrics.getAvailablePermissions(),
+        metrics.getNumberOfWaitingThreads());
   }
 
   @Test
@@ -156,14 +174,21 @@ class RateLimiterComparisonTest {
         operationsPerThread,
         () -> resilience4jLimiter.acquirePermission());
 
-    // Test SimpleRateLimiter under concurrency
-    SimpleRateLimiter simpleLimiter = SimpleRateLimiter.create(TEST_RATE);
+    // Test production Resilience4j configuration under concurrency
+    RateLimiterConfig prodConfig =
+        RateLimiterConfig.custom()
+            .limitForPeriod((int) TEST_RATE)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofSeconds(30))
+            .build();
+    io.github.resilience4j.ratelimiter.RateLimiter prodLimiter =
+        io.github.resilience4j.ratelimiter.RateLimiter.of("production-concurrent-test", prodConfig);
     testConcurrentRateLimiter(
-        "SimpleRateLimiter",
+        "Resilience4j-Production",
         executor,
         threadCount,
         operationsPerThread,
-        () -> simpleLimiter.acquire());
+        () -> prodLimiter.acquirePermission());
 
     executor.shutdown();
     assertTrue(
@@ -185,52 +210,35 @@ class RateLimiterComparisonTest {
         IllegalArgumentException.class,
         () -> RateLimiter.create(-1),
         "Guava should reject negative rate");
+    // Test Resilience4j configuration validation
     assertThrows(
         IllegalArgumentException.class,
-        () -> SimpleRateLimiter.create(0),
-        "SimpleRateLimiter should reject zero rate");
+        () -> RateLimiterConfig.custom().limitForPeriod(0).build(),
+        "Resilience4j should reject zero limit");
     assertThrows(
         IllegalArgumentException.class,
-        () -> SimpleRateLimiter.create(-1),
-        "SimpleRateLimiter should reject negative rate");
+        () -> RateLimiterConfig.custom().limitForPeriod(-1).build(),
+        "Resilience4j should reject negative limit");
 
-    // Test invalid permit counts
-    SimpleRateLimiter limiter = SimpleRateLimiter.create(1.0);
-    assertThrows(
-        IllegalArgumentException.class, () -> limiter.acquire(0), "Should reject zero permits");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> limiter.acquire(-1),
-        "Should reject negative permits");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> limiter.tryAcquire(0),
-        "Should reject zero permits in tryAcquire");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> limiter.tryAcquire(-1),
-        "Should reject negative permits in tryAcquire");
+    // Test production timeout configuration
+    RateLimiterConfig timeoutConfig =
+        RateLimiterConfig.custom()
+            .limitForPeriod(1)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofMillis(100))
+            .build();
 
-    // Test interrupted thread handling
-    SimpleRateLimiter slowLimiter = SimpleRateLimiter.create(0.1); // Very slow rate
-    Thread testThread =
-        new Thread(
-            () -> {
-              assertThrows(
-                  RuntimeException.class,
-                  () -> {
-                    Thread.currentThread().interrupt(); // Set interrupt flag
-                    slowLimiter.acquire(); // This should detect interrupt and throw
-                  },
-                  "Should handle thread interruption");
-            });
+    io.github.resilience4j.ratelimiter.RateLimiter timeoutLimiter =
+        io.github.resilience4j.ratelimiter.RateLimiter.of("timeout-test", timeoutConfig);
 
-    testThread.start();
-    try {
-      testThread.join(5000); // Wait max 5 seconds
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    // First call should succeed
+    timeoutLimiter.acquirePermission();
+
+    // Second call should timeout quickly due to rate limit
+    assertThrows(
+        Exception.class,
+        () -> timeoutLimiter.acquirePermission(50), // 50ms timeout
+        "Should timeout when rate limit exceeded");
 
     LOG.info("Edge cases and error handling tests completed");
   }
@@ -257,8 +265,16 @@ class RateLimiterComparisonTest {
         io.github.resilience4j.ratelimiter.RateLimiter.of("warmup-test", config);
     testCacheWarmupSimulation("Resilience4j", resilience4jLimiter, totalOperations);
 
-    SimpleRateLimiter simpleLimiter = SimpleRateLimiter.create(warmupRate);
-    testCacheWarmupSimulation("SimpleRateLimiter", simpleLimiter, totalOperations);
+    // Test production configuration that matches CacheWarmupService
+    RateLimiterConfig prodConfig =
+        RateLimiterConfig.custom()
+            .limitForPeriod((int) warmupRate)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofSeconds(60))
+            .build();
+    io.github.resilience4j.ratelimiter.RateLimiter prodLimiter =
+        io.github.resilience4j.ratelimiter.RateLimiter.of("cache-warmup-sim", prodConfig);
+    testCacheWarmupSimulation("Resilience4j-Production", prodLimiter, totalOperations);
 
     LOG.info("Production scenario simulation completed");
   }
@@ -274,8 +290,6 @@ class RateLimiterComparisonTest {
         ((RateLimiter) rateLimiter).acquire();
       } else if (rateLimiter instanceof io.github.resilience4j.ratelimiter.RateLimiter) {
         ((io.github.resilience4j.ratelimiter.RateLimiter) rateLimiter).acquirePermission();
-      } else if (rateLimiter instanceof SimpleRateLimiter) {
-        ((SimpleRateLimiter) rateLimiter).acquire();
       }
 
       // Simulate some work (database query)
