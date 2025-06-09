@@ -207,7 +207,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
