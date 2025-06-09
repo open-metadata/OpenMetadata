@@ -203,18 +203,24 @@ export class EntityClass {
     }
   }
 
-  async tier(page: Page, tier1: string, tier2: string, entity?: EntityClass) {
+  async tier(
+    page: Page,
+    tier1: string,
+    tier2: string,
+    tier2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTier(page, tier1, this.endpoint);
-    if (entity) {
+    await assignTier(page, tier2, this.endpoint);
+    if (entity && tier2Fqn) {
       await checkExploreSearchFilter(
         page,
         'Tier',
         'tier.tagFQN',
-        `Tier.${tier1}`,
+        tier2Fqn,
         entity
       );
     }
-    await assignTier(page, tier2, this.endpoint);
     await removeTier(page, this.endpoint);
   }
 
@@ -226,13 +232,29 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
-  async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
+  async tag(
+    page: Page,
+    tag1: string,
+    tag2: string,
+    tag2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTag(page, tag1);
-    if (entity) {
-      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag1, entity);
+    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    if (entity && tag2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        tag2Fqn,
+        entity
+      );
     }
-    await assignTag(page, tag2, 'Edit');
-    await removeTag(page, [tag2]);
+    if (tag2Fqn) {
+      await removeTag(page, [tag2Fqn]);
+    } else {
+      await removeTag(page, [tag2]);
+    }
     await removeTag(page, [tag1]);
 
     await page

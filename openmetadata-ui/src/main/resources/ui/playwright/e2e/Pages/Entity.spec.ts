@@ -210,7 +210,8 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.data.displayName,
+        EntityDataClass.tierTag1.responseData.displayName,
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
         entity
       );
     });
@@ -232,7 +233,13 @@ entities.forEach((EntityClass) => {
     test('Tag Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
+      await entity.tag(
+        page,
+        'PersonalData.Personal',
+        EntityDataClass.tag1.responseData.displayName,
+        EntityDataClass.tag1.responseData.fullyQualifiedName,
+        entity
+      );
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
