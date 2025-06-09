@@ -67,6 +67,8 @@ public class APIEndpointIndex implements SearchIndex {
         }
       }
       doc.put("response_field_names", fieldsWithChildrenName);
+      // Add flat field names for fuzzy search to avoid array-based clause multiplication
+      doc.put("response_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
     if (apiEndpoint.getRequestSchema() != null
@@ -83,6 +85,8 @@ public class APIEndpointIndex implements SearchIndex {
         }
       }
       doc.put("request_field_names", fieldsWithChildrenName);
+      // Add flat field names for fuzzy search to avoid array-based clause multiplication
+      doc.put("request_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.API_ENDPOINT, apiEndpoint));
@@ -134,6 +138,10 @@ public class APIEndpointIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
+    fields.put("requestSchema.schemaFields.name.keyword", 5.0f);
+    fields.put("requestSchema.schemaFields.description", 1.0f);
+    fields.put("requestSchema.schemaFields.children.name", 7.0f);
+    fields.put("requestSchema.schemaFields.children.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.name.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.description", 1.0f);
     fields.put("responseSchema.schemaFields.children.name", 7.0f);

@@ -426,17 +426,17 @@ public class OpenSearchClient implements SearchClient {
         || request
             .getIndex()
             .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
+      BoolQueryBuilder deletedOptions =
           QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
+              .should(
+                  QueryBuilders.boolQuery()
+                      .must(QueryBuilders.existsQuery("deleted"))
+                      .must(QueryBuilders.termQuery("deleted", request.getDeleted())))
+              .should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("deleted")));
+      BoolQueryBuilder combined =
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(deletedOptions);
+
+      searchSourceBuilder.query(combined);
     } else if (request
             .getIndex()
             .equalsIgnoreCase(
