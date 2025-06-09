@@ -128,28 +128,30 @@ def install_clidriver(clidriver_version: str) -> None:
     if system == "darwin":  # macOS
         machine = platform.machine().lower()
         if machine == "arm64":  # Apple Silicon
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
-            clidriver_url = f"/{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
         elif machine == "x86_64":  # Intel
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
-            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
+            clidriver_url = (
+                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
+            )
     elif system == "linux":
         if is_64bits:
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
-            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"
         else:
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/linuxia32_odbc_cli.tar.gz"
-            clidriver_url = f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxia32_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"
     elif system == "windows":
         if is_64bits:
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
             clidriver_url = (
-                f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
+                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
             )
         else:
-            default_clidriver_url = f"/{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
+            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
             clidriver_url = (
-                f"/{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
+                f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
             )
     else:
         logger.error(
@@ -183,6 +185,9 @@ def install_clidriver(clidriver_version: str) -> None:
             "pip",
             "install",
             "ibm_db~=3.2.6",
+            "--no-binary",
+            ":all:",
+            "--no-cache-dir",
         ]
     )
     return None
