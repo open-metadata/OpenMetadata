@@ -958,20 +958,16 @@ export const TaskTabNew = ({
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
-                      userName={
-                        taskThread?.task?.assignees[0].displayName ?? ''
-                      }>
+                      userName={taskThread?.task?.assignees[0].name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
-                          name={
-                            taskThread?.task?.assignees[0].displayName ?? ''
-                          }
+                          name={taskThread?.task?.assignees[0].name ?? ''}
                           width="24"
                         />
                       </div>
                     </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
-                      {taskThread?.task?.assignees[0].displayName}
+                      {getEntityName(taskThread?.task?.assignees[0])}
                     </Typography.Text>
                   </div>
                 ) : (
@@ -1132,11 +1128,11 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                    <UserPopOverCard userName={currentUser?.name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
                           key={taskThread.id}
-                          name={getEntityName(currentUser)}
+                          name={currentUser?.name ?? ''}
                           width="32"
                         />
                       </div>
