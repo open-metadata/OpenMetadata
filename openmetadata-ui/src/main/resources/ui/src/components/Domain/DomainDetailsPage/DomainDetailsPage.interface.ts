@@ -17,4 +17,7 @@ export interface DomainDetailsPageProps {
   onUpdate: (value: Domain) => Promise<void>;
   onDelete: (id: string) => void;
   isVersionsView?: boolean;
+  isFollowing?: boolean;
+  isFollowingLoading?: boolean;
+  handleFollowingClick?: () => void;
 }

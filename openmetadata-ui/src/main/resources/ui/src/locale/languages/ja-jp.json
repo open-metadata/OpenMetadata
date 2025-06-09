@@ -107,6 +107,7 @@
     "asset": "アセット",
     "asset-lowercase": "アセット",
     "asset-plural": "アセット",
+    "asset-plural-lowercase": "アセット",
     "assigned": "Assigned",
     "assigned-entity": "{{entity}}に割り当てました",
     "assigned-to-me": "自分にアサイン",

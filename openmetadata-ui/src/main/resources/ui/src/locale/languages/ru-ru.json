@@ -107,6 +107,7 @@
     "asset": "Объект",
     "asset-lowercase": "объект",
     "asset-plural": "Объекты",
+    "asset-plural-lowercase": "объекты",
     "assigned": "Assigned",
     "assigned-entity": "Назначенный {{entity}}",
     "assigned-to-me": "Назначено",

@@ -107,6 +107,7 @@
     "asset": "Varlık",
     "asset-lowercase": "varlık",
     "asset-plural": "Varlıklar",
+    "asset-plural-lowercase": "varlıklar",
     "assigned": "Atanmış",
     "assigned-entity": "Atanmış {{entity}}",
     "assigned-to-me": "Bana Atananlar",

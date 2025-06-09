@@ -107,6 +107,7 @@
     "asset": "دارایی",
     "asset-lowercase": "دارایی",
     "asset-plural": "دارایی‌ها",
+    "asset-plural-lowercase": "دارایی‌ها",
     "assigned": "اختصاص داده شد",
     "assigned-entity": "{{entity}} اختصاص داده شد",
     "assigned-to-me": "اختصاص داده شده به من",

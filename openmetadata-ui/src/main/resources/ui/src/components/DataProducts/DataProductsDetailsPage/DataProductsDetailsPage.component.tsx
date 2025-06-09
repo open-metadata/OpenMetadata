@@ -95,6 +95,9 @@ const DataProductsDetailsPage = ({
   isVersionsView = false,
   onUpdate,
   onDelete,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -102,7 +105,6 @@ const DataProductsDetailsPage = ({
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
-
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -195,6 +197,12 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural-lowercase'),
+          })
+        );
       }
     }
   };
@@ -306,8 +314,8 @@ const DataProductsDetailsPage = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
     };
     const updatedDetails = {
       ...dataProduct,
@@ -487,6 +495,7 @@ const DataProductsDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
+            handleFollowingClick={handleFollowingClick}
             icon={
               dataProduct.style?.iconURL ? (
                 <img
@@ -506,6 +515,8 @@ const DataProductsDetailsPage = ({
                 />
               )
             }
+            isFollowing={isFollowing}
+            isFollowingLoading={isFollowingLoading}
             serviceName=""
             titleColor={dataProduct.style?.color}
           />
