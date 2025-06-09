@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -69,11 +69,10 @@ const ActivityFeedListV1New = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick) {
-      onFeedClick(
-        entityThread.find((feed) => feed.id === selectedThread?.id) ??
-          entityThread[0]
-      );
+    const thread = entityThread.find((feed) => feed.id === selectedThread?.id);
+
+    if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
+      onFeedClick(entityThread[0]);
     }
   }, [entityThread, selectedThread, onFeedClick]);
 

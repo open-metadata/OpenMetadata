@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { POST_FEED_PAGE_COUNT } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -43,6 +44,7 @@ import {
   deleteThread,
   getAllFeeds,
   getFeedById,
+  getPostsFeedById,
   postFeedById,
   updatePost,
   updateThread,
@@ -71,6 +73,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  const [isTestCaseResolutionLoading, setIsTestCaseResolutionLoading] =
+    useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
@@ -80,6 +85,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const { currentUser } = useApplicationStore();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
+    setIsTestCaseResolutionLoading(true);
     try {
       const { data } = await getListTestCaseIncidentByStateId(id, {
         limit: PAGE_SIZE_LARGE,
@@ -90,22 +96,40 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       );
     } catch (error) {
       setTestCaseResolutionStatus([]);
+    } finally {
+      setIsTestCaseResolutionLoading(false);
+    }
+  }, []);
+
+  const fetchPostsFeed = useCallback(async (active: Thread) => {
+    // If the posts count is greater than the page count, fetch the posts
+    if (
+      active?.postsCount &&
+      active?.postsCount > POST_FEED_PAGE_COUNT &&
+      active?.posts?.length !== active?.postsCount
+    ) {
+      setIsPostsLoading(true);
+      try {
+        const { data } = await getPostsFeedById(active.id);
+        setSelectedThread((pre) =>
+          pre?.id === active?.id ? { ...active, posts: data } : pre
+        );
+      } finally {
+        setIsPostsLoading(false);
+      }
     }
   }, []);
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
+    active && fetchPostsFeed(active);
+
     if (
       active &&
       active.task?.type === TaskType.RequestTestCaseFailureResolution &&
       active.task?.testCaseResolutionStatusId
     ) {
-      setLoading(true);
-      fetchTestCaseResolution(active.task.testCaseResolutionStatusId).finally(
-        () => {
-          setLoading(false);
-        }
-      );
+      fetchTestCaseResolution(active.task.testCaseResolutionStatusId);
     }
   }, []);
 
@@ -408,6 +432,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedThread,
       isDrawerOpen,
       loading,
+      isPostsLoading,
+      isTestCaseResolutionLoading,
       focusReplyEditor,
       refreshActivityFeed,
       deleteFeed,
@@ -431,6 +457,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     selectedThread,
     isDrawerOpen,
     loading,
+    isPostsLoading,
+    isTestCaseResolutionLoading,
     focusReplyEditor,
     refreshActivityFeed,
     deleteFeed,

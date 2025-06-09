@@ -336,17 +336,17 @@ const TaskFeedCard = ({
                     width={20}
                     onClick={isForFeedTab ? showReplies : undefined}
                   />
-                  {feed.posts && feed.posts?.length > 0 && (
+                  {feed?.postsCount && feed?.postsCount > 0 && (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
                       data-testid="replies-count"
                       type="link"
                       onClick={isForFeedTab ? showReplies : undefined}>
                       {t(
-                        feed.posts.length === 1
+                        feed.postsCount === 1
                           ? 'label.one-reply'
                           : 'label.number-reply-plural',
-                        { number: feed.posts.length }
+                        { number: feed.postsCount }
                       )}
                     </Button>
                   )}

@@ -21,6 +21,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -35,6 +36,7 @@ import {
   isEqual,
   isUndefined,
   last,
+  orderBy,
   startCase,
   unionBy,
 } from 'lodash';
@@ -163,6 +165,7 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    isPostsLoading,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -1047,6 +1050,34 @@ export const TaskTabNew = ({
     setShowFeedEditor(false);
   };
 
+  const posts = useMemo(() => {
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(taskThread.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={taskThread}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [taskThread, closeFeedEditor, isPostsLoading]);
+
   useEffect(() => {
     closeFeedEditor();
   }, [taskThread.id]);
@@ -1149,22 +1180,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts
-                  ?.slice()
-                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply, index, arr) => (
-                    <CommentCard
-                      closeFeedEditor={closeFeedEditor}
-                      feed={taskThread}
-                      isLastReply={index === arr.length - 1}
-                      key={reply.id}
-                      post={reply}
-                    />
-                  ))}
-              </Col>
-            )}
+            {posts}
           </div>
         </Col>
       </Col>
