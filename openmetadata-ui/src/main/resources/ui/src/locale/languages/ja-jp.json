@@ -1515,7 +1515,7 @@
     "view-definition": "View Definition",
     "view-detail-plural": "詳細を表示",
     "view-entity": "{{entity}}を見る",
-    "view-in-service-type": "{{serviceType}}에서 보기",
+    "view-in-service-type": "{{serviceType}}で表示",
     "view-less": "表示を減らす",
     "view-more": "もっと見る",
     "view-new-count": "View {{count}} new",
