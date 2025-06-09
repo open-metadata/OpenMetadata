@@ -146,6 +146,42 @@
           "boost": 5.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
       "highlightFields": [
         "name",
         "description",
@@ -186,6 +222,42 @@
         {
           "field": "fullyQualifiedName",
           "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
         },
         {
           "field": "fqnParts",
@@ -252,6 +324,62 @@
         {
           "field": "columnNamesFuzzy",
           "boost": 1.5
+        },
+        {
+          "field": "tags.tagFQN.text",
+          "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 2.0
+        },
+        {
+          "field": "columns.displayName.keyword",
+          "boost": 2.0
+        },
+        {
+          "field": "columns.children.name.keyword",
+          "boost": 1.0
         },
         {
           "field": "tags.tagFQN.text",
@@ -328,6 +456,42 @@
           "boost": 5.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
       "aggregations": [
         {
           "name": "database.displayName.keyword",
@@ -382,14 +546,42 @@
         {
           "field": "fqnParts",
           "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
         },
         {
-          "field": "queryText",
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
           "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
         },
         {
-          "field": "queryText.ngram",
+          "field": "displayName.ngram",
           "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
         }
       ],
       "aggregations": [
@@ -455,6 +647,54 @@
           "boost": 1.5
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "fieldNamesFuzzy",
+          "boost": 1.5
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "messageSchema.schemaFields.name.keyword",
+          "boost": 1.0
+        },
+        {
+          "field": "messageSchema.schemaFields.children.name.keyword",
+          "boost": 1.0
+        }
+      ],
       "aggregations": [
         {
           "name": "messageSchema.schemaFields.name.keyword",
@@ -509,6 +749,54 @@
         {
           "field": "fqnParts",
           "boost": 5.0
+        },
+        {
+          "field": "charts.name",
+          "boost": 2.0
+        },
+        {
+          "field": "charts.description",
+          "boost": 2.0
+        },
+        {
+          "field": "messageSchema.schemaFields.description",
+          "boost": 1.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
         },
         {
           "field": "charts.name",
@@ -623,6 +911,50 @@
           "boost": 1.5
         }
       ],
+      "fuzzyFields":  [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        }
+    ],
+      "nonFuzzyFields" : [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 10.0
+        }
+      ],
       "aggregations": [
         {
           "name": "dataModelType",
@@ -693,6 +1025,50 @@
           "boost": 1.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields":[
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "tasks.name",
+          "boost": 8.0
+        },
+        {
+          "field": "tasks.description",
+          "boost": 1.0
+        }
+      ],
       "aggregations": [
         {
           "name": "tasks.displayName.keyword",
@@ -744,14 +1120,42 @@
         {
           "field": "fqnParts",
           "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
         },
         {
-          "field": "mlFeatures.name",
-          "boost": 8.0
+          "field": "displayName",
+          "boost": 10.0
         },
         {
-          "field": "mlFeatures.description",
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
           "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
         }
       ],
       "aggregations": [
@@ -805,14 +1209,42 @@
         {
           "field": "fqnParts",
           "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
         },
         {
-          "field": "mlFeatures.name",
-          "boost": 8.0
+          "field": "displayName",
+          "boost": 10.0
         },
         {
-          "field": "mlFeatures.description",
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
           "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
         }
       ],
       "aggregations": [
@@ -878,6 +1310,55 @@
         {
           "field": "columnNamesFuzzy",
           "boost": 1.5
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        }
+
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "dataModel.columns.name",
+          "boost": 8.0
+        },
+        {
+          "field": "dataModel.columns.name.keyword",
+          "boost": 10.0
         }
       ],
       "aggregations": [
@@ -958,6 +1439,66 @@
           "boost": 5.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "response_field_namesFuzzy",
+          "boost": 1.5
+        },
+        {
+          "field": "request_field_namesFuzzy",
+          "boost": 1.5
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "responseSchema.schemaFields.name.keyword",
+          "boost": 8.0
+        },
+        {
+          "field": "responseSchema.schemaFields.children.keyword",
+          "boost": 5.0
+        },
+        {
+          "field": "requestSchema.schemaFields.name.keyword",
+          "boost": 8.0
+        },
+        {
+          "field": "requestSchema.schemaFields.children.keyword",
+          "boost": 5.0
+        }
+      ],
       "aggregations": [
         {
           "name": "responseSchema.schemaFields.name",
@@ -1019,6 +1560,42 @@
           "boost": 5.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
       "aggregations": [
         {
           "name": "fqnParts_agg",
@@ -1064,6 +1641,42 @@
         {
           "field": "fullyQualifiedName",
           "boost": 5.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
         },
         {
           "field": "fqnParts",
@@ -1118,6 +1731,54 @@
         {
           "field": "classification.name",
           "boost": 7.0
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0
+        }
+      ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "classification.name",
+          "boost": 7.0
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
         }
       ],
       "aggregations": [
@@ -1182,6 +1843,58 @@
           "boost": 5.0
         }
       ],
+      "fuzzyFields": [
+        {
+          "field": "name",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0
+        },
+        {
+          "field": "glossary.name",
+          "boost": 5.0
+        },
+        {
+          "field": "glossary.displayName",
+          "boost": 5.0
+        }
+      ],
+      "nonFuzzyFields": [
+        {
+          "field": "name.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "name.keyword",
+          "boost": 10.0
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0
+        },
+        {
+          "field": "description",
+          "boost": 2.0
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0
+        },
+        {
+          "field": "synonyms",
+          "boost": 5.0
+        },
+        {
+          "field": "synonyms.ngram",
+          "boost": 1.0
+        }
+      ],
       "aggregations": [
         {
           "name": "glossary.name.keyword",
@@ -1238,6 +1951,42 @@
       {
         "field": "fullyQualifiedName",
         "boost": 5.0
+      },
+      {
+        "field": "fqnParts",
+        "boost": 5.0
+      }
+    ],
+    "fuzzyFields": [
+      {
+        "field": "name",
+        "boost": 10.0
+      },
+      {
+        "field": "displayName",
+        "boost": 10.0
+      },
+      {
+        "field": "fullyQualifiedName",
+        "boost": 5.0
+      }
+    ],
+    "nonFuzzyFields": [
+      {
+        "field": "name.ngram",
+        "boost": 1.0
+      },
+      {
+        "field": "name.keyword",
+        "boost": 10.0
+      },
+      {
+        "field": "displayName.ngram",
+        "boost": 1.0
+      },
+      {
+        "field": "description",
+        "boost": 2.0
       },
       {
         "field": "fqnParts",
