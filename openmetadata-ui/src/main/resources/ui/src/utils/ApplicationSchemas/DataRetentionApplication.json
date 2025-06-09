@@ -11,8 +11,15 @@
       "type": "integer",
       "default": 7,
       "minimum": 1
+    },
+    "activityThreadsRetentionPeriod": {
+      "title": "Activity Threads Retention Period (days)",
+      "description": "Enter the retention period for Activity Threads of type = 'Conversation' records in days (e.g., 30 for one month, 60 for two months).",
+      "type": "integer",
+      "default": 60,
+      "minimum": 0
     }
   },
-  "required": ["changeEventRetentionPeriod"],
+  "required": ["changeEventRetentionPeriod", "activityThreadsRetentionPeriod"],
   "additionalProperties": false
 }
