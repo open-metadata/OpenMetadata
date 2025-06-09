@@ -63,6 +63,7 @@ mock_bq_config = {
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
+                "billingProjectId": "my-gcp-billing-project",
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",

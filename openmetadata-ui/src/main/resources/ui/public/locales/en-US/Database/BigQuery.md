@@ -73,6 +73,12 @@ Credentials Type is the type of the account, for a service account the value of 
 $$
 
 $$section
+### Billing Project ID $(id="billingProjectId")
+
+A billing project ID is a unique string used to identify and authorize your project for billing in Google Cloud.
+$$
+
+$$section
 ### Project ID $(id="projectId")
 
 A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. 

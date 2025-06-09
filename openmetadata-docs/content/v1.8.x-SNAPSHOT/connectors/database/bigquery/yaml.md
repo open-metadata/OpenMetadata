@@ -159,6 +159,13 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=5 %}
+
+**Billing Project ID (Optional)**: A billing project ID is a unique string used to identify and authorize your project for billing in Google Cloud.
+
+{% /codeInfo %}
+
+
 {% partial file="/v1.8/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.8/connectors/yaml/ingestion-sink-def.md" /%}
@@ -204,6 +211,9 @@ source:
       # taxonomyLocation: us
       # taxonomyProjectID: ["project-id-1", "project-id-2"]
       # usageLocation: us
+```
+```yaml {% srNumber=5 %}
+      # billingProjectId: project-id-1
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
