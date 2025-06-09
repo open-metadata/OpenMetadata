@@ -1745,10 +1745,7 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Entity right panel collapsing issue.
 - Feeds count not showing up in PipelineDetails page.
 - Reverse metadata workflow exits with 1 when test connection fails.${CollateIconWithLinkMD}
-- Knowledge center card in entity page not containing data.${CollateIconWithLinkMD}
-- Implement Collate AI Documentation Agent Service Filter.
-- 
-`,
+- Knowledge center card in entity page not containing data.${CollateIconWithLinkMD}`,
     },
   },
   {
