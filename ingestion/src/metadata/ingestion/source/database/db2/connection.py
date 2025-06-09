@@ -33,13 +33,28 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.db2.utils import (
+    check_clidriver_version,
+    install_clidriver,
+)
 from metadata.utils.constants import THREE_MIN, UTF_8
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection(connection: Db2Connection) -> Engine:
     """
     Create connection
     """
+    # Install ibm_db with specific version
+    clidriver_version = connection.clidriverVersion
+
+    if clidriver_version:
+        clidriver_version = check_clidriver_version(clidriver_version)
+        if clidriver_version:
+            install_clidriver(clidriver_version.value)
+
     # prepare license
     # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
