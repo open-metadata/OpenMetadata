@@ -2,7 +2,8 @@
   "name": "DataRetentionApplication",
   "displayName": "Data Retention",
   "appConfiguration": {
-    "changeEventRetentionPeriod": 7
+    "changeEventRetentionPeriod": 7,
+    "activityThreadsRetentionPeriod": 60
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
