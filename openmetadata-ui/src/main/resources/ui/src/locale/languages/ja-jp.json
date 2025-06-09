@@ -483,6 +483,7 @@
     "enter-entity-name": "{{entity}}の名前を入力",
     "enter-entity-value": "Enter {{entity}} Value",
     "enter-field-description": "{{field}}の説明を入力",
+    "enter-file-content": "ファイルの内容を入力",
     "enter-property-value": "プロパティの値を入力",
     "enter-type-password": "{{type}} のパスワードを入力",
     "entity": "Entity",

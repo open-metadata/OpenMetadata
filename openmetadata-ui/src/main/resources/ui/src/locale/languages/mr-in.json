@@ -483,6 +483,7 @@
     "enter-entity-name": "{{entity}} नाव प्रविष्ट करा",
     "enter-entity-value": "{{entity}} मूल्य प्रविष्ट करा",
     "enter-field-description": "{{field}} वर्णन प्रविष्ट करा",
+    "enter-file-content": "फाइल मजकूर प्रविष्ट करा",
     "enter-property-value": "गुणधर्म मूल्य प्रविष्ट करा",
     "enter-type-password": "{{type}} पासवर्ड प्रविष्ट करा",
     "entity": "घटक",
