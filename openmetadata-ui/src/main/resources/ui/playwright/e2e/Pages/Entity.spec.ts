@@ -210,8 +210,8 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.data.displayName,
-        EntityDataClass.tierTag1.data.name,
+        EntityDataClass.tierTag1.responseData.displayName,
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
         entity
       );
     });
@@ -236,9 +236,8 @@ entities.forEach((EntityClass) => {
       await entity.tag(
         page,
         'PersonalData.Personal',
-        EntityDataClass.tag1.data.displayName,
-        EntityDataClass.tag1.data.name,
-        EntityDataClass.tag1.data.classification,
+        EntityDataClass.tag1.responseData.displayName,
+        EntityDataClass.tag1.responseData.fullyQualifiedName,
         entity
       );
     });

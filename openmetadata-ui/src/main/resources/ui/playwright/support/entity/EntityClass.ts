@@ -207,17 +207,17 @@ export class EntityClass {
     page: Page,
     tier1: string,
     tier2: string,
-    tierName?: string,
+    tier2Fqn?: string,
     entity?: EntityClass
   ) {
     await assignTier(page, tier1, this.endpoint);
     await assignTier(page, tier2, this.endpoint);
-    if (entity && tierName) {
+    if (entity && tier2Fqn) {
       await checkExploreSearchFilter(
         page,
         'Tier',
         'tier.tagFQN',
-        `Tier.${tierName}`,
+        tier2Fqn,
         entity
       );
     }
@@ -236,23 +236,22 @@ export class EntityClass {
     page: Page,
     tag1: string,
     tag2: string,
-    tag2Name?: string,
-    tag2Classification?: string,
+    tag2Fqn?: string,
     entity?: EntityClass
   ) {
     await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit', tag2Name, tag2Classification);
-    if (entity && tag2Classification) {
+    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    if (entity && tag2Fqn) {
       await checkExploreSearchFilter(
         page,
         'Tag',
         'tags.tagFQN',
-        `${tag2Classification}.${tag2Name}`,
+        tag2Fqn,
         entity
       );
     }
-    if (tag2Classification && tag2Name) {
-      await removeTag(page, [`${tag2Classification}.${tag2Name}`]);
+    if (tag2Fqn) {
+      await removeTag(page, [tag2Fqn]);
     } else {
       await removeTag(page, [tag2]);
     }
