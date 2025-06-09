@@ -408,7 +408,8 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
    * Determine if SSE should be used for a specific request
    */
   private boolean shouldUseSSEForRequest(JsonNode request, String sessionId) {
-    // TODO: This is good for now, but we can enhance this logic later, like tools/call can be long running for our use case should be fine
+    // TODO: This is good for now, but we can enhance this logic later, like tools/call can be long
+    // running for our use case should be fine
     // Use SSE for requests that are streaming operations or have specific methods
     MCPSession session = sessions.get(sessionId);
     return session != null;

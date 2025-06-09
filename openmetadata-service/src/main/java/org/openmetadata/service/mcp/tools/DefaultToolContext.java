@@ -1,7 +1,6 @@
 package org.openmetadata.service.mcp.tools;
 
 import static org.openmetadata.service.mcp.McpUtils.getToolProperties;
-import static org.openmetadata.service.search.SearchUtil.searchMetadata;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
@@ -12,7 +11,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class DefaultToolContext {
@@ -44,10 +42,10 @@ public class DefaultToolContext {
     try {
       switch (toolName) {
         case "search_metadata":
-          result = searchMetadata(params);
+          result = new SearchMetadataTool().execute(authorizer, securityContext, params);
           break;
         case "get_entity_details":
-          result = EntityUtil.getEntityDetails(params);
+          result = new GetEntityTool().execute(authorizer, securityContext, params);
           break;
         case "create_glossary":
           result = new GlossaryTool().execute(authorizer, limits, securityContext, params);

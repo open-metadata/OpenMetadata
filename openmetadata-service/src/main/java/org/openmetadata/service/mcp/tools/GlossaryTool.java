@@ -1,6 +1,5 @@
 package org.openmetadata.service.mcp.tools;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -56,21 +55,15 @@ public class GlossaryTool implements McpTool {
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
-    try {
-      GlossaryRepository glossaryRepository =
-          (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
 
-      glossaryRepository.prepare(glossary, true);
-      glossaryRepository.setFullyQualifiedName(glossary);
-      RestUtil.PutResponse<Glossary> response =
-          glossaryRepository.createOrUpdate(
-              null, glossary, securityContext.getUserPrincipal().getName());
-      return JsonUtils.convertValue(response.getEntity(), Map.class);
-    } catch (Exception e) {
-      Map<String, Object> error = new HashMap<>();
-      error.put("error", e.getMessage());
-      return error;
-    }
+    glossaryRepository.prepare(glossary, true);
+    glossaryRepository.setFullyQualifiedName(glossary);
+    RestUtil.PutResponse<Glossary> response =
+        glossaryRepository.createOrUpdate(
+            null, glossary, securityContext.getUserPrincipal().getName());
+    return JsonUtils.convertValue(response.getEntity(), Map.class);
   }
 
   public static void setReviewers(CreateGlossary entity, Map<String, Object> params) {
