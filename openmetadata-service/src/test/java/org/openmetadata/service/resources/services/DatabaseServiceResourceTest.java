@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
 import static org.openmetadata.csv.EntityCsvTest.*;
@@ -413,6 +414,22 @@ public class DatabaseServiceResourceTest
         getDatabaseServiceCsvHeaders(service, false),
         null,
         listOf(record));
+
+    String clearRecord = "d1,dsp1,new-dsc2,,,,,,";
+
+    importCsvAndValidate(
+        service.getFullyQualifiedName(),
+        getDatabaseServiceCsvHeaders(service, false),
+        null,
+        listOf(clearRecord));
+
+    String databaseFqn = String.format("%s.%s", service.getFullyQualifiedName(), "d1");
+    Database updatedDb = databaseTest.getEntityByName(databaseFqn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("new-dsc2", updatedDb.getDescription());
+    assertTrue(listOrEmpty(updatedDb.getOwners()).isEmpty(), "Owner should be cleared");
+    assertTrue(listOrEmpty(updatedDb.getTags()).isEmpty(), "Tags should be empty after clearing");
+    assertNull(updatedDb.getDomain(), "Domain should be null after clearing");
   }
 
   @Test
