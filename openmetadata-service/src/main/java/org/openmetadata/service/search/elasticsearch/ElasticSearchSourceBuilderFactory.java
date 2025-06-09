@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
@@ -165,19 +166,16 @@ public class ElasticSearchSourceBuilderFactory
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
     Map<String, Float> fuzzyFields;
     Map<String, Float> nonFuzzyFields;
+
     if (assetConfig.getSearchFields() != null && !assetConfig.getSearchFields().isEmpty()) {
-      fuzzyFields = new HashMap<>();
-      nonFuzzyFields = new HashMap<>();
-      assetConfig
-          .getFuzzyFields()
-          .forEach(
-              fieldBoost ->
-                  fuzzyFields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
-      assetConfig
-          .getNonFuzzyFields()
-          .forEach(
-              fieldBoost ->
-                  nonFuzzyFields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+      fuzzyFields =
+          assetConfig.getSearchFields().stream()
+              .filter(fieldBoost -> isFuzzyField(fieldBoost.getField()))
+              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
+      nonFuzzyFields =
+          assetConfig.getSearchFields().stream()
+              .filter(fieldBoost -> !isFuzzyField(fieldBoost.getField()))
+              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
     } else {
       Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
       fuzzyFields =

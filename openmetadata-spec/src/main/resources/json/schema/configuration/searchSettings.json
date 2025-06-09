@@ -188,20 +188,6 @@
             "$ref": "#/definitions/fieldBoost"
           }
         },
-        "fuzzyFields": {
-          "type": "array",
-          "description": "Which fields to search with fuzziness enabled for this asset, along with their boost values.",
-          "items": {
-            "$ref": "#/definitions/fieldBoost"
-          }
-        },
-        "nonFuzzyFields": {
-          "type": "array",
-          "description": "Which fields to search without fuzziness for this asset, along with their boost values.",
-          "items": {
-            "$ref": "#/definitions/fieldBoost"
-          }
-        },
         "highlightFields": {
           "type": "array",
           "items": { "type": "string" },

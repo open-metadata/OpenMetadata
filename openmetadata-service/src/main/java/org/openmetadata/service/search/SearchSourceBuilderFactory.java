@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNa
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -214,6 +215,18 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   default boolean isFuzzyField(String key) {
-    return key.endsWith(".ngram") || key.contains("fqnParts");
+    return Set.of(
+            "name",
+            "displayName",
+            "fullyQualifiedName",
+            "columnNamesFuzzy",
+            "fieldNamesFuzzy",
+            "response_field_namesFuzzy",
+            "request_field_namesFuzzy",
+            "classification.name",
+            "classification.displayName",
+            "glossary.name",
+            "glossary.displayName")
+        .contains(key);
   }
 }
