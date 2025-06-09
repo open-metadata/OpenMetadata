@@ -483,6 +483,7 @@
     "enter-entity-name": "{{entity}} adı girin",
     "enter-entity-value": "{{entity}} Değeri Girin",
     "enter-field-description": "{{field}} açıklaması girin",
+    "enter-file-content": "Dosya içeriğini girin",
     "enter-property-value": "Özellik Değeri Girin",
     "enter-type-password": "{{type}} Şifresini Girin",
     "entity": "Varlık",

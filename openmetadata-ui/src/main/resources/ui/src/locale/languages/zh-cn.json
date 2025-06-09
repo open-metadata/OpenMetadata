@@ -483,6 +483,7 @@
     "enter-entity-name": "输入{{entity}}的名称",
     "enter-entity-value": "输入{{entity}}的值",
     "enter-field-description": "输入{{field}}的描述",
+    "enter-file-content": "输入文件内容",
     "enter-property-value": "输入属性值",
     "enter-type-password": "输入{{type}}密码",
     "entity": "实体",

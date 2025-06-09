@@ -483,6 +483,7 @@
     "enter-entity-name": "Enter {{entity}} name",
     "enter-entity-value": "Enter {{entity}} Value",
     "enter-field-description": "Enter {{field}} description",
+    "enter-file-content": "Enter file content",
     "enter-property-value": "Enter Property Value",
     "enter-type-password": "Enter {{type}} Password",
     "entity": "Entity",

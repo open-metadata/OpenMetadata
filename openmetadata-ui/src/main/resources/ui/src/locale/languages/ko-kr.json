@@ -483,6 +483,7 @@
     "enter-entity-name": "{{entity}} 이름 입력",
     "enter-entity-value": "{{entity}} 값 입력",
     "enter-field-description": "{{field}} 설명 입력",
+    "enter-file-content": "파일 내용 입력",
     "enter-property-value": "속성 값 입력",
     "enter-type-password": "{{type}} 비밀번호 입력",
     "entity": "엔티티",

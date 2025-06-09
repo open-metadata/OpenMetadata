@@ -483,6 +483,7 @@
     "enter-entity-name": "Введите имя {{entity}}",
     "enter-entity-value": "Enter {{entity}} Value",
     "enter-field-description": "Введите описание {{field}}",
+    "enter-file-content": "Введите содержимое файла",
     "enter-property-value": "Введите значение свойства",
     "enter-type-password": "Введите {{type}} пароль",
     "entity": "Entity",
