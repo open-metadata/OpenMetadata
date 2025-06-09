@@ -45,6 +45,8 @@ public record ContainerIndex(Container container) implements ColumnIndex {
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
+      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
+      doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
     }
     serviceSuggest.add(
         SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
