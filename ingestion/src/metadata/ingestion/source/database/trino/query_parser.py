@@ -12,6 +12,7 @@
 Trino usage module
 """
 from abc import ABC
+from datetime import datetime
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
@@ -44,3 +45,17 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
                 f"Expected TrinoConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,
+            query_history_table=self.service_connection.queryHistoryTable,
+        )
