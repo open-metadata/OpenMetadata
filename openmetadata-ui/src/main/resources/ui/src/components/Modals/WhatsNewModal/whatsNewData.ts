@@ -1754,7 +1754,9 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
     description: 'Released on 10th June 2025.',
     features: [],
     changeLogs: {
-      Improvements: `-  Add Databricks Sampler and refactor Unity Catalog Sampler.
+      Improvements: `-  Enable Prefix for Dashboard Lineage instead of only the Database Service.
+-  Pendo Add Company Name Details.   
+-  Add Databricks Sampler and refactor Unity Catalog Sampler.
 -  Added Looker column lineage between views and tables.
 -  Added Looker column lineage between explores and views.
 -  Add  dbt tags Filter.
@@ -1771,6 +1773,7 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 -  Improve pdf export image file and supported dynamic spacing.
 -  Reverse Metadata Extensions.`,
       Fixes: `
+- SearchIndexing: Limit of total fields [1000] has been exceeded.
 - db2 custom driver installation.
 - Domain not getting removed through import.
 - Freshness test timestamp display to show correct time values.
