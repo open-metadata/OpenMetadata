@@ -216,7 +216,7 @@ public class LineageRepository {
     // Add Service Level Lineage
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-    if (Boolean.FALSE.equals(fromService.getId().equals(toService.getId()))) {
+    if (!fromService.getId().equals(toService.getId())) {
       LineageDetails serviceLineageDetails =
           getOrCreateLineageDetails(
               fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
@@ -300,7 +300,8 @@ public class LineageRepository {
 
     if (existingRelation != null) {
       LineageDetails lineageDetails =
-          JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class);
+          JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class)
+              .withPipeline(entityLineageDetails.getPipeline());
       if (!childRelationExists) {
         lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() + 1);
       }
@@ -313,6 +314,7 @@ public class LineageRepository {
         .withUpdatedAt(entityLineageDetails.getUpdatedAt())
         .withUpdatedBy(entityLineageDetails.getUpdatedBy())
         .withSource(LineageDetails.Source.CHILD_ASSETS)
+        .withPipeline(entityLineageDetails.getPipeline())
         .withAssetEdges(1);
   }
 
