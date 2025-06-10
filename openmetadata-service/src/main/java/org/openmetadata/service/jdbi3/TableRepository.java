@@ -182,14 +182,14 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
-    if (fields.contains("tableQueries")) {
+    if (fields.contains("queries")) {
       List<Query> queriesEntity =
           getEntities(
               listOrEmpty(findTo(table.getId(), TABLE, Relationship.MENTIONED_IN, QUERY)),
               "id",
               ALL);
       List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
-      table.setTableQueries(queries);
+      table.setQueries(queries);
     }
   }
 
