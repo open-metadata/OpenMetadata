@@ -165,7 +165,11 @@ export interface Table {
      * Table Profiler Config to include or exclude columns from profiling.
      */
     tableProfilerConfig?: TableProfilerConfig;
-    tableType?:           TableType;
+    /**
+     * List of queries that are used to create this table.
+     */
+    tableQueries?: string[];
+    tableType?:    TableType;
     /**
      * Tags for this table.
      */

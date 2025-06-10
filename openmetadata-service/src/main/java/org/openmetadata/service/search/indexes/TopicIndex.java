@@ -15,7 +15,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenSchemaField;
-import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicIndex implements SearchIndex {
@@ -24,14 +23,6 @@ public class TopicIndex implements SearchIndex {
 
   public TopicIndex(Topic topic) {
     this.topic = topic;
-  }
-
-  @Override
-  public List<SearchSuggest> getSuggest() {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
-    return suggest;
   }
 
   @Override
@@ -45,12 +36,8 @@ public class TopicIndex implements SearchIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<SearchSuggest> fieldSuggest = new ArrayList<>();
-    List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> fieldsWithChildrenName = new ArrayList<>();
-    serviceSuggest.add(
-        SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
 
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
@@ -59,13 +46,14 @@ public class TopicIndex implements SearchIndex {
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
       for (FlattenSchemaField field : flattenFields) {
-        fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());
         fieldsWithChildrenName.add(field.getName());
         if (field.getTags() != null) {
           tagsWithChildren.add(field.getTags());
         }
       }
       doc.put("fieldNames", fieldsWithChildrenName);
+      // Add flat field names for fuzzy search to avoid array-based clause multiplication
+      doc.put("fieldNamesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
@@ -78,8 +66,6 @@ public class TopicIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
-    doc.put("field_suggest", fieldSuggest);
-    doc.put("service_suggest", serviceSuggest);
     doc.put("serviceType", topic.getServiceType());
     doc.put("upstreamLineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
