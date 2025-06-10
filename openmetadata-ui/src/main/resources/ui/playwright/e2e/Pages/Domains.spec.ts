@@ -609,7 +609,7 @@ test.describe('Domains Rbac', () => {
   const user1 = new UserClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.setTimeout(90000);
+    test.slow();
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await Promise.all([
