@@ -306,14 +306,7 @@ export const checkMustPaths = async (
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
-  const url = res.request().url();
 
-  expect(
-    [
-      getEncodedFqn(searchData, true),
-      getEncodedFqn(`*${searchData}*`, true),
-    ].some((encoded) => url.includes(encoded))
-  ).toBeTruthy();
   expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
 
   const json = await res.json();
@@ -544,9 +537,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id !== 'Column' && operator === 'AND') {
     const res = await searchRes;
     const json = await res.json();
+    const hits = json.hits.hits;
 
-    expect(JSON.stringify(json)).toContain(searchCriteria1);
-    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+    expect(JSON.stringify(hits)).toContain(searchCriteria1);
+    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
   }
 };
 
