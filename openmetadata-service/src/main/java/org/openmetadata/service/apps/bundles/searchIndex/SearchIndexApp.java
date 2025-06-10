@@ -50,6 +50,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -162,12 +163,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
     cleanUpStaleJobsFromRuns();
 
     LOG.info("Executing Reindexing Job with JobData: {}", jobData);
-    batchSize.set(jobData.getBatchSize());
+
     jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
     LOG.debug("Initializing job statistics.");
     searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(searchIndexStats.get());
+
+    // Apply auto-tuning if enabled (after stats are initialized)
+    if (Boolean.TRUE.equals(jobData.getAutoTune())) {
+      LOG.info("Auto-tune enabled, analyzing cluster and adjusting parameters...");
+      applyAutoTuning();
+    }
+
+    batchSize.set(jobData.getBatchSize());
     sendUpdates(jobExecutionContext, true);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -709,6 +718,42 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return entityStats.getTotalRecords()
         - entityStats.getFailedRecords()
         - entityStats.getSuccessRecords();
+  }
+
+  private void applyAutoTuning() {
+    try {
+      ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
+      LOG.info("Auto-tune: Request compression enabled for {} bulk operations", searchType);
+      LOG.info("Auto-tune: JSON payloads will be gzip compressed (~75% size reduction)");
+
+      long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
+      SearchClusterMetrics clusterMetrics =
+          SearchClusterMetrics.fetchClusterMetrics(searchRepository, totalEntities);
+      clusterMetrics.logRecommendations();
+      LOG.info("Applying auto-tuned parameters...");
+      LOG.info(
+          "Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          jobData.getBatchSize(),
+          jobData.getProducerThreads(),
+          jobData.getMaxConcurrentRequests(),
+          jobData.getPayLoadSize() / (1024 * 1024));
+
+      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
+      jobData.setProducerThreads(clusterMetrics.getRecommendedProducerThreads());
+      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
+      jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
+
+      LOG.info(
+          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          jobData.getBatchSize(),
+          jobData.getProducerThreads(),
+          jobData.getMaxConcurrentRequests(),
+          jobData.getPayLoadSize() / (1024 * 1024));
+
+    } catch (Exception e) {
+      LOG.warn("Auto-tuning failed, using original parameters: {}", e.getMessage());
+      LOG.debug("Auto-tuning error details", e);
+    }
   }
 
   static record IndexingTask<T>(

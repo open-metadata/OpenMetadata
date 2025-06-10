@@ -943,6 +943,11 @@
       <artifactId>org.apache.felix.http.servlet-api</artifactId>
       <version>2.1.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>
