@@ -15,21 +15,25 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { toString } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
+  addFollower,
   deleteDataProduct,
   getDataProductByName,
   getDataProductVersionData,
   getDataProductVersionsList,
   patchDataProduct,
+  removeFollower,
 } from '../../../rest/dataProductAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getDomainPath,
   getEntityDetailsPath,
@@ -47,6 +51,8 @@ const DataProductsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { version } = useRequiredParams<{ version: string }>();
+  const { currentUser } = useApplicationStore();
+  const currentUserId = currentUser?.id ?? '';
   const { fqn: dataProductFqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();
@@ -54,6 +60,15 @@ const DataProductsPage = () => {
     {} as EntityHistory
   );
   const [selectedVersionData, setSelectedVersionData] = useState<DataProduct>();
+  const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
+
+  const { isFollowing } = useMemo(() => {
+    return {
+      isFollowing: dataProduct?.followers?.some(
+        ({ id }) => id === currentUserId
+      ),
+    };
+  }, [dataProduct?.followers, currentUserId]);
 
   const handleDataProductUpdate = async (updatedData: DataProduct) => {
     if (dataProduct) {
@@ -112,6 +127,7 @@ const DataProductsPage = () => {
           TabSpecificField.ASSETS,
           TabSpecificField.EXTENSION,
           TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
         ],
       });
       setDataProduct(data);
@@ -168,6 +184,66 @@ const DataProductsPage = () => {
     navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
   };
 
+  const followDataProduct = async () => {
+    try {
+      if (!dataProduct?.id) {
+        return;
+      }
+      const res = await addFollower(dataProduct.id, currentUserId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setDataProduct(
+        (prev) =>
+          ({
+            ...prev,
+            followers: [...(prev?.followers ?? []), ...newValue],
+          } as DataProduct)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(dataProduct),
+        })
+      );
+    }
+  };
+
+  const unFollowDataProduct = async () => {
+    try {
+      if (!dataProduct?.id) {
+        return;
+      }
+      const res = await removeFollower(dataProduct.id, currentUserId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+
+      // Filter out the follower that was removed
+      const filteredFollowers = dataProduct.followers?.filter(
+        (follower) => follower.id !== oldValue[0].id
+      );
+
+      setDataProduct(
+        (prev) =>
+          ({
+            ...prev,
+            followers: filteredFollowers ?? [],
+          } as DataProduct)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(dataProduct),
+        })
+      );
+    }
+  };
+
+  const handleFollowingClick = useCallback(async () => {
+    setIsFollowingLoading(true);
+    isFollowing ? await unFollowDataProduct() : await followDataProduct();
+    setIsFollowingLoading(false);
+  }, [isFollowing, unFollowDataProduct, followDataProduct]);
+
   useEffect(() => {
     if (dataProductFqn) {
       fetchDataProductByFqn(dataProductFqn);
@@ -211,6 +287,9 @@ const DataProductsPage = () => {
           dataProduct={
             version ? selectedVersionData ?? dataProduct : dataProduct
           }
+          handleFollowingClick={handleFollowingClick}
+          isFollowing={isFollowing}
+          isFollowingLoading={isFollowingLoading}
           isVersionsView={Boolean(version)}
           onDelete={handleDataProductDelete}
           onUpdate={handleDataProductUpdate}

@@ -503,6 +503,9 @@
       "tierSources": {
         "type": "object"
       },
+      "upstreamLineage": {
+        "type": "object"
+      },
       "certification": {
         "type": "object",
         "properties": {

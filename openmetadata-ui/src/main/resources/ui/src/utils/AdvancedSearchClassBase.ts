@@ -172,8 +172,10 @@ class AdvancedSearchClassBase {
     entityField,
     isCaseInsensitive = false,
   }) => {
-    // Wrapping the fetch function in a debounce of 300 ms
-    const debouncedFetch = debounce((search, callback) => {
+    let pendingResolve:
+      | ((result: { values: any[]; hasMore: boolean }) => void)
+      | null = null;
+    const debouncedFetch = debounce((search: string) => {
       const sourceFields = isCaseInsensitive
         ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
         : undefined;
@@ -184,22 +186,40 @@ class AdvancedSearchClassBase {
         search ?? '',
         JSON.stringify(getCombinedQueryFilterObject()),
         sourceFields
-      ).then((response) => {
-        const buckets =
-          response.data.aggregations[`sterms#${entityField}`].buckets;
+      )
+        .then((response) => {
+          const buckets =
+            response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        const bucketsData = parseBucketsData(buckets, sourceFields);
+          const bucketsData = parseBucketsData(buckets, sourceFields);
 
-        callback({
-          values: bucketsData,
-          hasMore: false,
+          if (pendingResolve) {
+            pendingResolve({
+              values: bucketsData,
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
+        })
+        .catch(() => {
+          if (pendingResolve) {
+            pendingResolve({
+              values: [],
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
         });
-      });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        debouncedFetch(search, resolve);
+        // Resolve previous promise to prevent hanging
+        if (pendingResolve) {
+          pendingResolve({ values: [], hasMore: false });
+        }
+        pendingResolve = resolve;
+        debouncedFetch(search ?? '');
       });
     };
   };

@@ -280,7 +280,13 @@ test.describe('Glossary tests', () => {
           type: 'Users',
         });
 
-        await assignTag(page, 'PersonalData.Personal', 'Add', 'tabs');
+        await assignTag(
+          page,
+          'PersonalData.Personal',
+          'Add',
+          undefined,
+          'tabs'
+        );
       });
 
       await test.step('Update Glossary Term', async () => {

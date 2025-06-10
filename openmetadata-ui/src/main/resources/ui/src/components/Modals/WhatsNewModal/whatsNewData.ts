@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_7_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_7_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1745,8 +1745,103 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Entity right panel collapsing issue.
 - Feeds count not showing up in PipelineDetails page.
 - Reverse metadata workflow exits with 1 when test connection fails.${CollateIconWithLinkMD}
-- Knowledge center card in entity page not containing data.${CollateIconWithLinkMD}
-      `,
+- Knowledge center card in entity page not containing data.${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 70,
+    version: 'v1.7.2',
+    description: 'Released on 10th June 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-  Make trino query table configurable.
+-  Pendo Add Company Name Details.   
+-  Add Databricks Sampler and refactor Unity Catalog Sampler.
+-  Added Looker column lineage between views and tables.
+-  Added Looker column lineage between explores and views.
+-  Add  dbt tags Filter.
+-  Add a tool to openmetadata-ops.sh to delete orphaned relations.
+-  Add lineage dialect for Exasol, Trino and Vertica.
+-  Upgrade google-cloud-secret-manager python requirement version.
+-  Add data insights migrations to remove stale objects.
+-  Add Turkish language.
+-  Add method to filter ingestion pipeline based on metadata
+-  Improve renderning time for profiler chart for large amount of data.
+-  Add logic to handle WorkflowContext on Ingestion.
+-  Pendo Integration key in api response.
+-  SSIS Connector.
+-  Improve pdf export image file and supported dynamic spacing.
+-  Reverse Metadata Extensions.`,
+      Fixes: `- Explore tabs with elipsis to render label and count properly.
+- Add mention of why snowflake owners are not supported.
+- TooManyNestedClauses: Query contains too many nested clauses.
+- Bigquery import issue.
+- Loading issue for react-awesome-query.
+- Japanese localization: update "view-in-service-type" translation from "{{serviceType}}에서 보기" to "{{serviceType}}で表示".
+- Fix jakarta to javax
+- SearchIndexing: Limit of total fields [1000] has been exceeded.
+- db2 custom driver installation.
+- Domain not getting removed through import.
+- Freshness test timestamp display to show correct time values.
+- Update the file upload option input for service config.      
+- Remove the type not wanted in pdfLayout config.
+- Profile config plus icon misaligned.
+- Lineage upstream having additional nodes.
+- Tableau Improvements.
+- Tableau Validation Errors.
+- Looker cll parsing issue. 
+- Looker CLL errors.
+- Domain truncate issue and consistent Domain UX.
+- Issue related to SQL query viewer.
+- Profile redirection issue for displayname.
+- Entity header truncate issue.
+- Select popup sticky for scrollable container.
+- Overflow for frequently joined table widget.
+- Persona switching not updating if customization not present.
+- Schema / tags/ api collection switch does not update content in UI.
+- Copy-Paste from Excel triggers file upload instead of pasting content.
+- Add data insights migrations to remove stale objects.
+- Added displayName to add Asset Selection Model.
+- Background color for text highlight in tables of explore cards.
+- Glossary permission error.
+- Fix missing pydantic_fields exceptions.
+- Flickering and tooltip issue in lineage node columns.
+- Row sampling error.
+- Tier tag not updating in search filters.
+- Add support for multiple owners for dbt models.
+- Remove unused import of getBasePath from RouterUtils.ts.
+- Tags dropdown overlapping if multiple open at a time.
+- Filter Ingestion Pipelines by provider.
+- Automation Workflows should not be updated by the SM & cleanup migration.
+- Fix bot being used in pipelines and workflows.
+- Remove Tier filters from AI agents in AutoPilot.
+- Lineage child node column name not taking remaining space in card and showMoreButton.
+- Handle logout gracefully.
+- Databricks Schema Description.
+- Dashboard data model name column should not be link.
+- Pagination limit for dashboards.
+- Add agents dropdown not showing auto-classification agent option.
+- Filter announcment widget from customisation.
+- Updated snowflake test based on new configs.
+- PII DateTime False Positives.
+- Profile Picture display issues.
+- Persona customization widgets style issues.
+- Update Lightdash connector.
+- Doris ingestion failed.
+- Query builder widget any and not operations.
+- Revert search order and minor styles changes.
+- Bump indices.query.bool.max_clause_count=4096.
+- Make presidio_analyzer a lazy import in the PII processor.
+- PBI dataset expressions empty value fix.
+- Fix limits & logging.
+- Import failing on database service due to double encoding.
+- Auto Tier w/ followers serialization. 
+- Clean description from WAII.
+- Review activity handling.
+- Fix setIdleTimeout with lower jetty version.
+- Fixed the new tags component not showing in the automator form. 
+- Remove SearchSuggest.
+`,
     },
   },
 ];

@@ -87,9 +87,9 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {/* freshness will always be in seconds  */}
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? convertMillisecondsToHumanReadableFormat(value)
+            ? // freshness will always be in seconds, so we need to convert it to milliseconds
+              convertMillisecondsToHumanReadableFormat(value * 1000)
             : value}
         </span>
       </li>
