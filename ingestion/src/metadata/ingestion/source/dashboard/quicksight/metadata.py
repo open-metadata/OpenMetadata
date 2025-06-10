@@ -597,9 +597,9 @@ class QuicksightSource(DashboardServiceSource):
         """
         Method to ingest the Datasources(Published and Embedded) as DataModels from Quicksight
         """
-        self.data_models: List[DescribeDataSourceResponse] = (
-            self._get_dashboard_datamodels(dashboard_details)
-        )
+        self.data_models: List[
+            DescribeDataSourceResponse
+        ] = self._get_dashboard_datamodels(dashboard_details)
         for data_model in self.data_models:
             try:
                 data_model_request = CreateDashboardDataModelRequest(
