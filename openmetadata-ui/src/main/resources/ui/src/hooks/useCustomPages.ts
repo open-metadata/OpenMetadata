@@ -33,7 +33,9 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
       );
       setNavigation(doc.data?.navigation);
     } catch (error) {
-      // fail silent
+      // Need to reset Navigation to avoid showing old navigation items
+      setNavigation([]);
+      setCustomizedPage(null);
     } finally {
       setIsLoading(false);
     }

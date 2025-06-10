@@ -615,11 +615,67 @@
           }
         }
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          },
+          "docId": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "pipelineEntityType": {
+            "type": "keyword"
+          },
+          "sqlQuery": {
+            "type": "text",
+            "index": false
+          },
+          "columns": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       },
       "entityRelationship": {
-        "type" : "object"
+        "type" : "object",
+        "dynamic": false
       },
       "serviceType": {
         "type": "keyword",
@@ -628,27 +684,21 @@
       "entityType": {
         "type": "keyword"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "schema_suggest": {
-        "type": "completion"
-      },
-      "database_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "columnDescriptionStatus": {
         "type": "keyword"
@@ -694,7 +744,8 @@
         }
       },
       "changeSummary": {
-        "type" : "object"
+        "type" : "object",
+        "dynamic": false
       }
     }
   }

@@ -17,8 +17,10 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
@@ -183,6 +185,22 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         getDatabaseCsvHeaders(database, false),
         null,
         listOf(record));
+
+    String clearRecord = "s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,";
+    importCsvAndValidate(
+        database.getFullyQualifiedName(),
+        getDatabaseCsvHeaders(database, false),
+        null,
+        listOf(clearRecord));
+
+    String schemaFqn = String.format("%s.%s", database.getFullyQualifiedName(), "s1");
+    DatabaseSchema updatedSchema = schemaTest.getEntityByName(schemaFqn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("new-dsc2", updatedSchema.getDescription());
+    assertTrue(
+        listOrEmpty(updatedSchema.getTags()).isEmpty(), "Tags should be empty after clearing");
+    assertTrue(listOrEmpty(updatedSchema.getOwners()).isEmpty(), "Owner should be cleared");
+    assertNull(updatedSchema.getDomain(), "Domain should be null after clearing");
   }
 
   @Test

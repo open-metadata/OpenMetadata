@@ -1351,6 +1351,15 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getRecordWithOffset(
         @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsPaginated(
+        @Bind("offset") long offset, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
+    long getTotalRelationshipCount();
+
     //
     // Delete Operations
     //
@@ -1396,6 +1405,12 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship "
+            + "WHERE (toId IN (<ids>) AND toEntity = :entity) "
+            + "   OR (fromId IN (<ids>) AND fromEntity = :entity)")
+    void deleteAllByThreadIds(@BindList("ids") List<String> ids, @Bind("entity") String entity);
 
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
     void deleteAllWithId(@BindUUID("id") UUID id);
@@ -1501,6 +1516,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM thread_entity WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)",
@@ -2281,6 +2299,12 @@ public interface CollectionDAO {
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
       deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    default void deleteAllByPrefixes(List<String> threadIds) {
+      for (String threadId : threadIds) {
+        deleteAllByPrefix(threadId);
+      }
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")

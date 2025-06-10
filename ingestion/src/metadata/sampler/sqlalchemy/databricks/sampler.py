@@ -9,18 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-PII processing models
+Helper module to handle data sampling for the profiler
 """
-from enum import Enum
-
-from pydantic import BaseModel
-
-
-class TagType(Enum):
-    SENSITIVE = "Sensitive"
-    NONSENSITIVE = "NonSensitive"
+from metadata.ingestion.source.database.databricks.connection import (
+    get_connection as databricks_get_connection,
+)
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
-class TagAndConfidence(BaseModel):
-    tag_fqn: str
-    confidence: float
+class DatabricksSamplerInterface(SQASampler):
+    def get_client(self):
+        """client is the session for SQA"""
+        self.connection = databricks_get_connection(self.service_connection_config)
+        client = super().get_client()
+        self.set_catalog(client)
+        return client

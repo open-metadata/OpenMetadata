@@ -111,8 +111,63 @@
       "fullPath": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          },
+          "docId": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "pipelineEntityType": {
+            "type": "keyword"
+          },
+          "sqlQuery": {
+            "type": "text",
+            "index": false
+          },
+          "columns": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       },
       "parent": {
         "properties": {
@@ -569,21 +624,21 @@
       "entityType": {
         "type": "keyword"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "certification": {
         "type": "object",
