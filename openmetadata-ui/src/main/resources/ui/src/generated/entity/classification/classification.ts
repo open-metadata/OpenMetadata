@@ -66,7 +66,11 @@ export interface Classification {
      */
     mutuallyExclusive?: boolean;
     name:               string;
-    provider?:          ProviderType;
+    /**
+     * Owners of this Classification.
+     */
+    owners?:   EntityReference[];
+    provider?: ProviderType;
     /**
      * Total number of children tag terms under this classification. This includes all the
      * children in the hierarchy.
@@ -161,6 +165,13 @@ export interface FieldChange {
  * it belongs to.
  *
  * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owners of this Classification.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
