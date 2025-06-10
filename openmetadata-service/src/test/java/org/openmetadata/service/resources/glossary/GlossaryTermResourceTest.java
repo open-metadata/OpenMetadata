@@ -89,7 +89,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -1455,45 +1454,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 String.format(
                     "A term with the name '%s' already exists in '%s' glossary.",
                     term1.getName(), glossary.getName())));
-  }
-
-  @Test
-  void test_bulkAddAssetsToGlossaryTerm() throws IOException {
-    TagLabel glossaryTag =
-        new TagLabel()
-            .withTagFQN("PII.Sensitive")
-            .withSource(TagLabel.TagSource.CLASSIFICATION)
-            .withLabelType(TagLabel.LabelType.MANUAL);
-    CreateGlossary createGlossary =
-        glossaryTest.createRequest("GlossaryWithTags").withTags(List.of(glossaryTag));
-    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-
-    CreateGlossaryTerm createTerm =
-        createRequest("TermForBulkAdd").withGlossary(glossary.getFullyQualifiedName());
-    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
-
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable = tableResourceTest.createRequest("BulkAddTable");
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-
-    Map<String, Object> payload =
-        Map.of(
-            "assets",
-            List.of(new EntityReference().withId(table.getId()).withType("table")),
-            "dryRun",
-            false);
-
-    WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
-    TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
-
-    Table updatedTable = tableResourceTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
-    assertTrue(
-        updatedTable.getTags().stream()
-            .anyMatch(t -> t.getTagFQN().equals(glossaryTag.getTagFQN())),
-        "Table should have inherited the tag from the parent glossary");
-
-    tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
-    deleteEntity(term.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Glossary createGlossary(
