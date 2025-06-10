@@ -36,10 +36,25 @@ models:
 
 
 vars:
-  # OpenMetadata configuration for metadata ingest-dbt command
+  # Required OpenMetadata configuration for metadata ingest-dbt command
   openmetadata_host_port: "http://test-server:port/endpoint"
   openmetadata_jwt_token: "test-jwt-token"
   openmetadata_service_name: "test_service"
+  
+  # Optional OpenMetadata DBT source configuration
+  # DBT behavior settings
+  openmetadata_dbt_update_descriptions: true
+  openmetadata_dbt_update_owners: false
+  openmetadata_dbt_classification_name: "dbtTags"
+  
+  # Filter patterns - standardized dict format with includes/excludes
+  openmetadata_database_filter_pattern:
+    includes: ["dbt_test_*"]
+    excludes: ["temp_*", "test_*"]
+  
+  openmetadata_table_filter_pattern:
+    includes: [".*"]
+    excludes: ["temp_.*", "tmp_.*"]
 
 quoting:
   database: false

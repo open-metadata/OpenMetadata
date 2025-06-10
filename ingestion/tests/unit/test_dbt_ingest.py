@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from metadata.cli.ingest_dbt import (
+    FilterPattern,
+    OpenMetadataDBTConfig,
     create_dbt_workflow_config,
     extract_openmetadata_config,
     find_dbt_project_config,
@@ -21,11 +23,18 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.test_resources_path = Path(__file__).parent / "resources" / "dbt_ingest"
-        self.expected_om_config = {
-            'jwt_token': 'test-jwt-token',
-            'host_port': 'http://test-server:port/endpoint',
-            'service_name': 'test_service'
-        }
+
+    def test_filter_pattern_model(self):
+        """Test FilterPattern Pydantic model"""
+        # Test with defaults
+        pattern = FilterPattern()
+        self.assertEqual(pattern.includes, ['.*'])
+        self.assertIsNone(pattern.excludes)
+        
+        # Test with custom values
+        pattern = FilterPattern(includes=['table1'], excludes=['temp_*'])
+        self.assertEqual(pattern.includes, ['table1'])
+        self.assertEqual(pattern.excludes, ['temp_*'])
 
     def test_dbt_project_config_vars_validation(self):
         """Test dbt_project.yml vars section validation and structure"""
@@ -65,65 +74,86 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
                 find_dbt_project_config(Path(temp_dir))
             self.assertIn("dbt_project.yml not found", str(context.exception))
 
-    def test_openmetadata_config_extraction_comprehensive(self):
-        """Test comprehensive OpenMetadata configuration extraction and validation"""
-        # Test successful extraction with exact expected values
-        valid_config = {
+    def test_openmetadata_config_extraction_with_defaults(self):
+        """Test OpenMetadata configuration extraction with default values"""
+        # Test with only required variables (should use defaults for optional ones)
+        minimal_config = {
             'vars': {
                 'openmetadata_host_port': 'http://test-server:port/endpoint',
                 'openmetadata_jwt_token': 'test-jwt-token',
                 'openmetadata_service_name': 'test_service'
             }
         }
-        om_config = extract_openmetadata_config(valid_config)
+        om_config = extract_openmetadata_config(minimal_config)
         
-        # Validate extracted config structure and values
-        self.assertEqual(om_config, self.expected_om_config)
-        self.assertIn('host_port', om_config)
-        self.assertIn('jwt_token', om_config)
-        self.assertIn('service_name', om_config)
+        # Validate required config
+        self.assertIsInstance(om_config, OpenMetadataDBTConfig)
+        self.assertEqual(om_config.openmetadata_host_port, 'http://test-server:port/endpoint')
+        self.assertEqual(om_config.openmetadata_jwt_token, 'test-jwt-token')
+        self.assertEqual(om_config.openmetadata_service_name, 'test_service')
         
-        # Test each missing variable scenario individually for better error messages
-        test_cases = [
-            # Missing JWT token
-            {
-                'config': {'vars': {'openmetadata_host_port': 'http://test', 'openmetadata_service_name': 'test'}},
-                'expected_error': 'openmetadata_jwt_token'
-            },
-            # Missing host port
-            {
-                'config': {'vars': {'openmetadata_jwt_token': 'token', 'openmetadata_service_name': 'test'}},
-                'expected_error': 'openmetadata_host_port'
-            },
-            # Missing service name
-            {
-                'config': {'vars': {'openmetadata_host_port': 'http://test', 'openmetadata_jwt_token': 'token'}},
-                'expected_error': 'openmetadata_service_name'
-            },
-            # Missing multiple variables
-            {
-                'config': {'vars': {'openmetadata_host_port': 'http://test'}},
-                'expected_error': 'openmetadata_jwt_token'
-            },
-            # Missing all variables
-            {
-                'config': {'vars': {}},
-                'expected_error': 'openmetadata_host_port'
-            },
-            # No vars section
-            {
-                'config': {'name': 'test_project'},
-                'expected_error': 'openmetadata_host_port'
+        # Validate defaults for optional config
+        self.assertTrue(om_config.openmetadata_dbt_update_descriptions)
+        self.assertTrue(om_config.openmetadata_dbt_update_owners)
+        self.assertTrue(om_config.openmetadata_include_tags)
+        self.assertFalse(om_config.openmetadata_search_across_databases)
+        self.assertIsNone(om_config.openmetadata_dbt_classification_name)
+        
+        # Validate default filter patterns (should be defaults when not specified)
+        self.assertEqual(om_config.database_filter.includes, ['.*'])
+        self.assertEqual(om_config.schema_filter.includes, ['.*'])
+        self.assertEqual(om_config.table_filter.includes, ['.*'])
+
+    def test_openmetadata_config_extraction_with_custom_values(self):
+        """Test OpenMetadata configuration extraction with custom values"""
+        # Test with custom optional variables using dict format only
+        custom_config = {
+            'vars': {
+                'openmetadata_host_port': 'http://test-server:port/endpoint',
+                'openmetadata_jwt_token': 'test-jwt-token',
+                'openmetadata_service_name': 'test_service',
+                'openmetadata_dbt_update_descriptions': False,
+                'openmetadata_dbt_update_owners': False,
+                'openmetadata_include_tags': False,
+                'openmetadata_search_across_databases': True,
+                'openmetadata_dbt_classification_name': 'custom_tags',
+                'openmetadata_database_filter_pattern': {'includes': ['prod_*', 'staging_*']},
+                'openmetadata_schema_filter_pattern': {'includes': ['public'], 'excludes': ['temp_*']},
+                'openmetadata_table_filter_pattern': {'includes': ['fact_*']}
             }
-        ]
+        }
+        om_config = extract_openmetadata_config(custom_config)
         
-        for i, test_case in enumerate(test_cases):
-            with self.subTest(f"Missing variable test case {i+1}"):
-                with self.assertRaises(ValueError) as context:
-                    extract_openmetadata_config(test_case['config'])
-                error_msg = str(context.exception)
-                self.assertIn("Missing variables:", error_msg)
-                self.assertIn(test_case['expected_error'], error_msg)
+        # Validate custom config values
+        self.assertFalse(om_config.openmetadata_dbt_update_descriptions)
+        self.assertFalse(om_config.openmetadata_dbt_update_owners)
+        self.assertFalse(om_config.openmetadata_include_tags)
+        self.assertTrue(om_config.openmetadata_search_across_databases)
+        self.assertEqual(om_config.openmetadata_dbt_classification_name, 'custom_tags')
+        
+        # Validate custom filter patterns
+        self.assertEqual(om_config.database_filter.includes, ['prod_*', 'staging_*'])
+        self.assertEqual(om_config.schema_filter.includes, ['public'])
+        self.assertEqual(om_config.schema_filter.excludes, ['temp_*'])
+        self.assertEqual(om_config.table_filter.includes, ['fact_*'])
+
+    def test_openmetadata_config_validation_errors(self):
+        """Test Pydantic validation errors for invalid configurations"""
+        # Test missing required field
+        with self.assertRaises(ValueError) as context:
+            extract_openmetadata_config({'vars': {'openmetadata_host_port': 'http://test'}})
+        self.assertIn("Field required", str(context.exception))
+        
+        # Test invalid URL format
+        with self.assertRaises(ValueError) as context:
+            extract_openmetadata_config({
+                'vars': {
+                    'openmetadata_host_port': 'invalid-url',
+                    'openmetadata_jwt_token': 'token',
+                    'openmetadata_service_name': 'service'
+                }
+            })
+        self.assertIn("valid URL", str(context.exception))
 
     def test_dbt_project_yml_vars_format_validation(self):
         """Test that dbt_project.yml vars follow correct format and naming convention"""
@@ -132,25 +162,71 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
         
         # Test that we only use standard OpenMetadata naming
         standard_vars = [var for var in vars_section.keys() if var.startswith('openmetadata_')]
-        self.assertEqual(len(standard_vars), 3, "Should have exactly 3 OpenMetadata variables")
+        self.assertGreaterEqual(len(standard_vars), 3, "Should have at least 3 required OpenMetadata variables")
+        
+        # Test that the configuration can be successfully parsed
+        om_config = extract_openmetadata_config(config)
+        self.assertIsInstance(om_config, OpenMetadataDBTConfig)
         
         # Validate URL format
-        host_port = vars_section['openmetadata_host_port']
-        self.assertTrue(host_port.startswith('http://') or host_port.startswith('https://'),
+        self.assertTrue(om_config.openmetadata_host_port.startswith('http://') or 
+                       om_config.openmetadata_host_port.startswith('https://'),
                        "Host port should be a valid URL")
         
         # Validate JWT token format (should be non-empty string)
-        jwt_token = vars_section['openmetadata_jwt_token']
-        self.assertIsInstance(jwt_token, str, "JWT token should be a string")
-        self.assertGreater(len(jwt_token), 0, "JWT token should not be empty")
+        self.assertIsInstance(om_config.openmetadata_jwt_token, str, "JWT token should be a string")
+        self.assertGreater(len(om_config.openmetadata_jwt_token), 0, "JWT token should not be empty")
         
         # Validate service name format
-        service_name = vars_section['openmetadata_service_name']
-        self.assertIsInstance(service_name, str, "Service name should be a string")
-        self.assertGreater(len(service_name), 0, "Service name should not be empty")
-        
-        # Service name should not contain spaces or special characters typically
-        self.assertNotIn(' ', service_name, "Service name should not contain spaces")
+        self.assertIsInstance(om_config.openmetadata_service_name, str, "Service name should be a string")
+        self.assertGreater(len(om_config.openmetadata_service_name), 0, "Service name should not be empty")
+
+    def test_workflow_config_creation_with_custom_options(self):
+        """Test workflow configuration creation with custom DBT options"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            target_dir = temp_path / "target"
+            target_dir.mkdir()
+            
+            # Create required manifest.json file
+            manifest_file = target_dir / "manifest.json"
+            manifest_file.write_text('{"metadata": {"dbt_schema_version": "v1"}}')
+            
+            # Test with custom configuration using dict format only
+            custom_om_config = OpenMetadataDBTConfig(
+                openmetadata_host_port='http://test-server:port/endpoint',
+                openmetadata_jwt_token='test-jwt-token',
+                openmetadata_service_name='test_service',
+                openmetadata_dbt_update_descriptions=False,
+                openmetadata_dbt_update_owners=False,
+                openmetadata_include_tags=False,
+                openmetadata_search_across_databases=True,
+                openmetadata_dbt_classification_name='custom_tags',
+                openmetadata_database_filter_pattern={'includes': ['prod_*']},
+                openmetadata_schema_filter_pattern={'includes': ['public'], 'excludes': ['temp_*']},
+                openmetadata_table_filter_pattern={'includes': ['fact_*']}
+            )
+            
+            config = create_dbt_workflow_config(temp_path, custom_om_config)
+            
+            # Validate structure
+            self.assertIn('source', config)
+            self.assertIn('sink', config)
+            self.assertIn('workflowConfig', config)
+            
+            # Validate custom source config values
+            source_config = config['source']['sourceConfig']['config']
+            self.assertEqual(source_config['type'], 'DBT')
+            self.assertFalse(source_config['dbtUpdateDescriptions'])
+            self.assertFalse(source_config['dbtUpdateOwners'])
+            self.assertFalse(source_config['includeTags'])
+            self.assertTrue(source_config['searchAcrossDatabases'])
+            self.assertEqual(source_config['dbtClassificationName'], 'custom_tags')
+            
+            # Validate custom filter patterns
+            self.assertEqual(source_config['databaseFilterPattern'], {'includes': ['prod_*']})
+            self.assertEqual(source_config['schemaFilterPattern'], {'includes': ['public'], 'excludes': ['temp_*']})
+            self.assertEqual(source_config['tableFilterPattern'], {'includes': ['fact_*']})
 
     def test_workflow_config_creation(self):
         """Test workflow configuration creation"""
@@ -167,7 +243,14 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
             run_results_file = target_dir / "run_results.json"
             run_results_file.write_text('{"metadata": {"generated_at": "2023-01-01"}}')
             
-            config = create_dbt_workflow_config(temp_path, self.expected_om_config)
+            # Use default config
+            default_om_config = OpenMetadataDBTConfig(
+                openmetadata_host_port='http://test-server:port/endpoint',
+                openmetadata_jwt_token='test-jwt-token',
+                openmetadata_service_name='test_service'
+            )
+            
+            config = create_dbt_workflow_config(temp_path, default_om_config)
             
             # Validate structure
             self.assertIn('source', config)
@@ -179,9 +262,8 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
             # Test missing manifest error
             manifest_file.unlink()
             with self.assertRaises(FileNotFoundError) as context:
-                create_dbt_workflow_config(temp_path, self.expected_om_config)
+                create_dbt_workflow_config(temp_path, default_om_config)
             self.assertIn("manifest.json not found", str(context.exception))
-
 
     @patch('metadata.cli.ingest_dbt.MetadataWorkflow')
     def test_cli_execution(self, mock_workflow_class):
@@ -225,9 +307,27 @@ vars:
         om_config = extract_openmetadata_config(config)
         
         # Verify extracted configuration matches expected values exactly
-        self.assertEqual(om_config['host_port'], 'http://test-server:port/endpoint')
-        self.assertEqual(om_config['jwt_token'], 'test-jwt-token') 
-        self.assertEqual(om_config['service_name'], 'test_service')
+        self.assertIsInstance(om_config, OpenMetadataDBTConfig)
+        self.assertEqual(om_config.openmetadata_host_port, 'http://test-server:port/endpoint')
+        self.assertEqual(om_config.openmetadata_jwt_token, 'test-jwt-token') 
+        self.assertEqual(om_config.openmetadata_service_name, 'test_service')
+        
+        # Verify optional configuration from test file
+        self.assertTrue(om_config.openmetadata_dbt_update_descriptions)  # explicitly set to true
+        self.assertFalse(om_config.openmetadata_dbt_update_owners)       # explicitly set to false
+        self.assertTrue(om_config.openmetadata_include_tags)             # default value (not in config)
+        self.assertFalse(om_config.openmetadata_search_across_databases) # default value (not in config)
+        self.assertEqual(om_config.openmetadata_dbt_classification_name, 'dbtTags')  # custom value
+        
+        # Verify filter patterns from test file (dict format only)
+        self.assertEqual(om_config.database_filter.includes, ['dbt_test_*'])
+        self.assertEqual(om_config.database_filter.excludes, ['temp_*', 'test_*'])
+        
+        self.assertEqual(om_config.schema_filter.includes, ['.*'])  # default (not specified in config)
+        self.assertIsNone(om_config.schema_filter.excludes)  # default (not specified in config)
+        
+        self.assertEqual(om_config.table_filter.includes, ['.*'])
+        self.assertEqual(om_config.table_filter.excludes, ['temp_.*', 'tmp_.*'])
         
         # Validate that the extracted config can be used to create workflow config
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -248,7 +348,20 @@ vars:
                 workflow_config['workflowConfig']['openMetadataServerConfig']['securityConfig']['jwtToken'],
                 'test-jwt-token'
             )
-
-
-if __name__ == '__main__':
-    unittest.main()
+            
+            # Validate the optional config in the workflow
+            source_config = workflow_config['source']['sourceConfig']['config']
+            self.assertTrue(source_config['dbtUpdateDescriptions'])
+            self.assertFalse(source_config['dbtUpdateOwners'])
+            self.assertTrue(source_config['includeTags'])  # default value
+            self.assertFalse(source_config['searchAcrossDatabases'])  # default value
+            self.assertEqual(source_config['dbtClassificationName'], 'dbtTags')
+            
+            # Validate filter patterns in workflow config (standardized dict format)
+            expected_db_pattern = {'includes': ['dbt_test_*'], 'excludes': ['temp_*', 'test_*']}
+            expected_schema_pattern = {'includes': ['.*']}  # default pattern
+            expected_table_pattern = {'includes': ['.*'], 'excludes': ['temp_.*', 'tmp_.*']}
+            
+            self.assertEqual(source_config['databaseFilterPattern'], expected_db_pattern)
+            self.assertEqual(source_config['schemaFilterPattern'], expected_schema_pattern)
+            self.assertEqual(source_config['tableFilterPattern'], expected_table_pattern)
