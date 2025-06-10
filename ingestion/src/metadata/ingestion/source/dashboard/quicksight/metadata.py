@@ -260,8 +260,8 @@ class QuicksightSource(DashboardServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
+        db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
         if db_service_prefix:
-            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             db_service_entity = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=db_service_name
             )
@@ -597,9 +597,9 @@ class QuicksightSource(DashboardServiceSource):
         """
         Method to ingest the Datasources(Published and Embedded) as DataModels from Quicksight
         """
-        self.data_models: List[
-            DescribeDataSourceResponse
-        ] = self._get_dashboard_datamodels(dashboard_details)
+        self.data_models: List[DescribeDataSourceResponse] = (
+            self._get_dashboard_datamodels(dashboard_details)
+        )
         for data_model in self.data_models:
             try:
                 data_model_request = CreateDashboardDataModelRequest(

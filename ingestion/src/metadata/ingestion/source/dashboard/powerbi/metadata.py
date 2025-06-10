@@ -830,10 +830,6 @@ class PowerbiSource(DashboardServiceSource):
 
         try:
             table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
-            if table_info.get("schema"):
-                table_info["schema"] = "JAFFLE_SHOP"
-            if table_info.get("database"):
-                table_info["database"] = "CUSTOMERS"
 
             if prefix_table_name.lower() not in (
                 (table.name or "").lower(),

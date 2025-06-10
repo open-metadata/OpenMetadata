@@ -299,14 +299,16 @@ class MetabaseUnitTest(TestCase):
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
         mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
         mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
