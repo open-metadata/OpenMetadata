@@ -75,9 +75,10 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-c",
         "--dbt-project-path",
-        help="path to the dbt project directory",
+        help="path to the dbt project directory (default: current directory)",
         type=Path,
-        required=True,
+        default=Path("."),
+        required=False,
     )
 
 

@@ -53,15 +53,28 @@ def extract_openmetadata_config(dbt_config: Dict) -> Dict:
     """
     vars_config = dbt_config.get('vars', {})
     
-    # Look for OpenMetadata configuration in vars
-    jwt_token = vars_config.get('dbt_col_openmetadata_jwt_token') or vars_config.get('openmetadata_jwt_token')
-    host_port = vars_config.get('dbt_col_openmetadata_host_port') or vars_config.get('openmetadata_host_port')
-    service_name = vars_config.get('dbt_col_openmetadata_service_name') or vars_config.get('openmetadata_service_name') or 'dbt'
+    # Look for OpenMetadata configuration in vars (only standard naming)
+    host_port = vars_config.get('openmetadata_host_port')
+    jwt_token = vars_config.get('openmetadata_jwt_token')
+    service_name = vars_config.get('openmetadata_service_name')
     
-    if not jwt_token or not host_port:
+    if not jwt_token or not host_port or not service_name:
+        missing_vars = []
+        if not host_port:
+            missing_vars.append('openmetadata_host_port')
+        if not jwt_token:
+            missing_vars.append('openmetadata_jwt_token')
+        if not service_name:
+            missing_vars.append('openmetadata_service_name')
+            
         raise ValueError(
-            "OpenMetadata configuration not found in dbt_project.yml vars. "
-            "Please add: 'openmetadata_jwt_token', 'openmetadata_host_port', and optionally 'openmetadata_service_name'"
+            f"Required OpenMetadata configuration not found in dbt_project.yml vars.\n"
+            f"Missing variables: {', '.join(missing_vars)}\n"
+            f"Please add the following to your dbt_project.yml:\n"
+            f"vars:\n"
+            f"  openmetadata_jwt_token: 'your-jwt-token'\n"
+            f"  openmetadata_host_port: 'your-host-port (e.g. http://openmetadata-server:8585/api)'\n"
+            f"  openmetadata_service_name: 'your-service-name'"
         )
     
     return {
@@ -154,6 +167,9 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
     :param dbt_project_path: Path to the dbt project directory
     """
     try:
+        # Resolve to absolute path to handle relative paths like "."
+        dbt_project_path = dbt_project_path.resolve()
+        
         logger.info(f"Starting DBT artifacts ingestion from: {dbt_project_path}")
         
         # Validate that the path exists and is a directory
