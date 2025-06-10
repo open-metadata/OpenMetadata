@@ -343,8 +343,8 @@ export class TableClass extends EntityClass {
     testCaseFqn: string,
     testCaseResult: unknown
   ) {
-    const testCaseResultResponse = await apiContext.put(
-      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
       { data: testCaseResult }
     );
 
