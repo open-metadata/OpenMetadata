@@ -1754,7 +1754,7 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
     description: 'Released on 10th June 2025.',
     features: [],
     changeLogs: {
-      Improvements: `-  Enable Prefix for Dashboard Lineage instead of only the Database Service.
+      Improvements: `-  Make trino query table configurable.
 -  Pendo Add Company Name Details.   
 -  Add Databricks Sampler and refactor Unity Catalog Sampler.
 -  Added Looker column lineage between views and tables.
@@ -1772,7 +1772,13 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 -  SSIS Connector.
 -  Improve pdf export image file and supported dynamic spacing.
 -  Reverse Metadata Extensions.`,
-      Fixes: `
+      Fixes: `- Explore tabs with elipsis to render label and count properly.
+- Add mention of why snowflake owners are not supported.
+- TooManyNestedClauses: Query contains too many nested clauses.
+- Bigquery import issue.
+- Loading issue for react-awesome-query.
+- Japanese localization: update "view-in-service-type" translation from "{{serviceType}}에서 보기" to "{{serviceType}}で表示".
+- Fix jakarta to javax
 - SearchIndexing: Limit of total fields [1000] has been exceeded.
 - db2 custom driver installation.
 - Domain not getting removed through import.
@@ -1834,6 +1840,7 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Review activity handling.
 - Fix setIdleTimeout with lower jetty version.
 - Fixed the new tags component not showing in the automator form. 
+- Remove SearchSuggest.
 `,
     },
   },
