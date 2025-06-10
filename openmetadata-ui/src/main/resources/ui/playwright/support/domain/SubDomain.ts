@@ -47,7 +47,7 @@ export class SubDomain {
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(domain: Domain, name?: string) {
+  constructor(domain: Domain | SubDomain, name?: string) {
     this.data.parent = domain.data.name;
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
