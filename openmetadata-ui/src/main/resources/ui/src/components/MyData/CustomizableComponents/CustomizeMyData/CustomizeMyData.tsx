@@ -20,6 +20,7 @@ import RGL, {
   WidthProvider,
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
+import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -226,7 +227,10 @@ function CustomizeMyData({
   return (
     <>
       <PageLayoutV1
-        className="p-t-box customise-my-data"
+        className="p-t-box"
+        pageContainerStyle={{
+          backgroundImage: `url(${gridBgImg})`,
+        }}
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
