@@ -52,7 +52,7 @@ import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
-import { createNormalizedLookupMap, EntityTypeName } from './EntityUtils';
+import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
@@ -86,6 +86,30 @@ import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -455,21 +479,11 @@ class EntityUtilClassBase {
   }
 
   public getServiceTypeLookupMap(): Map<string, string> {
-    return createNormalizedLookupMap({
-      ...FormattedMlModelServiceType,
-      ...FormattedMetadataServiceType,
-      ...FormattedPipelineServiceType,
-      ...FormattedSearchServiceType,
-      ...FormattedDatabaseServiceType,
-      ...FormattedDashboardServiceType,
-      ...FormattedMessagingServiceType,
-      ...FormattedAPIServiceType,
-      ...FormattedStorageServiceType,
-    });
+    return this.serviceTypeLookupMap;
   }
 
   public getEntityTypeLookupMap(): Map<string, string> {
-    return createNormalizedLookupMap(EntityTypeName);
+    return this.createNormalizedLookupMap(EntityTypeName);
   }
 
   public getFormattedEntityType(entityType: string): string {

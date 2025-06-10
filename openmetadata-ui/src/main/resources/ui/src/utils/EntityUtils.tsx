@@ -2541,14 +2541,6 @@ export const updateNodeType = (
 
   return node;
 };
-// Helper function to create normalized lookup map
-export const createNormalizedLookupMap = <T extends Record<string, string>>(
-  obj: T
-): Map<string, string> => {
-  return new Map(
-    Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
-  );
-};
 
 export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.API_SERVICE]: t('label.api-service'),
