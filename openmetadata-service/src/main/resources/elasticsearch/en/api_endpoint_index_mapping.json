@@ -617,62 +617,7 @@
         }
       },
       "upstreamLineage": {
-        "type": "object",
-        "dynamic": false,
-        "properties": {
-          "fromEntity": {
-            "properties": {
-              "id": {
-                "type": "keyword"
-              },
-              "fqnHash": {
-                "type": "keyword"
-              },
-              "fullyQualifiedName": {
-                "type": "keyword"
-              },
-              "type": {
-                "type": "keyword"
-              }
-            }
-          },
-          "pipeline": {
-            "properties": {
-              "id": {
-                "type": "keyword"
-              },
-              "fqnHash": {
-                "type": "keyword"
-              },
-              "fullyQualifiedName": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword"
-              }
-            }
-          },
-          "docId": {
-            "type": "keyword"
-          },
-          "docUniqueId": {
-            "type": "keyword"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "pipelineEntityType": {
-            "type": "keyword"
-          },
-          "sqlQuery": {
-            "type": "text",
-            "index": false
-          },
-          "columns": {
-            "type": "object",
-            "enabled": false
-          }
-        }
+        "type": "object"
       },
       "lifeCycle": {
         "type": "keyword"
