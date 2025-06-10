@@ -634,9 +634,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
       user.setName(user.getEmail().split("@")[0]);
-      if (user.getDisplayName() == null || user.getDisplayName().isEmpty()) {
-        user.setDisplayName(user.getName());
-      }
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
