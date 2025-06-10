@@ -14,8 +14,8 @@
 import { FieldProps } from '@rjsf/utils';
 import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { isArray, isObject, startCase } from 'lodash';
-import React from 'react';
+import { isArray, isEmpty, isObject, startCase, trim } from 'lodash';
+import React, { useCallback } from 'react';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import './workflow-array-field-template.less';
@@ -60,35 +60,47 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     JSON.stringify(value)
   );
 
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await onCopyToClipBoard();
-    props.formContext?.onClipboardUpdate?.(JSON.stringify(value));
-  };
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      await onCopyToClipBoard();
+    },
+    [value, onCopyToClipBoard]
+  );
 
-  const handlePaste = async () => {
+  const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
-    if (text) {
-      try {
-        const parsedValue = JSON.parse(text);
-        if (Array.isArray(parsedValue)) {
-          props.onChange(parsedValue);
-
-          return;
-        }
-      } catch {
-        const values =
-          text.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map((val) => {
-            // Remove quotes if present and unescape internal quotes
-            return val.replace(/^"(.*)"$/, '$1').replace(/""/g, '"');
-          }) ?? [];
-
-        if (values.length > 0) {
-          props.onChange(values);
-        }
-      }
+    if (!text) {
+      return;
     }
-  };
+
+    const values =
+      text
+        .match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
+        ?.map((val) =>
+          trim(val.replace(/^"(.*)"$/, '$1').replace(/""/g, '"'))
+        ) ?? [];
+
+    if (!isEmpty(values)) {
+      props.onChange(values);
+    }
+  }, [onPasteFromClipBoard, props.onChange]);
+
+  const handleInputSplit = useCallback(
+    (inputValue: string) => {
+      if (isEmpty(inputValue)) {
+        return;
+      }
+
+      if (inputValue.startsWith('"') && inputValue.endsWith('"')) {
+        props.onChange([...value, trim(inputValue.slice(1, -1))]);
+      } else {
+        const values = inputValue.split(',').map(trim).filter(Boolean);
+        props.onChange([...value, ...values]);
+      }
+    },
+    [value, props.onChange]
+  );
 
   return (
     <Row>
@@ -122,7 +134,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
               e.preventDefault();
               const inputValue = (e.target as HTMLInputElement).value;
               if (inputValue) {
-                props.onChange([...value, inputValue]);
+                handleInputSplit(inputValue);
               }
             }
           }}
