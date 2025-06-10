@@ -207,7 +207,7 @@ function CustomizeMyData({
   return (
     <>
       <PageLayoutV1
-        mainContainerClassName="p-t-0"
+        className="p-t-box"
         pageContainerStyle={{
           backgroundImage: `url(${gridBgImg})`,
         }}
