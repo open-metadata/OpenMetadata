@@ -45,8 +45,7 @@ public class ScimResource {
       description = "Returns the SCIM service provider configuration.",
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
-  public Response getServiceProviderConfig(
-      @Context jakarta.ws.rs.core.SecurityContext securityContext) {
+  public Response getServiceProviderConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.getServiceProviderConfig();
   }
@@ -59,8 +58,7 @@ public class ScimResource {
       description = "Alias endpoint for service provider configuration.",
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
-  public Response getServiceProviderConfigAlias(
-      @Context jakarta.ws.rs.core.SecurityContext securityContext) {
+  public Response getServiceProviderConfigAlias(@Context SecurityContext securityContext) {
     return getServiceProviderConfig(securityContext);
   }
 
@@ -71,7 +69,8 @@ public class ScimResource {
       summary = "List SCIM users",
       description = "Lists SCIM users based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Users"))
-  public Response listUsers(@Context UriInfo uriInfo) {
+  public Response listUsers(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.listUsers(uriInfo);
   }
 
@@ -87,6 +86,7 @@ public class ScimResource {
       })
   public Response createUser(
       ScimUser user, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.createUser(user, uriInfo, securityContext);
   }
 
@@ -103,7 +103,9 @@ public class ScimResource {
   public Response updateUser(
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       ScimUser user,
-      @Context UriInfo uriInfo) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.updateUser(id, user, uriInfo);
   }
 
@@ -121,6 +123,7 @@ public class ScimResource {
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.deleteUser(id, uriInfo, securityContext);
   }
 
@@ -139,6 +142,7 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.patchUser(id, request, uriInfo, securityContext);
   }
 
@@ -154,7 +158,9 @@ public class ScimResource {
       })
   public Response getUser(
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
-      @Context UriInfo uriInfo) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.getUser(id, uriInfo);
   }
 
@@ -165,7 +171,8 @@ public class ScimResource {
       summary = "List SCIM groups",
       description = "Lists SCIM groups based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Groups"))
-  public Response listGroups(@Context UriInfo uriInfo) {
+  public Response listGroups(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.listGroups(uriInfo);
   }
 
@@ -181,6 +188,7 @@ public class ScimResource {
       })
   public Response createGroup(
       ScimGroup group, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.createGroup(group, uriInfo, securityContext);
   }
 
@@ -199,6 +207,7 @@ public class ScimResource {
       ScimGroup group,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.updateGroup(id, group, uriInfo, securityContext);
   }
 
@@ -214,7 +223,9 @@ public class ScimResource {
       })
   public Response getGroup(
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
-      @Context UriInfo uriInfo) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.getGroup(id, uriInfo);
   }
 
@@ -233,6 +244,7 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.patchGroup(id, request, uriInfo, securityContext);
   }
 
@@ -250,6 +262,7 @@ public class ScimResource {
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.deleteGroup(id, uriInfo, securityContext);
   }
 
