@@ -56,6 +56,9 @@ public class DefaultToolContext {
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "get_entity_lineage":
+          result = new GetLineageTool().execute(authorizer, securityContext, params);
+          break;
         default:
           result = Map.of("error", "Unknown function: " + toolName);
           break;

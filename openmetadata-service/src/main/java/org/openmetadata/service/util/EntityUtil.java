@@ -67,7 +67,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
-import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -798,34 +797,5 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
-  }
-
-  public static Object getEntityDetails(Map<String, Object> params) {
-    try {
-      String entityType = (String) params.get("entity_type");
-      String fqn = (String) params.get("fqn");
-
-      LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
-      String fields = "*";
-      Object entity = Entity.getEntityByName(entityType, fqn, fields, null);
-      return entity;
-    } catch (Exception e) {
-      LOG.error("Error getting entity details", e);
-      return Map.of("error", e.getMessage());
-    }
-  }
-
-  public static Object getEntityLineage(Map<String, Object> params) {
-    try {
-      String entityType = (String) params.get("entity_type");
-      String fqn = (String) params.get("fqn");
-      Integer upstreamDepth = (Integer) params.get("upstream_depth");
-      Integer downstreamDepth = (Integer) params.get("downstream_depth");
-
-      return new LineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth);
-    } catch (Exception e) {
-      LOG.error("Error getting entity lineage details", e);
-      return Map.of("error", e.getMessage());
-    }
   }
 }
