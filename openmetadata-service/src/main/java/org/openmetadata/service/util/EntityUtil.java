@@ -37,7 +37,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -798,20 +797,5 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
-  }
-
-  public static Object getEntityDetails(Map<String, Object> params) {
-    try {
-      String entityType = (String) params.get("entity_type");
-      String fqn = (String) params.get("fqn");
-
-      LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
-      String fields = "*";
-      Object entity = Entity.getEntityByName(entityType, fqn, fields, null);
-      return entity;
-    } catch (Exception e) {
-      LOG.error("Error getting entity details", e);
-      return Map.of("error", e.getMessage());
-    }
   }
 }
