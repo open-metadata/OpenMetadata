@@ -2,7 +2,6 @@ package org.openmetadata.service.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -59,25 +58,19 @@ public class GlossaryTermTool implements McpTool {
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
-    try {
-      GlossaryRepository glossaryRepository =
-          (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-      Glossary glossary =
-          glossaryRepository.findByNameOrNull(createGlossaryTerm.getGlossary(), Include.ALL);
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    Glossary glossary =
+        glossaryRepository.findByNameOrNull(createGlossaryTerm.getGlossary(), Include.ALL);
 
-      GlossaryTermRepository glossaryTermRepository =
-          (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      // TODO: Get the updatedBy from the tool request.
-      glossaryTermRepository.prepare(glossaryTerm, nullOrEmpty(glossary));
-      glossaryTermRepository.setFullyQualifiedName(glossaryTerm);
-      RestUtil.PutResponse<GlossaryTerm> response =
-          glossaryTermRepository.createOrUpdate(
-              null, glossaryTerm, securityContext.getUserPrincipal().getName());
-      return JsonUtils.convertValue(response.getEntity(), Map.class);
-    } catch (Exception e) {
-      Map<String, Object> error = new HashMap<>();
-      error.put("error", e.getMessage());
-      return error;
-    }
+    GlossaryTermRepository glossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    // TODO: Get the updatedBy from the tool request.
+    glossaryTermRepository.prepare(glossaryTerm, nullOrEmpty(glossary));
+    glossaryTermRepository.setFullyQualifiedName(glossaryTerm);
+    RestUtil.PutResponse<GlossaryTerm> response =
+        glossaryTermRepository.createOrUpdate(
+            null, glossaryTerm, securityContext.getUserPrincipal().getName());
+    return JsonUtils.getMap(response.getEntity());
   }
 }

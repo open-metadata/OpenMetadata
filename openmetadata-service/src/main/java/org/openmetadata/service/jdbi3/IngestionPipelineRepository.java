@@ -18,7 +18,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
@@ -275,8 +277,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 startTs,
                 endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList =
-        pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
+    if (pipelineServiceClient != null) {
+      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    }
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
         allPipelineStatusList,
@@ -290,6 +294,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public ResultList<PipelineStatus> listExternalAppStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
     return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, String serviceName, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .filter(
+            pipelineStatus -> {
+              Map<String, Object> metadata = pipelineStatus.getMetadata();
+              if (metadata == null) {
+                return false;
+              }
+              Map<String, Object> workflowMetadata =
+                  JsonUtils.readOrConvertValue(metadata.get("workflow"), Map.class);
+              String pipelineStatusService = (String) workflowMetadata.get("serviceName");
+              return pipelineStatusService != null && pipelineStatusService.equals(serviceName);
+            })
         .map(
             pipelineStatus ->
                 pipelineStatus.withConfig(

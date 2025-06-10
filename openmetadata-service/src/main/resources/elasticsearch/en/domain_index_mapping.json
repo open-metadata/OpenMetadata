@@ -105,9 +105,6 @@
       "entityType": {
         "type": "keyword"
       },
-      "suggest": {
-        "type": "completion"
-      },
       "version": {
         "type": "float"
       },
@@ -274,6 +271,15 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "extension": {
         "type": "object"

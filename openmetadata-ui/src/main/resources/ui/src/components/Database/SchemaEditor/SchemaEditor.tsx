@@ -26,7 +26,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -49,6 +49,7 @@ const SchemaEditor = ({
   showCopyButton = true,
   onChange,
   onFocus,
+  refreshEditor,
 }: SchemaEditorProps) => {
   const { t } = useTranslation();
   const defaultOptions = {
@@ -69,6 +70,8 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
+  // Store the CodeMirror editor instance
+  const editorInstance = useRef<Editor | null>(null);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   const handleEditorInputBeforeChange = (
@@ -92,6 +95,18 @@ const SchemaEditor = ({
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
+  useEffect(() => {
+    if (refreshEditor) {
+      // CodeMirror can't measure its container if hidden (e.g., in an inactive tab with display: none).
+      // When the tab becomes visible, the browser may not have finished layout/reflow when this runs.
+      // Delaying refresh by 50ms ensures the editor is visible and DOM is ready for CodeMirror to re-render.
+      // This is a common workaround for editors inside tabbed interfaces.
+      setTimeout(() => {
+        editorInstance.current?.refresh();
+      }, 50);
+    }
+  }, [refreshEditor]);
+
   return (
     <div
       className={classNames('relative', className)}
@@ -114,6 +129,9 @@ const SchemaEditor = ({
 
       <CodeMirror
         className={editorClass}
+        editorDidMount={(editor) => {
+          editorInstance.current = editor;
+        }}
         options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}

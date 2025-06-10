@@ -379,11 +379,17 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "dashboards": {
         "properties": {
