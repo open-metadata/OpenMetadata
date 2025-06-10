@@ -16,7 +16,7 @@
   width: 100%;
   // Page height - page padding
   height: calc(100vh - 32px);
-  padding: 24px;
+  padding: @size-lg;
   position: relative;
   overflow: hidden;
   background: linear-gradient(45deg, #194185 0%, #2e90fa 100%);
@@ -51,26 +51,20 @@
 }
 
 .carousal-description {
-  //   width: min(600px, 80%);
   text-align: center;
-  //   margin: 16px auto 5%;
-  //   padding: 0 48px;
   color: @grey-50;
   font-size: max(14px, 1vw);
   line-height: 1.5;
 
   @media screen and (min-width: 1650px) {
     font-size: 20px;
-    // width: 720px;
   }
 
   @media screen and (min-width: 2400px) {
     font-size: 28px;
-    // width: 940px;
   }
 
   @media screen and (min-width: 3600px) {
     font-size: 48px;
-    // width: 1800px;
   }
 }

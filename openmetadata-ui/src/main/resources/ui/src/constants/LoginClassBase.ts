@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import collateAIImg from '../assets/img/login-screen/collate-ai/collate-ai.png';
 import dataCollaborationImg from '../assets/img/login-screen/data-collabration/data-collbration.png';
 import discoveryImg from '../assets/img/login-screen/discovery/data-discovery.png';
 import governanceImg from '../assets/img/login-screen/governance/governce.png';
@@ -21,21 +19,15 @@ class LoginClassBase {
   public getLoginCarouselContent() {
     const carouselContent = [
       {
-        title: 'collate-ai-platform',
-        image: collateAIImg,
-        descriptionKey: 'collate-ai-platform-message',
+        title: 'governance',
+        image: governanceImg,
+        descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
       },
       {
         title: 'data-collaboration',
         image: dataCollaborationImg,
         descriptionKey: 'deeply-understand-table-relations-message',
       },
-      {
-        title: 'governance',
-        image: governanceImg,
-        descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
-      },
-
       {
         title: 'data-observability',
         image: observabilityImg,

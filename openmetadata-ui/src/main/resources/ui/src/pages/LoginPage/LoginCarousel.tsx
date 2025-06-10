@@ -25,7 +25,7 @@ const LoginCarousel = () => {
     <Carousel
       autoplay
       dots
-      autoplaySpeed={2000}
+      autoplaySpeed={5000}
       beforeChange={(_, next) => setCurrentIndex(next)}
       easing="ease-in-out"
       effect="fade">
@@ -35,23 +35,12 @@ const LoginCarousel = () => {
           data-testid="slider-container"
           key={uniqueId() + '-' + currentIndex + '-' + idx}>
           <div className="d-flex flex-col gap-4">
-            <Typography.Title
-              className="carousel-header"
-              level={1}
-              style={{
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '2.5rem',
-              }}>
+            <Typography.Title className="carousel-header" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
               className="carousal-description"
-              data-testid="carousel-slide-description"
-              style={{
-                color: '#e0e7ef',
-                fontSize: '1.25rem',
-              }}>
+              data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
           </div>

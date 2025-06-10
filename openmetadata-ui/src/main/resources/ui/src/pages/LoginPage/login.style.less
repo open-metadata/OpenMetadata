@@ -15,13 +15,10 @@
 @import (reference) url('./../../styles/fonts.less');
 
 .login-form-container {
-  //   background-color: @grey-100;
-  //   padding: @size-lg;
   padding-left: 0;
   height: calc(100vh - 32px);
   display: flex;
   align-items: center;
-  //   justify-content: flex-start;
 
   .login-box {
     background-color: @white;
@@ -35,26 +32,6 @@
     padding: @size-2xl;
     text-align: center;
     height: auto;
-    // max-width: 500px;
-
-    @media screen and (min-width: 1650px) {
-      //   min-width: 650px;
-      margin: auto;
-    }
-
-    // @media screen and (max-width: 1200px) {
-    //   //   margin: @size-md;
-    //   padding: @size-lg;
-    //   width: 100%;
-    // }
-
-    // @media screen and (max-width: 1024px) {
-    //   margin: 0 auto;
-    // }
-
-    // @media screen and (max-width: 768px) {
-    //   min-width: 320px;
-    // }
 
     .header-text {
       font-size: 28px;
@@ -62,11 +39,6 @@
       color: @grey-800;
 
       margin-top: @size-xl;
-
-      //   @media screen and (max-width: 768px) {
-      //     font-size: 24px;
-      //     margin-top: @size-lg;
-      //   }
 
       @media screen and (min-width: 1650px) {
         font-size: 36px;
@@ -77,25 +49,9 @@
       margin-top: 3rem;
       width: 380px;
 
-      @media screen and (min-width: 1650px) {
-        // width: 550px;
-      }
-
-      @media screen and (max-width: 1024px) {
-        // width: 100%;
-        // max-width: 380px;
-        // margin: 2rem auto 0;
-      }
-
       .error-alert {
         border-color: #fbb4ae;
       }
-
-      //   .login-btn {
-      //     @media screen and (min-width: 1650px) {
-      //       font-size: 18px;
-      //     }
-      //   }
     }
 
     label {
