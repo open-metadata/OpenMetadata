@@ -302,7 +302,7 @@ test(
       '/api/v1/dataQuality/testCases/name/*?fields=*'
     );
     const getTestResult = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/*/testCaseResult?*'
+      '/api/v1/dataQuality/testCases/testCaseResults/*?*'
     );
     await page
       .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)

@@ -144,7 +144,7 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
+  const url = `${testCaseUrl}/testCaseResults/${getEncodedFqn(fqn)}`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
