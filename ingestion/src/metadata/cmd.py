@@ -119,7 +119,9 @@ def get_parser(args: Optional[List[str]] = None):
         sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
     )
     create_dbt_parser_args(
-        sub_parser.add_parser(MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion")
+        sub_parser.add_parser(
+            MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"
+        )
     )
     create_common_config_parser_args(
         sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
@@ -173,13 +175,13 @@ def metadata(args: Optional[List[str]] = None):
     metadata_workflow = contains_args.get("command")
     config_file: Optional[Path] = contains_args.get("config")
     dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")
-    
+
     path = None
     if config_file:
         path = config_file.expanduser()
     elif dbt_project_path:
         path = dbt_project_path.expanduser()
-        
+
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
