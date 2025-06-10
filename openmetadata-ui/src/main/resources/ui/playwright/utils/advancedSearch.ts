@@ -257,6 +257,9 @@ export const fillRule = async (
       }
 
       await dropdownInput.click();
+      if (aggregateRes) {
+        await aggregateRes;
+      }
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
@@ -303,7 +306,14 @@ export const checkMustPaths = async (
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
+  const url = res.request().url();
 
+  expect(
+    [
+      getEncodedFqn(searchData, true),
+      getEncodedFqn(`*${searchData}*`, true),
+    ].some((encoded) => url.includes(encoded))
+  ).toBeTruthy();
   expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
 
   const json = await res.json();
