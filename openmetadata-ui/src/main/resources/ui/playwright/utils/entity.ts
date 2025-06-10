@@ -1367,7 +1367,7 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-grid-layout', { state: 'visible' });
   await toastNotification(
     page,
     /(deleted successfully!|Delete operation initiated)/,
