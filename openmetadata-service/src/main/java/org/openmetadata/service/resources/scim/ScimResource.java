@@ -4,12 +4,24 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import javax.ws.rs.*;
-import javax.ws.rs.core.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
 import org.openmetadata.service.scim.ScimProvisioningService;
+import org.openmetadata.service.security.Authorizer;
 
 @Path("/v1/scim")
 @Tag(name = "SCIM", description = "SCIM 2.0 compliant user and group provisioning endpoints.")
@@ -18,9 +30,11 @@ import org.openmetadata.service.scim.ScimProvisioningService;
 public class ScimResource {
 
   private final ScimProvisioningService provisioningService;
+  protected final Authorizer authorizer;
 
-  public ScimResource(ScimProvisioningService provisioningService) {
+  public ScimResource(ScimProvisioningService provisioningService, Authorizer authorizer) {
     this.provisioningService = provisioningService;
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -31,7 +45,9 @@ public class ScimResource {
       description = "Returns the SCIM service provider configuration.",
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
-  public Response getServiceProviderConfig() {
+  public Response getServiceProviderConfig(
+      @Context jakarta.ws.rs.core.SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
     return provisioningService.getServiceProviderConfig();
   }
 
@@ -43,8 +59,9 @@ public class ScimResource {
       description = "Alias endpoint for service provider configuration.",
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
-  public Response getServiceProviderConfigAlias() {
-    return getServiceProviderConfig();
+  public Response getServiceProviderConfigAlias(
+      @Context jakarta.ws.rs.core.SecurityContext securityContext) {
+    return getServiceProviderConfig(securityContext);
   }
 
   @GET

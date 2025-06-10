@@ -1,8 +1,8 @@
 package org.openmetadata.service.scim;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
