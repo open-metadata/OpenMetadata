@@ -19,10 +19,10 @@ to provide a unified way to instantiate and interact with different data sources
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 if TYPE_CHECKING:
-    from pyspark.sql import DataFrame, SparkSession
+    pass
 
 
 S = TypeVar("S")  # ServiceConnection Type
@@ -40,14 +40,14 @@ class BaseConnection(ABC, Generic[S, C]):
     def __init__(self, service_connection: S) -> None:
         self.service_connection = service_connection
 
-    @abstractmethod
-    def get_spark_dataframe_loader(
-        self, spark: "SparkSession", table: str
-    ) -> Callable[..., "DataFrame"]:
-        """
-        Return a callable that loads a Spark DataFrame for this connection.
-        The callable's signature can be further specified in subclasses.
-        """
+    # @abstractmethod
+    # def get_spark_dataframe_loader(
+    #     self, spark: "SparkSession", table: str
+    # ) -> Callable[..., "DataFrame"]:
+    #     """
+    #     Return a callable that loads a Spark DataFrame for this connection.
+    #     The callable's signature can be further specified in subclasses.
+    #     """
 
     @abstractmethod
     def get_client(self) -> C:

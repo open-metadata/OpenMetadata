@@ -87,8 +87,6 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
 
-        # TODO: Implement getting the connection string from the service. Build the connection lazily when called.
-        self._connection_string = None
         self.connection = get_ssl_connection(self.service_connection_config)
 
     # pylint: disable=too-many-arguments, too-many-locals

@@ -26,7 +26,9 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import profiler_logger
+from metadata.utils.service_spec.service_spec import import_connection_class
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = profiler_logger()
@@ -56,13 +58,19 @@ class SparkSampler(SamplerInterface):
 
         spark_session_builder = SparkSession.builder.appName(
             "OpenMetadata Profiler"
-        ).master(self._processing_engine.root.master)
+        ).master(self._processing_engine.master)
 
-        if self._processing_engine.root.config:
+        # TODO: Add Logic to get the Jars from the processing engine configuration
+        spark_session_builder = spark_session_builder.config(
+            "spark.jars",
+            "/Users/ices2/Workspace/scratch/spark/mysql-connector-j-8.4.0.jar",
+        )
+
+        if self._processing_engine.config:
             for (
                 key,
                 value,
-            ) in self._processing_engine.root.config.root.model_dump().items():
+            ) in self._processing_engine.config.root.model_dump().items():
                 spark_session_builder = spark_session_builder.config(key, value)
 
         self._spark = spark_session_builder.getOrCreate()
@@ -77,13 +85,11 @@ class SparkSampler(SamplerInterface):
     def raw_dataset(self):
         """Return the raw Spark DataFrame for the table."""
         if not self._dataframe:
-            self._dataframe = (
-                self.spark.read.format("jdbc")
-                .option("url", self._connection_string)
-                .option("driver", None)
-                .option("dbtable", self.table_name)
-                .load()
-            )
+            source_type = self.service_connection_config.type.value.lower()
+            service_type = get_service_type_from_source_type(source_type)
+            self._dataframe = import_connection_class(service_type, source_type)(
+                self.service_connection_config
+            ).get_spark_dataframe_loader(self.spark, self.table_name)()
         return self._dataframe
 
     def get_client(self):

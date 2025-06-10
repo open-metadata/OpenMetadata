@@ -89,9 +89,7 @@ class SparkProfilerInterface(ProfilerInterface):
         try:
             row_dict = {}
             for metric in metrics:
-                row_dict[metric().name()] = metric().spark_fn(
-                    self.sampler.get_dataset()
-                )
+                row_dict[metric.name()] = metric().spark_fn(self.sampler.get_dataset())
             return row_dict
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -110,7 +108,7 @@ class SparkProfilerInterface(ProfilerInterface):
         try:
             row_dict = {}
             for metric in metrics:
-                row_dict[metric.name] = metric(column).spark_fn(
+                row_dict[metric.name()] = metric(column).spark_fn(
                     self.sampler.get_dataset()
                 )
             return row_dict
@@ -134,7 +132,7 @@ class SparkProfilerInterface(ProfilerInterface):
             col_metric = metric(column).df_fn(self.sampler.get_dataset())
             if not col_metric:
                 return None
-            return {metric.name: col_metric}
+            return {metric.name(): col_metric}
         except Exception as exc:
             logger.debug(
                 f"{traceback.format_exc()}\nError trying to compute query metric for {exc}"
@@ -153,7 +151,7 @@ class SparkProfilerInterface(ProfilerInterface):
         try:
             metric_values = {}
             for metric in metrics:
-                metric_values[metric.name] = metric(column).spark_fn(
+                metric_values[metric().name()] = metric(column).spark_fn(
                     self.sampler.get_dataset()
                 )
             return metric_values if metric_values else None
@@ -260,7 +258,9 @@ class SparkProfilerInterface(ProfilerInterface):
         if df is not None:
             for field in df.schema.fields:
                 column_name = field.name
-                om_type = SparkSampler.spark_type_to_omdatatype(str(field.dataType))
+                om_type = SparkSampler.spark_type_to_omdatatype(
+                    field.dataType.typeName()
+                )
                 sqalike_columns.append(SQALikeColumn(column_name, om_type))
         return sqalike_columns
 
