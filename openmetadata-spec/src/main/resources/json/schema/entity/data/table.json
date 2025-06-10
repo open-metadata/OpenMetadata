@@ -1162,6 +1162,14 @@
       "description": "Processed lineage for the table",
       "type": "boolean",
       "default": false
+    },
+    "tableQueries": {
+      "description": "List of queries that are used to create this table.", 
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/sqlQuery"
+      },
+      "default": null
     }
   },
   "required": [

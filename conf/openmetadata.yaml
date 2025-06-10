@@ -443,6 +443,8 @@ operationalConfig:
 mcpConfiguration:
   enabled: ${MCP_ENABLED:-true}
   path: ${MCP_PATH:-"/mcp"}
-  mcpServerVersion: ${MCP_SERVER_VERSION:-"1.0.0"}  
+  mcpServerVersion: ${MCP_SERVER_VERSION:-"1.0.0"}
+  originHeaderUri: ${OPENMETADATA_SERVER_URL:-"http://localhost"} 
+    
     
   
