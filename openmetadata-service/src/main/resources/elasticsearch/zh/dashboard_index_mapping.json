@@ -106,8 +106,8 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "charts": {
         "properties": {
@@ -459,18 +459,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "chart_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

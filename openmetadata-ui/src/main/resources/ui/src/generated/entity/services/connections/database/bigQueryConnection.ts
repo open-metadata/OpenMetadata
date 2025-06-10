@@ -14,6 +14,10 @@
  * Google BigQuery Connection Config
  */
 export interface BigQueryConnection {
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?:    string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**

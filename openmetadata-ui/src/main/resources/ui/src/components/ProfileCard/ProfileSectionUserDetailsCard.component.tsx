@@ -239,7 +239,7 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <UserPopOverCard userName={getEntityName(userData)}>
+        <UserPopOverCard userName={userData?.name}>
           <div className="d-flex items-center">
             <ProfilePicture
               data-testid="replied-user"
