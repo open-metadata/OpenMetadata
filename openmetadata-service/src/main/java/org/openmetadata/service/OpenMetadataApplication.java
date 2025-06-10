@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
@@ -290,8 +291,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     try {
-      if (catalogConfig.getMcpConfiguration() != null
-          && catalogConfig.getMcpConfiguration().isEnabled()) {
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
         McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
       }

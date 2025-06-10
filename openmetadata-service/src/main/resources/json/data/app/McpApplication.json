@@ -1,0 +1,8 @@
+{
+  "name": "McpApplication",
+  "displayName": "McpApplication",
+  "appConfiguration": {
+    "enabled": true,
+    "originHeaderUri": "http://localhost"
+  }
+}

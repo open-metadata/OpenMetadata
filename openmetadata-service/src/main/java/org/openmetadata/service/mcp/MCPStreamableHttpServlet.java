@@ -1,6 +1,7 @@
 package org.openmetadata.service.mcp;
 
 import static org.openmetadata.service.mcp.McpUtils.getJsonRpcMessageWithAuthorizationParam;
+import static org.openmetadata.service.mcp.McpUtils.readRequestBody;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +14,6 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.SecureRandom;
@@ -869,17 +869,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       return false;
     }
     return origin.startsWith(mcpConfiguration.getOriginHeaderUri());
-  }
-
-  private String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
-      }
-    }
-    return body.toString();
   }
 
   private void sendError(HttpServletResponse response, int statusCode, String message)
