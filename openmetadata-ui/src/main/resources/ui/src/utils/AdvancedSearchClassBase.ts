@@ -219,7 +219,7 @@ class AdvancedSearchClassBase {
           pendingResolve({ values: [], hasMore: false });
         }
         pendingResolve = resolve;
-        debouncedFetch(search ?? '');
+        debouncedFetch((search as string) ?? '');
       });
     };
   };
