@@ -159,8 +159,63 @@
       "href": {
         "type": "text"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fqnHash": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              }
+            }
+          },
+          "docId": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "pipelineEntityType": {
+            "type": "keyword"
+          },
+          "sqlQuery": {
+            "type": "text",
+            "index": false
+          },
+          "columns": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       },
       "sourceUrl": {
         "type": "text"
@@ -418,12 +473,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "task_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
       },
       "totalVotes": {
         "type": "long",
