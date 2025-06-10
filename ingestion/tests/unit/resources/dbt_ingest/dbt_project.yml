@@ -37,7 +37,6 @@ models:
 
 vars:
   # OpenMetadata configuration for metadata ingest-dbt command
-  # Test values for CI/CD
   openmetadata_host_port: "http://test-server:port/endpoint"
   openmetadata_jwt_token: "test-jwt-token"
   openmetadata_service_name: "test_service"
