@@ -816,6 +816,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
           } else {
             response.put("error", createError(-32602, "Invalid params"));
           }
+          break;
         default:
           response.put("error", createError(-32601, "Method not found: " + method));
       }
