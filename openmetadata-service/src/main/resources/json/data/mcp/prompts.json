@@ -1,0 +1,19 @@
+{
+  "tools": [
+    {
+      "name": "create-greeting",
+      "description": "Generate a customized greeting message",
+      "arguments": [
+        {
+          "name": "name",
+          "description": "Name of the person to greet",
+          "required": true
+        },
+        {
+          "name": "style",
+          "description": "The style of greeting, such a formal, excited, or casual. If not specified casual will be used"
+        }
+      ]
+    }
+  ]
+}

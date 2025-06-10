@@ -91,6 +91,7 @@ import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.McpServer;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -288,10 +289,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    if (catalogConfig.getMcpConfiguration() != null
-        && catalogConfig.getMcpConfiguration().isEnabled()) {
-      McpServer mcpServer = new McpServer(new DefaultToolContext());
-      mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+    try {
+      if (catalogConfig.getMcpConfiguration() != null
+          && catalogConfig.getMcpConfiguration().isEnabled()) {
+        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+      }
+    } catch (Exception ex) {
+      LOG.error("Error initializing MCP server", ex);
     }
   }
 

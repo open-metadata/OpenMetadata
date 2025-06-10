@@ -11,6 +11,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DefaultToolContext {
@@ -26,7 +27,7 @@ public class DefaultToolContext {
     return getToolProperties(toolFilePath);
   }
 
-  public Object callTool(
+  public McpSchema.CallToolResult callTool(
       Authorizer authorizer,
       JwtFilter jwtFilter,
       Limits limits,
@@ -61,15 +62,32 @@ public class DefaultToolContext {
           break;
       }
 
-      return result;
+      return new McpSchema.CallToolResult(
+          List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))), false);
     } catch (AuthorizationException ex) {
       LOG.error("Authorization error: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Authorization error: %s", ex.getMessage()), "statusCode", 403);
+      return new McpSchema.CallToolResult(
+          List.of(
+              new McpSchema.TextContent(
+                  JsonUtils.pojoToJson(
+                      Map.of(
+                          "error",
+                          String.format("Authorization error: %s", ex.getMessage()),
+                          "statusCode",
+                          403)))),
+          true);
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return Map.of(
-          "error", String.format("Error executing tool: %s", ex.getMessage()), "statusCode", 500);
+      return new McpSchema.CallToolResult(
+          List.of(
+              new McpSchema.TextContent(
+                  JsonUtils.pojoToJson(
+                      Map.of(
+                          "error",
+                          String.format("Error executing tool: %s", ex.getMessage()),
+                          "statusCode",
+                          500)))),
+          true);
     }
   }
 }

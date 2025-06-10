@@ -30,29 +30,29 @@ public class McpUtils {
   }
 
   @SuppressWarnings("unchecked")
-  public static List<Map<String, Object>> loadToolDefinitionsFromJson(String json) {
+  public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
     try {
-      LOG.info("Loaded tool definitions, content length: {}", json.length());
-      LOG.info("Raw tools.json content: {}", json);
+      LOG.info("Loaded definitions, content length: {}", json.length());
+      LOG.info("Raw content: {}", json);
 
-      JsonNode toolsJson = JsonUtils.readTree(json);
-      JsonNode toolsArray = toolsJson.get("tools");
+      JsonNode jsonNode = JsonUtils.readTree(json);
+      JsonNode jsonArray = jsonNode.get("tools");
 
-      if (toolsArray == null || !toolsArray.isArray()) {
+      if (jsonArray == null || !jsonArray.isArray()) {
         LOG.error("Invalid MCP tools file format. Expected 'tools' array.");
         return new ArrayList<>();
       }
 
-      List<Map<String, Object>> tools = new ArrayList<>();
-      for (JsonNode toolNode : toolsArray) {
+      List<Map<String, Object>> toolOrPrompt = new ArrayList<>();
+      for (JsonNode toolNode : jsonArray) {
         String name = toolNode.get("name").asText();
         Map<String, Object> toolDef = JsonUtils.convertValue(toolNode, Map.class);
-        tools.add(toolDef);
-        LOG.info("Tool found: {} with definition: {}", name, toolDef);
+        toolOrPrompt.add(toolDef);
+        LOG.info("Tool/Prompt found: {} with definition: {}", name, toolDef);
       }
 
-      LOG.info("Found {} tool definitions", tools.size());
-      return tools;
+      LOG.info("Found {} tool/prompts definitions", toolOrPrompt.size());
+      return toolOrPrompt;
     } catch (Exception e) {
       LOG.error("Error loading tool definitions: {}", e.getMessage(), e);
       throw e;
@@ -72,7 +72,7 @@ public class McpUtils {
     try {
       List<McpSchema.Tool> result = new ArrayList<>();
       String json = getJsonFromFile(jsonFilePath);
-      List<Map<String, Object>> cachedTools = loadToolDefinitionsFromJson(json);
+      List<Map<String, Object>> cachedTools = loadDefinitionsFromJson(json);
       if (cachedTools == null || cachedTools.isEmpty()) {
         LOG.error("No tool definitions were loaded!");
         throw new RuntimeException("Failed to load tool definitions");
@@ -86,6 +86,31 @@ public class McpUtils {
         result.add(new McpSchema.Tool(name, description, JsonUtils.pojoToJson(schema)));
       }
       return result;
+    } catch (Exception e) {
+      LOG.error("Error during server startup", e);
+      throw new RuntimeException("Failed to start MCP server", e);
+    }
+  }
+
+  public static List<McpSchema.Prompt> getPrompts(String jsonFilePath) {
+    try {
+      String json = getJsonFromFile(jsonFilePath);
+      if (json == null || json.isEmpty()) {
+        LOG.error("No prompts definitions were loaded from file: {}", jsonFilePath);
+      }
+      List<Map<String, Object>> cachedPrompts = loadDefinitionsFromJson(json);
+
+      return cachedPrompts.stream()
+          .map(
+              promptDef -> {
+                String name = (String) promptDef.get("name");
+                String description = (String) promptDef.get("description");
+                List<McpSchema.PromptArgument> arguments =
+                    JsonUtils.readOrConvertValues(
+                        promptDef.get("arguments"), McpSchema.PromptArgument.class);
+                return new McpSchema.Prompt(name, description, arguments);
+              })
+          .toList();
     } catch (Exception e) {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
