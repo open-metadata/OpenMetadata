@@ -115,7 +115,7 @@ public class LineageUtil {
 
   private static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     Entity.getSearchRepository()
         .getSearchClient()
         .updateChildren(
