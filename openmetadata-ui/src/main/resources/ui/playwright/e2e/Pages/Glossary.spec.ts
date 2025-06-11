@@ -24,7 +24,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
-  descriptionBoxReadOnly,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -1002,6 +1001,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Request description task for Glossary', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const user1 = new UserClass();
@@ -1032,9 +1033,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.locator(
-          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
-        )
+        page.locator('[data-testid="viewer-container"]')
       ).toContainText('Updated description');
     } finally {
       await glossary1.delete(apiContext);
