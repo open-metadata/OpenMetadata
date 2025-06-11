@@ -8,8 +8,13 @@ For different transports the client can use the following endpoints:
    - This endpoint is used for Streamable-Http transport.
 
 $$section
-### Origin Header URI $(id="originHeaderUri")
+### Should Origin Header Be validated $(id="originValidationEnabled")
 
-The URI to be used in the `Origin` header for the MCP Application in case of Streamable-Http. This is used to identify the source of the requests made by the clients.
+If Enabled the Origin Header will be need by the client when connecting via Streamable-Http.
+
+$$
+
+$$section
+### Origin Header URI $(id="originHeaderUri")
 
 $$
