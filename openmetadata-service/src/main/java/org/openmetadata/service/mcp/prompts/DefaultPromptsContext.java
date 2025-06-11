@@ -35,9 +35,7 @@ public class DefaultPromptsContext {
           result = new SearchPrompt().callPrompt(promptRequest);
           break;
         default:
-          result =
-              new McpSchema.GetPromptResult(
-                  "This Prompt is not implemented yet", new ArrayList<>());
+          result = new McpSchema.GetPromptResult("error", new ArrayList<>());
           break;
       }
 

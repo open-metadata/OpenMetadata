@@ -58,8 +58,11 @@ public class DefaultToolContext {
           result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
-          result = Map.of("error", "Unknown function: " + toolName);
-          break;
+          return new McpSchema.CallToolResult(
+              List.of(
+                  new McpSchema.TextContent(
+                      JsonUtils.pojoToJson(Map.of("error", "Unknown function: " + toolName)))),
+              true);
       }
 
       return new McpSchema.CallToolResult(
