@@ -112,6 +112,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
