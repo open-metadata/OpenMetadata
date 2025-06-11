@@ -25,29 +25,19 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 T = TypeVar("T")
-D = TypeVar("D")
 
 
 if TYPE_CHECKING:
     Inject = Annotated[Union[T, None], "Inject Marker"]
 else:
 
-    class Inject(Generic[D]):
+    class Inject(Generic[T]):
         """
         Type for dependency injection that uses parameter names as keys.
 
         Type Parameters:
-            D: The type of the dependency to inject
+            T: The type of the dependency to inject
         """
-
-        # def __class_getitem__(cls, item: Type[D]) -> InjectType[D]:
-        #     """
-        #     Create a type that represents a dependency to be injected.
-
-        #     Returns:
-        #         A type that can be used in type hints
-        #     """
-        #     return InjectType(item)  # type: ignore
 
 
 class DependencyContainer(Generic[T]):
