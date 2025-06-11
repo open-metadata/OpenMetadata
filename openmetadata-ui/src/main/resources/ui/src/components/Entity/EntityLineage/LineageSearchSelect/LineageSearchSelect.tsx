@@ -32,10 +32,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
-const INITIAL_LOAD = 50;
-const LOAD_MORE_COUNT = 50;
-const DEBOUNCE_TIMEOUT = 300;
-
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const {

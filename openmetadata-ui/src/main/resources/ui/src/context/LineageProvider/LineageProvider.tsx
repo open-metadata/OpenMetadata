@@ -117,7 +117,6 @@ import {
   onLoad,
   parseLineageData,
   positionNodesUsingElk,
-  removeEdgesFromLineageData,
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
@@ -562,44 +561,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityDownstreamCount: 0,
               entityUpstreamCount: 0,
             },
-          };
-        });
-
-        // Get connected edges for the current node
-        const { edges: connectedEdges } = getConnectedNodesEdges(
-          {
-            id: node.id,
-            position: { x: 0, y: 0 },
-            data: { node },
-            type: 'default',
-          } as Node,
-          nodes,
-          edges,
-          direction
-        );
-
-        // Update lineageData by removing the connected edges
-        const updatedLineageData = removeEdgesFromLineageData(
-          lineageData,
-          connectedEdges
-        );
-
-        setLineageData((pre) => {
-          if (!pre) {
-            return;
-          }
-
-          return {
-            ...pre,
-            nodes: visibleNodes,
-            downstreamEdges: updatedLineageData?.downstreamEdges as Record<
-              string,
-              EdgeDetails
-            >,
-            upstreamEdges: updatedLineageData?.upstreamEdges as Record<
-              string,
-              EdgeDetails
-            >,
           };
         });
 
@@ -1427,31 +1388,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityDownstreamCount: 0,
             entityUpstreamCount: 0,
           },
-        };
-      });
-
-      // Update lineageData by removing the connected edges
-      const updatedLineageData = removeEdgesFromLineageData(
-        lineageData,
-        connectedEdges
-      );
-
-      setLineageData((pre) => {
-        if (!pre) {
-          return;
-        }
-
-        return {
-          ...pre,
-          nodes: visibleNodes,
-          downstreamEdges: updatedLineageData?.downstreamEdges as Record<
-            string,
-            EdgeDetails
-          >,
-          upstreamEdges: updatedLineageData?.upstreamEdges as Record<
-            string,
-            EdgeDetails
-          >,
         };
       });
 

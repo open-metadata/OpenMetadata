@@ -859,16 +859,16 @@ export const createEdgesAndEdgeMaps = (
     const sourceId = edge.fromEntity.id;
     const targetId = edge.toEntity.id;
 
-    // Update edge maps for fast lookup
-    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
-    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
-
     const sourceType = nodes.find((n) => sourceId === n.id);
     const targetType = nodes.find((n) => targetId === n.id);
 
     if (isUndefined(sourceType) || isUndefined(targetType)) {
       return;
     }
+
+    // Update edge maps for fast lookup
+    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
+    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
 
     if (!isUndefined(edge.columns)) {
       edge.columns?.forEach((e) => {

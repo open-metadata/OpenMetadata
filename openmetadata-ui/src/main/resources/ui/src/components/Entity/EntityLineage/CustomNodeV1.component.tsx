@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -20,7 +19,11 @@ import { LineageDirection } from '../../../generated/api/lineage/lineageDirectio
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
-import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
+import {
+  getCollapseHandle,
+  getExpandHandle,
+  getNodeClassNames,
+} from './CustomNode.utils';
 import './entity-lineage.style.less';
 import {
   ExpandCollapseHandlesProps,
@@ -182,6 +185,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     [activeLayer, dataQualityLineage, id]
   );
 
+  const containerClass = getNodeClassNames({
+    isSelected,
+    showDqTracing: showDqTracing ?? false,
+    isTraced,
+  });
+
   const onExpand = useCallback(
     (direction: LineageDirection) => {
       loadChildNodesHandler(node, direction);
@@ -210,19 +219,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       </>
     );
   }, [node.id, isNewNode, label, isSelected, isEditMode, isRootNode]);
-
-  const containerClass = useMemo(
-    () =>
-      classNames(
-        'lineage-node p-0',
-        isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
-        {
-          'data-quality-failed-custom-node-header': showDqTracing,
-          'custom-node-header-tracing': isTraced,
-        }
-      ),
-    [isSelected, showDqTracing, isTraced]
-  );
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
