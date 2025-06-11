@@ -43,6 +43,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
 
   @Override
   public void uninstall() {
+    super.uninstall();
     deleteWorkflow();
   }
 
