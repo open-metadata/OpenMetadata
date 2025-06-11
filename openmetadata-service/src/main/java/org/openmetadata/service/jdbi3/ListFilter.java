@@ -46,6 +46,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getAssignee());
+    conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
@@ -78,6 +79,16 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getCreatedByCondition() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
+    } else {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+    }
   }
 
   private String getWorkflowDefinitionIdCondition() {

@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
@@ -91,6 +92,8 @@ import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.McpServer;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -287,10 +290,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    if (catalogConfig.getMcpConfiguration() != null
-        && catalogConfig.getMcpConfiguration().isEnabled()) {
-      McpServer mcpServer = new McpServer();
-      mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+    try {
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
+        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+      }
+    } catch (Exception ex) {
+      LOG.error("Error initializing MCP server", ex);
     }
   }
 

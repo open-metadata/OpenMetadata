@@ -26,10 +26,6 @@
     "entityLink": {
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
-    "testSuite": {
-      "description": "Fully qualified name of the testSuite",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
     "parameterValues": {
       "type": "array",
       "items": {
@@ -49,8 +45,16 @@
       "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
       "type": "boolean",
       "default": false
+    },
+    "tags": {
+      "description": "Tags for this test case. This is an inherited field from the parent entity and is not set directly on the test case.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
     }
   },
-  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "required": ["name", "testDefinition", "entityLink"],
   "additionalProperties": false
 }

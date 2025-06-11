@@ -20,7 +20,7 @@ alt="Select a Data Asset"
 caption="Select a Data Asset"
 /%}
 
-- **Star** the data asset to start following it.
+- Click the **Follow** button to start following it.
 
 {% image
 src="/images/v1.7/how-to-guides/user-guide-for-data-stewards/data5.png"
