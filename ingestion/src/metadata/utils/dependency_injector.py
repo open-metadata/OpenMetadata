@@ -11,7 +11,6 @@ from typing import (
     Dict,
     Generic,
     Optional,
-    Protocol,
     Type,
     TypeVar,
     Union,
@@ -24,7 +23,7 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-T = TypeVar("T")
+T = TypeVar("T", bound=Callable)
 
 
 if TYPE_CHECKING:
@@ -33,7 +32,7 @@ else:
 
     class Inject(Generic[T]):
         """
-        Type for dependency injection that uses parameter names as keys.
+        Type for dependency injection that uses types as keys.
 
         Type Parameters:
             T: The type of the dependency to inject
@@ -61,52 +60,53 @@ class DependencyContainer(Generic[T]):
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def register(self, key: str, dependency: T) -> None:
+    def register(self, dependency_type: Type[T], dependency: T) -> None:
         """
         Register a dependency with the container.
 
         Args:
-            key: The key to identify the dependency
+            dependency_type: The type of the dependency to register
             dependency: The dependency to register
         """
         with self._lock:
-            self._dependencies[key] = dependency
+            self._dependencies[dependency_type.__name__] = dependency
 
-    def override(self, key: str, dependency: T) -> None:
+    def override(self, dependency_type: Type[T], dependency: T) -> None:
         """
         Override a dependency with a new implementation.
         The override takes precedence over the original dependency.
 
         Args:
-            key: The key of the dependency to override
+            dependency_type: The type of the dependency to override
             dependency: The new dependency implementation
         """
         with self._lock:
-            self._overrides[key] = dependency
+            self._overrides[dependency_type.__name__] = dependency
 
-    def remove_override(self, key: str) -> None:
+    def remove_override(self, dependency_type: Type[T]) -> None:
         """
         Remove an override for a dependency.
 
         Args:
-            key: The key of the dependency override to remove
+            dependency_type: The type of the dependency override to remove
         """
         with self._lock:
-            self._overrides.pop(key, None)
+            self._overrides.pop(dependency_type.__name__, None)
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, dependency_type: Type[T]) -> Optional[T]:
         """
         Get a dependency from the container.
         Checks overrides first, then falls back to original dependencies.
 
         Args:
-            key: The key of the dependency to retrieve
+            dependency_type: The type of the dependency to retrieve
 
         Returns:
             The dependency if found, None otherwise
         """
         with self._lock:
-            return self._overrides.get(key) or self._dependencies.get(key)
+            type_name = dependency_type.__name__
+            return self._overrides.get(type_name) or self._dependencies.get(type_name)
 
     def clear(self) -> None:
         """Clear all dependencies and overrides."""
@@ -114,119 +114,25 @@ class DependencyContainer(Generic[T]):
             self._dependencies.clear()
             self._overrides.clear()
 
-    def has(self, key: str) -> bool:
+    def has(self, dependency_type: Type[T]) -> bool:
         """
         Check if a dependency exists in the container.
 
         Args:
-            key: The key to check
+            dependency_type: The type to check
 
         Returns:
             True if the dependency exists, False otherwise
         """
         with self._lock:
-            return key in self._overrides or key in self._dependencies
-
-
-def _validate_protocol(dependency: Any, expected_type: Any) -> bool:
-    """
-    Validate if a dependency matches a Protocol type.
-
-    Args:
-        dependency: The dependency to validate
-        expected_type: The Protocol type to check against
-
-    Returns:
-        True if the dependency matches the Protocol
-    """
-    try:
-        return issubclass(type(dependency), expected_type)
-    except Exception as e:
-        logger.debug(f"Failed to validate Protocol type: {e}")
-        return False
-
-
-def _validate_generic(dependency: Any, expected_type: Type) -> bool:
-    """
-    Validate if a dependency matches a generic type.
-
-    Args:
-        dependency: The dependency to validate
-        expected_type: The generic type to check against
-
-    Returns:
-        True if the dependency matches the generic type
-    """
-    origin = get_origin(expected_type)
-
-    if origin is Callable:
-        return callable(dependency)
-
-    if isinstance(origin, type):
-        return isinstance(dependency, origin)
-
-    logger.debug(f"Unhandled generic type origin: {origin}")
-    return False
-
-
-def _validate_concrete_type(dependency: Any, expected_type: Type) -> bool:
-    """
-    Validate if a dependency matches a concrete type.
-
-    Args:
-        dependency: The dependency to validate
-        expected_type: The concrete type to check against
-
-    Returns:
-        True if the dependency matches the concrete type
-    """
-    try:
-        return isinstance(dependency, expected_type)
-    except TypeError:
-        # Special case for callables
-        if (
-            callable(dependency)
-            and hasattr(expected_type, "__origin__")
-            and expected_type.__origin__ is Callable
-        ):
-            return True
-        logger.debug(f"TypeError during concrete type validation: {expected_type}")
-        return False
-
-
-def _validate_type(dependency: Any, expected_type: Type) -> bool:
-    """
-    Validate if a dependency matches the expected type.
-    Handles Protocols, Callables, and concrete types.
-
-    Args:
-        dependency: The dependency to validate
-        expected_type: The expected type
-
-    Returns:
-        True if the dependency matches the expected type
-    """
-    logger.debug(
-        f"Validating dependency of type {type(dependency)} against {expected_type}"
-    )
-
-    # Handle Protocols (structural subtyping)
-    if isinstance(expected_type, type) and issubclass(expected_type, Protocol):
-        return _validate_protocol(dependency, expected_type)
-
-    # Handle generics
-    origin = get_origin(expected_type)
-    if origin is not None:
-        return _validate_generic(dependency, expected_type)
-
-    # Normal class/type
-    return _validate_concrete_type(dependency, expected_type)
+            type_name = dependency_type.__name__
+            return type_name in self._overrides or type_name in self._dependencies
 
 
 def inject(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator to inject dependencies based on type hints.
-    Uses parameter names as keys for dependency lookup.
+    Uses types as keys for dependency lookup.
     Allows explicit injection by passing dependencies as keyword arguments.
 
     Args:
@@ -238,7 +144,7 @@ def inject(func: Callable[..., Any]) -> Callable[..., Any]:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        container = DependencyContainer[Any]()
+        container = DependencyContainer[Callable]()
         type_hints = get_type_hints(func, include_extras=True)
 
         for param_name, param_type in type_hints.items():
@@ -247,21 +153,14 @@ def inject(func: Callable[..., Any]) -> Callable[..., Any]:
                 continue
 
             # Check if it's an Inject type
-            # if get_origin(param_type) is Inject:
             if is_inject_type(param_type):
                 dependency_type = extract_inject_arg(param_type)
-                # dependency_type = get_args(param_type)[0]
-                dependency = container.get(param_name)
+                dependency = container.get(dependency_type)
                 if dependency is None:
                     raise ValueError(
-                        f"Dependency '{param_name}' not found in container"
+                        f"Dependency of type {dependency_type} not found in container"
                     )
-                if not _validate_type(dependency, dependency_type):
-                    raise TypeError(
-                        f"Dependency '{param_name}' is of type {type(dependency)}, "
-                        f"expected {dependency_type}"
-                    )
-                kwargs[param_name] = dependency
+                kwargs[param_name] = dependency()
 
         return func(*args, **kwargs)
 

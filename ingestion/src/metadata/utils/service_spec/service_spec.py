@@ -2,7 +2,7 @@
 Manifests are used to store class information
 """
 
-from typing import Any, Callable, Optional, Type, cast
+from typing import Any, Callable, NewType, Optional, Type, cast
 
 from pydantic import model_validator
 
@@ -23,6 +23,11 @@ from metadata.utils.importer import (
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+SourceLoader = NewType(
+    "SourceLoader", Type[Callable[[ServiceType, str, str], Type[Any]]]
+)
 
 
 class BaseSpec(BaseModel):
@@ -73,7 +78,7 @@ class BaseSpec(BaseModel):
         service_type: ServiceType,
         source_type: str,
         from_: str = "ingestion",
-        source_loader: Inject[Callable[[ServiceType, str, str], Type[Any]]] = None,
+        source_loader: Inject[SourceLoader] = None,
     ) -> "BaseSpec":
         """Retrieves the manifest for a given source type. If it does not exist will attempt to retrieve
         a default manifest for the service type.
@@ -92,20 +97,23 @@ class BaseSpec(BaseModel):
         )
 
 
-def default_source_loader(
-    service_type: ServiceType,
-    source_type: str,
-    from_: str = "ingestion",
-) -> Type[Any]:
-    """Default implementation for loading service specifications."""
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
-            from_,
-            service_type.name.lower(),
-            source_type.lower(),
-            "service_spec",
+def get_source_loader() -> SourceLoader:
+    def default_source_loader(
+        service_type: ServiceType,
+        source_type: str,
+        from_: str = "ingestion",
+    ) -> Type[Any]:
+        """Default implementation for loading service specifications."""
+        return import_from_module(
+            "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
+                from_,
+                service_type.name.lower(),
+                source_type.lower(),
+                "service_spec",
+            )
         )
-    )
+
+    return cast(SourceLoader, default_source_loader)
 
 
 def import_source_class(
