@@ -10,6 +10,6 @@ For different transports the client can use the following endpoints:
 $$section
 ### Origin Header URI $(id="originHeaderUri")
 
-The URI to be used in the `Origin` header for the MCP Application. This is used to identify the source of the requests made by the clients.
+The URI to be used in the `Origin` header for the MCP Application in case of Streamable-Http. This is used to identify the source of the requests made by the clients.
 
 $$
