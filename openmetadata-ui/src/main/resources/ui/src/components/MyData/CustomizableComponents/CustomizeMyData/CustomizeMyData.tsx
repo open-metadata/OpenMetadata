@@ -43,6 +43,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -219,6 +220,7 @@ function CustomizeMyData({
           onReset={handleReset}
           onSave={handleSave}
         />
+        <CustomiseLandingPageHeader />
         <ReactGridLayout
           className="grid-container"
           cols={4}

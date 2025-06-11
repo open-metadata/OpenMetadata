@@ -1533,6 +1533,7 @@
     "week": "Woche",
     "weekly-usage": "Wöchentliche Verwendung",
     "weight": "Gewichtung",
+    "welcome": "Willkommen, {{name}}!",
     "welcome-to": "Velkommen til",
     "whats-new": "Neuigkeiten",
     "whats-new-version": "Änderungen in ({{version}})",
