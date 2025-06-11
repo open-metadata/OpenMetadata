@@ -14,6 +14,7 @@
 package org.openmetadata.service.clients.pipeline.airflow;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;

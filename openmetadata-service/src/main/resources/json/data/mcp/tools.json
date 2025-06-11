@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'.",
+      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'. Here make sure to use 'Href' is available in result to create a hyperlink to the entity in OpenMetadata.",
       "parameters": {
         "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
         "type": "object",
@@ -49,13 +49,17 @@
     },
     {
       "name": "create_glossary_term",
-      "description": "Creates a new Glossary Term",
+      "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term.",
       "parameters": {
         "type": "object",
         "properties": {
           "glossary": {
             "type": "string",
             "description": "Glossary in which the term belongs. This should be its fully qualified name."
+          },
+          "parentTerm": {
+            "type": "string",
+            "description": "Optional parent term for the new term. This should be its fully qualified name defined as <glossary>.<term>. If the Glossary Term has other parents, the Fully Qualified Name will be <glossary>.<parent>...<term>. If not provided, the term will be created at the root level of the glossary."
           },
           "name": {
             "type": "string",
@@ -67,7 +71,7 @@
           },
           "owners": {
             "type": "array",
-            "description": "Glossary Term owner. This should be an OpenMetadata User",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
             "items": {
               "type": "string"
             }
@@ -77,6 +81,47 @@
           "glossary",
           "name",
           "description"
+        ]
+      }
+    },
+    {
+      "name": "create_glossary",
+      "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Glossary Term name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Glossary Term description."
+          },
+          "owners": {
+            "type": "array",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to tag an entity. When mutually exclusive is `false`, multiple terms from this group can be used to tag an entity. This is an important setting. If you are not sure, ask the user to clarify. If the user doesn't know, set it to `false`.",
+            "default": false
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "mutuallyExclusive"
         ]
       }
     },

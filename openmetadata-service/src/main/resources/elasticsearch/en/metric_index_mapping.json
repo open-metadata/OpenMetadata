@@ -332,8 +332,8 @@
       "entityType": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "totalVotes": {
         "type": "long",
@@ -344,6 +344,15 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

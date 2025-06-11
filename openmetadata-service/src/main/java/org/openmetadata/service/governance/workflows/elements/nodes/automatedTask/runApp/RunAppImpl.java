@@ -49,6 +49,7 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long timeoutSeconds,
       MessageParser.EntityLink entityLink) {
+    boolean wasSuccessful = true;
     ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
 
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
@@ -58,27 +59,36 @@ public class RunAppImpl {
           appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
     } catch (EntityNotFoundException ex) {
       LOG.warn(String.format("App: '%s' is not Installed. Skipping", appName));
-      return true;
+      return wasSuccessful;
     }
 
     if (!validateAppShouldRun(app, service)) {
-      return true;
+      return wasSuccessful;
     }
 
     long startTime = System.currentTimeMillis();
     long timeoutMillis = timeoutSeconds * 1000;
 
     Map<String, Object> config = getConfig(app, service);
+
+    LOG.info(
+        "[GovernanceWorkflows] '{}' running for '{}'", app.getDisplayName(), service.getName());
     if (app.getAppType().equals(AppType.Internal)) {
-      return runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
+      wasSuccessful =
+          runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
-      boolean result =
+      wasSuccessful =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
       deployIngestionPipeline(pipelineServiceClient, app);
-      return result;
     }
+
+    if (!wasSuccessful) {
+      LOG.warn(
+          "[GovernanceWorkflows] '{}' failed for '{}'", app.getDisplayName(), service.getName());
+    }
+    return wasSuccessful;
   }
 
   private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
@@ -93,29 +103,26 @@ public class RunAppImpl {
           .contains(app.getName());
   }
 
+  private String getTableServiceFilter(String serviceName) {
+    return String.format(
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+        serviceName);
+  }
+
   private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
     Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
     switch (app.getName()) {
       case "CollateAIApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()))
+              .withFilter(getTableServiceFilter(service.getName()))
               .withPatchIfEmpty(true);
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+              .withFilter(getTableServiceFilter(service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()))
+              .withFilter(getTableServiceFilter(service.getName()))
               .withPatchIfEmpty(true);
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =

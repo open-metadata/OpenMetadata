@@ -13,15 +13,16 @@
 
 package org.openmetadata.service.exception;
 
-import com.google.common.collect.Iterables;
 import io.dropwizard.jersey.errors.ErrorMessage;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
-import javax.ws.rs.ext.Provider;
 
 /**
  * Dropwizard by default maps the JSON constraint violations to 422 Response code. This overrides that behavior by
@@ -37,13 +38,24 @@ public class ConstraintViolationExceptionMapper
         constraintViolations.stream()
             .map(
                 constraintViolation -> {
-                  String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
-                  return name + " " + constraintViolation.getMessage();
+                  return "query param "
+                      + getLeafNodeName(constraintViolation.getPropertyPath())
+                      + " "
+                      + constraintViolation.getMessage();
                 })
             .toList();
     return Response.status(Response.Status.BAD_REQUEST)
         .entity(
             new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
         .build();
+  }
+
+  private String getLeafNodeName(Path propertyPath) {
+    Iterator<Path.Node> iterator = propertyPath.iterator();
+    Path.Node lastNode = null;
+    while (iterator.hasNext()) {
+      lastNode = iterator.next();
+    }
+    return lastNode != null ? lastNode.getName() : "";
   }
 }

@@ -18,7 +18,12 @@ import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
-import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
+import {
+  DEBOUNCE_TIMEOUT,
+  INITIAL_NODE_ITEMS_LENGTH,
+  NODE_ITEMS_PAGE_SIZE,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
@@ -121,7 +126,7 @@ const LineageSearchSelect = () => {
       setIsLoading(true);
       const options = generateNodeOptions();
       setAllOptions(options);
-      setRenderedOptions(options.slice(0, INITIAL_LOAD));
+      setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
       setIsLoading(false);
     }
   }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
@@ -143,7 +148,7 @@ const LineageSearchSelect = () => {
         );
         setRenderedOptions(filteredOptions);
       } else {
-        setRenderedOptions(allOptions.slice(0, INITIAL_LOAD));
+        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
       }
     },
     [allOptions]
@@ -173,7 +178,7 @@ const LineageSearchSelect = () => {
       filterOptions(searchValue);
     } else {
       const nextLength = Math.min(
-        renderedOptions.length + LOAD_MORE_COUNT,
+        renderedOptions.length + NODE_ITEMS_PAGE_SIZE,
         allOptions.length
       );
       setRenderedOptions(allOptions.slice(0, nextLength));
@@ -185,7 +190,7 @@ const LineageSearchSelect = () => {
       setIsDropdownOpen(open);
       if (!open) {
         setSearchValue('');
-        setRenderedOptions(allOptions.slice(0, INITIAL_LOAD));
+        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
         debouncedFilterOptions.cancel();
       }
     },

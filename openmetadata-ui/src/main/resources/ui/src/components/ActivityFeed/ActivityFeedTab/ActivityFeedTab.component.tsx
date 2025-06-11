@@ -294,9 +294,11 @@ export const ActivityFeedTab = ({
       if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
         setIsFullWidth(false);
       }
-      setActiveThread(feed);
+      if (selectedThread?.id !== feed?.id) {
+        setActiveThread(feed);
+      }
     },
-    [setActiveThread, isTaskActiveTab, isMentionTabSelected]
+    [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
   );
 
   useEffect(() => {
@@ -558,7 +560,7 @@ export const ActivityFeedTab = ({
                     />
                     <span>{t('label.task-plural')}</span>
                   </Space>
-                  <span>
+                  <span data-testid="left-panel-task-count">
                     {getCountBadge(
                       countData?.data?.openTaskCount,
                       '',

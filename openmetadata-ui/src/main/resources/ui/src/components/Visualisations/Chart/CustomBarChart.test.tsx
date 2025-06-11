@@ -42,6 +42,30 @@ jest.mock('../../../utils/DataInsightUtils', () => {
   });
 });
 
+const mockData = Array.from({ length: 501 }, (_, index) => ({
+  name: `test ${index}`,
+  value: index,
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>),
+}));
+
+jest.mock('../../../constants/profiler.constant', () => ({
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../../../utils/ChartUtils', () => ({
+  axisTickFormatter: jest.fn(),
+  tooltipFormatter: jest.fn(),
+  updateActiveChartFilter: jest.fn(),
+}));
+
 describe('CustomBarChart component test', () => {
   it('Component should render', async () => {
     render(<CustomBarChart {...mockCustomBarChartProp} />);
@@ -55,6 +79,21 @@ describe('CustomBarChart component test', () => {
     expect(XAxis).toBeInTheDocument();
     expect(YAxis).toBeInTheDocument();
     expect(noData).not.toBeInTheDocument();
+    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+  });
+
+  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+    render(
+      <CustomBarChart
+        {...mockCustomBarChartProp}
+        chartCollection={{
+          data: mockData,
+          information: mockCustomBarChartProp.chartCollection.information,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Brush')).toBeInTheDocument();
   });
 
   it('If there is no data, placeholder should be visible', async () => {
@@ -68,7 +107,7 @@ describe('CustomBarChart component test', () => {
       />
     );
 
-    const noData = await screen.findByTestId('no-data-placeholder');
+    const noData = await screen.findByText('ErrorPlaceHolder');
 
     expect(noData).toBeInTheDocument();
   });

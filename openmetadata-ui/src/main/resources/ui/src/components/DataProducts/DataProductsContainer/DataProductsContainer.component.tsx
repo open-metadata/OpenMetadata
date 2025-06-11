@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -29,6 +30,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -36,6 +38,7 @@ interface DataProductsContainerProps {
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
+  newLook?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -44,6 +47,7 @@ const DataProductsContainer = ({
   dataProducts,
   activeDomain,
   onSave,
+  newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -146,7 +150,9 @@ const DataProductsContainer = ({
             <PlusIconButton
               data-testid="add-data-product"
               size="small"
-              title={t('label.add-data-product')}
+              title={t('label.add-entity', {
+                entity: t('label.data-product-plural'),
+              })}
               onClick={handleAddClick}
             />
           )}
@@ -172,25 +178,66 @@ const DataProductsContainer = ({
     );
   }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
 
+  const addTagButton = useMemo(
+    () =>
+      showAddTagButton ? (
+        <Col
+          className="m-t-xss"
+          data-testid="add-data-product"
+          onClick={handleAddClick}>
+          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+        </Col>
+      ) : null,
+    [showAddTagButton]
+  );
+
+  const renderer = useMemo(() => {
+    if (isEditMode) {
+      return autoCompleteFormSelectContainer;
+    }
+
+    if (newLook && isEmpty(renderDataProducts)) {
+      return null;
+    }
+
+    return (
+      <Row data-testid="data-products-list">
+        <Col className="flex flex-wrap gap-2">
+          {!newLook && addTagButton}
+          {renderDataProducts}
+        </Col>
+      </Row>
+    );
+  }, [
+    newLook,
+    isEditMode,
+    addTagButton,
+    renderDataProducts,
+    autoCompleteFormSelectContainer,
+  ]);
+
   const cardProps = useMemo(() => {
     return {
       title: header,
     };
   }, [header, showAddTagButton, isEditMode]);
 
+  if (newLook) {
+    return (
+      <ExpandableCard
+        cardProps={cardProps}
+        dataTestId="data-products-container"
+        isExpandDisabled={isEmpty(dataProducts)}>
+        {renderer}
+      </ExpandableCard>
+    );
+  }
+
   return (
-    <ExpandableCard
-      cardProps={cardProps}
-      dataTestId="data-products-container"
-      isExpandDisabled={isEmpty(dataProducts)}>
-      {isEditMode ? (
-        autoCompleteFormSelectContainer
-      ) : isEmpty(renderDataProducts) ? null : (
-        <Row data-testid="data-products-list">
-          <Col className="flex flex-wrap gap-2">{renderDataProducts}</Col>
-        </Row>
-      )}
-    </ExpandableCard>
+    <div className="w-full" data-testid="data-products-container">
+      {header}
+      {renderer}
+    </div>
   );
 };
 

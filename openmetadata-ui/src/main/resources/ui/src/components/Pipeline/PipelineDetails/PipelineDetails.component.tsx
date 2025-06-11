@@ -169,8 +169,7 @@ const PipelineDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.pipeline'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -257,6 +256,10 @@ const PipelineDetails = ({
     (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

@@ -39,6 +39,10 @@ import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 
 import io.jsonwebtoken.lang.Collections;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -48,10 +52,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +59,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -549,6 +550,22 @@ public class FeedRepository {
 
     // Finally, delete the thread
     dao.feedDAO().delete(id);
+  }
+
+  @Transaction
+  public int deleteThreadsInBatch(List<UUID> threadUUIDs) {
+    if (CommonUtil.nullOrEmpty(threadUUIDs)) return 0;
+
+    List<String> threadIds = threadUUIDs.stream().map(UUID::toString).toList();
+
+    // Delete all the relationships to other entities
+    dao.relationshipDAO().deleteAllByThreadIds(threadIds, Entity.THREAD);
+
+    // Delete all the field relationships to other entities
+    dao.fieldRelationshipDAO().deleteAllByPrefixes(threadIds);
+
+    // Delete the thread and return the count
+    return dao.feedDAO().deleteByIds(threadIds);
   }
 
   public void deleteByAbout(UUID entityId) {

@@ -54,7 +54,6 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -649,7 +648,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
 
                     for table in dataset.tables or []:
-                        yield self._get_table_and_datamodel_lineage(
+                        yield from self._get_table_and_datamodel_lineage(
                             db_service_name=db_service_name,
                             table=table,
                             datamodel_entity=datamodel_entity,
@@ -706,6 +705,12 @@ class PowerbiSource(DashboardServiceSource):
                 if dataset and dataset.expressions:
                     # find keyword from dataset expressions
                     for dexpression in dataset.expressions:
+                        if not dexpression.expression:
+                            logger.debug(
+                                f"No expression value found inside dataset"
+                                f"({dataset.name}) expressions' name={dexpression.name}"
+                            )
+                            continue
                         if dexpression.name == match.group(2):
                             pattern = r'DefaultValue="([^"]+)"'
                             kw_match = re.search(pattern, dexpression.expression)
@@ -784,7 +789,9 @@ class PowerbiSource(DashboardServiceSource):
             if not isinstance(table.source, list):
                 return {}
             source_expression = table.source[0].expression
-
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return {}
             # parse snowflake source
             table_info = self._parse_snowflake_source(
                 source_expression, datamodel_entity
@@ -806,7 +813,7 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
-    ) -> Optional[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
@@ -827,13 +834,13 @@ class PowerbiSource(DashboardServiceSource):
                 column_lineage = self._get_column_lineage(
                     table_entity, datamodel_entity, columns_list
                 )
-                return self._get_add_lineage_request(
+                yield self._get_add_lineage_request(
                     to_entity=datamodel_entity,
                     from_entity=table_entity,
                     column_lineage=column_lineage,
                 )
         except Exception as exc:  # pylint: disable=broad-except
-            return Either(
+            yield Either(
                 left=StackTraceError(
                     name="DataModel Lineage for pbit files",
                     error=(
@@ -843,7 +850,6 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-        return None
 
     def create_table_datamodel_lineage_from_files(
         self,
@@ -872,7 +878,7 @@ class PowerbiSource(DashboardServiceSource):
 
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
-                    yield self._get_table_and_datamodel_lineage(
+                    yield from self._get_table_and_datamodel_lineage(
                         db_service_name=db_service_name,
                         table=table,
                         datamodel_entity=datamodel_entity,
@@ -919,22 +925,17 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
-    def yield_dashboard_lineage(
-        self, dashboard_details: Group
-    ) -> Iterable[Either[OMetaLineageRequest]]:
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled.
-
-        We will look for the data in all the services
-        we have informed.
+        Returns:
+            Lineage request between Data Models and Dashboards
         """
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
+        """
+            We're implementing this differently inside `yield_dashboard_lineage_details`
+            since we have report and dashboard both as dashboard.
+        """
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]

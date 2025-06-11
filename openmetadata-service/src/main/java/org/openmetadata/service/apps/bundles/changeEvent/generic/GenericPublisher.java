@@ -21,14 +21,16 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -126,6 +128,15 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
+    if (!CommonUtil.nullOrEmpty(queryParams)) {
+      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+    return target;
+  }
+
   private void handleException(long attemptTime, ChangeEvent event, Exception ex)
       throws EventPublisherException {
     handleCommonException(attemptTime, ex);
@@ -161,7 +172,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+    WebTarget target = client.target(webhook.getEndpoint());
+    target = addQueryParams(target, webhook.getQueryParams());
+    return SecurityUtil.addHeaders(target, authHeaders);
   }
 
   @Override

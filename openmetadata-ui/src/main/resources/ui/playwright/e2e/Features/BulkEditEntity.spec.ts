@@ -512,7 +512,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow();
+    test.slow(true);
 
     const tableEntity = new TableClass();
 
@@ -682,6 +682,10 @@ test.describe('Bulk Edit Entity', () => {
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await toastNotification(
         page,
