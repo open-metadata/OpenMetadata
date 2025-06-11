@@ -145,6 +145,7 @@ public class McpServer {
   private McpServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
+        (exchange, arguments) ->
+            promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());
   }
 }

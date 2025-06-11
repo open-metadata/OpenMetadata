@@ -16,7 +16,7 @@ public class DefaultPromptsContext {
     return getPrompts(promptFilePath);
   }
 
-  public McpSchema.GetPromptResult callPrompt(
+  public WrappedGetPromptResult callPrompt(
       JwtFilter jwtFilter, String promptName, McpSchema.GetPromptRequest promptRequest) {
     Map<String, Object> params = promptRequest.arguments();
     CatalogSecurityContext securityContext =
@@ -35,15 +35,17 @@ public class DefaultPromptsContext {
           result = new SearchPrompt().callPrompt(promptRequest);
           break;
         default:
-          result = new McpSchema.GetPromptResult("error", new ArrayList<>());
-          break;
+          return new WrappedGetPromptResult(
+              new McpSchema.GetPromptResult("error", new ArrayList<>()), true);
       }
 
-      return result;
+      return new WrappedGetPromptResult(result, false);
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return new McpSchema.GetPromptResult(
-          String.format("Error executing tool: %s", ex.getMessage()), new ArrayList<>());
+      return new WrappedGetPromptResult(
+          new McpSchema.GetPromptResult(
+              String.format("Error executing tool: %s", ex.getMessage()), new ArrayList<>()),
+          false);
     }
   }
 }
