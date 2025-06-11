@@ -570,6 +570,7 @@ test.describe('Activity feed', () => {
         .click();
 
       await taskResponse;
+      await page2.waitForLoadState('networkidle');
 
       await expect(
         page2.locator(
@@ -633,6 +634,8 @@ test.describe('Activity feed', () => {
       term: entity.entity.displayName,
       assignee: user1.responseData.name,
     });
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
   });
