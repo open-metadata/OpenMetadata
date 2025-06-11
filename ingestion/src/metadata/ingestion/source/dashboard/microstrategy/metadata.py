@@ -12,14 +12,11 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from collate_sqllineage.core.models import Table as SqlLineageTable
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
@@ -43,6 +40,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.microstrategy.models import (
@@ -52,7 +50,6 @@ from metadata.ingestion.source.dashboard.microstrategy.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -208,29 +205,34 @@ class MicrostrategySource(DashboardServiceSource):
             try:
                 lineage_parser = LineageParser(cube_sql, dialect=dialect)
                 for table in lineage_parser.source_tables:
-                    table_entity = self._get_table_entity_by_db_service_name(
-                        table, db_service_name
+                    table_entities = get_table_entities_from_query(
+                        metadata=self.metadata,
+                        service_name=db_service_name,
+                        database_name="*",
+                        database_schema="*",
+                        table_name=str(table),
                     )
-                    if not table_entity:
+                    if not table_entities:
+                        logger.debug(f"Table not found in metadata: {str(table)}")
                         continue
-
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(table_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(dashboard_entity.id.root),
-                                    type="dashboard",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DashboardLineage
-                                ),
+                    for table_entity in table_entities or []:
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=Uuid(table_entity.id.root),
+                                        type="table",
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=Uuid(dashboard_entity.id.root),
+                                        type="dashboard",
+                                    ),
+                                    lineageDetails=LineageDetails(
+                                        source=LineageSource.DashboardLineage
+                                    ),
+                                )
                             )
                         )
-                    )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -239,34 +241,6 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
-
-    def _get_table_entity_by_db_service_name(
-        self, table: SqlLineageTable, db_service_name: str
-    ) -> Optional[Table]:
-        """
-        Validates if the table matches db service name and returns the corresponding table entity if found
-        """
-        table_name = table.raw_name.lower()
-        schema_parts = table.schema.raw_name.lower().split(".")
-        schema_name = schema_parts[-1]
-        database_name = schema_parts[0] if len(schema_parts) > 1 else "*"
-
-        # Get table entity if validation passes
-        table_fqn = build_es_fqn_search_string(
-            service_name=db_service_name,
-            database_name=database_name,
-            schema_name=schema_name or "*",
-            table_name=table_name,
-        )
-
-        table_entities = self.metadata.es_search_from_fqn(
-            entity_type=Table, fqn_search_string=table_fqn, size=1
-        )
-        if not table_entities:
-            logger.debug(f"Table not found in metadata: {table_fqn}")
-            return None
-
-        return table_entities[0]
 
     def yield_dashboard_chart(
         self, dashboard_details: MstrDashboardDetails
