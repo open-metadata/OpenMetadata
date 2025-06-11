@@ -687,7 +687,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(tableOpContext, tableResourceContext),
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    repository.isTestSuiteBasic(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -718,8 +717,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestCase> testCases = new ArrayList<>();
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
-    Set<String> testSuites =
-        createTestCases.stream().map(CreateTestCase::getTestSuite).collect(Collectors.toSet());
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
 
@@ -731,7 +728,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           authorizer.authorize(securityContext, operationContext, resourceContext);
         });
 
-    testSuites.forEach(repository::isTestSuiteBasic);
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
     createTestCases.forEach(
@@ -836,7 +832,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.isTestSuiteBasic(create.getTestSuite());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());

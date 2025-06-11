@@ -519,11 +519,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
         .withEntityLink(TABLE4_LINK.getLinkString())
-        .withTestSuite(testSuite4.getFullyQualifiedName())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
         .withEntityLink(TABLE6_LINK.getLinkString())
-        .withTestSuite(testSuite6.getFullyQualifiedName())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);
