@@ -14,6 +14,10 @@
  * Db2 Connection Config
  */
 export interface Db2Connection {
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?:    string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**

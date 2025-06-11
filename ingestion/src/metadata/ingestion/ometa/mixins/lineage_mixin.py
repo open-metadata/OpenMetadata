@@ -113,6 +113,7 @@ class OMetaLineageMixin(Generic[T]):
         Add lineage relationship between two entities and returns
         the entity information of the origin node
         """
+        data = deepcopy(data)
         try:
             patch_op_success = False
             if check_patch and data.edge.lineageDetails:

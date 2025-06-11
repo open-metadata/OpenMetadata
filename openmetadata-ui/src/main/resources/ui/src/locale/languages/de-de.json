@@ -107,6 +107,7 @@
     "asset": "Asset",
     "asset-lowercase": "asset",
     "asset-plural": "Assets",
+    "asset-plural-lowercase": "vermögenswerte",
     "assigned": "Zugewiesen",
     "assigned-entity": "Zugewiesen zu {{entity}}",
     "assigned-to-me": "Mir zugewiesen",

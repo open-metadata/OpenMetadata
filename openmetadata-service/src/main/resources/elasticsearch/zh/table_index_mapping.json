@@ -99,7 +99,10 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "lineage": {
+      "upstreamLineage": {
+        "type": "object"
+      },
+      "entityRelationship": {
         "type" : "object"
       },
       "tableType": {
@@ -600,24 +603,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "schema_suggest": {
-        "type": "completion"
-      },
-      "database_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

@@ -159,8 +159,8 @@
       "href": {
         "type": "text"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "sourceUrl": {
         "type": "text"
@@ -418,12 +418,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "task_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
       },
       "totalVotes": {
         "type": "long",
