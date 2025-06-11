@@ -5,6 +5,9 @@ import static org.openmetadata.service.mcp.McpUtils.readRequestBody;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerSession;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
@@ -24,17 +27,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
@@ -72,11 +84,13 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final transient Limits limits;
   private final transient DefaultToolContext toolContext;
   private final transient DefaultPromptsContext promptsContext;
-
-  private final transient MCPConfiguration mcpConfiguration;
+  private static final LoadingCache<String, MCPConfiguration> MCP_CONFIG_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(100)
+          .expireAfterWrite(1, TimeUnit.MINUTES)
+          .build(new McpConfigLoader());
 
   public MCPStreamableHttpServlet(
-      MCPConfiguration mcpConfiguration,
       JwtFilter jwtFilter,
       Authorizer authorizer,
       Limits limits,
@@ -84,7 +98,6 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
       DefaultPromptsContext promptsContext,
       List<McpSchema.Tool> tools,
       List<McpSchema.Prompt> prompts) {
-    this.mcpConfiguration = mcpConfiguration;
     this.jwtFilter = jwtFilter;
     this.authorizer = authorizer;
     this.limits = limits;
@@ -129,7 +142,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     String origin = request.getHeader("Origin");
-    if (origin != null && !isValidOrigin(origin)) {
+    if (!isValidOrigin(origin)) {
       sendError(response, HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
       return;
     }
@@ -867,10 +880,20 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   }
 
   private boolean isValidOrigin(String origin) {
-    if (null == origin || origin.isEmpty()) {
-      return false;
+    try {
+      if (MCP_CONFIG_CACHE.get("McpApplication").isOriginValidationEnabled()) {
+        if (null == origin || origin.isEmpty()) {
+          return false;
+        } else {
+          return origin.startsWith(MCP_CONFIG_CACHE.get("McpApplication").getOriginHeaderUri());
+        }
+      } else {
+        return true;
+      }
+    } catch (ExecutionException e) {
+      LOG.error("Error Validating Origin Header");
     }
-    return origin.startsWith(mcpConfiguration.getOriginHeaderUri());
+    return false;
   }
 
   private void sendError(HttpServletResponse response, int statusCode, String message)
@@ -923,6 +946,25 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
         } catch (IOException e) {
           log("Error sending notification to session: " + sessionId, e);
         }
+      }
+    }
+  }
+
+  static class McpConfigLoader extends CacheLoader<String, MCPConfiguration> {
+    @Override
+    public @NonNull MCPConfiguration load(@CheckForNull String userName) {
+      try {
+        App app = Entity.getEntityByName(Entity.APPLICATION, "McpApplication", "id", Include.ALL);
+        return JsonUtils.convertValue(app.getAppConfiguration(), MCPConfiguration.class);
+      } catch (Exception ex) {
+        LOG.error("Failed to Load MCP Configuration");
+        MCPConfiguration config = new MCPConfiguration();
+        config.setOriginHeaderUri(
+            SettingsCache.getSetting(
+                    SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+                    OpenMetadataBaseUrlConfiguration.class)
+                .getOpenMetadataUrl());
+        return config;
       }
     }
   }

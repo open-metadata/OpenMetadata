@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.service.mcp.tools.DefaultToolContext;
@@ -51,8 +50,7 @@ public class McpServer {
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
     addSSETransport(contextHandler, authFilter, tools, prompts);
-    addStreamableHttpServlet(
-        config.getMcpConfiguration(), contextHandler, authFilter, tools, prompts);
+    addStreamableHttpServlet(contextHandler, authFilter, tools, prompts);
   }
 
   protected List<McpSchema.Tool> getTools() {
@@ -95,7 +93,6 @@ public class McpServer {
   }
 
   private void addStreamableHttpServlet(
-      MCPConfiguration configuration,
       MutableServletContextHandler contextHandler,
       McpAuthFilter authFilter,
       List<McpSchema.Tool> tools,
@@ -103,14 +100,7 @@ public class McpServer {
     // Streamable HTTP servlet for MCP
     MCPStreamableHttpServlet streamableHttpServlet =
         new MCPStreamableHttpServlet(
-            configuration,
-            jwtFilter,
-            authorizer,
-            limits,
-            toolContext,
-            promptsContext,
-            tools,
-            prompts);
+            jwtFilter, authorizer, limits, toolContext, promptsContext, tools, prompts);
     ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
     contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 

@@ -17,6 +17,7 @@
   },
   "supportsInterrupt": true,
   "appConfiguration": {
+    "originValidationEnabled": true,
     "originHeaderUri": "http://localhost"
   }
 }

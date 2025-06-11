@@ -4,6 +4,11 @@
   "title": "Mcp Application",
   "description": "This schema defines configuration for Mcp Application.",
   "properties": {
+    "originValidationEnabled": {
+      "title": "Should Origin Header Be validated",
+      "type": "boolean",
+      "default": false
+    },
     "originHeaderUri": {
       "title": "Origin Header URI",
       "type": "string",
