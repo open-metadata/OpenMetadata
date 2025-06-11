@@ -149,10 +149,15 @@ public class DataInsightSystemChartResource
               description = "Any additional filter to fetch the data",
               schema = @Schema(type = "string", example = "{\"query\":{...}}"))
           @QueryParam("filter")
-          String filter)
+          String filter,
+      @Parameter(
+              description = "Use live index for chart",
+              schema = @Schema(type = "boolean", example = "false"))
+          @QueryParam("live")
+          boolean live)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end, filter);
+        repository.listChartData(chartNames, start, end, filter, live);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 }
