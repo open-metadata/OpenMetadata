@@ -13,6 +13,7 @@
 Tableau Source Model module
 """
 
+import uuid
 from typing import Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -28,9 +29,13 @@ class TableauBaseModel(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    # in some cases we have the name but not the id
-    id: Optional[str] = None
+    # in case of personal space workbooks, the project id is returned as a UUID
+    id: Union[str, uuid.UUID]
     name: Optional[str] = None
+
+    def get_id_as_string(self) -> str:
+        """Convert id to string whether it's a UUID or string"""
+        return str(self.id)
 
     def __hash__(self):
         return hash(self.id)
