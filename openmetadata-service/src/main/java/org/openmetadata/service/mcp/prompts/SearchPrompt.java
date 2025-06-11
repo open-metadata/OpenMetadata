@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class SearchPrompt implements McpPrompt {
   @Override
-  public McpSchema.GetPromptResult callPrompt(McpSchema.GetPromptRequest promptRequest) {
+  public WrappedGetPromptResult callPrompt(McpSchema.GetPromptRequest promptRequest) {
     Map<String, Object> params = promptRequest.arguments();
     String query = (String) params.get("query");
     int limit = 10;
@@ -19,14 +19,16 @@ public class SearchPrompt implements McpPrompt {
       }
     }
     String entityType = (String) params.get("entity_type");
-    return new McpSchema.GetPromptResult(
-        "Message can be used to get search results",
-        List.of(
-            new McpSchema.PromptMessage(
-                McpSchema.Role.ASSISTANT,
-                new McpSchema.TextContent(
-                    String.format(
-                        "Search for `%s` in OpenMetadata where entity type is `%s` and with a limit of `%s` . Summarise the information for all the results properly and also make sure to provide clickable links using the href field from the results.",
-                        query, entityType, limit)))));
+    return new WrappedGetPromptResult(
+        new McpSchema.GetPromptResult(
+            "Message can be used to get search results",
+            List.of(
+                new McpSchema.PromptMessage(
+                    McpSchema.Role.ASSISTANT,
+                    new McpSchema.TextContent(
+                        String.format(
+                            "Search for `%s` in OpenMetadata where entity type is `%s` and with a limit of `%s` . Summarise the information for all the results properly and also make sure to provide clickable links using the href field from the results.",
+                            query, entityType, limit))))),
+        false);
   }
 }

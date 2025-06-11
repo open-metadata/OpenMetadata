@@ -25,7 +25,7 @@ public class DefaultPromptsContext {
         "Catalog Principal: {} is trying to call the prompt: {}",
         securityContext.getUserPrincipal().getName(),
         promptName);
-    McpSchema.GetPromptResult result;
+    WrappedGetPromptResult result;
     try {
       switch (promptName) {
         case "create-greeting":
@@ -39,7 +39,7 @@ public class DefaultPromptsContext {
               new McpSchema.GetPromptResult("error", new ArrayList<>()), true);
       }
 
-      return new WrappedGetPromptResult(result, false);
+      return result;
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
       return new WrappedGetPromptResult(

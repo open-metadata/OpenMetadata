@@ -795,8 +795,10 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
             Map<String, Object> arguments = promptWithArgs.getRight();
             response.put(
                 "result",
-                promptsContext.callPrompt(
-                    jwtFilter, promptName, new McpSchema.GetPromptRequest(null, arguments)));
+                promptsContext
+                    .callPrompt(
+                        jwtFilter, promptName, new McpSchema.GetPromptRequest(null, arguments))
+                    .getResult());
           } else {
             response.put("error", createError(-32602, "Invalid params"));
           }
