@@ -1,6 +1,6 @@
-# MCP Application
+# MCP Server
 
-MCP Application installs an embedded MCP Server with OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.
+MCP Server app installs an embedded Model Context Protocol(MCP) server within OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.
  
    1. SSE : http[s]://openmetadata-host/mcp/sse
  
