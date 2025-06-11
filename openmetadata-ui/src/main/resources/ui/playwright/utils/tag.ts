@@ -91,9 +91,7 @@ export const addAssetsToTag = async (
   tag: TagClass,
   otherAsset?: EntityClass[]
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -334,9 +332,7 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
-  await res;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
