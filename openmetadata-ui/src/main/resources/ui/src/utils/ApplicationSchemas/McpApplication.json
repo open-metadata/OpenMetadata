@@ -1,14 +1,9 @@
 {
-  "$id": "SearchReindexAppSchema.json",
+  "$id": "McpApplication.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Mcp Application",
   "description": "This schema defines configuration for Mcp Application.",
   "properties": {
-    "enabled": {
-      "title": "Enabled",
-      "type": "boolean",
-      "default": false
-    },
     "originHeaderUri": {
       "title": "Origin Header URI",
       "type": "string",
