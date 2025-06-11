@@ -33,9 +33,13 @@ class TableauBaseModel(BaseModel):
     id: Union[str, uuid.UUID]
     name: Optional[str] = None
 
-    def get_id_as_string(self) -> str:
-        """Convert id to string whether it's a UUID or string"""
-        return str(self.id)
+    # pylint: disable=no-self-argument
+    @field_validator("id", mode="before")
+    def coerce_uuid_to_string(cls, value):
+        """Ensure id is always stored as a string internally"""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
     def __hash__(self):
         return hash(self.id)
