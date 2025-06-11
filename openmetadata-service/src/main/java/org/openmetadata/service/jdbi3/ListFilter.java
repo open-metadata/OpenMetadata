@@ -87,7 +87,7 @@ public class ListFilter extends Filter<ListFilter> {
       return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
     } else {
       String createdBy = queryParams.get("createdBy");
-      return createdBy == null ? "" : "json#>'{createdBy}' = :createdBy";
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
     }
   }
 
