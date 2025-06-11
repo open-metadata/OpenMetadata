@@ -80,6 +80,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
+              newLook
               activeDomain={domain}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}

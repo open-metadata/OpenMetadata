@@ -99,6 +99,8 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  test.slow();
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -135,6 +137,8 @@ test.afterAll(async ({ browser }) => {
 });
 
 test.beforeEach(async ({ page }) => {
+  test.slow();
+
   await visitObservabilityAlertPage(page);
 });
 

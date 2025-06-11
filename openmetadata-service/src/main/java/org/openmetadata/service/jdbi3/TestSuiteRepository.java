@@ -16,6 +16,11 @@ import static org.openmetadata.service.search.SearchUtils.getAggregationKeyValue
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,11 +29,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -563,6 +563,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public class TestSuiteUpdater extends EntityUpdater {
     public TestSuiteUpdater(TestSuite original, TestSuite updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected boolean consolidateChanges(
+        TestSuite original, TestSuite updated, Operation operation) {
+      return false;
     }
 
     @Transaction

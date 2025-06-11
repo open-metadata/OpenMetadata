@@ -581,6 +581,9 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "upstreamLineage": {
+        "type": "object"
+      },
       "certification": {
         "type": "object",
         "properties": {

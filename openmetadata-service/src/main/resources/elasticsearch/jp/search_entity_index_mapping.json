@@ -411,8 +411,8 @@
       "lifeCycle": {
         "type": "object"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "dataProducts": {
         "properties": {

@@ -13,10 +13,15 @@
 Test Bigquery connector with CLI
 """
 import random
+from datetime import datetime
 from typing import List, Tuple
 
+import pytest
+
+from ingestion.tests.cli_e2e.base.e2e_types import E2EType
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
     DmlOperationType,
     ProfileSampleType,
     SystemProfile,
@@ -123,7 +128,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -131,7 +136,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 2
+        return 3
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -139,7 +144,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def delete_queries() -> List[str]:
@@ -209,3 +214,24 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def get_expected_test_case_results(self):
         return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]
+
+    @pytest.mark.order(9999)
+    def test_profiler_w_partition_table(self):
+        """Test profiler sample for partitioned table"""
+        self.build_config_file(
+            E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]}
+        )
+        self.run_command()
+
+        self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})
+        start_ts = int(datetime.now().timestamp() * 1000)
+        self.run_command("profile")
+        end_ts = int(datetime.now().timestamp() * 1000)
+        column_profile = self.openmetadata.get_profile_data(
+            "local_bigquery.open-metadata-beta.w_partition.w_time_partition.id",
+            start_ts,
+            end_ts,
+            profile_type=ColumnProfile,
+        ).entities[0]
+        # We ingest 1 row for each day and the profiler should default to the latest partition
+        assert column_profile.valuesCount == 1

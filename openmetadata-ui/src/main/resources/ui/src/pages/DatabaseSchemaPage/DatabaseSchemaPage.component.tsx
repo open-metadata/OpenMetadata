@@ -40,6 +40,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -56,13 +57,16 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  addFollowers,
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  removeFollowers,
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
@@ -85,6 +89,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
 
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -111,6 +117,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
+  const { isFollowing, followers = [] } = useMemo(
+    () => ({
+      isFollowing: databaseSchema?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: databaseSchema?.followers ?? [],
+    }),
+    [currentUser, databaseSchema]
+  );
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
@@ -156,13 +171,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.DATABASE_SCHEMA,
       decodedDatabaseSchemaFQN,
       handleFeedCount
     );
-  };
+  }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -170,8 +185,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          // eslint-disable-next-line max-len
-          fields: `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_SUMMARY,
+            TabSpecificField.TAGS,
+            TabSpecificField.DOMAIN,
+            TabSpecificField.VOTES,
+            TabSpecificField.EXTENSION,
+            TabSpecificField.FOLLOWERS,
+            TabSpecificField.DATA_PRODUCTS,
+          ].join(','),
           include: Include.All,
         }
       );
@@ -305,8 +328,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database-schema'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -381,10 +403,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission]);
+  }, [
+    viewDatabaseSchemaPermission,
+    fetchDatabaseSchemaDetails,
+    fetchStoreProcedureCount,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     fetchTableCount();
@@ -500,12 +526,79 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       checkIfExpandViewSupported(tabs[0], activeTab, PageType.DatabaseSchema),
     [tabs[0], activeTab]
   );
+  const followSchema = useCallback(async () => {
+    try {
+      const res = await addFollowers(
+        databaseSchemaId,
+        USERId ?? '',
+        GlobalSettingOptions.DATABASE_SCHEMA
+      );
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setDatabaseSchema((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(databaseSchema),
+        })
+      );
+    }
+  }, [USERId, databaseSchemaId]);
+  const unFollowSchema = useCallback(async () => {
+    try {
+      const res = await removeFollowers(
+        databaseSchemaId,
+        USERId,
+        GlobalSettingOptions.DATABASE_SCHEMA
+      );
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setDatabaseSchema((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(databaseSchema),
+        })
+      );
+    }
+  }, [USERId, databaseSchemaId]);
+
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unFollowSchema() : await followSchema();
+  }, [isFollowing, unFollowSchema, followSchema]);
+
   if (isPermissionsLoading) {
     return <Loader />;
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.database-schema'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -542,6 +635,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
+                onFollowClick={handleFollowClick}
                 onOwnerUpdate={handleUpdateOwner}
                 onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}

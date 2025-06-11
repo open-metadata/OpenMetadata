@@ -12,7 +12,6 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -25,6 +24,7 @@ import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validator;
 import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -72,6 +71,8 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
@@ -139,7 +140,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup'");
     return 0;
   }
 
@@ -708,6 +710,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "relationshipCleanup",
+      description =
+          "Cleans up orphaned entity relationships where referenced entities no longer exist. By default, runs in dry-run mode to only identify orphaned relationships.")
+  public Integer cleanupOrphanedRelationships(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned relationships. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of relationships to process in each batch.")
+          int batchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info(
+          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+      parseConfig();
+
+      EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+      EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(batchSize);
+
+      LOG.info("=== Entity Relationship Cleanup Summary ===");
+      LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+      LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+      LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+
+      if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+        LOG.info("To actually delete these orphaned relationships, run with --delete");
+        return 1;
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned relationships due to ", e);
+      return 1;
+    }
+  }
+
   @Command(name = "reindex", description = "Re Indexes data into search engine from command line.")
   public Integer reIndex(
       @Option(
@@ -1125,11 +1169,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void parseConfig() throws Exception {
-    if (debug) {
-      Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-      root.setLevel(Level.DEBUG);
-    }
     ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(

@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.dqtests;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -41,6 +41,8 @@ import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -56,11 +58,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -465,7 +467,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -1525,8 +1527,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // 1. soft delete - should not delete the test case resolution status
     // 2. hard delete - should delete the test case resolution status
     deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    queryParams.clear();
+    queryParams.put("include", "all");
     storedTestCaseResolutions =
-        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
+        getTestCaseFailureStatus(
+            startTs, endTs, null, TestCaseResolutionStatusTypes.Ack, queryParams);
     assertEquals(2, storedTestCaseResolutions.getData().size());
     assertTrue(
         storedTestCaseResolutions.getData().stream()
@@ -1568,6 +1573,40 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getTestCaseFailureStatus(1000000, null, false, startTs, endTs, null);
 
     paginateTestCaseFailureStatus(maxEntities, allEntities, startTs, endTs);
+  }
+
+  @Test
+  void test_listTestCaseFailureStatusDeletedTestCase(TestInfo test)
+      throws IOException, ParseException {
+    List<TestCase> testCases = new ArrayList<>();
+    Long startTs = System.currentTimeMillis() - 1000;
+    for (int i = 0; i < 2; i++) {
+      // We'll create random test cases
+      TestCase testCaseEntity =
+          createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
+      testCases.add(testCaseEntity);
+      // Adding failed test case, which will create a NEW incident
+      postTestCaseResult(
+          testCaseEntity.getFullyQualifiedName(),
+          new CreateTestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+    }
+    Long endTs = System.currentTimeMillis() + 1000;
+    ResultList<TestCaseResolutionStatus> entities =
+        getTestCaseFailureStatus(1000, null, false, startTs, endTs, null);
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
+    deleteEntityByName(testCases.get(0).getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+    entities = getTestCaseFailureStatus(1000, null, false, startTs, endTs, null);
+    assertTrue(
+        entities.getData().stream()
+            .noneMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
   }
 
   @Test
@@ -2222,7 +2261,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Create an entity with mandatory name field null
     final CreateTestCase request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestCase request1 = createRequest("", "description", "displayName", null);
@@ -3782,5 +3823,65 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       throws HttpResponseException {
     WebTarget target = getResource(testCaseId).path("/failedRowsSample");
     return TestUtils.get(target, TableData.class, authHeaders);
+  }
+
+  @Test
+  void test_listTestCasesFilterByCreatedBy(TestInfo testInfo) throws IOException {
+    if (supportsSearchIndex) {
+      // Create test case with admin user
+      CreateTestCase adminTestCaseReq =
+          createRequest(testInfo)
+              .withName("adminTestCase")
+              .withEntityLink(TABLE_LINK)
+              .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+              .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
+      TestCase adminTestCase = createAndCheckEntity(adminTestCaseReq, ADMIN_AUTH_HEADERS);
+
+      // Create test case with test user
+      CreateTestCase testUserTestCaseReq =
+          createRequest(testInfo)
+              .withName("testUserTestCase")
+              .withEntityLink(TABLE_LINK)
+              .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+              .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
+      TestCase testUserTestCase =
+          createAndCheckEntity(testUserTestCaseReq, INGESTION_BOT_AUTH_HEADERS);
+
+      // Test filtering by admin user (by name) in search endpoint
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("createdBy", ADMIN_USER_NAME);
+      ResultList<TestCase> adminTestCases =
+          listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+      assertTrue(
+          adminTestCases.getData().stream()
+              .allMatch(tc -> tc.getCreatedBy().equals(ADMIN_USER_NAME)),
+          "Should find test case created by admin user");
+
+      // Test filtering by test user (by name) in search endpoint
+      queryParams.clear();
+      queryParams.put("createdBy", INGESTION_BOT);
+      ResultList<TestCase> testUserTestCases =
+          listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+      assertTrue(
+          testUserTestCases.getData().stream()
+              .allMatch(tc -> tc.getCreatedBy().equals(INGESTION_BOT)),
+          "Should find test case created by test user");
+
+      // Test with list endpoint (non-search)
+      Map<String, String> listParams = new HashMap<>();
+      listParams.put("createdBy", ADMIN_USER_NAME);
+      ResultList<TestCase> listResults = listEntities(listParams, ADMIN_AUTH_HEADERS);
+      assertTrue(
+          listResults.getData().stream().allMatch(tc -> tc.getCreatedBy().equals(ADMIN_USER_NAME)),
+          "List endpoint should also filter by createdBy");
+
+      // Test with list endpoint (non-search)
+      listParams.clear();
+      listParams.put("createdBy", INGESTION_BOT);
+      listResults = listEntities(listParams, ADMIN_AUTH_HEADERS);
+      assertTrue(
+          listResults.getData().stream().allMatch(tc -> tc.getCreatedBy().equals(INGESTION_BOT)),
+          "List endpoint should also filter by createdBy");
+    }
   }
 }

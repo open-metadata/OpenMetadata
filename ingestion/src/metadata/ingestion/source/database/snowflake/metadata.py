@@ -52,6 +52,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -168,6 +169,8 @@ class SnowflakeSource(
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
     """
+
+    service_connection: SnowflakeConnection
 
     def __init__(
         self,
@@ -492,6 +495,7 @@ class SnowflakeSource(
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             **table_type_to_params_map[table_type],
         )
 
@@ -640,6 +644,7 @@ class SnowflakeSource(
         snowflake_views = self.inspector.get_view_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             materialized_views=materialized_views,
         )
 
@@ -893,4 +898,32 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
 
+        return None
+
+    def get_life_cycle_query(self):
+        """
+        Get the life cycle query
+        """
+        return self.life_cycle_query.format(
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            account_usage=self.service_connection.accountUsageSchema,
+        )
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+
+        Snowflake uses a role-based ownership model, not a user-based one.
+        This means that ownership of database objects, such as tables, is assigned
+        to roles rather than individual users.
+
+        As OpenMetadata currently does not support role-based ownership assignment,
+        we are unable to retrieve or associate a meaningful table owner using this method.
+        Therefore, this function will return `None` or a placeholder, and ownership
+        metadata will not be populated in the OpenMetadata ingestion process.
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
         return None

@@ -60,7 +60,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
       and TABLE_SCHEMA = '{schema}'
       and TABLE_TYPE = 'EXTERNAL TABLE'
@@ -86,7 +86,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -111,7 +111,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where  TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'VIEW'
@@ -134,7 +134,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where  TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'MATERIALIZED VIEW'
@@ -171,7 +171,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -197,7 +197,7 @@ from (
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
-    from snowflake.account_usage.tables
+    from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
@@ -297,7 +297,7 @@ SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
 select
 table_name as table_name,
 created as created_at
-from snowflake.account_usage.tables
+from {account_usage}.tables
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
 """
@@ -412,6 +412,10 @@ SELECT table_name "view_name",
     view_definition "view_def"
 FROM information_schema.views
 WHERE view_definition is not null
+"""
+
+SNOWFLAKE_GET_VIEW_DDL = """
+SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
 """
 
 SNOWFLAKE_GET_STREAM_DEFINITION = """
