@@ -1,11 +1,14 @@
-# MCP Application
+# MCP Server
 
-MCP Application installs an embedded MCP Server with OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.For different transports the client can use the following endpoints:
-For different transports the client can use the following endpoints:
-1. SSE : http[s]://<openmetadata-host>/mcp/sse 
-   - This endpoint can be used by client if Streamable-Http transport is used.  
-2. Streamable-Http : http[s]://<openmetadata-host>/mcp 
-   - This endpoint can be used by client if Streamable-Http transport is used.
+MCP Server app installs an embedded Model Context Protocol(MCP) server within OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.
+ 
+   1. SSE : http[s]://openmetadata-host/mcp/sse
+ 
+    - This endpoint can be used by client if Streamable-Http transport is used.
+ 
+   2. Streamable-Http : http[s]://openmetadata-host/mcp
+ 
+    - This endpoint can be used by client if Streamable-Http transport is used.
 
 $$section
 ### Should Origin Header Be validated $(id="originValidationEnabled")
