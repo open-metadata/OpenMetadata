@@ -2,6 +2,7 @@
 Test DBT Ingestion CLI module
 """
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ from metadata.cli.ingest_dbt import (
     extract_openmetadata_config,
     find_dbt_project_config,
     run_ingest_dbt,
+    substitute_env_vars,
 )
 
 
@@ -35,6 +37,135 @@ class DbtIngestCLIUnitTest(unittest.TestCase):
         pattern = FilterPattern(includes=["table1"], excludes=["temp_*"])
         self.assertEqual(pattern.includes, ["table1"])
         self.assertEqual(pattern.excludes, ["temp_*"])
+
+    def test_environment_variable_substitution(self):
+        """Test all environment variable substitution patterns and integration"""
+        # Set test environment variables
+        test_vars = {
+            "SHELL_HOST": "http://shell-host:8585",
+            "DBT_TOKEN": "dbt-jwt-token",
+            "DBT_SERVICE": "dbt-service",
+            "CUSTOM_HOST": "http://custom-host:8585",
+        }
+
+        for var, value in test_vars.items():
+            os.environ[var] = value
+
+        try:
+            # Test all three substitution patterns together
+            content = """
+name: 'test_project'
+version: '1.0.0'
+vars:
+  openmetadata_host_port: "${SHELL_HOST}"
+  openmetadata_jwt_token: "{{ env_var('DBT_TOKEN') }}"
+  openmetadata_service_name: '{{ env_var("DBT_SERVICE") }}'
+  custom_host: '{{ env_var("CUSTOM_HOST", "http://default:8585") }}'
+  fallback_setting: "{{ env_var('UNSET_VAR', 'default-value') }}"
+"""
+
+            # Test substitution function directly
+            result = substitute_env_vars(content)
+            self.assertIn("http://shell-host:8585", result)
+            self.assertIn("dbt-jwt-token", result)
+            self.assertIn("dbt-service", result)
+            self.assertIn("http://custom-host:8585", result)
+            self.assertIn("default-value", result)
+            self.assertNotIn("${", result)
+            self.assertNotIn("env_var", result)
+
+            # Test full integration with dbt_project.yml loading
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                dbt_project_file = temp_path / "dbt_project.yml"
+                dbt_project_file.write_text(content)
+
+                # Load and validate the configuration
+                config = find_dbt_project_config(temp_path)
+                vars_section = config["vars"]
+
+                self.assertEqual(
+                    vars_section["openmetadata_host_port"], "http://shell-host:8585"
+                )
+                self.assertEqual(
+                    vars_section["openmetadata_jwt_token"], "dbt-jwt-token"
+                )
+                self.assertEqual(
+                    vars_section["openmetadata_service_name"], "dbt-service"
+                )
+                self.assertEqual(vars_section["fallback_setting"], "default-value")
+
+                # Test OpenMetadata config extraction
+                om_config = extract_openmetadata_config(config)
+                self.assertEqual(
+                    om_config.openmetadata_host_port, "http://shell-host:8585"
+                )
+                self.assertEqual(om_config.openmetadata_jwt_token, "dbt-jwt-token")
+                self.assertEqual(om_config.openmetadata_service_name, "dbt-service")
+
+            # Test error cases
+            error_content = 'vars:\n  host: "${MISSING_VAR}"'
+            with self.assertRaises(ValueError) as context:
+                substitute_env_vars(error_content)
+            self.assertIn("MISSING_VAR", str(context.exception))
+
+            error_content2 = "vars:\n  host: \"{{ env_var('MISSING_DBT_VAR') }}\""
+            with self.assertRaises(ValueError) as context:
+                substitute_env_vars(error_content2)
+            self.assertIn("MISSING_DBT_VAR", str(context.exception))
+
+        finally:
+            # Clean up environment variables
+            for var in test_vars:
+                if var in os.environ:
+                    del os.environ[var]
+
+    def test_dotenv_file_support(self):
+        """Test that .env files are properly loaded"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            # Create .env file
+            env_file = temp_path / ".env"
+            env_file.write_text(
+                """
+DOTENV_HOST=http://dotenv-host:8585
+DOTENV_TOKEN=dotenv-jwt-token
+DOTENV_SERVICE=dotenv-service
+"""
+            )
+
+            # Create dbt_project.yml that uses .env variables
+            dbt_project_file = temp_path / "dbt_project.yml"
+            dbt_project_content = """
+name: 'test_dotenv_project'
+version: '1.0.0'
+vars:
+  openmetadata_host_port: "${DOTENV_HOST}"
+  openmetadata_jwt_token: "{{ env_var('DOTENV_TOKEN') }}"
+  openmetadata_service_name: "{{ env_var('DOTENV_SERVICE') }}"
+"""
+            dbt_project_file.write_text(dbt_project_content)
+
+            # Load and validate the configuration
+            config = find_dbt_project_config(temp_path)
+            vars_section = config["vars"]
+
+            self.assertEqual(
+                vars_section["openmetadata_host_port"], "http://dotenv-host:8585"
+            )
+            self.assertEqual(vars_section["openmetadata_jwt_token"], "dotenv-jwt-token")
+            self.assertEqual(
+                vars_section["openmetadata_service_name"], "dotenv-service"
+            )
+
+            # Test OpenMetadata config extraction
+            om_config = extract_openmetadata_config(config)
+            self.assertEqual(
+                om_config.openmetadata_host_port, "http://dotenv-host:8585"
+            )
+            self.assertEqual(om_config.openmetadata_jwt_token, "dotenv-jwt-token")
+            self.assertEqual(om_config.openmetadata_service_name, "dotenv-service")
 
     def test_dbt_project_config_vars_validation(self):
         """Test dbt_project.yml vars section validation and structure"""

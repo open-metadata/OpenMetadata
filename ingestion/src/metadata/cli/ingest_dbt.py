@@ -14,16 +14,18 @@ DBT Artifacts Ingestion CLI module
 """
 
 import json
+import os
+import re
 import sys
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
-
+from dotenv import load_dotenv
 from metadata.utils.logger import cli_logger
 from metadata.workflow.metadata import MetadataWorkflow
+from pydantic import BaseModel, Field, field_validator
 
 logger = cli_logger()
 
@@ -124,13 +126,70 @@ class OpenMetadataDBTConfig(BaseModel):
         logger.info("OpenMetadata DBT Config:\n%s", json.dumps(config, indent=2))
 
 
+def substitute_env_vars(content: str) -> str:
+    """
+    Substitute environment variables in YAML content.
+
+    Supports:
+    - ${VAR} - shell style substitution
+    - {{ env_var("VAR") }} - dbt style without default
+    - {{ env_var("VAR", "default") }} - dbt style with default
+
+    :param content: Raw YAML content string
+    :return: Content with environment variables substituted
+    """
+
+    def replace_shell_vars(match):
+        """Replace ${VAR} pattern"""
+        var_name = match.group(1)
+        env_value = os.environ.get(var_name)
+        if env_value is None:
+            raise ValueError(f"Environment variable '{var_name}' is not set")
+        return env_value
+
+    def replace_dbt_env_vars(match):
+        """Replace {{ env_var("VAR") }} and {{ env_var("VAR", "default") }} patterns"""
+        var_name = match.group(1)
+        default_value = match.group(2)  # Will be None if no default provided
+
+        env_value = os.environ.get(var_name)
+        if env_value is None:
+            if default_value is not None:
+                # Remove quotes from default value
+                return default_value.strip("\"'")
+            else:
+                raise ValueError(
+                    f"Environment variable '{var_name}' is not set and no default provided"
+                )
+        return env_value
+
+    # Pattern for ${VAR}
+    shell_pattern = re.compile(r"\$\{([^}]+)\}")
+
+    # Pattern for {{ env_var("VAR") }} and {{ env_var("VAR", "default") }}
+    # This handles both single and double quotes around variable names and defaults
+    dbt_pattern = re.compile(
+        r'\{\{\s*env_var\(\s*["\']([^"\']+)["\']\s*(?:,\s*(["\'][^"\']*["\']))?\s*\)\s*\}\}'
+    )
+
+    # Apply substitutions
+    content = shell_pattern.sub(replace_shell_vars, content)
+    content = dbt_pattern.sub(replace_dbt_env_vars, content)
+
+    return content
+
+
 def find_dbt_project_config(dbt_project_path: Path) -> Dict:
     """
-    Find and load dbt_project.yml configuration
+    Find and load dbt_project.yml configuration with environment variable substitution
 
     :param dbt_project_path: Path to the dbt project directory
     :return: Parsed dbt project configuration
     """
+    # Load environment variables from .env file if present
+    load_dotenv(dbt_project_path / ".env", override=False)
+    load_dotenv(override=False)  # fallback to current dir
+
     dbt_project_file = dbt_project_path / "dbt_project.yml"
 
     if not dbt_project_file.exists():
@@ -138,7 +197,12 @@ def find_dbt_project_config(dbt_project_path: Path) -> Dict:
 
     try:
         with open(dbt_project_file, "r") as file:
-            return yaml.safe_load(file)
+            content = file.read()
+
+        # Substitute environment variables before parsing YAML
+        processed_content = substitute_env_vars(content)
+        return yaml.safe_load(processed_content)
+
     except Exception as exc:
         raise ValueError(f"Failed to parse dbt_project.yml: {exc}")
 

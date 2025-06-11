@@ -29,6 +29,10 @@ The `metadata ingest-dbt` command provides a streamlined way to ingest dbt artif
 pip install "openmetadata-ingestion[dbt]"
 ```
 
+{% note %}
+**Dependencies**: The package includes `python-dotenv>=0.19.0` for automatic `.env` file support, so no additional setup is required for environment variable functionality.
+{% /note %}
+
 ## Quick Start
 
 ### 1. Configure your dbt_project.yml
@@ -42,6 +46,10 @@ vars:
   openmetadata_jwt_token: "your-jwt-token-here"
   openmetadata_service_name: "your-database-service-name"
 ```
+
+{% note %}
+**Environment Variables**: For security, you can use environment variables instead of hardcoding sensitive values. See the [Environment Variables](#environment-variables) section below for supported patterns.
+{% /note %}
 
 ### 2. Generate dbt artifacts
 
@@ -59,8 +67,63 @@ metadata ingest-dbt
 
 Or if you're in a different directory:
 ```bash
-metadata ingest-dbt --dbt-project-path /path/to/your/dbt-project
+metadata ingest-dbt -c /path/to/your/dbt-project
 ```
+
+## Environment Variables
+
+For security and flexibility, you can use environment variables in your `dbt_project.yml` configuration instead of hardcoding sensitive values like JWT tokens. The system supports three different environment variable patterns:
+
+### Supported Patterns
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| `${VAR}` | Shell-style variable substitution | `"${OPENMETADATA_TOKEN}"` |
+| `{{ env_var("VAR") }}` | dbt-style without default | `"{{ env_var('OPENMETADATA_HOST') }}"` |
+| `{{ env_var("VAR", "default") }}` | dbt-style with default value | `"{{ env_var('SERVICE_NAME', 'default-service') }}"` |
+
+### Environment Variables Example
+
+```yaml
+# dbt_project.yml
+vars:
+  # Using shell-style variables
+  openmetadata_host_port: "${OPENMETADATA_HOST_PORT}"
+  openmetadata_jwt_token: "${OPENMETADATA_JWT_TOKEN}"
+  
+  # Using dbt-style variables  
+  openmetadata_service_name: "{{ env_var('OPENMETADATA_SERVICE_NAME') }}"
+  
+  # Using dbt-style with defaults
+  openmetadata_dbt_classification_name: "{{ env_var('DBT_CLASSIFICATION', 'dbt_tags') }}"
+  openmetadata_search_across_databases: "{{ env_var('SEARCH_ACROSS_DB', 'false') }}"
+```
+
+Then set your environment variables:
+```bash
+export OPENMETADATA_HOST_PORT="https://your-openmetadata-server-url/endpoint"
+export OPENMETADATA_JWT_TOKEN="your-jwt-token"
+export OPENMETADATA_SERVICE_NAME="your-database-service"
+```
+
+**Alternative: Using .env Files**
+
+For local development, you can create a `.env` file in your dbt project directory:
+
+```bash
+# .env file in your dbt project root
+OPENMETADATA_HOST_PORT=https://your-openmetadata-server-url/endpoint
+OPENMETADATA_JWT_TOKEN=your-jwt-token
+OPENMETADATA_SERVICE_NAME=your-database-service
+```
+
+{% note %}
+**Note**: The system automatically loads environment variables from `.env` files in both the dbt project directory and the current working directory. Environment variables set in the shell take precedence over `.env` file values.
+{% /note %}
+
+{% note %}
+**Error Handling**: If a required environment variable is not set and no default is provided, the ingestion will fail with a clear error message indicating which variable is missing.
+{% /note %}
 
 ## Configuration Options
 
@@ -117,16 +180,16 @@ model-paths: ["models"]
 # ... other dbt settings ...
 
 vars:
-  # OpenMetadata Configuration
-  openmetadata_host_port: "https://your-openmetadata-server-url/endpoint"
-  openmetadata_jwt_token: "{{ env_var('OPENMETADATA_TOKEN') }}"
-  openmetadata_service_name: "postgres_analytics"
+  # OpenMetadata Configuration - Using Environment Variables
+  openmetadata_host_port: "${OPENMETADATA_HOST_PORT}"
+  openmetadata_jwt_token: "{{ env_var('OPENMETADATA_JWT_TOKEN') }}"
+  openmetadata_service_name: "{{ env_var('OPENMETADATA_SERVICE_NAME', 'postgres_analytics') }}"
   
   # Optional Settings
   openmetadata_dbt_update_descriptions: true
   openmetadata_dbt_update_owners: true
   openmetadata_include_tags: true
-  openmetadata_dbt_classification_name: "dbt_analytics_tags"
+  openmetadata_dbt_classification_name: "{{ env_var('DBT_CLASSIFICATION', 'dbt_analytics_tags') }}"
   
   # Filtering
   openmetadata_database_filter_pattern:
@@ -193,6 +256,8 @@ dbt test                 # Generate run_results.json
 | `Required configuration not found` | Add `openmetadata_*` variables to your `dbt_project.yml` |
 | `manifest.json not found` | Run `dbt compile` or `dbt run` first |
 | `Invalid URL format` | Ensure `openmetadata_host_port` includes protocol (`https://`) |
+| `Environment variable 'VAR' is not set` | Set the required environment variable or provide a default value |
+| `Environment variable not set and no default` | Either set the environment variable or use the `{{ env_var('VAR', 'default') }}` pattern |
 
 ### Debug Mode
 
@@ -204,13 +269,21 @@ metadata --debug ingest-dbt -c .
 ## Best Practices
 
 ### Security
-- Use environment variables for sensitive data:
+- **Always use environment variables** for sensitive data like JWT tokens
+- **Multiple patterns supported** for flexibility:
   ```yaml
   vars:
-    openmetadata_host_port: "{{ env_var('OPENMETADATA_HOST') }}"
-    openmetadata_jwt_token: "{{ env_var('OPENMETADATA_TOKEN') }}"
-    openmetadata_service_name: "{{ env_var('OPENMETADATA_SERVICE') }}"
+    # Shell-style (simple and widely supported)
+    openmetadata_host_port: "${OPENMETADATA_HOST_PORT}"
+    openmetadata_jwt_token: "${OPENMETADATA_JWT_TOKEN}"
+    
+    # dbt-style (consistent with dbt conventions)
+    openmetadata_service_name: "{{ env_var('OPENMETADATA_SERVICE_NAME') }}"
+    
+    # dbt-style with fallbacks (recommended for optional settings)
+    openmetadata_dbt_classification_name: "{{ env_var('DBT_CLASSIFICATION', 'dbt_tags') }}"
   ```
+- **Never commit** sensitive values directly to version control
 
 ### Filtering
 - Use specific patterns to exclude temporary/test tables
@@ -261,9 +334,9 @@ jobs:
       - name: Ingest to OpenMetadata
         run: metadata ingest-dbt -c .
         env:
-          OPENMETADATA_HOST: ${{ secrets.OPENMETADATA_HOST }}
-          OPENMETADATA_TOKEN: ${{ secrets.OPENMETADATA_TOKEN }}
-          OPENMETADATA_SERVICE: ${{ secrets.OPENMETADATA_SERVICE }}
+          OPENMETADATA_HOST_PORT: ${{ secrets.OPENMETADATA_HOST_PORT }}
+          OPENMETADATA_JWT_TOKEN: ${{ secrets.OPENMETADATA_JWT_TOKEN }}
+          OPENMETADATA_SERVICE_NAME: ${{ secrets.OPENMETADATA_SERVICE_NAME }}
 ```
 
 ## Next Steps

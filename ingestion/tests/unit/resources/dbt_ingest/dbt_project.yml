@@ -38,7 +38,7 @@ models:
 vars:
   # Required OpenMetadata configuration for metadata ingest-dbt command
   openmetadata_host_port: "http://test-server:port/endpoint"
-  openmetadata_jwt_token: "test-jwt-token"
+  openmetadata_jwt_token: ${OPENMETADATA_JWT_TOKEN}
   openmetadata_service_name: "test_service"
   
   # Optional OpenMetadata DBT source configuration
