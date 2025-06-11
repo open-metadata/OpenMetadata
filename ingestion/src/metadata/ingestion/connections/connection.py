@@ -19,11 +19,16 @@ to provide a unified way to instantiate and interact with different data sources
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import Generic, Optional, TypeVar
 
-if TYPE_CHECKING:
-    from pyspark.sql import DataFrame, SparkSession
-
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 S = TypeVar("S")  # ServiceConnection Type
 C = TypeVar("C")  # Client Type
@@ -41,16 +46,18 @@ class BaseConnection(ABC, Generic[S, C]):
         self.service_connection = service_connection
 
     @abstractmethod
-    def get_spark_dataframe_loader(
-        self, spark: "SparkSession", table: str
-    ) -> Callable[..., "DataFrame"]:
-        """
-        Return a callable that loads a Spark DataFrame for this connection.
-        The callable's signature can be further specified in subclasses.
-        """
-
-    @abstractmethod
     def get_client(self) -> C:
         """
         Return the main client/engine/connection object for this service.
+        """
+
+    @abstractmethod
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,
+        timeout_seconds: Optional[int] = THREE_MIN,
+    ) -> TestConnectionResult:
+        """
+        Test the connection to the service.
         """
