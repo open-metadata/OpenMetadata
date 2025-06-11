@@ -28,7 +28,8 @@ class TableauBaseModel(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    # in some cases we have the name but not the id
+    id: Optional[str] = None
     name: Optional[str] = None
 
     def __hash__(self):
