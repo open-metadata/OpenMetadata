@@ -1,0 +1,8 @@
+{
+  "name": "McpApplication",
+  "displayName": "McpApplication",
+  "appConfiguration": {
+    "originValidationEnabled": true,
+    "originHeaderUri": "http://localhost"
+  }
+}
