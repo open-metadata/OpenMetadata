@@ -15,7 +15,7 @@ This is the supported list of connectors for API Services:
 
 ## Supported Features
 
--  Metadata Ingestion: Extracts metadata from services exposing OpenAPI schemas.
+-  Metadata Ingestion: Extracts metadata from services exposing OpenAPI JSON schemas.
 -  Custom Integration: Allows integration with bespoke systems through standardized API definitions. 
 -  Flexible Deployment: Supports both UI-based and CLI-based ingestion workflows.
 
@@ -27,9 +27,9 @@ This is the supported list of connectors for API Services:
 
 ## Best Practices
 
-- Schema Validation: Ensure the OpenAPI schema is valid and accessible.  
+- Schema Validation: Ensure the OpenAPI JSON schema is valid and accessible.  
 - Authentication Management: Securely store and manage authentication tokens required for API access.  
-- Regular Updates: Periodically update the OpenAPI schema URL if the API definitions change.
+- Regular Updates: Periodically update the OpenAPI JSON schema URL if the API definitions change.
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
 open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.
