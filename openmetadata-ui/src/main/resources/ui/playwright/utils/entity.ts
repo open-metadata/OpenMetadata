@@ -43,10 +43,10 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
