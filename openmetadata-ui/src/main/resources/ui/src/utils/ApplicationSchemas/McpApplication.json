@@ -1,8 +1,8 @@
 {
   "$id": "McpApplication.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Mcp Application",
-  "description": "This schema defines configuration for Mcp Application.",
+  "title": "MCP Application",
+  "description": "This schema defines configuration for MCP Application.",
   "properties": {
     "originValidationEnabled": {
       "title": "Should Origin Header Be validated",
