@@ -23,6 +23,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,6 +154,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     {} as SourceType
   );
   const [activeLayer, setActiveLayer] = useState<LineageLayer[]>([]);
+
+  // Added this ref to compare the previous active layer with the current active layer.
+  // We need to redraw the lineage if the column level lineage is added or removed.
+  const prevActiveLayerRef = useRef<LineageLayer[]>([]);
+
   const [activeNode, setActiveNode] = useState<Node>();
   const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
@@ -265,6 +271,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         allNodes,
         lineageData.edges ?? [],
         decodedFqn,
+        activeLayer.includes(LineageLayer.ColumnLevelLineage),
         isFirstTime ? true : undefined
       );
 
@@ -511,9 +518,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           direction,
         });
 
+        const currentNodes: Record<string, NodeData> = {};
+        entityLineage.nodes?.forEach((node) => {
+          currentNodes[node.fullyQualifiedName ?? ''] = {
+            entity: node,
+            paging: (node as LineageEntityReference).paging ?? {
+              entityDownstreamCount: 0,
+              entityUpstreamCount: 0,
+            },
+          };
+        });
         const concatenatedLineageData = {
           nodes: {
-            ...lineageData?.nodes,
+            ...currentNodes,
             ...res.nodes,
           },
           downstreamEdges: {
@@ -1138,7 +1155,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             );
 
             const { edges: createdEdges, columnsHavingLineage } =
-              createEdgesAndEdgeMaps(allNodes, allEdges, decodedFqn);
+              createEdgesAndEdgeMaps(
+                allNodes,
+                allEdges,
+                decodedFqn,
+                activeLayer.includes(LineageLayer.ColumnLevelLineage)
+              );
             setEdges(createdEdges);
             setColumnsHavingLineage(columnsHavingLineage);
 
@@ -1566,7 +1588,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
   useEffect(() => {
-    repositionLayout();
+    const prevActiveLayer = prevActiveLayerRef.current;
+
+    const prevHadColumn = prevActiveLayer.includes(
+      LineageLayer.ColumnLevelLineage
+    );
+    const currHasColumn = activeLayer.includes(LineageLayer.ColumnLevelLineage);
+
+    if (prevHadColumn !== currHasColumn) {
+      redraw();
+    } else {
+      repositionLayout();
+    }
+
+    prevActiveLayerRef.current = activeLayer;
   }, [activeLayer, expandAllColumns]);
 
   useEffect(() => {

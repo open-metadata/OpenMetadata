@@ -847,6 +847,7 @@ export const createEdgesAndEdgeMaps = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
   entityFqn: string,
+  isColumnLayerActive: boolean,
   hidden?: boolean
 ) => {
   const lineageEdgesV1: Edge[] = [];
@@ -870,7 +871,7 @@ export const createEdgesAndEdgeMaps = (
     outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
     incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
 
-    if (!isUndefined(edge.columns)) {
+    if (!isUndefined(edge.columns) && isColumnLayerActive) {
       edge.columns?.forEach((e) => {
         const toColumn = e.toColumn ?? '';
         if (toColumn && e.fromColumns?.length) {
