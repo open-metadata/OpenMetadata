@@ -2,7 +2,7 @@
   "$id": "McpApplication.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MCP Application",
-  "description": "MCP Application installs an embedded MCP Server with OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.For different transports the client can use the following endpoints:%nFor different transports the client can use the following endpoints:%n1. SSE : http[s]://<openmetadata-host>/mcp/sse%n    - This endpoint can be used by client if Streamable-Http transport is used.%n2. Streamable-Http : http[s]://<openmetadata-host>/mcp%n   - This endpoint can be used by client if Streamable-Http transport is used.",
+  "description": "MCP Application installs an embedded MCP Server with OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.For different transports the client can use the following endpoints: For different transports the client can use the following endpoints: 1. SSE : http[s]://<openmetadata-host>/mcp/sse    - This endpoint can be used by client if Streamable-Http transport is used.2. Streamable-Http : http[s]://<openmetadata-host>/mcp   - This endpoint can be used by client if Streamable-Http transport is used.",
   "properties": {
     "originValidationEnabled": {
       "title": "Should Origin Header Be validated",
