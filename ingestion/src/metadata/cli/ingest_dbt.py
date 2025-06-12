@@ -23,9 +23,10 @@ from typing import Dict, List, Optional
 
 import yaml
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field, field_validator
+
 from metadata.utils.logger import cli_logger
 from metadata.workflow.metadata import MetadataWorkflow
-from pydantic import BaseModel, Field, field_validator
 
 logger = cli_logger()
 
