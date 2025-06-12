@@ -505,4 +505,24 @@ test.describe('User Profile Feed Interactions', () => {
       adminPage.locator('[data-testid="user-display-name"]')
     ).toHaveText(fullyQualifiedName);
   });
+
+  test('Close the profile dropdown after redirecting to user profile page', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await adminPage.locator('[data-testid="dropdown-profile"] svg').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+    const userResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*?fields=*&include=all'
+    );
+    await adminPage.getByTestId('user-name').click();
+    await userResponse;
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(
+      adminPage.locator('.user-profile-dropdown-overlay')
+    ).not.toBeVisible();
+  });
 });
