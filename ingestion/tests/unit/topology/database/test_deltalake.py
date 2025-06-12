@@ -104,11 +104,10 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 )
 
 
-# @unittest.skip(
-#     sys.version_info < (3, 11),
-#     reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
-# )
-@unittest.skip("Spark conflicts with Java 21 and automatically fails. Need to review")
+@unittest.skipUnless(
+    sys.version_info < (3, 11),
+    reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
+)
 class DeltaLakeUnitTest(TestCase):
     """
     Add method validations from Deltalake ingestion
