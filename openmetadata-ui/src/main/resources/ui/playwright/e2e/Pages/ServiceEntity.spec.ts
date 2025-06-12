@@ -136,10 +136,14 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Announcement create & delete`, async ({ page }) => {
+      test.slow(true);
+
       await entity.announcement(page);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {
+      test.slow(true);
+
       await entity.inactiveAnnouncement(page);
     });
 

@@ -160,7 +160,11 @@ export const assignDomain = async (
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="domain-selectable-tree"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
@@ -182,7 +186,10 @@ export const updateDomain = async (
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="domain-selectable-tree"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page
     .getByTestId('domain-selectable-tree')
@@ -210,7 +217,11 @@ export const removeDomain = async (
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  // To target the loader in the domain dropdown
+  await page.waitForSelector(
+    '[data-testid="domain-selectable-tree"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
@@ -275,6 +286,8 @@ export const removeDataProduct = async (
     .getByTestId('remove-tags')
     .locator('svg')
     .click();
+
+  await page.waitForLoadState('networkidle');
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
