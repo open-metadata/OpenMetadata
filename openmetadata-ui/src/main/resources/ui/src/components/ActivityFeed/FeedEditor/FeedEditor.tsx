@@ -90,6 +90,31 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
 
     const { userProfilePics } = useApplicationStore();
 
+    const handleClickOutside = useCallback((event: MouseEvent) => {
+      const emojiContainer = document.querySelector(
+        '#om-quill-editor #textarea-emoji'
+      ) as HTMLElement;
+      const emojiToggleButton = document.querySelector(
+        '#om-quill-editor .textarea-emoji-control.ql-list'
+      ) as HTMLElement;
+
+      if (
+        emojiContainer &&
+        !emojiContainer.contains(event.target as Node) &&
+        emojiToggleButton &&
+        !emojiToggleButton.contains(event.target as Node)
+      ) {
+        emojiToggleButton.click(); // Simulates a click to close the emoji container
+      }
+    }, []);
+
+    useEffect(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [handleClickOutside]);
     const userSuggestionRenderer = async (
       searchTerm: string,
       renderList: (matches: MentionSuggestionsItem[], search: string) => void,
