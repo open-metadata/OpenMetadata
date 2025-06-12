@@ -15,6 +15,7 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../../constant/customProperty';
 import { GlobalSettingOptions } from '../../../constant/settings';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { selectOption } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -26,8 +27,8 @@ import { settingClick, sidebarClick } from '../../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const dashboardEntity = new DashboardClass();
-const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
-const propertyValue = 'dashboardcustomproperty';
+const propertyName = `12${uuid()}`;
+const propertyValue = `dashboardcustomproperty_${uuid()}`;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -122,7 +123,14 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         .getByText('Owner')
         .click();
 
-      await page.getByTitle('Custom Properties').click();
+      const ruleLocator = page.locator('.rule').nth(0);
+
+      // Perform click on rule field
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Custom Properties'
+      );
 
       // Select Custom Property Field when we want filter
       await page
@@ -143,15 +151,21 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Validate if filter dashboard appeared
 
       expect(page.getByTestId('advance-search-filter-text')).toContainText(
         `extension.${propertyName} = '${propertyValue}'`
       );
 
-      expect(page.getByTestId('entity-header-display-name')).toContainText(
-        dashboardEntity.entity.displayName
-      );
+      expect(
+        page.getByTestId('entity-header-display-name').first()
+      ).toContainText(dashboardEntity.entity.displayName);
     }
   );
 

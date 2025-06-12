@@ -13,9 +13,9 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -42,7 +42,7 @@ const BasicSignUp = () => {
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
   const { alert, resetAlert } = useAlertStore();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
@@ -70,7 +70,7 @@ const BasicSignUp = () => {
   };
 
   const handleLogin = () => {
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
     resetAlert();
   };
 

@@ -14,7 +14,7 @@
 import { Skeleton, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import React, { ReactElement, useEffect, useState } from 'react';
+import { cloneElement, ReactElement, useEffect, useState } from 'react';
 import { useLimitStore } from '../context/LimitsProvider/useLimitsStore';
 
 interface LimitWrapperProps {
@@ -66,7 +66,7 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
     <Tooltip
       title={`You have used ${currentLimits?.currentCount} out of ${currentLimits?.configuredLimit.limits.hardLimit} limit`}>
       <span>
-        {React.cloneElement(children, {
+        {cloneElement(children, {
           disabled: true,
           onClick: noop,
           classNames: classNames(children.props.className, 'disabled'),

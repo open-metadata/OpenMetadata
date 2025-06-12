@@ -14,7 +14,7 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
-import React, { FC, useState } from 'react';
+import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {

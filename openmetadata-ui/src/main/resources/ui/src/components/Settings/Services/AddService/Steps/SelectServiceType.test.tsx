@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import SelectServiceType from './SelectServiceType';
 import { SelectServiceTypeProps } from './Steps.interface';

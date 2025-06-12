@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import {
   createClassification,
@@ -87,7 +88,7 @@ describe('API functions should work properly', () => {
   });
 
   it('createTag function should work properly', async () => {
-    const mockPostData = { name: 'newTag' } as Classification;
+    const mockPostData = { name: 'newTag' } as CreateTag;
     const result = await createTag({ ...mockPostData, domain: undefined });
 
     expect(result).toEqual({

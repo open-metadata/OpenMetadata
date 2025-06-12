@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   mockAlertDetails,
   MOCK_TYPED_EVENT_LIST_RESPONSE,
@@ -69,13 +68,11 @@ describe('AlertRecentEventsTab', () => {
   });
 
   it('should display loading skeletons when loading', async () => {
-    await act(async () => {
-      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
 
-      expect(
-        await screen.findAllByTestId('skeleton-loading-panel')
-      ).toHaveLength(5);
-    });
+    expect(await screen.findAllByTestId('skeleton-loading-panel')).toHaveLength(
+      5
+    );
   });
 
   it('should display error placeholder when no data is available', async () => {

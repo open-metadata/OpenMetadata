@@ -112,7 +112,7 @@ export const getStoredProceduresVersionsList = async (id: string) => {
 
 export const getStoredProceduresVersion = async (
   id: string,
-  version: string
+  version?: string
 ) => {
   const url = `${URL}/${id}/versions/${version}`;
 

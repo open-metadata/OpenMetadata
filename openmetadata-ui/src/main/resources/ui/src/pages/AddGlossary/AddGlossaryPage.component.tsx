@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
 import { ERROR_MESSAGE } from '../../constants/constants';
@@ -31,14 +31,13 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addGlossaries } from '../../rest/glossaryAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -55,7 +54,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 
   const goToGlossary = (name = '') => {
-    history.push(getGlossaryPath(name));
+    navigate(getGlossaryPath(name));
   };
 
   const handleCancel = useCallback(() => {
@@ -155,8 +154,4 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.glossary'),
-  })
-)(AddGlossaryPage);
+export default withPageLayout(AddGlossaryPage);

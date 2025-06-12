@@ -17,15 +17,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -65,6 +59,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -100,10 +95,10 @@ const DataProductsDetailsPage = ({
   handleFollowingClick,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+    useRequiredParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -345,7 +340,9 @@ const DataProductsDetailsPage = ({
             activeKey
           );
 
-      history.replace(path);
+      navigate(path, {
+        replace: true,
+      });
     }
   };
 
@@ -358,12 +355,15 @@ const DataProductsDetailsPage = ({
           toString(dataProduct.version)
         );
 
-    history.push(path);
+    navigate(path);
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {

@@ -29,16 +29,7 @@ jest.mock(
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
@@ -58,18 +49,22 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
   useParams: jest.fn().mockImplementation(() => {
     return {
       tab: 'tables',
     };
   }),
+  useNavigate: jest.fn(),
 }));
 
-describe('ExplorePageV1', () => {
-  it('renders without crashing', () => {
-    render(<ExplorePageV1 />);
+const mockProps = {
+  pageTitle: 'explore',
+};
 
-    expect(screen.getByText('ExploreV1')).toBeInTheDocument();
+describe('ExplorePageV1', () => {
+  it('renders without crashing', async () => {
+    render(<ExplorePageV1 {...mockProps} />);
+
+    expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
   });
 });

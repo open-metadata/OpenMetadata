@@ -10,19 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: EntityTabs.CUSTOM_PROPERTIES,
   }),
@@ -103,60 +100,49 @@ describe('CustomPropertiesPageV1 component', () => {
   });
 
   it('tab change should work properly', async () => {
-    await act(async () => {
-      render(<CustomEntityDetailV1 />);
-    });
+    render(<CustomEntityDetailV1 />);
 
-    act(() => {
-      userEvent.click(
-        screen.getByRole('tab', {
-          name: 'label.schema',
-        })
-      );
-    });
+    userEvent.click(
+      await screen.findByRole('tab', {
+        name: 'label.schema',
+      })
+    );
 
-    expect(screen.getByText('SchemaEditor')).toBeInTheDocument();
+    expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
   });
 
   it('update entity type should call updateType api', async () => {
-    await act(async () => {
-      render(<CustomEntityDetailV1 />);
-    });
+    render(<CustomEntityDetailV1 />);
 
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: 'Update Entity Type',
-        })
-      );
-    });
+    userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Update Entity Type',
+      })
+    );
 
-    expect(mockUpdateType).toHaveBeenCalled();
+    await waitFor(() => expect(mockUpdateType).toHaveBeenCalled());
   });
 
   it('add entity should call mockPush', async () => {
-    await act(async () => {
-      render(<CustomEntityDetailV1 />);
-    });
+    render(<CustomEntityDetailV1 />);
 
     userEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'label.add-entity',
       })
     );
 
-    expect(mockPush).toHaveBeenCalled();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   });
 
   it('failed in fetch entityType should not fetch permission', async () => {
     const ERROR = 'Error in fetching type';
     mockGetTypeByFQN.mockRejectedValueOnce(ERROR);
 
-    await act(async () => {
-      render(<CustomEntityDetailV1 />);
-    });
+    render(<CustomEntityDetailV1 />);
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR));
+
     expect(mockGetEntityPermission).not.toHaveBeenCalled();
   });
 
@@ -164,19 +150,15 @@ describe('CustomPropertiesPageV1 component', () => {
     mockGetEntityPermission.mockRejectedValueOnce('Error');
     mockUpdateType.mockRejectedValueOnce('Error');
 
-    await act(async () => {
-      render(<CustomEntityDetailV1 />);
-    });
+    render(<CustomEntityDetailV1 />);
 
     // update entity type
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: 'Update Entity Type',
-        })
-      );
-    });
+    userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Update Entity Type',
+      })
+    );
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledTimes(2));
   });
 });

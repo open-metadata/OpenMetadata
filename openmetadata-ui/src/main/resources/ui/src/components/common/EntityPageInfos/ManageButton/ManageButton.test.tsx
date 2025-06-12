@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import ManageButton from './ManageButton';
 
@@ -42,104 +41,88 @@ const mockProps = {
 
 describe('Test manage button component', () => {
   it('Should render manage button component', async () => {
-    await act(async () => {
-      render(<ManageButton {...mockProps} />);
+    render(<ManageButton {...mockProps} />);
 
-      const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId('manage-button');
 
-      expect(manageButton).toBeInTheDocument();
-    });
+    expect(manageButton).toBeInTheDocument();
   });
 
   it('Should render dropdown component on click of manage button', async () => {
-    await act(async () => {
-      render(<ManageButton {...mockProps} />);
+    render(<ManageButton {...mockProps} />);
 
-      const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId('manage-button');
 
-      expect(manageButton).toBeInTheDocument();
+    expect(manageButton).toBeInTheDocument();
 
-      fireEvent.click(manageButton);
+    fireEvent.click(manageButton);
 
-      const deleteOption = await screen.findByTestId('delete-button');
-      const announcementOption = await screen.findByTestId(
-        'announcement-button'
-      );
+    const deleteOption = await screen.findByTestId('delete-button');
+    const announcementOption = await screen.findByTestId('announcement-button');
 
-      expect(deleteOption).toBeInTheDocument();
-      expect(announcementOption).toBeInTheDocument();
-    });
+    expect(deleteOption).toBeInTheDocument();
+    expect(announcementOption).toBeInTheDocument();
   });
 
   it('Should render delete modal component on click of delete option', async () => {
-    await act(async () => {
-      render(<ManageButton {...mockProps} />);
+    render(<ManageButton {...mockProps} />);
 
-      const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId('manage-button');
 
-      expect(manageButton).toBeInTheDocument();
+    expect(manageButton).toBeInTheDocument();
 
-      fireEvent.click(manageButton);
+    fireEvent.click(manageButton);
 
-      const deleteOption = await screen.findByTestId('delete-button');
+    const deleteOption = await screen.findByTestId('delete-button');
 
-      expect(deleteOption).toBeInTheDocument();
+    expect(deleteOption).toBeInTheDocument();
 
-      fireEvent.click(deleteOption);
+    fireEvent.click(deleteOption);
 
-      expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
   });
 
   it('Should call announcement callback on click of announcement option', async () => {
-    await act(async () => {
-      render(<ManageButton {...mockProps} />);
+    render(<ManageButton {...mockProps} />);
 
-      const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId('manage-button');
 
-      expect(manageButton).toBeInTheDocument();
+    expect(manageButton).toBeInTheDocument();
 
-      fireEvent.click(manageButton);
+    fireEvent.click(manageButton);
 
-      const announcementOption = await screen.findByTestId(
-        'announcement-button'
-      );
+    const announcementOption = await screen.findByTestId('announcement-button');
 
-      expect(announcementOption).toBeInTheDocument();
+    expect(announcementOption).toBeInTheDocument();
 
-      fireEvent.click(announcementOption);
+    fireEvent.click(announcementOption);
 
-      expect(mockAnnouncementClick).toHaveBeenCalled();
-    });
+    expect(mockAnnouncementClick).toHaveBeenCalled();
   });
 
   it('Should call restore callback on click of restore option', async () => {
-    await act(async () => {
-      const mockPropsData = { ...mockProps, deleted: true };
-      render(<ManageButton {...mockPropsData} />);
+    const mockPropsData = { ...mockProps, deleted: true };
+    render(<ManageButton {...mockPropsData} />);
 
-      const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId('manage-button');
 
-      expect(manageButton).toBeInTheDocument();
+    expect(manageButton).toBeInTheDocument();
 
-      fireEvent.click(manageButton);
+    fireEvent.click(manageButton);
 
-      const restoreOption = await screen.findByTestId('restore-button');
+    const restoreOption = await screen.findByTestId('restore-button');
 
-      expect(restoreOption).toBeInTheDocument();
+    expect(restoreOption).toBeInTheDocument();
 
-      fireEvent.click(restoreOption);
+    fireEvent.click(restoreOption);
 
-      const modalBody = await screen.findByTestId('restore-modal-body');
+    const modalBody = await screen.findByTestId('restore-modal-body');
 
-      expect(modalBody).toBeInTheDocument();
+    expect(modalBody).toBeInTheDocument();
 
-      const modalRestoreButton = await screen.findAllByText('label.restore');
-      screen.debug(modalRestoreButton);
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
 
-      fireEvent.click(modalRestoreButton[1]);
-
-      expect(mockOnRestoreEntity).toHaveBeenCalled();
-    });
+    expect(mockOnRestoreEntity).toHaveBeenCalled();
   });
 });

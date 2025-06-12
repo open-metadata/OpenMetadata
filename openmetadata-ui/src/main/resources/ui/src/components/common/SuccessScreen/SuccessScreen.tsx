@@ -13,7 +13,7 @@
 
 import { Button, Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';

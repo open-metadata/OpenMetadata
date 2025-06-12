@@ -14,9 +14,8 @@
 import { Tag } from 'antd';
 import classNames from 'classnames';
 import { ArrayChange } from 'diff';
-import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
 export const TagsDiffView = ({
@@ -26,6 +25,7 @@ export const TagsDiffView = ({
   diffArr: ArrayChange<TagLabel>[];
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const elements = diffArr.map((diff) => {
     if (diff.added) {
       return (
