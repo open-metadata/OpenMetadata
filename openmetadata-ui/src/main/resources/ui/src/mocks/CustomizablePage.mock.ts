@@ -24,58 +24,58 @@ export const mockPersonaDetails: Persona = {
 
 const mockDefaultLayout: Array<WidgetConfig> = [
   {
-    h: 6,
+    h: 4,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 3,
+    w: 1,
     x: 0,
     y: 0,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.MY_DATA,
     w: 1,
-    x: 0,
-    y: 6,
+    x: 2,
+    y: 0,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.KPI,
-    w: 2,
-    x: 1,
-    y: 6,
-    static: false,
-  },
-  {
-    h: 3,
-    i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-    w: 3,
+    w: 1,
     x: 0,
-    y: 9,
+    y: 3,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
+    i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
+    w: 1,
+    x: 1,
+    y: 3,
+    static: false,
+  },
+  {
+    h: 4,
     i: LandingPageWidgetKeys.FOLLOWING,
     w: 1,
-    x: 3,
-    y: 1.5,
+    x: 2,
+    y: 3,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.RECENTLY_VIEWED,
     w: 1,
-    x: 3,
-    y: 3,
+    x: 0,
+    y: 6,
     static: false,
   },
 ];
 
 export const mockCustomizedLayout1: Array<WidgetConfig> = [
   {
-    h: 6,
+    h: 4,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 3,
     x: 0,
@@ -83,15 +83,15 @@ export const mockCustomizedLayout1: Array<WidgetConfig> = [
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.FOLLOWING,
     w: 1,
     x: 3,
-    y: 1.5,
+    y: 0,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.RECENTLY_VIEWED,
     w: 1,
     x: 3,
@@ -110,15 +110,15 @@ export const mockCustomizedLayout2: Array<WidgetConfig> = [
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.FOLLOWING,
     w: 1,
     x: 3,
-    y: 1.5,
+    y: 0,
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.RECENTLY_VIEWED,
     w: 1,
     x: 3,
@@ -126,7 +126,7 @@ export const mockCustomizedLayout2: Array<WidgetConfig> = [
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: LandingPageWidgetKeys.KPI,
     w: 1,
     x: 3,
@@ -156,7 +156,7 @@ export const mockShowSuccessToast = jest.fn();
 
 export const mockCurrentAddWidget = [
   {
-    h: 6,
+    h: 4,
     i: 'KnowledgePanel.ActivityFeed',
     w: 3,
     x: 0,
@@ -164,7 +164,7 @@ export const mockCurrentAddWidget = [
     static: false,
   },
   {
-    h: 3,
+    h: 4,
     i: 'KnowledgePanel.RecentlyViewed',
     w: 1,
     x: 3,
@@ -172,7 +172,7 @@ export const mockCurrentAddWidget = [
     static: false,
   },
   {
-    h: 2,
+    h: 4,
     i: 'ExtraWidget.EmptyWidgetPlaceholder',
     w: 4,
     x: 0,
@@ -184,7 +184,7 @@ export const mockCurrentAddWidget = [
 
 export const mockAddWidgetReturnValues = [
   {
-    h: 6,
+    h: 4,
     i: 'KnowledgePanel.ActivityFeed',
     static: false,
     w: 3,
@@ -192,7 +192,7 @@ export const mockAddWidgetReturnValues = [
     y: 0,
   },
   {
-    h: 3,
+    h: 4,
     i: 'KnowledgePanel.RecentlyViewed',
     static: false,
     w: 1,
@@ -200,7 +200,7 @@ export const mockAddWidgetReturnValues = [
     y: 3,
   },
   {
-    h: 2,
+    h: 4,
     i: 'ExtraWidget.EmptyWidgetPlaceholder',
     isDraggable: false,
     static: false,
@@ -208,12 +208,12 @@ export const mockAddWidgetReturnValues = [
     x: 0,
     y: 100,
   },
-  { h: 3, i: 'KnowledgePanel.Following-1', static: false, w: 1, x: 0, y: 4 },
+  { h: 4, i: 'KnowledgePanel.Following-1', static: false, w: 1, x: 0, y: 4 },
 ];
 
 export const mockAddWidgetReturnValues2 = [
   {
-    h: 6,
+    h: 4,
     i: 'KnowledgePanel.ActivityFeed',
     static: false,
     w: 3,
@@ -221,7 +221,7 @@ export const mockAddWidgetReturnValues2 = [
     y: 0,
   },
   {
-    h: 3,
+    h: 4,
     i: 'KnowledgePanel.RecentlyViewed',
     static: false,
     w: 1,
@@ -229,7 +229,7 @@ export const mockAddWidgetReturnValues2 = [
     y: 3,
   },
   {
-    h: 2,
+    h: 4,
     i: 'ExtraWidget.EmptyWidgetPlaceholder',
     isDraggable: false,
     static: false,
@@ -238,12 +238,12 @@ export const mockAddWidgetReturnValues2 = [
     y: 100,
   },
   {
-    h: 3,
+    h: 4,
     i: 'KnowledgePanel.dataAsset',
     w: 1,
-    x: 2,
+    x: 0,
     y: 4,
     static: false,
   },
-  { h: 3, i: 'KnowledgePanel.Following-2', static: false, w: 1, x: 3, y: 4 },
+  { h: 4, i: 'KnowledgePanel.Following-2', static: false, w: 1, x: 1, y: 4 },
 ];
