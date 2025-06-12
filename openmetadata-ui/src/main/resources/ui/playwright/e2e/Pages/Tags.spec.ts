@@ -438,8 +438,10 @@ test.fixme('Classification Page', async ({ page }) => {
   });
 });
 
-test('Search tag using display name should work', async ({ page }) => {
-  const displayNameToSearch = tag.responseData.displayName;
+test('Search tag using classification display name should work', async ({
+  page,
+}) => {
+  const displayNameToSearch = tag.responseData.classification.displayName;
 
   await table.visitEntityPage(page);
 
@@ -469,10 +471,15 @@ test('Search tag using display name should work', async ({ page }) => {
   // Verify that we got search results
   expect(searchResults.hits.hits.length).toBeGreaterThan(0);
 
-  // Verify that the tag with matching display name is shown in dropdown
+  // Verify that the classification display name is shown in search input
   await expect(
     page.locator('[data-testid="tag-selector"] > .ant-select-selector')
   ).toContainText(displayNameToSearch);
+
+  // Verify that the tag with matching display name is shown in dropdown
+  await expect(
+    page.locator('.ant-select-dropdown').getByText(tag.responseData.displayName)
+  ).toBeVisible();
 
   // Verify the tag is selectable in the dropdown
   await expect(
