@@ -37,7 +37,7 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 EXPOSE 8585 8586
 RUN adduser -D openmetadata && apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk17-jre
+    apk add --update --no-cache bash openjdk21-jre
 
 COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh ./
