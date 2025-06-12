@@ -179,7 +179,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         tagResourceTest.createEntity(
             tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, retentionPeriod,
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+    // retentionPeriod,
     // sourceUrl, domain
     // Update terms with change in description
     String record =
@@ -196,7 +197,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         null,
         listOf(record));
 
-    String clearRecord = "s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,";
+    String clearRecord = "s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,,";
     importCsvAndValidate(
         database.getFullyQualifiedName(),
         getDatabaseCsvHeaders(database, false),

@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -560,7 +561,7 @@ public class SearchRepository {
     paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
     paramMap.put("style", tagEntity.getStyle());
     searchClient.updateChildren(
-        GLOBAL_SEARCH_ALIAS,
+        DATA_ASSET_SEARCH_ALIAS,
         new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
         new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
   }

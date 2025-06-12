@@ -192,7 +192,7 @@ public class DatabaseSchemaResourceTest
         null,
         updateRecords);
 
-    List<String> clearRecords = listOf("s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,");
+    List<String> clearRecords = listOf("s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,,");
 
     importCsvAndValidate(
         schema.getFullyQualifiedName(),

@@ -428,7 +428,7 @@ public class DatabaseServiceResourceTest
         null,
         listOf(record));
 
-    String clearRecord = "d1,dsp1,new-dsc2,,,,,,";
+    String clearRecord = "d1,dsp1,new-dsc2,,,,,,,";
 
     importCsvAndValidate(
         service.getFullyQualifiedName(),
