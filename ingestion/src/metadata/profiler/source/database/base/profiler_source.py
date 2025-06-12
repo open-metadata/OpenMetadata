@@ -22,10 +22,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -39,6 +36,7 @@ from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.source.database.base.profiler_resolver import ProfilerResolver
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 from metadata.sampler.config import (
     get_config_for_table,
@@ -54,10 +52,6 @@ from metadata.utils.dependency_injector.dependency_injector import (
 )
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
-from metadata.utils.service_spec.service_spec import (
-    import_profiler_class,
-    import_sampler_class,
-)
 
 logger = profiler_logger()
 
@@ -82,9 +76,10 @@ class ProfilerSource(ProfilerSourceInterface):
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
         self._interface = None
-        # We define this in create_profiler_interface to help us reuse
-        # this method for the sampler, which does not have a DatabaseServiceProfilerPipeline
-        self.source_config = None
+
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
+            self.config.source.sourceConfig.config
+        )
         self.global_profiler_configuration = global_profiler_configuration
 
     @property
@@ -127,25 +122,27 @@ class ProfilerSource(ProfilerSourceInterface):
 
         return config_copy
 
+    @inject
     def create_profiler_interface(
         self,
         entity: Table,
         config: Optional[TableConfig],
-        profiler_config: Optional[ProfilerProcessorConfig],
-        schema_entity: Optional[DatabaseSchema],
-        database_entity: Optional[Database],
-        db_service: Optional[DatabaseService],
+        schema_entity: DatabaseSchema,
+        database_entity: Database,
+        profiler_resolver: Inject[Type[ProfilerResolver]] = None,
     ) -> ProfilerInterface:
-        """Create sqlalchemy profiler interface"""
-        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
-            self.config.source.sourceConfig.config
+        """Create the appropriate profiler interface based on processing engine."""
+        if profiler_resolver is None:
+            raise DependencyNotFoundError(
+                "ProfilerResolver dependency not found. Please ensure the ProfilerResolver is properly registered."
+            )
+
+        sampler_class, profiler_class = profiler_resolver.resolve(
+            processing_engine=self.get_processing_engine(self.source_config),
+            service_type=ServiceType.Database,
+            source_type=self._interface_type,
         )
-        profiler_class = import_profiler_class(
-            ServiceType.Database, source_type=self._interface_type
-        )
-        sampler_class = import_sampler_class(
-            ServiceType.Database, source_type=self._interface_type
-        )
+
         # This is shared between the sampler and profiler interfaces
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
@@ -160,6 +157,8 @@ class ProfilerSource(ProfilerSourceInterface):
                 samplingMethodType=self.source_config.samplingMethodType,
                 randomizedSample=self.source_config.randomizedSample,
             ),
+            # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
+            processing_engine=self.get_processing_engine(self.source_config),
         )
 
         profiler_interface: ProfilerInterface = profiler_class.create(
@@ -193,12 +192,7 @@ class ProfilerSource(ProfilerSourceInterface):
             entity=entity, metadata=self.ometa_client
         )
         profiler_interface = self.create_profiler_interface(
-            entity,
-            table_config,
-            profiler_config,
-            schema_entity,
-            database_entity,
-            db_service,
+            entity, table_config, schema_entity, database_entity
         )
 
         if not profiler_config.profiler:
