@@ -197,7 +197,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         null,
         listOf(record));
 
-    String clearRecord = "s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,,";
+    String clearRecord = "s1,dsp1,new-dsc2,,,,,,P23DT23H,http://test.com,,";
     importCsvAndValidate(
         database.getFullyQualifiedName(),
         getDatabaseCsvHeaders(database, false),
