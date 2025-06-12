@@ -30,6 +30,15 @@ import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.info.Contact;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.info.License;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.oas.annotations.security.SecuritySchemes;
+import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
 import jakarta.servlet.ServletRegistration;
@@ -139,6 +148,31 @@ import org.quartz.SchedulerException;
 
 /** Main catalog application */
 @Slf4j
+@OpenAPIDefinition(
+    info =
+        @Info(
+            title = "OpenMetadata APIs",
+            version = "1.8.0",
+            description = "Common types and API definition for OpenMetadata",
+            contact =
+                @Contact(
+                    name = "OpenMetadata",
+                    url = "https://open-metadata.org",
+                    email = "openmetadata-dev@googlegroups.com"),
+            license =
+                @License(name = "Apache 2.0", url = "https://www.apache.org/licenses/LICENSE-2.0")),
+    servers = {
+      @Server(url = "/api", description = "Current Host"),
+      @Server(url = "http://localhost:8585/api", description = "Endpoint URL")
+    },
+    security = @SecurityRequirement(name = "BearerAuth"))
+@SecuritySchemes({
+  @SecurityScheme(
+      name = "BearerAuth",
+      type = SecuritySchemeType.HTTP,
+      scheme = "bearer",
+      bearerFormat = "JWT")
+})
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
