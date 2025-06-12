@@ -131,7 +131,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
           emptyText: (
             <ErrorPlaceHolder
               permission
-              className="p-y-md"
+              className="p-y-md border-none"
               heading={t('label.user')}
               permissionValue={t('label.create-entity', {
                 entity: t('label.user'),

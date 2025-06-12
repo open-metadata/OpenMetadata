@@ -41,7 +41,7 @@ const CustomiseLandingPageHeader = () => {
             alt={get(entity, 'service.displayName', '')}
             className="entity-icon"
             src={serviceUtilClassBase.getServiceTypeLogo(
-              entity as SearchSourceAlias
+              entity as unknown as SearchSourceAlias
             )}
           />
         ),
@@ -51,77 +51,80 @@ const CustomiseLandingPageHeader = () => {
   }, []);
 
   return (
-    <Row className="landing-page-header m-x-0" gutter={[24, 24]}>
-      <Col className="dashboardHeader" span={18}>
-        <Row className="d-flex items-center gap-4 mb-5">
-          <Typography.Text className="welcome-user">
-            {t('label.welcome', {
-              name: currentUser?.displayName ?? currentUser?.name,
-            })}
-          </Typography.Text>
-          <Button
-            className="customise-header-btn"
-            data-testid="customise-header-btn"
-            icon={
-              <Icon
-                component={FilterIcon}
-                style={{ fontSize: '16px', color: 'white' }}
-              />
-            }
-          />
-        </Row>
-        <Row className="d-flex items-center gap-4 mb-8">
-          <div className="flex-center customise-search-container">
-            {!isNLPEnabled && (
-              <Button
-                className="p-0 w-6 h-6"
-                icon={
-                  <Icon
-                    component={IconSuggestionsBlue}
-                    style={{ fontSize: '20px' }}
-                  />
-                }
+    <Row className="customise-landing-page">
+      <Row gutter={[24, 24]}>
+        <Col className="dashboardHeader" span={18}>
+          <Row className="d-flex items-center gap-4 mb-8">
+            <Typography.Text className="welcome-user">
+              {t('label.welcome', {
+                name: currentUser?.displayName ?? currentUser?.name,
+              })}
+            </Typography.Text>
+            <Button
+              className="customise-header-btn"
+              data-testid="customise-header-btn"
+              icon={
+                <Icon
+                  component={FilterIcon}
+                  style={{ fontSize: '16px', color: 'white' }}
+                />
+              }
+            />
+          </Row>
+          <Row className="d-flex items-center gap-4 mb-8">
+            <div className="flex-center customise-search-container">
+              {!isNLPEnabled && (
+                <Button
+                  className="p-0 w-6 h-6"
+                  icon={
+                    <Icon
+                      component={IconSuggestionsBlue}
+                      style={{ fontSize: '20px' }}
+                    />
+                  }
+                  type="text"
+                />
+              )}
+              <Input
+                autoComplete="off"
+                bordered={false}
+                className="rounded-4 appbar-search"
+                data-testid="customise-searchbox"
+                id="customise-searchbox"
+                placeholder={t('label.search-for-type', {
+                  type: 'Tables, Database, Schema...',
+                })}
                 type="text"
               />
-            )}
-            <Input
-              autoComplete="off"
-              bordered={false}
-              className="rounded-4 appbar-search"
-              data-testid="customise-searchbox"
-              id="customise-searchbox"
-              placeholder={t('label.search-for-type', {
-                type: 'Tables, Database, Schema...',
-              })}
-              type="text"
-            />
-          </div>
-          <div className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white">
-            <DomainIcon className="domain-icon" height={22} width={22} />
-            <Typography.Text className="text-sm font-medium domain-title">
-              {t('label.all-domain-plural')}
-            </Typography.Text>
-            <DropdownIcon className="dropdown-icon" height={14} width={14} />
-          </div>
-        </Row>
-        {recentlyViewData.length > 0 && (
-          <Row className="customise-recently-viewed-data">
-            {recentlyViewData.map((data) => (
-              <div
-                className="recent-item d-flex flex-col items-center gap-3"
-                key={data.name}>
-                <div className="d-flex items-center justify-center entity-icon-container">
-                  {data.icon}
-                </div>
-                <Typography.Text className="text-sm font-medium text-white wrap-text">
-                  {data.name}
-                </Typography.Text>
-              </div>
-            ))}
+            </div>
+            <div className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white">
+              <DomainIcon className="domain-icon" height={22} width={22} />
+              <Typography.Text className="text-sm font-medium domain-title">
+                {t('label.all-domain-plural')}
+              </Typography.Text>
+              <DropdownIcon className="dropdown-icon" height={14} width={14} />
+            </div>
           </Row>
-        )}
-      </Col>
-      <Col span={6} />
+          {recentlyViewData.length > 0 && (
+            <div className="customise-recently-viewed-data">
+              {recentlyViewData.map((data) => (
+                <div
+                  className="recent-item d-flex flex-col items-center gap-3"
+                  key={data.name}>
+                  <div className="d-flex items-center justify-center entity-icon-container">
+                    {data.icon}
+                  </div>
+                  <Typography.Text className="text-sm font-medium text-white wrap-text">
+                    {data.name}
+                  </Typography.Text>
+                </div>
+              ))}
+            </div>
+          )}
+        </Col>
+        <Col span={6} />
+      </Row>
+      <Row style={{ height: '150px', width: '100%' }} />
     </Row>
   );
 };

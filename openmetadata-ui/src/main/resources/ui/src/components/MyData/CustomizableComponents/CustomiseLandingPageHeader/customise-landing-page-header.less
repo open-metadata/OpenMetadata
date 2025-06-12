@@ -12,7 +12,7 @@
  */
 @import (reference) url('../../../../styles/variables.less');
 
-.landing-page-header {
+.customise-landing-page {
   margin: 20px 0;
   padding: 20px;
   border-radius: 24px;
@@ -66,11 +66,16 @@
 
 .customise-recently-viewed-data {
   display: flex;
+  flex-wrap: nowrap;
   gap: 50px;
   overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  margin-bottom: 48px;
 
   .recent-item {
-    width: 80px;
+    flex-shrink: 0;
+    width: 85px;
   }
 
   .entity-icon-container {
@@ -86,8 +91,16 @@
   }
 
   .wrap-text {
-    word-break: break-all;
+    display: -webkit-box;
+    display: box; /* fallback for older spec, does nothing in modern browsers */
+    -webkit-line-clamp: 2;
+    line-clamp: 2; /* Standard property (not yet widely supported without prefix) */
+    -webkit-box-orient: vertical;
+    box-orient: vertical; /* old spec, harmless fallback */
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: normal;
+    word-break: break-all;
     text-align: center;
   }
 }
