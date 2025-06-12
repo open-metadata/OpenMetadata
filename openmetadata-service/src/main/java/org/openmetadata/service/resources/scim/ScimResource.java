@@ -17,11 +17,18 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.scim.ScimProvisioningService;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/scim")
 @Tag(name = "SCIM", description = "SCIM 2.0 compliant user and group provisioning endpoints.")
@@ -29,6 +36,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes({"application/json", "application/scim+json"})
 public class ScimResource {
 
+  private static final String SCIM_RESOURCE_NAME = "scim";
   private final ScimProvisioningService provisioningService;
   protected final Authorizer authorizer;
 
@@ -46,7 +54,10 @@ public class ScimResource {
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
   public Response getServiceProviderConfig(@Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.getServiceProviderConfig();
   }
 
@@ -70,7 +81,10 @@ public class ScimResource {
       description = "Lists SCIM users based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Users"))
   public Response listUsers(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.listUsers(uriInfo);
   }
 
@@ -86,7 +100,10 @@ public class ScimResource {
       })
   public Response createUser(
       ScimUser user, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.CREATE_SCIM),
+        new ScimResourceContext());
     return provisioningService.createUser(user, uriInfo, securityContext);
   }
 
@@ -105,7 +122,10 @@ public class ScimResource {
       ScimUser user,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
+        new ScimResourceContext());
     return provisioningService.updateUser(id, user, uriInfo);
   }
 
@@ -123,7 +143,10 @@ public class ScimResource {
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.DELETE_SCIM),
+        new ScimResourceContext());
     return provisioningService.deleteUser(id, uriInfo, securityContext);
   }
 
@@ -142,7 +165,10 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
+        new ScimResourceContext());
     return provisioningService.patchUser(id, request, uriInfo, securityContext);
   }
 
@@ -160,7 +186,10 @@ public class ScimResource {
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.getUser(id, uriInfo);
   }
 
@@ -172,7 +201,10 @@ public class ScimResource {
       description = "Lists SCIM groups based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Groups"))
   public Response listGroups(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.listGroups(uriInfo);
   }
 
@@ -188,7 +220,10 @@ public class ScimResource {
       })
   public Response createGroup(
       ScimGroup group, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.CREATE_SCIM),
+        new ScimResourceContext());
     return provisioningService.createGroup(group, uriInfo, securityContext);
   }
 
@@ -207,7 +242,10 @@ public class ScimResource {
       ScimGroup group,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
+        new ScimResourceContext());
     return provisioningService.updateGroup(id, group, uriInfo, securityContext);
   }
 
@@ -225,7 +263,10 @@ public class ScimResource {
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.getGroup(id, uriInfo);
   }
 
@@ -244,7 +285,10 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
+        new ScimResourceContext());
     return provisioningService.patchGroup(id, request, uriInfo, securityContext);
   }
 
@@ -262,7 +306,10 @@ public class ScimResource {
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.DELETE_SCIM),
+        new ScimResourceContext());
     return provisioningService.deleteGroup(id, uriInfo, securityContext);
   }
 
@@ -273,7 +320,39 @@ public class ScimResource {
       summary = "Get SCIM schemas",
       description = "Returns supported SCIM schemas.",
       responses = @ApiResponse(responseCode = "200", description = "SCIM schemas"))
-  public Response getSchemas() {
+  public Response getSchemas(@Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
+        new ScimResourceContext());
     return provisioningService.getSchemas();
+  }
+
+  static class ScimResourceContext implements ResourceContextInterface {
+
+    @Override
+    public String getResource() {
+      return SCIM_RESOURCE_NAME;
+    }
+
+    @Override
+    public List<EntityReference> getOwners() {
+      return null;
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return null;
+    }
+
+    @Override
+    public EntityInterface getEntity() {
+      return null;
+    }
+
+    @Override
+    public EntityReference getDomain() {
+      return null;
+    }
   }
 }
