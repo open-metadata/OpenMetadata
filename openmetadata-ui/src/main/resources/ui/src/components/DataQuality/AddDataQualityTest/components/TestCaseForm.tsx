@@ -145,14 +145,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = useCallback(() => {
-    const testType = isEmpty(initialValue?.testSuite)
+    const testType = isEmpty(initialValue?.testDefinition)
       ? selectedTestType
-      : initialValue?.testSuite;
+      : initialValue?.testDefinition;
 
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
     );
-  }, [initialValue?.testSuite, selectedTestType, testDefinitions]);
+  }, [initialValue?.testDefinition, selectedTestType, testDefinitions]);
   const isComputeRowCountFieldVisible = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
 
@@ -190,7 +190,6 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
-      testSuite: '',
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };

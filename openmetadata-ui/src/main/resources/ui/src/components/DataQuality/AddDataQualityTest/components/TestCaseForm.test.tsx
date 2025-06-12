@@ -185,7 +185,6 @@ describe('TestCaseForm', () => {
       name: 'dim_address_column_value_lengths_to_be_between_4B3B',
       parameterValues: [],
       testDefinition: 'columnValueLengthsToBeBetween',
-      testSuite: '',
     });
   });
 
