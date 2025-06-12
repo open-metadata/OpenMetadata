@@ -275,6 +275,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   await table.visitEntityPage(page);
   await visitLineageTab(page);
+  await activateColumnLayer(page);
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
