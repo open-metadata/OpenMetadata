@@ -325,11 +325,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
-    EntityRepository<?> glossaryRepository =
-        Entity.getEntityRepository(term.getGlossary().getType());
+    EntityRepository<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
     EntityInterface glossary =
-        glossaryRepository.get(
-            null, term.getGlossary().getId(), glossaryRepository.getFields("tags"));
+        glossaryRepository.getByName(
+            null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
 
