@@ -116,6 +116,7 @@ export const UserProfileIcon = () => {
     currentUser?.profile?.images
   );
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
@@ -215,7 +216,8 @@ export const UserProfileIcon = () => {
         label: (
           <Link
             data-testid="user-name"
-            to={getUserPath(currentUser?.name as string)}>
+            to={getUserPath(currentUser?.name as string)}
+            onClick={() => setIsDropdownOpen(false)}>
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
@@ -354,7 +356,10 @@ export const UserProfileIcon = () => {
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
-      trigger={['click']}>
+      open={isDropdownOpen}
+      overlayClassName="user-profile-dropdown-overlay"
+      trigger={['click']}
+      onOpenChange={setIsDropdownOpen}>
       <Button
         className="user-profile-btn flex-center"
         data-testid="dropdown-profile"
