@@ -1367,10 +1367,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await toastNotification(
-    page,
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
     /(deleted successfully!|Delete operation initiated)/,
-    BIG_ENTITY_DELETE_TIMEOUT
+    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
   );
 };
 
