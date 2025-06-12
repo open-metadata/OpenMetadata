@@ -310,7 +310,7 @@ class MicrostrategySource(DashboardServiceSource):
         for available_object in dataset.availableObjects or []:
             try:
                 parsed_column = {
-                    "dataTypeDisplay": f"MicroStrategy {available_object.type}".title(),
+                    "dataTypeDisplay": available_object.type.title(),
                     "dataType": DataType.UNKNOWN,
                     "name": available_object.name,
                     "displayName": available_object.name,
