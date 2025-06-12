@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -31,12 +31,16 @@ import { ReactComponent as IconTag } from '../../../assets/svg/classification.sv
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/api/classification/createClassification';
-import { ChangeDescription } from '../../../generated/entity/classification/classification';
+import {
+  ChangeDescription,
+  Classification,
+} from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
@@ -63,7 +67,10 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
 const ClassificationDetails = forwardRef(
@@ -338,34 +345,30 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
-    const name = useMemo(() => {
-      return isVersionView
-        ? getEntityVersionByField(
-            changeDescription,
-            EntityField.NAME,
-            currentClassification?.name
-          )
-        : currentClassification?.name;
-    }, [currentClassification, changeDescription]);
-
-    const displayName = useMemo(() => {
-      return isVersionView
-        ? getEntityVersionByField(
-            changeDescription,
-            EntityField.DISPLAYNAME,
-            currentClassification?.displayName
-          )
-        : currentClassification?.displayName;
-    }, [currentClassification, changeDescription]);
-
-    const description = useMemo(() => {
-      return isVersionView
-        ? getEntityVersionByField(
-            changeDescription,
-            EntityField.DESCRIPTION,
-            currentClassification?.description
-          )
-        : currentClassification?.description;
+    const { name, displayName, description } = useMemo(() => {
+      return {
+        name: isVersionView
+          ? getEntityVersionByField(
+              changeDescription,
+              EntityField.NAME,
+              currentClassification?.name
+            )
+          : currentClassification?.name,
+        displayName: isVersionView
+          ? getEntityVersionByField(
+              changeDescription,
+              EntityField.DISPLAYNAME,
+              currentClassification?.displayName
+            )
+          : currentClassification?.displayName,
+        description: isVersionView
+          ? getEntityVersionByField(
+              changeDescription,
+              EntityField.DESCRIPTION,
+              currentClassification?.description
+            )
+          : currentClassification?.description,
+      };
     }, [currentClassification, changeDescription]);
 
     useEffect(() => {
@@ -472,51 +475,75 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-        <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <DescriptionV1
-            className={classNames({
-              'opacity-60': isClassificationDisabled,
-            })}
-            description={description}
-            entityName={getEntityName(currentClassification)}
-            entityType={EntityType.CLASSIFICATION}
-            hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(tags)}
-            showCommentsIcon={false}
-            onDescriptionUpdate={handleUpdateDescription}
-          />
-        </div>
 
-        <Table
-          className={classNames({
-            'opacity-60': isClassificationDisabled,
-          })}
-          columns={tableColumn}
-          customPaginationProps={{
-            currentPage,
-            isLoading: isTagsLoading,
-            pageSize,
-            paging,
-            showPagination,
-            pagingHandler: handleTagsPageChange,
-            onShowSizeChange: handlePageSizeChange,
-          }}
-          data-testid="table"
-          dataSource={tags}
-          loading={isTagsLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                className="m-y-md"
-                placeholderText={t('message.no-tags-description')}
-              />
-            ),
-          }}
-          pagination={false}
-          rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-          rowKey="id"
-          size="small"
-        />
+        <GenericProvider<Classification>
+          data={currentClassification as Classification}
+          isVersionView={isVersionView}
+          permissions={classificationPermissions}
+          type={EntityType.CLASSIFICATION as CustomizeEntityType}
+          onUpdate={(updatedData: Classification) =>
+            Promise.resolve(handleUpdateClassification?.(updatedData))
+          }>
+          <Row className="m-t-md" gutter={16}>
+            <Col span={18}>
+              <Card className="classification-details-card">
+                <div
+                  className="m-b-sm m-t-xs"
+                  data-testid="description-container">
+                  <DescriptionV1
+                    wrapInCard
+                    className={classNames({
+                      'opacity-60': isClassificationDisabled,
+                    })}
+                    description={description}
+                    entityName={getEntityName(currentClassification)}
+                    entityType={EntityType.CLASSIFICATION}
+                    hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(tags)}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={handleUpdateDescription}
+                  />
+                </div>
+
+                <Table
+                  className={classNames({
+                    'opacity-60': isClassificationDisabled,
+                  })}
+                  columns={tableColumn}
+                  customPaginationProps={{
+                    currentPage,
+                    isLoading: isTagsLoading,
+                    pageSize,
+                    paging,
+                    showPagination,
+                    pagingHandler: handleTagsPageChange,
+                    onShowSizeChange: handlePageSizeChange,
+                  }}
+                  data-testid="table"
+                  dataSource={tags}
+                  loading={isTagsLoading}
+                  locale={{
+                    emptyText: (
+                      <ErrorPlaceHolder
+                        className="m-y-md"
+                        placeholderText={t('message.no-tags-description')}
+                      />
+                    ),
+                  }}
+                  pagination={false}
+                  rowClassName={(record) =>
+                    record.disabled ? 'opacity-60' : ''
+                  }
+                  rowKey="id"
+                  size="small"
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <OwnerLabelV2 dataTestId="classification-owner-name" />
+            </Col>
+          </Row>
+        </GenericProvider>
       </div>
     );
   }

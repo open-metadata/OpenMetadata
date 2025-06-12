@@ -142,7 +142,7 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: TabSpecificField.TERM_COUNT,
+        fields: [TabSpecificField.TERM_COUNT, TabSpecificField.OWNERS],
         limit: 1000,
       });
       setClassifications(response.data);
@@ -200,7 +200,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name: fqn, description: '' });
+        setCurrentClassification(undefined);
         setIsLoading(false);
       }
     }
