@@ -11,7 +11,7 @@
       "name": "Allow-Scim-Endpoints",
       "description": "Allow access to SCIM endpoints",
       "resources": ["scim"],
-      "operations": ["Create", "EditAll", "ViewAll", "Delete"],
+      "operations": ["CreateScim", "EditScim", "ViewScim", "DeleteScim"],
       "effect": "allow"
     }
   ]
