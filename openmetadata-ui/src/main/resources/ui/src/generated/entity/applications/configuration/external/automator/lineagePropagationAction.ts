@@ -49,6 +49,10 @@ export interface LineagePropagationAction {
      */
     propagateTier?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Application Type
      */
     type: LineagePropagationActionType;
