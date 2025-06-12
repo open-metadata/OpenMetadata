@@ -13,17 +13,6 @@ clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
 swagger:
   resourcePackage: org.openmetadata.service.resources
-  title: OpenMetadata APIs
-  version: '1.8.0-SNAPSHOT'
-  description: Common types and API definition for OpenMetadata
-  contact: openmetadata-dev@googlegroups.com
-  license: Apache 2.0
-  schemes:
-    - http
-    - https
-  host: localhost:8585
-  basePath: /api
-  uriPrefix: /swagger
 
 assets:
   resourcePath: /assets/
