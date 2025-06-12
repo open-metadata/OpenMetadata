@@ -43,10 +43,10 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -1367,11 +1367,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
-  await toastNotification(
-    page,
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
     /(deleted successfully!|Delete operation initiated)/,
-    BIG_ENTITY_DELETE_TIMEOUT
+    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
   );
 };
 

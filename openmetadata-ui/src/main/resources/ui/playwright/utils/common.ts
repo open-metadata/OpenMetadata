@@ -58,8 +58,8 @@ export const getAuthContext = async (token: string) => {
 
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
 };
 
 export const removeLandingBanner = async (page: Page) => {

@@ -99,6 +99,8 @@ const test = base.extend<{
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await adminUser.create(apiContext);
@@ -117,6 +119,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -429,7 +433,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await addOwner({
       page: adminPage,
-      owner: user.responseData.displayName,
+      owner: user.responseData.displayName ?? user.responseData.name,
       type: 'Users',
       endpoint: EntityTypeEndpoint.Table,
       dataTestId: 'data-assets-header',
@@ -483,9 +487,10 @@ test.describe('User Profile Feed Interactions', () => {
     );
 
     const avatar = adminPage
-      .locator('[data-testid="message-container"]')
+      .locator('#feedData [data-testid="message-container"]')
       .first()
-      .locator('[data-testid="profile-avatar"]');
+      .locator('[data-testid="profile-avatar"]')
+      .first();
 
     await avatar.hover();
     await adminPage.waitForSelector('.ant-popover-card');
