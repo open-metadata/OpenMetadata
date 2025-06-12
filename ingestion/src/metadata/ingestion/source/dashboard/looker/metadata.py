@@ -247,7 +247,7 @@ class LookerSource(DashboardServiceSource):
                 BitBucketCredentials,
                 GitlabCredentials,
             ]
-        ]
+        ],
     ) -> "LookMLRepo":
         repo_name = (
             f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
@@ -376,9 +376,9 @@ class LookerSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
             try:
-                all_lookml_models: Sequence[
-                    LookmlModel
-                ] = self.client.all_lookml_models()
+                all_lookml_models: Sequence[LookmlModel] = (
+                    self.client.all_lookml_models()
+                )
 
                 # Then, gather their information and build the parser
                 self.parser = all_lookml_models
@@ -471,9 +471,9 @@ class LookerSource(DashboardServiceSource):
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
-                    description=Markdown(model.description)
-                    if model.description
-                    else None,
+                    description=(
+                        Markdown(model.description) if model.description else None
+                    ),
                     service=self.context.get().dashboard_service,
                     tags=get_tag_labels(
                         metadata=self.metadata,
@@ -497,9 +497,9 @@ class LookerSource(DashboardServiceSource):
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
-                self._explores_cache[
-                    explore_datamodel.name.root
-                ] = self.context.get().dataModel  # This is the newly created explore
+                self._explores_cache[explore_datamodel.name.root] = (
+                    self.context.get().dataModel
+                )  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -586,9 +586,9 @@ class LookerSource(DashboardServiceSource):
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,
-                    description=Markdown(view.description)
-                    if view.description
-                    else None,
+                    description=(
+                        Markdown(view.description) if view.description else None
+                    ),
                     service=self.context.get().dashboard_service,
                     tags=get_tag_labels(
                         metadata=self.metadata,
@@ -816,12 +816,15 @@ class LookerSource(DashboardServiceSource):
                     " while processing view lineage."
                 )
 
-            db_service_names = self.get_db_service_names()
+            db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
                 sql_table_name = self._render_table_name(view.sql_table_name)
 
-                for db_service_name in db_service_names or []:
+                for db_service_prefix in db_service_prefixes or []:
+                    db_service_name, *_ = self.parse_db_service_prefix(
+                        db_service_prefix
+                    )
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
@@ -870,7 +873,8 @@ class LookerSource(DashboardServiceSource):
         """
         Parse the SQL query and build lineage for the view.
         """
-        for db_service_name in self.get_db_service_names() or []:
+        for db_service_prefix in self.get_db_service_prefixes() or []:
+            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             lineage_parser = LineageParser(
                 f"create view {view_name} as {sql_query}",
                 self._get_db_dialect(db_service_name),
@@ -976,9 +980,11 @@ class LookerSource(DashboardServiceSource):
         dashboard_request = CreateDashboardRequest(
             name=EntityName(clean_dashboard_name(dashboard_details.id)),
             displayName=dashboard_details.title,
-            description=Markdown(dashboard_details.description)
-            if dashboard_details.description
-            else None,
+            description=(
+                Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None
+            ),
             charts=[
                 FullyQualifiedEntityName(
                     fqn.build(
@@ -1103,7 +1109,7 @@ class LookerSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LookerDashboard,
-        _: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.

@@ -238,9 +238,9 @@ class TableauSource(DashboardServiceSource):
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.id),
                 displayName=data_model_name,
-                description=Markdown(data_model.description)
-                if data_model.description
-                else None,
+                description=(
+                    Markdown(data_model.description) if data_model.description else None
+                ),
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=data_model_type.value,
                 serviceType=DashboardServiceType.Tableau.value,
@@ -306,9 +306,11 @@ class TableauSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.get_project_name(dashboard_details=dashboard_details),
                 charts=[
                     FullyQualifiedEntityName(
@@ -606,11 +608,13 @@ class TableauSource(DashboardServiceSource):
                                 )
                             lineage_parser = LineageParser(
                                 query,
-                                ConnectionTypeDialectMapper.dialect_of(
-                                    db_service_entity.serviceType.value
-                                )
-                                if db_service_entity
-                                else Dialect.ANSI,
+                                (
+                                    ConnectionTypeDialectMapper.dialect_of(
+                                        db_service_entity.serviceType.value
+                                    )
+                                    if db_service_entity
+                                    else Dialect.ANSI
+                                ),
                             )
                             for source_table in lineage_parser.source_tables or []:
                                 database_schema_table = fqn.split_table_name(
@@ -663,7 +667,7 @@ class TableauSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: TableauDashboard,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         This method creates the lineage between tables and datamodels
@@ -675,6 +679,7 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database tables
         """
+        db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
         for datamodel in dashboard_details.dataModels or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel=datamodel)
@@ -832,11 +837,13 @@ class TableauSource(DashboardServiceSource):
                     )
                 lineage_parser = LineageParser(
                     custom_sql_table.query,
-                    ConnectionTypeDialectMapper.dialect_of(
-                        db_service_entity.serviceType.value
-                    )
-                    if db_service_entity
-                    else Dialect.ANSI,
+                    (
+                        ConnectionTypeDialectMapper.dialect_of(
+                            db_service_entity.serviceType.value
+                        )
+                        if db_service_entity
+                        else Dialect.ANSI
+                    ),
                 )
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
@@ -921,9 +928,11 @@ class TableauSource(DashboardServiceSource):
             try:
                 if column:
                     parsed_column = {
-                        "dataTypeDisplay": column.remoteType
-                        if column.remoteType
-                        else DataType.UNKNOWN.value,
+                        "dataTypeDisplay": (
+                            column.remoteType
+                            if column.remoteType
+                            else DataType.UNKNOWN.value
+                        ),
                         "dataType": ColumnTypeParser.get_column_type(
                             column.remoteType if column.remoteType else None
                         ),
