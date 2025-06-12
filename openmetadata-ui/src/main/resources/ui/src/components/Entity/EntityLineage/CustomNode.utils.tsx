@@ -208,3 +208,22 @@ export const getColumnContent = (
     </div>
   );
 };
+
+export function getNodeClassNames({
+  isSelected,
+  showDqTracing,
+  isTraced,
+}: {
+  isSelected: boolean;
+  showDqTracing: boolean;
+  isTraced: boolean;
+}) {
+  return classNames(
+    'lineage-node p-0',
+    isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+    {
+      'data-quality-failed-custom-node-header': showDqTracing,
+      'custom-node-header-tracing': isTraced,
+    }
+  );
+}

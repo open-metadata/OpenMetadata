@@ -13,7 +13,9 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -27,6 +29,7 @@ import {
 import {
   addPipelineBetweenNodes,
   fillLineageConfigForm,
+  performCollapse,
   performExpand,
   performZoomOut,
   verifyColumnLayerActive,
@@ -48,6 +51,8 @@ test.describe('Lineage Settings Tests', () => {
     const dashboard = new DashboardClass();
     const mlModel = new MlModelClass();
     const searchIndex = new SearchIndexClass();
+    const container = new ContainerClass();
+    const metric = new MetricClass();
 
     try {
       await Promise.all([
@@ -56,12 +61,16 @@ test.describe('Lineage Settings Tests', () => {
         dashboard.create(apiContext),
         mlModel.create(apiContext),
         searchIndex.create(apiContext),
+        container.create(apiContext),
+        metric.create(apiContext),
       ]);
 
       await addPipelineBetweenNodes(page, table, topic);
       await addPipelineBetweenNodes(page, topic, dashboard);
       await addPipelineBetweenNodes(page, dashboard, mlModel);
       await addPipelineBetweenNodes(page, mlModel, searchIndex);
+      await addPipelineBetweenNodes(page, searchIndex, container);
+      await addPipelineBetweenNodes(page, container, metric);
 
       await test.step(
         'Lineage config should throw error if upstream depth is less than 0',
@@ -168,7 +177,17 @@ test.describe('Lineage Settings Tests', () => {
           await verifyNodePresent(page, topic);
           await verifyNodePresent(page, mlModel);
           await performExpand(page, mlModel, false, searchIndex);
-          await performExpand(page, topic, true);
+          await performExpand(page, searchIndex, false, container);
+          await performExpand(page, container, false, metric);
+          await performExpand(page, topic, true, table);
+
+          // perform collapse
+          await performCollapse(page, mlModel, false, [
+            searchIndex,
+            container,
+            metric,
+          ]);
+          await performCollapse(page, dashboard, true, [table, topic]);
         }
       );
 

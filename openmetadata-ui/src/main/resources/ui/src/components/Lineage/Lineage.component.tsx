@@ -21,12 +21,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import ReactFlow, {
-  Background,
-  MiniMap,
-  Panel,
-  ReactFlowProvider,
-} from 'reactflow';
+import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -73,7 +68,6 @@ const Lineage = ({
     onNodeDrop,
     onNodesChange,
     onEdgesChange,
-    entityLineage,
     onPaneClick,
     onConnect,
     onInitReactFlow,
@@ -162,7 +156,7 @@ const Lineage = ({
         data-testid="lineage-container"
         id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
-        {entityLineage && (
+        {init ? (
           <>
             {isPlatformLineage ? null : (
               <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
@@ -178,10 +172,6 @@ const Lineage = ({
                 isFullScreen ? onExitFullScreenViewClick : undefined
               }
             />
-          </>
-        )}
-        {init ? (
-          <ReactFlowProvider>
             <ReactFlow
               elevateEdgesOnSelect
               className="custom-react-flow"
@@ -222,7 +212,7 @@ const Lineage = ({
                 <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
-          </ReactFlowProvider>
+          </>
         ) : (
           <div className="loading-card">
             <Loader />
