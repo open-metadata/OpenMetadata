@@ -96,21 +96,16 @@ if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
     OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
 fi
 
-# GC options
+# GC options for Java 21
 GC_LOG_FILE_NAME='openmetadata-gc.log'
 if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
-  JAVA_MAJOR_VERSION=$($JAVA -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
-  if [[ "$JAVA_MAJOR_VERSION" -ge "9" ]] ; then
-    OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,tags:filecount=10,filesize=102400"
-  else
-    OPENMETADATA_GC_LOG_OPTS="-Xloggc:$LOG_DIR/$GC_LOG_FILE_NAME -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
-  fi
+  OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*,gc+heap=info,gc+ergo=debug:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,level,tags:filecount=10,filesize=102400"
 fi
 
 
-# JVM performance options
+# JVM performance options optimized for Java 21
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
-  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:+UseLargePages -XX:+OptimizeStringConcat -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -Djava.awt.headless=true"
 fi
 
 #Application classname
