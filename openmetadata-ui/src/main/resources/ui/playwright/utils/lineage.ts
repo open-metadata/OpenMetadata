@@ -236,6 +236,30 @@ export const performExpand = async (
   }
 };
 
+export const performCollapse = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  hiddenEntity: EntityClass[]
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const collapseBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('minus-icon');
+
+  await collapseBtn.click();
+
+  for (const entity of hiddenEntity) {
+    const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
+    const hiddenNode = page.locator(
+      `[data-testid="lineage-node-${hiddenNodeFqn}"]`
+    );
+
+    await expect(hiddenNode).not.toBeVisible();
+  }
+};
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
