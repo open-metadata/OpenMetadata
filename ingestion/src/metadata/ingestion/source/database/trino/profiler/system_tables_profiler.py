@@ -13,7 +13,7 @@ System table profiler
 """
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Type, Union
 
 from more_itertools import partition
 from pydantic import field_validator
@@ -26,6 +26,10 @@ from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import (
 )
 from metadata.profiler.metrics.core import Metric
 from metadata.profiler.metrics.registry import Metrics
+from metadata.utils.dependency_injector.dependency_injector import (
+    Inject,
+    inject_class_attributes,
+)
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -61,15 +65,18 @@ class TableStats(BaseModel):
     columns: Dict[str, ColumnStats] = {}
 
 
+@inject_class_attributes
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
     """Trino system profile source"""
 
+    metrics: Inject[Type[Metrics]]
+
     metric_stats_map: Dict[Metrics, str] = {
-        Metrics.NULL_RATIO: "nulls_fractions",
-        Metrics.DISTINCT_COUNT: "distinct_values_count",
-        Metrics.ROW_COUNT: "row_count",
-        Metrics.MAX: "high_value",
-        Metrics.MIN: "low_value",
+        metrics.NULL_RATIO: "nulls_fractions",
+        metrics.DISTINCT_COUNT: "distinct_values_count",
+        metrics.ROW_COUNT: "row_count",
+        metrics.MAX: "high_value",
+        metrics.MIN: "low_value",
     }
 
     metric_stats_by_name: Dict[str, str] = {
@@ -159,7 +166,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     ) -> Dict[str, Any]:
         return {
             # trino stats are in fractions, so we need to convert them to counts (unlike our default profiler)
-            Metrics.NULL_COUNT.name: (
+            self.metrics.NULL_COUNT.name: (
                 int(table_stats.row_count * column_stats.nulls_fraction)
                 if None not in [table_stats.row_count, column_stats.nulls_fraction]
                 else None

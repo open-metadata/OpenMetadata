@@ -12,7 +12,7 @@
 """
 Default simple profiler to use
 """
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -29,38 +29,39 @@ from metadata.profiler.processor.core import Profiler
 
 
 def get_default_metrics(
+    metrics_registry: Type[Metrics],
     table: DeclarativeMeta,
     ometa_client: Optional[OpenMetadata] = None,
     db_service: Optional[DatabaseService] = None,
 ) -> List[Metric]:
     return [
         # Table Metrics
-        Metrics.ROW_COUNT.value,
-        add_props(table=table)(Metrics.COLUMN_COUNT.value),
-        add_props(table=table)(Metrics.COLUMN_NAMES.value),
+        metrics_registry.ROW_COUNT.value,
+        add_props(table=table)(metrics_registry.COLUMN_COUNT.value),
+        add_props(table=table)(metrics_registry.COLUMN_NAMES.value),
         # We'll use the ometa_client & db_service in case we need to fetch info to ES
         add_props(table=table, ometa_client=ometa_client, db_service=db_service)(
-            Metrics.SYSTEM.value
+            metrics_registry.SYSTEM.value
         ),
         # Column Metrics
-        Metrics.MEDIAN.value,
-        Metrics.FIRST_QUARTILE.value,
-        Metrics.THIRD_QUARTILE.value,
-        Metrics.MEAN.value,
-        Metrics.COUNT.value,
-        Metrics.DISTINCT_COUNT.value,
-        Metrics.DISTINCT_RATIO.value,
-        Metrics.MIN.value,
-        Metrics.MAX.value,
-        Metrics.NULL_COUNT.value,
-        Metrics.NULL_RATIO.value,
-        Metrics.STDDEV.value,
-        Metrics.SUM.value,
-        Metrics.UNIQUE_COUNT.value,
-        Metrics.UNIQUE_RATIO.value,
-        Metrics.IQR.value,
-        Metrics.HISTOGRAM.value,
-        Metrics.NON_PARAMETRIC_SKEW.value,
+        metrics_registry.MEDIAN.value,
+        metrics_registry.FIRST_QUARTILE.value,
+        metrics_registry.THIRD_QUARTILE.value,
+        metrics_registry.MEAN.value,
+        metrics_registry.COUNT.value,
+        metrics_registry.DISTINCT_COUNT.value,
+        metrics_registry.DISTINCT_RATIO.value,
+        metrics_registry.MIN.value,
+        metrics_registry.MAX.value,
+        metrics_registry.NULL_COUNT.value,
+        metrics_registry.NULL_RATIO.value,
+        metrics_registry.STDDEV.value,
+        metrics_registry.SUM.value,
+        metrics_registry.UNIQUE_COUNT.value,
+        metrics_registry.UNIQUE_RATIO.value,
+        metrics_registry.IQR.value,
+        metrics_registry.HISTOGRAM.value,
+        metrics_registry.NON_PARAMETRIC_SKEW.value,
     ]
 
 
@@ -74,12 +75,14 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: ProfilerInterface,
+        metrics_registry: Type[Metrics],
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
         global_profiler_configuration: Optional[ProfilerConfiguration] = None,
         db_service=None,
     ):
         _metrics = get_default_metrics(
+            metrics_registry=metrics_registry,
             table=profiler_interface.table,
             ometa_client=profiler_interface.ometa_client,
             db_service=db_service,

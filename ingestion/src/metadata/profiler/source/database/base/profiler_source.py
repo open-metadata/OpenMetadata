@@ -14,7 +14,7 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import Optional, cast
+from typing import Optional, Type, cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -47,6 +47,11 @@ from metadata.sampler.config import (
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
@@ -168,12 +173,21 @@ class ProfilerSource(ProfilerSourceInterface):
         self.interface = profiler_interface
         return self.interface
 
+    @inject
     def get_profiler_runner(
-        self, entity: Table, profiler_config: ProfilerProcessorConfig
+        self,
+        entity: Table,
+        profiler_config: ProfilerProcessorConfig,
+        metrics_registry: Inject[Type[Metrics]] = None,
     ) -> Profiler:
         """
         Returns the runner for the profiler
         """
+        if metrics_registry is None:
+            raise DependencyNotFoundError(
+                "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+            )
+
         table_config = get_config_for_table(entity, profiler_config)
         schema_entity, database_entity, db_service = get_context_entities(
             entity=entity, metadata=self.ometa_client
@@ -190,6 +204,7 @@ class ProfilerSource(ProfilerSourceInterface):
         if not profiler_config.profiler:
             return DefaultProfiler(
                 profiler_interface=profiler_interface,
+                metrics_registry=metrics_registry,
                 include_columns=get_include_columns(entity, table_config),
                 exclude_columns=get_exclude_columns(entity, table_config),
                 global_profiler_configuration=self.global_profiler_configuration,
@@ -197,9 +212,10 @@ class ProfilerSource(ProfilerSourceInterface):
             )
 
         metrics = (
-            [Metrics.get(name) for name in profiler_config.profiler.metrics]
+            [metrics_registry.get(name) for name in profiler_config.profiler.metrics]
             if profiler_config.profiler.metrics
             else get_default_metrics(
+                metrics_registry=metrics_registry,
                 table=profiler_interface.table,
                 ometa_client=self.ometa_client,
                 db_service=db_service,
