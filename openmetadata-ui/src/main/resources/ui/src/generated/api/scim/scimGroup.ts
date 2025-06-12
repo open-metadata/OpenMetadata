@@ -19,6 +19,10 @@ export interface ScimGroup {
      */
     active?: boolean;
     /**
+     * Description of the group
+     */
+    description?: string;
+    /**
      * Human-readable name of the group
      */
     displayName: string;

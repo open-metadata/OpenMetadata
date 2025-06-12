@@ -26,6 +26,10 @@
       "type": "string",
       "description": "External system identifier"
     },
+    "description": {
+      "type": "string",
+      "description": "Description of the group"
+    },
     "active": {
       "type": "boolean",
       "description": "Whether the group is active"
