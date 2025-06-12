@@ -42,6 +42,7 @@ export interface Props extends FormProps {
   status?: LoadingState;
   onCancel?: () => void;
   useSelectWidget?: boolean;
+  hasTestedConnection?: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = forwardRef(
@@ -61,6 +62,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       onFocus,
       useSelectWidget = false,
       children,
+      hasTestedConnection,
       ...props
     },
     ref
@@ -94,6 +96,9 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     };
 
     const submitButton = useMemo(() => {
+      if (hasTestedConnection === false) {
+        return null;
+      }
       if (status === 'waiting') {
         return (
           <Button
@@ -124,7 +129,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
           </Button>
         );
       }
-    }, [status, isLoading, okText]);
+    }, [status, isLoading, okText, hasTestedConnection]);
 
     return (
       <Form
