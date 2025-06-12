@@ -125,7 +125,7 @@ from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureRe
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
@@ -1971,6 +1971,43 @@ class SampleDataSource(
         # Create tasks for each thread
         for service_idx in range(NUM_SERVICES):
             yield from self.create_database_service( service_idx)
+            
+        # create table and column lineage from the snowflake sample data to Mysql Table `Tags`
+        yield from self.create_table_lineage()
+        
+        
+    def create_table_lineage(self) -> None:
+        """Create table lineage from the snowflake sample data to Mysql Table `Tags`"""
+        source_table_list = list(
+            self.metadata.list_entities(
+                entity=Table, limit=5, params={"database": "openmetadata-0.openmetadata-db-0"}
+            ).entities
+        )
+        destination_table = self.metadata.get_by_name(Table, "mysql_sample.default.posts_db.Tags")
+        
+        for source_table in source_table_list:
+            yield Either(right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=source_table.id, type="table"),
+                    toEntity=EntityReference(
+                        id=destination_table.id, type="table"
+                    ),
+                    lineageDetails=LineageDetails(
+                        columnsLineage=[
+                            ColumnLineage(
+                                fromColumns=[
+                                    from_column.fullyQualifiedName.root
+                                    for from_column in source_table.columns
+                                ],
+                                toColumn=to_column.fullyQualifiedName.root,
+                            )
+                            for to_column in destination_table.columns
+                        ]
+                    ),
+                )
+            )
+        )
+        
             
     def create_database(
         self, service_name: str, db_idx: int
