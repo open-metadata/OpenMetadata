@@ -1,6 +1,8 @@
 ---
 title: nodeType
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodetype
+noindex: true
+nofollow: true
 ---
 
 # NodeType
