@@ -1118,6 +1118,10 @@
         {
           "field": "classification.name",
           "boost": 7.0
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0
         }
       ],
       "aggregations": [
