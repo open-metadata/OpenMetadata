@@ -70,3 +70,11 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return partial(adaptor.sum, column=self.col)
         return lambda table: None
+
+    def spark_fn(self, df) -> Optional[float]:
+        """Spark DataFrame function
+        Returns None if the column is not quantifiable or concatenable.
+        """
+        if not is_quantifiable(self.col.type):
+            return None
+        return df.agg({self.col.name: "sum"}).collect()[0][0]

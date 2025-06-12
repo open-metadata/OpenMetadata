@@ -15,6 +15,8 @@ MAX_LENGTH Metric definition
 # pylint: disable=duplicate-code
 
 
+from typing import Optional
+
 from sqlalchemy import column, func
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
@@ -79,3 +81,16 @@ class MaxLength(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )
         return None
+
+    def spark_fn(self, df) -> Optional[int]:
+        """Spark DataFrame function
+        Returns None if the column is not concatenable.
+        """
+        if not self._is_concatenable():
+            logger.debug(
+                f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
+            )
+            return None
+        return df.selectExpr(f"max(length({self.col.name})) as max_length").collect()[
+            0
+        ]["max_length"]

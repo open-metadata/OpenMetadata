@@ -17,6 +17,8 @@ Population Standard deviation Metric definition
 # pylint: disable=consider-using-f-string,duplicate-code
 
 
+from typing import Optional
+
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
@@ -147,3 +149,21 @@ class StdDev(StaticMetric):
             + " We won't compute STDDEV for it."
         )
         return None
+
+    def spark_fn(self, df) -> Optional[float]:
+        """Spark DataFrame function
+        Returns None if the column is not quantifiable or concatenable.
+        """
+        if not is_quantifiable(self.col.type):
+            logger.debug(
+                f"{self.col} has type {self.col.type}, which is not listed as quantifiable. We won't compute STDDEV for it."
+            )
+            return None
+
+        try:
+            return df.agg({self.col.name: "stddev_pop"}).collect()[0][0]
+        except Exception as err:
+            logger.debug(
+                f"Error while computing stddev for column {self.col.name}: {err}"
+            )
+            return None

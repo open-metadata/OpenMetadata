@@ -54,3 +54,11 @@ class LikeCount(StaticMetric):
                 else_=0,
             )
         )
+
+    def spark_fn(self, df) -> int:
+        """Spark DataFrame function"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
+            )
+        return df.filter(df[self.col.name].like(self.expression)).count()
