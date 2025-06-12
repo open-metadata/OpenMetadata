@@ -269,6 +269,10 @@ export interface DatabaseConnection {
  */
 export interface ConfigClass {
     /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -660,6 +664,10 @@ export interface ConfigClass {
      * Generated Token to connect to Databricks.
      */
     token?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
