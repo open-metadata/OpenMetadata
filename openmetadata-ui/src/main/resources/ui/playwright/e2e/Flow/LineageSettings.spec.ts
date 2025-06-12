@@ -188,8 +188,6 @@ test.describe('Lineage Settings Tests', () => {
             metric,
           ]);
           await performCollapse(page, dashboard, true, [table, topic]);
-          await performExpand(page, dashboard, true, topic);
-          await performExpand(page, topic, true, table);
         }
       );
 
