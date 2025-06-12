@@ -79,6 +79,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
+
 
 class PowerbiSource(DashboardServiceSource):
     """PowerBi Source Class"""
@@ -1010,42 +1012,49 @@ class PowerbiSource(DashboardServiceSource):
                 elif isinstance(dashboard_details, PowerBIDashboard):
                     access_right = owner.dashboardUserAccessRight
 
-                if owner.userType != "Member" or (
-                    isinstance(
-                        dashboard_details, (Dataflow, PowerBIReport, PowerBIDashboard)
-                    )
-                    and access_right != "Owner"
-                ):
+                if owner.userType != "Member":
                     logger.warning(
-                        f"User is not a member and has no access to the {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                        f"User is not a member of {dashboard_details.id}:"
+                        f" ({owner.displayName}, {owner.email})"
                     )
                     continue
-                if owner.email:
-                    try:
-                        owner_email = EmailStr._validate(owner.email)
-                    except PydanticCustomError:
-                        logger.warning(f"Invalid email for owner: {owner.email}")
-                        owner_email = None
-                    if owner_email:
+                if access_right and any(
+                    keyword in access_right.lower()
+                    for keyword in OWNER_ACCESS_RIGHTS_KEYWORDS
+                ):
+                    if owner.email:
                         try:
-                            owner_ref = self.metadata.get_reference_by_email(
-                                owner_email.lower()
+                            owner_email = EmailStr._validate(owner.email)
+                        except PydanticCustomError:
+                            logger.warning(f"Invalid email for owner: {owner.email}")
+                            owner_email = None
+                        if owner_email:
+                            try:
+                                owner_ref = self.metadata.get_reference_by_email(
+                                    owner_email.lower()
+                                )
+                            except Exception as err:
+                                logger.warning(
+                                    f"Could not process owner data with email"
+                                    f" {owner.email} in {dashboard_details.id}: {err}"
+                                )
+                    elif owner.displayName:
+                        try:
+                            owner_ref = self.metadata.get_reference_by_name(
+                                name=owner.displayName
                             )
                         except Exception as err:
                             logger.warning(
-                                f"Could not fetch owner data with email {owner.email} in {dashboard_details.id}: {err}"
+                                f"Could not process owner data with name"
+                                f" {owner.displayName} in {dashboard_details.id}: {err}"
                             )
-                elif owner.displayName:
-                    try:
-                        owner_ref = self.metadata.get_reference_by_name(
-                            name=owner.displayName
-                        )
-                    except Exception as err:
-                        logger.warning(
-                            f"Could not process owner data with name {owner.displayName} in {dashboard_details.id}: {err}"
-                        )
-                if owner_ref:
-                    owner_ref_list.append(owner_ref.root[0])
+                    if owner_ref:
+                        owner_ref_list.append(owner_ref.root[0])
+                else:
+                    logger.warning(
+                        f"User does not have owner, admin or write access to"
+                        f" {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                    )
             # check for last modified, configuredBy user
             current_active_user = None
             if isinstance(dashboard_details, Dataset):

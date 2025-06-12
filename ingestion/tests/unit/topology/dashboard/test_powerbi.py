@@ -311,6 +311,32 @@ class PowerBIUnitTest(TestCase):
         # Verify get_reference_by_email was not called when there are no owners
         self.powerbi.metadata.get_reference_by_email.assert_not_called()
 
+        # Reset mock for invalid owners test
+        self.powerbi.metadata.get_reference_by_email.reset_mock()
+        # Test with invalid owners
+        dashboard_invalid_owners = PowerBIDashboard.model_validate(
+            {
+                "id": "dashboard3",
+                "displayName": "Test Dashboard 3",
+                "webUrl": "https://test.com",
+                "embedUrl": "https://test.com/embed",
+                "tiles": [],
+                "users": [
+                    {
+                        "displayName": "Kane Williams",
+                        "emailAddress": "kane.williams@example.com",
+                        "dashboardUserAccessRight": "Read",
+                        "userType": "Member",
+                    },
+                ],
+            }
+        )
+        owner_ref = self.powerbi.get_owner_ref(dashboard_invalid_owners)
+        self.assertIsNone(owner_ref)
+
+        # Verify get_reference_by_email was not called when there are no owners
+        self.powerbi.metadata.get_reference_by_email.assert_not_called()
+
     @pytest.mark.order(3)
     def test_parse_table_info_from_source_exp(self):
         table = PowerBiTable(
