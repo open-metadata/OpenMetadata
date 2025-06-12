@@ -303,3 +303,13 @@ class TableauUnitTest(TestCase):
             self.assertIsNotNone(
                 list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))[0].left
             )
+
+    def test_check_basemodel_returns_id_as_string(self):
+        """
+        Test that the basemodel returns the id as a string
+        """
+        base_model = TableauBaseModel(id=uuid.uuid4())
+        self.assertEqual(base_model.id, str(base_model.id))
+
+        base_model = TableauBaseModel(id="1234")
+        self.assertEqual(base_model.id, "1234")
