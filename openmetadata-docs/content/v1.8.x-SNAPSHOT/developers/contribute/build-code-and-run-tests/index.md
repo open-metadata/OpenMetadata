@@ -1,6 +1,8 @@
 ---
 title: Build Code and Run Tests
 slug: /developers/contribute/build-code-and-run-tests
+noindex: true
+nofollow: true
 ---
 
 # Build Code and Run Tests
