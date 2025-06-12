@@ -18,7 +18,6 @@ import {
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
-import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -1397,19 +1396,6 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
       .filter({ hasText: serviceType })
       .first()
   ).toHaveClass(/ant-tree-node-selected/);
-};
-
-export const escapeESReservedCharacters = (text?: string) => {
-  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
-  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
-
-  const getReplacedChar = (char: string) => {
-    return ES_RESERVED_CHARACTERS[char] ?? char;
-  };
-
-  return text && reHasUnescapedHtml.test(text)
-    ? text.replace(reUnescapedHtml, getReplacedChar)
-    : text ?? '';
 };
 
 export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {

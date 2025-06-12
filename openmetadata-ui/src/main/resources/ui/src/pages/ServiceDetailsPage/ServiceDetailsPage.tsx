@@ -136,10 +136,7 @@ import {
   getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
@@ -468,9 +465,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           pageNumber: page,
           pageSize: ingestionPageSize,
           searchIndex: SearchIndex.INGESTION_PIPELINE,
-          query: `*${getEncodedFqn(
-            escapeESReservedCharacters(searchText ?? '')
-          )}*`,
+          query: `*${getEncodedFqn(searchText ?? '')}*`,
           filters: `(${typeFilterArray
             .map(
               (type, index) =>

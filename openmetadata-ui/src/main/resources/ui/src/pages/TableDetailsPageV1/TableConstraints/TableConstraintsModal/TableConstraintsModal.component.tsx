@@ -33,10 +33,7 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import {
   createTableConstraintObject,
   getColumnOptionsFromTableColumn,
@@ -73,7 +70,7 @@ const TableConstraintsModal = ({
     setRelatedColumns([]);
     setIsRelatedColumnLoading(true);
     try {
-      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+      const encodedValue = getEncodedFqn(value);
       const data = await searchQuery({
         query:
           value &&

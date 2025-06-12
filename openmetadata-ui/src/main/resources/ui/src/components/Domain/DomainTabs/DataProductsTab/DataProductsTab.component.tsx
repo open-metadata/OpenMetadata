@@ -31,10 +31,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchData } from '../../../../rest/miscAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -61,7 +58,7 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
-        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
+        const encodedFqn = getEncodedFqn(domainFqn ?? '');
         const res = await searchData(
           '',
           1,

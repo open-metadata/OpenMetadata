@@ -24,7 +24,6 @@ import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -170,9 +169,7 @@ export const getAggregateFieldOptions = (
   q: string,
   sourceFields?: string
 ) => {
-  const withWildCardValue = value
-    ? `.*${escapeESReservedCharacters(value)}.*`
-    : '.*';
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
   const params = {
     index,
     field,
@@ -205,9 +202,7 @@ export const postAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const withWildCardValue = value
-    ? `.*${escapeESReservedCharacters(value)}.*`
-    : '.*';
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
   const body: SearchRequest = {
     index: index as string,
     fieldName: field,

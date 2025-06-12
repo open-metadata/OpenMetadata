@@ -56,7 +56,6 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
-import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 /**
@@ -551,7 +550,7 @@ export const fetchEntityData = async ({
   try {
     if (searchQueryParam) {
       const countPayload = {
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: searchQueryParam,
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,
@@ -596,9 +595,7 @@ export const fetchEntityData = async ({
 
         // Now make searchAPICall with the effective searchIndex
         const updatedSearchPayload = {
-          query: !isEmpty(searchQueryParam)
-            ? escapeESReservedCharacters(searchQueryParam)
-            : '',
+          query: !isEmpty(searchQueryParam) ? searchQueryParam : '',
           searchIndex: effectiveSearchIndex,
           queryFilter: combinedQueryFilter,
           sortField: sortValue,

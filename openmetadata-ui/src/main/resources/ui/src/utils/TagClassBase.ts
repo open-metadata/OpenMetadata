@@ -14,7 +14,7 @@ import { PAGE_SIZE } from '../constants/constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 class TagClassBase {
   public async getTags(
@@ -23,7 +23,7 @@ class TagClassBase {
     emptyQueryFilter?: boolean
   ) {
     // this is to escape and encode any chars which is known by ES search internally
-    const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
+    const encodedValue = getEncodedFqn(searchText);
     const res = await searchQuery({
       query: `*${encodedValue}*`,
       filters: 'disabled:false',

@@ -85,10 +85,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -194,7 +191,7 @@ const AssetsTabs = forwardRef(
     }, [filters]);
 
     const queryParam = useMemo(() => {
-      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
+      const encodedFqn = getEncodedFqn(entityFqn ?? '');
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           return '';
@@ -202,9 +199,7 @@ const AssetsTabs = forwardRef(
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${getEncodedFqn(
-            escapeESReservedCharacters(fqn)
-          )}")`;
+          return `(owners.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:

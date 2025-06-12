@@ -98,10 +98,7 @@ import {
   getDomainVersionsPath,
   getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -154,9 +151,7 @@ const DomainDetailsPage = ({
   const [subDomains, setSubDomains] = useState<Domain[]>([]);
   const [isSubDomainsLoading, setIsSubDomainsLoading] =
     useState<boolean>(false);
-  const encodedFqn = getEncodedFqn(
-    escapeESReservedCharacters(domain.fullyQualifiedName)
-  );
+  const encodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
