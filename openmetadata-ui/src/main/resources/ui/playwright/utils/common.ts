@@ -287,7 +287,9 @@ export const removeDataProduct = async (
     .locator('svg')
     .click();
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.ant-select-dropdown [data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
