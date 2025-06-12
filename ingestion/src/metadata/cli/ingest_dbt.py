@@ -158,10 +158,9 @@ def substitute_env_vars(content: str) -> str:
             if default_value is not None:
                 # Remove quotes from default value
                 return default_value.strip("\"'")
-            else:
-                raise ValueError(
-                    f"Environment variable '{var_name}' is not set and no default provided"
-                )
+            raise ValueError(
+                f"Environment variable '{var_name}' is not set and no default provided"
+            )
         return env_value
 
     # Pattern for ${VAR}
@@ -197,7 +196,7 @@ def find_dbt_project_config(dbt_project_path: Path) -> Dict:
         raise FileNotFoundError(f"dbt_project.yml not found in {dbt_project_path}")
 
     try:
-        with open(dbt_project_file, "r") as file:
+        with open(dbt_project_file, "r", encoding="utf-8") as file:
             content = file.read()
 
         # Substitute environment variables before parsing YAML
@@ -235,8 +234,7 @@ def extract_openmetadata_config(dbt_config: Dict) -> OpenMetadataDBTConfig:
                 f"  openmetadata_host_port: 'your-host-port (e.g. http://openmetadata-server:8585/api)'\n"
                 f"  openmetadata_service_name: 'your-service-name'"
             )
-        else:
-            raise ValueError(f"Invalid OpenMetadata configuration: {error_msg}")
+        raise ValueError(f"Invalid OpenMetadata configuration: {error_msg}")
 
 
 def create_dbt_workflow_config(
