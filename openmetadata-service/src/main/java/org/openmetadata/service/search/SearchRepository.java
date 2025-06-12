@@ -1160,9 +1160,9 @@ public class SearchRepository {
             .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted);
+    return searchClient.searchByField(fieldName, fieldValue, index);
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {

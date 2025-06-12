@@ -1308,17 +1308,13 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    BoolQueryBuilder query =
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
-            .filter(QueryBuilders.termQuery("deleted", deleted));
-    searchSourceBuilder.query(query);
+    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
