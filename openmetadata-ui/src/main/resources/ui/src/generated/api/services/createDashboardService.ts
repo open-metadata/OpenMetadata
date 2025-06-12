@@ -1082,6 +1082,7 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
