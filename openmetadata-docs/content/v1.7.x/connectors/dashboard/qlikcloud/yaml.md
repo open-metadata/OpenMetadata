@@ -81,7 +81,7 @@ Example: `https://<TenantURL>.qlikcloud.com`
 
 Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform.
 
-Example: `Personal`, `Shared`, `Managed`
+Example: `Personal`, `Shared`, `Managed`, `Data`
 
 {% /codeInfo %}
 
@@ -111,7 +111,7 @@ source:
       hostPort: https://<TenantURL>.qlikcloud.com
 ```
 ```yaml {% srNumber=3 %}
-      spaceTypes: ["Personal", "Shared", "Managed"]
+      spaceTypes: ["Personal", "Shared", "Managed", "Data"]
 ```
 
 {% partial file="/v1.7/connectors/yaml/dashboard/source-config.md" /%}

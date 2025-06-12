@@ -1144,9 +1144,11 @@
           <outputPath>${basedir}/target/classes/assets</outputPath>
           <outputFormat>JSONANDYAML</outputFormat>
           <resourcePackages>
+            <package>org.openmetadata.service</package>
             <package>org.openmetadata.service.resources</package>
           </resourcePackages>
           <prettyPrint>true</prettyPrint>
+          <contextId>default</contextId>
           <openAPI>
             <info>
               <title>OpenMetadata APIs</title>
@@ -1154,40 +1156,14 @@
               <description>Common types and API definition for OpenMetadata</description>
               <contact>
                 <name>OpenMetadata</name>
-                <url>https://open-metadata.org/</url>
-                <email>dev@open-metadata.org</email>
+                <url>https://open-metadata.org</url>
+                <email>openmetadata-dev@googlegroups.com</email>
               </contact>
               <license>
                 <name>Apache 2.0</name>
-                <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
               </license>
             </info>
-            <servers>
-              <server>
-                <url>/api</url>
-                <description>Current Host</description>
-              </server>
-              <server>
-                <url>http://localhost:8585/api</url>
-                <description>Endpoint URL</description>
-              </server>
-            </servers>
-            <components>
-              <securitySchemes>
-                <securityScheme>
-                  <key>BearerAuth</key>
-                  <securityScheme>
-                    <type>http</type>
-                    <scheme>bearer</scheme>
-                  </securityScheme>
-                </securityScheme>
-              </securitySchemes>
-            </components>
-            <security>
-              <securityRequirement>
-                <name>BearerAuth</name>
-              </securityRequirement>
-            </security>
           </openAPI>
         </configuration>
         <executions>
