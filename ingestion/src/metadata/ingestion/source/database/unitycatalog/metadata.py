@@ -403,6 +403,7 @@ class UnitycatalogSource(
             )
             if referred_table_fqn:
                 for parent_column in column.parent_columns:
+                    # pylint: disable=protected-access
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
@@ -419,6 +420,7 @@ class UnitycatalogSource(
 
         return table_constraints
 
+    # pylint: disable=arguments-differ
     def update_table_constraints(
         self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
@@ -524,6 +526,7 @@ class UnitycatalogSource(
     def close(self):
         """Nothing to close"""
 
+    # pylint: disable=arguments-renamed
     def get_owner_ref(
         self, table_owner: Optional[str]
     ) -> Optional[EntityReferenceList]:
@@ -534,7 +537,7 @@ class UnitycatalogSource(
             return None
         try:
             if not table_owner or not isinstance(table_owner, str):
-                return
+                return None
             owner_ref = self.metadata.get_reference_by_email(email=table_owner)
             if owner_ref:
                 return owner_ref
@@ -544,4 +547,4 @@ class UnitycatalogSource(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner {table_owner}: {exc}")
-        return
+        return None
