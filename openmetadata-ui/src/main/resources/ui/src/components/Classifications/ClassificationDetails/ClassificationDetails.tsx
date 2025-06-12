@@ -32,15 +32,10 @@ import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
-import { ProviderType } from '../../../generated/api/classification/createClassification';
-import {
-  ChangeDescription,
-  Classification,
-} from '../../../generated/entity/classification/classification';
+import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
@@ -50,10 +45,10 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getTags } from '../../../rest/tagAPI';
 import {
   getClassificationExtraDropdownContent,
+  getClassificationInfo,
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -150,15 +145,17 @@ const ClassificationDetails = forwardRef(
       handlePageChange(currentPage);
     };
 
-    const currentVersion = useMemo(
-      () => currentClassification?.version ?? '0.1',
-      [currentClassification]
-    );
-
-    const changeDescription = useMemo(
-      () =>
-        currentClassification?.changeDescription ?? ({} as ChangeDescription),
-      [currentClassification]
+    const {
+      currentVersion,
+      isClassificationDisabled,
+      name,
+      displayName,
+      description,
+      isTier,
+      isSystemClassification,
+    } = useMemo(
+      () => getClassificationInfo(currentClassification, isVersionView),
+      [currentClassification, isVersionView]
     );
 
     const versionHandler = useCallback(() => {
@@ -172,83 +169,37 @@ const ClassificationDetails = forwardRef(
           );
     }, [currentVersion, tagCategoryName]);
 
-    const isTier = useMemo(
-      () => currentClassification?.name === 'Tier',
-      [currentClassification]
-    );
-
-    const createTagPermission = useMemo(
-      () =>
-        checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-        classificationPermissions.EditAll,
-      [permissions, classificationPermissions]
-    );
-
-    const editClassificationPermission = useMemo(
-      () => classificationPermissions.EditAll,
-      [classificationPermissions]
-    );
-
-    const isClassificationDisabled = useMemo(
-      () => currentClassification?.disabled ?? false,
-      [currentClassification?.disabled]
-    );
-
-    const handleUpdateDisplayName = async (data: {
-      name: string;
-      displayName?: string;
-    }) => {
-      if (
-        !isUndefined(currentClassification) &&
-        !isUndefined(handleUpdateClassification)
-      ) {
-        return handleUpdateClassification({
-          ...currentClassification,
-          ...data,
-        });
-      }
-    };
-
-    const handleUpdateDescription = async (updatedHTML: string) => {
-      if (
-        !isUndefined(currentClassification) &&
-        !isUndefined(handleUpdateClassification)
-      ) {
-        handleUpdateClassification({
-          ...currentClassification,
-          description: updatedHTML,
-        });
-      }
-    };
-
-    const handleEnableDisableClassificationClick = useCallback(() => {
-      if (
-        !isUndefined(currentClassification) &&
-        !isUndefined(handleUpdateClassification)
-      ) {
-        handleUpdateClassification({
-          ...currentClassification,
-          disabled: !isClassificationDisabled,
-        });
-      }
-    }, [
-      currentClassification,
-      handleUpdateClassification,
-      isClassificationDisabled,
-    ]);
-
-    const editDescriptionPermission = useMemo(
-      () =>
-        !isVersionView &&
-        !isClassificationDisabled &&
-        (classificationPermissions.EditAll ||
-          classificationPermissions.EditDescription),
-      [classificationPermissions, isVersionView]
-    );
-
-    const isSystemClassification = useMemo(
-      () => currentClassification?.provider === ProviderType.System,
-      [currentClassification]
+    const {
+      editClassificationPermission,
+      editDescriptionPermission,
+      createPermission,
+      deletePermission,
+      editDisplayNamePermission,
+    } = useMemo(
+      () => ({
+        editClassificationPermission: classificationPermissions.EditAll,
+        editDescriptionPermission:
+          !isVersionView &&
+          !isClassificationDisabled &&
+          (classificationPermissions.EditAll ||
+            classificationPermissions.EditDescription),
+        createPermission:
+          !isVersionView &&
+          (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
+            classificationPermissions.EditAll),
+        deletePermission:
+          classificationPermissions.Delete && !isSystemClassification,
+        editDisplayNamePermission:
+          classificationPermissions.EditAll ||
+          classificationPermissions.EditDisplayName,
+      }),
+      [
+        permissions,
+        classificationPermissions,
+        isVersionView,
+        isClassificationDisabled,
+        isSystemClassification,
+      ]
     );
 
     const headerBadge = useMemo(
@@ -260,25 +211,6 @@ const ClassificationDetails = forwardRef(
           />
         ) : null,
       [isSystemClassification, currentClassification]
-    );
-
-    const createPermission = useMemo(
-      () =>
-        !isVersionView &&
-        (createTagPermission || classificationPermissions.EditAll),
-      [classificationPermissions, createTagPermission, isVersionView]
-    );
-
-    const deletePermission = useMemo(
-      () => classificationPermissions.Delete && !isSystemClassification,
-      [classificationPermissions, isSystemClassification]
-    );
-
-    const editDisplayNamePermission = useMemo(
-      () =>
-        classificationPermissions.EditAll ||
-        classificationPermissions.EditDisplayName,
-      [classificationPermissions]
     );
 
     const showDisableOption = useMemo(
@@ -297,6 +229,40 @@ const ClassificationDetails = forwardRef(
         isVersionView,
       ]
     );
+
+    const handleUpdateDisplayName = async (data: {
+      name: string;
+      displayName?: string;
+    }) => {
+      if (!isUndefined(currentClassification)) {
+        return handleUpdateClassification?.({
+          ...currentClassification,
+          ...data,
+        });
+      }
+    };
+
+    const handleUpdateDescription = async (updatedHTML: string) => {
+      if (!isUndefined(currentClassification)) {
+        handleUpdateClassification?.({
+          ...currentClassification,
+          description: updatedHTML,
+        });
+      }
+    };
+
+    const handleEnableDisableClassificationClick = useCallback(() => {
+      if (!isUndefined(currentClassification)) {
+        handleUpdateClassification?.({
+          ...currentClassification,
+          disabled: !isClassificationDisabled,
+        });
+      }
+    }, [
+      currentClassification,
+      handleUpdateClassification,
+      isClassificationDisabled,
+    ]);
 
     const addTagButtonToolTip = useMemo(() => {
       if (isClassificationDisabled) {
@@ -344,32 +310,6 @@ const ClassificationDetails = forwardRef(
         handleEnableDisableClassificationClick,
       ]
     );
-
-    const { name, displayName, description } = useMemo(() => {
-      return {
-        name: isVersionView
-          ? getEntityVersionByField(
-              changeDescription,
-              EntityField.NAME,
-              currentClassification?.name
-            )
-          : currentClassification?.name,
-        displayName: isVersionView
-          ? getEntityVersionByField(
-              changeDescription,
-              EntityField.DISPLAYNAME,
-              currentClassification?.displayName
-            )
-          : currentClassification?.displayName,
-        description: isVersionView
-          ? getEntityVersionByField(
-              changeDescription,
-              EntityField.DESCRIPTION,
-              currentClassification?.description
-            )
-          : currentClassification?.description,
-      };
-    }, [currentClassification, changeDescription]);
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {

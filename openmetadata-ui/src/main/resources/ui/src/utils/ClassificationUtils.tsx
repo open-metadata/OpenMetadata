@@ -21,10 +21,14 @@ import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
+import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
+import { getEntityVersionByField } from './EntityVersionUtils';
 import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 
@@ -238,3 +242,37 @@ export const getClassificationExtraDropdownContent = (
       ]
     : []),
 ];
+
+export const getClassificationInfo = (
+  currentClassification?: Classification,
+  isVersionView = false
+) => {
+  return {
+    currentVersion: currentClassification?.version ?? '0.1',
+    isClassificationDisabled: currentClassification?.disabled ?? false,
+    isTier: currentClassification?.name === 'Tier',
+    isSystemClassification:
+      currentClassification?.provider === ProviderType.System,
+    name: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.NAME,
+          currentClassification?.name
+        )
+      : currentClassification?.name,
+    displayName: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.DISPLAYNAME,
+          currentClassification?.displayName
+        )
+      : currentClassification?.displayName,
+    description: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.DESCRIPTION,
+          currentClassification?.description
+        )
+      : currentClassification?.description,
+  };
+};
