@@ -3263,7 +3263,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateExtension();
         updateTagsForImport(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomain();
+        updateDomainForImport();
         updateDataProducts();
         updateExperts();
         updateReviewers();
@@ -3510,6 +3510,46 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setDomain(updatedDomain);
         // Clean up data products associated not associated with the updated domain
         removeCrossDomainDataProducts(updated.getDomain(), updated);
+      } else {
+        updated.setDomain(original.getDomain());
+      }
+    }
+
+    protected void updateDomainForImport() {
+      EntityReference origDomain = getEntityReference(original.getDomain());
+      EntityReference updatedDomain = getEntityReference(updated.getDomain());
+
+      if (origDomain == updatedDomain) {
+        return;
+      }
+
+      boolean domainChanged =
+          recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch);
+
+      if (domainChanged) {
+        if (origDomain != null) {
+          LOG.info(
+              "Removing domain {} for entity {} (import)",
+              origDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          removeDomainLineage(updated.getId(), entityType, origDomain);
+          deleteRelationship(
+              origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
+        }
+
+        if (updatedDomain != null) {
+          validateDomain(updatedDomain);
+          LOG.info(
+              "Adding domain {} for entity {} (import)",
+              updatedDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          addRelationship(
+              updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
+          addDomainLineage(updated.getId(), entityType, updatedDomain);
+        }
+
+        updated.setDomain(updatedDomain);
+        removeCrossDomainDataProducts(updatedDomain, updated);
       } else {
         updated.setDomain(original.getDomain());
       }

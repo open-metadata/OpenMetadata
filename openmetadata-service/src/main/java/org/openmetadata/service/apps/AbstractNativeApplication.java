@@ -62,6 +62,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void init(App app) {
     this.app = app;
+    ApplicationContext.getInstance().registerApp(this);
   }
 
   @Override
@@ -93,7 +94,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void uninstall() {
-    /* Not needed by default */
+    ApplicationContext.getInstance().unregisterApp(this);
   }
 
   @Override

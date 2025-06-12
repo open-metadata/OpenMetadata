@@ -18,6 +18,7 @@ import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
@@ -40,6 +41,7 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.csv.CsvUtil;
@@ -189,6 +191,22 @@ public class DatabaseSchemaResourceTest
         getDatabaseSchemaCsvHeaders(schema, false),
         null,
         updateRecords);
+
+    List<String> clearRecords = listOf("s1,dsp1,new-dsc2,,,,,P23DT23H,http://test.com,,");
+
+    importCsvAndValidate(
+        schema.getFullyQualifiedName(),
+        getDatabaseSchemaCsvHeaders(schema, false),
+        null,
+        clearRecords);
+
+    String tableFqn = String.format("%s.%s", schema.getFullyQualifiedName(), "s1");
+    Table updatedTable = tableTest.getEntityByName(tableFqn, ADMIN_AUTH_HEADERS);
+    assertEquals("new-dsc2", updatedTable.getDescription());
+    assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
+    assertTrue(
+        listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
+    Assertions.assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
   }
 
   @Test

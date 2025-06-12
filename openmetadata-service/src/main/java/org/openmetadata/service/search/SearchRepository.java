@@ -1234,10 +1234,6 @@ public class SearchRepository {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
-  public Response suggest(SearchRequest request) throws IOException {
-    return searchClient.suggest(request);
-  }
-
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
