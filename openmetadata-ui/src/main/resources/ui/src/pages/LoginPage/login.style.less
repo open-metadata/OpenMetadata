@@ -33,21 +33,27 @@
     text-align: center;
     height: auto;
 
+    @media screen and (min-width: 1200px) {
+      padding: @size-xl;
+    }
+
     .header-text {
-      font-size: 28px;
-      font-weight: 600;
+      margin-top: @size-2xl;
       color: @grey-800;
 
-      margin-top: @size-xl;
-
-      @media screen and (min-width: 1650px) {
-        font-size: 36px;
+      @media screen and (max-width: 670px) {
+        margin-top: @size-lg;
       }
     }
 
     .login-form {
-      margin-top: 3rem;
-      width: 380px;
+      margin-top: @size-xl;
+      width: 412px;
+
+      @media screen and (max-width: 1200px) {
+        width: 380px;
+        margin-top: @size-sm;
+      }
 
       .error-alert {
         border-color: #fbb4ae;
@@ -57,9 +63,11 @@
     label {
       color: @grey-text;
       font-weight: 600;
+      width: 100%;
 
-      @media screen and (min-width: 1650px) {
-        font-size: 20px;
+      .forgot-password-link {
+        text-align: right;
+        flex: 1;
       }
     }
 
@@ -68,45 +76,16 @@
       border-radius: @border-radius-xs;
       border: 1px solid @grey-22;
       background-color: @grey-23 !important;
-
-      @media screen and (min-width: 1650px) {
-        padding: @size-md @size-lg;
-      }
     }
 
     .input-field::placeholder {
       color: @grey-24;
-
-      @media screen and (min-width: 1650px) {
-        font-size: 18px;
-      }
     }
 
     #password,
     #confirmPassword,
     .input-field:focus {
       background-color: @grey-23;
-    }
-
-    .label-flex {
-      width: 380px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-
-      .forgot-password-link {
-        @media screen and (min-width: 1650px) {
-          font-size: 18px;
-        }
-      }
-
-      //   @media screen and (max-width: 768px) {
-      //     width: 100%;
-      //   }
-
-      @media screen and (min-width: 1650px) {
-        width: 600px;
-      }
     }
 
     .ant-btn-link.link-btn {
@@ -116,7 +95,6 @@
     .signup-text,
     .ant-btn-link.link-btn {
       @media screen and (min-width: 1650px) {
-        font-size: 18px;
         padding: 0 @size-xs;
       }
     }
@@ -186,13 +164,6 @@
 
   h1 {
     margin-bottom: 36px;
-  }
-}
-
-@media screen and (min-width: 1650px) {
-  #password,
-  #confirmPassword {
-    font-size: 18px;
   }
 }
 

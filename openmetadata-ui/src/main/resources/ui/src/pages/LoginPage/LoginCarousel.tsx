@@ -35,11 +35,11 @@ const LoginCarousel = () => {
           data-testid="slider-container"
           key={uniqueId() + '-' + currentIndex + '-' + idx}>
           <div className="d-flex flex-col gap-4">
-            <Typography.Title className="carousel-header" level={1}>
+            <Typography.Title className="carousel-header display-md" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="carousal-description"
+              className="carousal-description text-sm p-x-lg"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>

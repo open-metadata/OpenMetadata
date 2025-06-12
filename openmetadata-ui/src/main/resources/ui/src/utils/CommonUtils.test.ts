@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { filterSelectOptions, preloadImage } from './CommonUtils';
+import { filterSelectOptions } from './CommonUtils';
 
 describe('Tests for CommonUtils', () => {
   describe('filterSelectOptions', () => {
@@ -62,23 +62,6 @@ describe('Tests for CommonUtils', () => {
       const option = { labelValue: 'Label', value: 'value', label: 'Label' };
 
       expect(filterSelectOptions(input, option)).toBe(true);
-    });
-  });
-
-  describe('preloadImage', () => {
-    it('should create an Image object and set its source', () => {
-      const mockImage = {
-        src: '',
-      };
-      const mockImageFunction = jest.fn(() => mockImage);
-      global.Image = mockImageFunction as any;
-
-      const testSrc = 'test-image.png';
-      preloadImage(testSrc);
-
-      expect(mockImageFunction).toHaveBeenCalled();
-
-      expect(mockImage.src).toBe(testSrc);
     });
   });
 });

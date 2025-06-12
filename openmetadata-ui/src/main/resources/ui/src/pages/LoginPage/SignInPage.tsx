@@ -174,7 +174,7 @@ const SignInPage = () => {
             'sso-container': !isAuthProviderBasic,
           })}>
           <BrandImage isMonoGram height="auto" width={50} />
-          <Typography.Title className="header-text" level={3}>
+          <Typography.Title className="header-text display-sm" level={3}>
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
           {alert && (
@@ -219,7 +219,7 @@ const SignInPage = () => {
                 <Form.Item
                   data-testid="password"
                   label={
-                    <div className="label-flex">
+                    <>
                       <Typography.Text className="mr-1">
                         {t('label.password')}
                       </Typography.Text>
@@ -229,7 +229,7 @@ const SignInPage = () => {
                         onClick={onClickForgotPassword}>
                         {t('label.forgot-password')}
                       </Typography.Link>
-                    </div>
+                    </>
                   }
                   name="password"
                   requiredMark={false}
@@ -250,7 +250,7 @@ const SignInPage = () => {
                   loading={loading}
                   size="large"
                   type="primary">
-                  {t('label.login')}
+                  {t('label.sign-in')}
                 </Button>
               </Form>
               {!isAuthProviderLDAP && (

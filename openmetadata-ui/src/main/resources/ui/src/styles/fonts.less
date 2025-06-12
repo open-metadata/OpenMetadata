@@ -13,22 +13,6 @@
 
 @import (reference) url('./variables.less');
 
-// Set base font size using CSS custom property
-:root {
-  --ant-font-size-base: 14px;
-}
-
-@media screen and (min-width: 1600px) {
-  :root {
-    --ant-font-size-base: 16px;
-  }
-}
-
-// Override @font-size-base for different screen sizes
-@media screen and (min-width: 1600px) {
-  @font-size-base: 16px;
-}
-
 // font family
 pre {
   font-family: 'Source Code Pro', sans-serif;
@@ -193,26 +177,6 @@ a.ant-typography,
 
 // =============================== New Design System ===============================
 
-// Base font size for different screen sizes
-html {
-  font-size: 14px; // Default size matching @font-size-base
-}
-
-// Override Ant Design's base font size for different screen sizes
-:root {
-  --ant-font-size-base: 14px;
-}
-
-@media screen and (min-width: 1600px) {
-  html {
-    font-size: 16px;
-  }
-
-  :root {
-    --ant-font-size-base: 16px;
-  }
-}
-
 .text-secondary-new {
   color: #414651;
 }
@@ -257,45 +221,119 @@ html {
   }
 }
 
-// Font Style Definitions
 .display-lg {
-  .text-style(3.428rem, 4.285rem, -2%);
-
+  .text-style(3rem, 3.75rem, -2%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1.5rem;
+  }
 }
 
 .display-md {
-  .text-style(2.571rem, 3.142rem, -2%);
-
+  .text-style(2.25rem, 2.75rem, -2%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1.25rem;
+  }
 }
 
 .display-sm {
-  .text-style(2.142rem, 2.714rem, 0%);
-
+  .text-style(1.875rem, 2.375rem, 0%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1rem;
+  }
 }
 
 .display-xs {
-  .text-style(1.714rem, 2.285rem, 0%);
-
+  .text-style(1.5rem, 2rem, 0%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 0.875rem;
+  }
 }
 
 .text-xl {
-  .text-style(1.428rem, 2.142rem);
+  .text-style(1.25rem, 1.875rem);
+
+  &.ant-typography {
+    margin-bottom: 0.75rem;
+  }
 }
+
 .text-lg {
-  .text-style(1.285rem, 2rem);
+  .text-style(1.125rem, 1.75rem);
+
+  &.ant-typography {
+    margin-bottom: 0.625rem;
+  }
 }
+
 .text-md {
-  .text-style(1.142rem, 1.714rem);
+  .text-style(1rem, 1.5rem);
+
+  &.ant-typography {
+    margin-bottom: 0.5rem;
+  }
 }
+
 .text-sm {
-  .text-style(1rem, 1.428rem);
+  .text-style(0.875rem, 1.25rem);
+
+  &.ant-typography {
+    margin-bottom: 0.375rem;
+  }
 }
+
 .text-xs {
-  .text-style(0.857rem, 1.285rem);
+  .text-style(0.75rem, 1.125rem);
+
+  &.ant-typography {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.ant-typography {
+  // Font Style Definitions - Aligned with Ant Design Typography
+  &.display-lg {
+    .display-lg();
+  }
+
+  &.display-md {
+    .display-md();
+  }
+
+  &.display-sm {
+    .display-sm;
+  }
+
+  &.display-xs {
+    .display-xs();
+  }
+
+  &.text-xl {
+    .text-xl();
+  }
+
+  &.text-lg {
+    .text-lg();
+  }
+
+  &.text-md {
+    .text-md();
+  }
+
+  &.text-sm {
+    .text-sm();
+  }
+
+  &.text-xs {
+    .text-xs();
+  }
 }
 
 // =============================== End of New Design System ===============================
