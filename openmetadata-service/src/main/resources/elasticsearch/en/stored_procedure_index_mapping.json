@@ -494,6 +494,18 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
+      "upstreamLineage": {
+        "type": "object"
+      },
       "certification": {
         "type": "object",
         "properties": {

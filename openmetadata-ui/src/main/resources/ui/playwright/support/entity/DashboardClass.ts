@@ -99,6 +99,7 @@ export class DashboardClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
     this.dataModel.dataModelType = dataModelType;
+    this.childrenSelectorId = `${this.service.name}.${this.charts.name}`;
   }
 
   async create(apiContext: APIRequestContext) {

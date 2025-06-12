@@ -18,4 +18,10 @@ public class MCPConfiguration {
 
   @JsonProperty("path")
   private String path = "/api/v1/mcp";
+
+  @JsonProperty("originValidationEnabled")
+  private boolean originValidationEnabled = false;
+
+  @JsonProperty("originHeaderUri")
+  private String originHeaderUri = "http://localhost";
 }

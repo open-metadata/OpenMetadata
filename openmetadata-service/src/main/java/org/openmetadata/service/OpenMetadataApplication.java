@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
@@ -91,6 +92,8 @@ import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcp.McpServer;
+import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -128,6 +131,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
@@ -138,7 +142,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-  private Limits limits;
+  protected Limits limits;
 
   protected Jdbi jdbi;
 
@@ -210,6 +214,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.setValidator(
         Validation.byDefaultProvider()
             .configure()
+            .parameterNameProvider(new CustomParameterNameProvider())
             .messageInterpolator(
                 new ResourceBundleMessageInterpolator(
                     new PlatformResourceBundleLocator("jakarta.validation.ValidationMessages")))
@@ -285,10 +290,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    if (catalogConfig.getMcpConfiguration() != null
-        && catalogConfig.getMcpConfiguration().isEnabled()) {
-      McpServer mcpServer = new McpServer();
-      mcpServer.initializeMcpServer(environment, authorizer, catalogConfig);
+    try {
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
+        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+      }
+    } catch (Exception ex) {
+      LOG.error("Error initializing MCP server", ex);
     }
   }
 

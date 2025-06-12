@@ -21,6 +21,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -35,6 +36,7 @@ import {
   isEqual,
   isUndefined,
   last,
+  orderBy,
   startCase,
   unionBy,
 } from 'lodash';
@@ -163,6 +165,7 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    isPostsLoading,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -958,20 +961,16 @@ export const TaskTabNew = ({
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
-                      userName={
-                        taskThread?.task?.assignees[0].displayName ?? ''
-                      }>
+                      userName={taskThread?.task?.assignees[0].name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
-                          name={
-                            taskThread?.task?.assignees[0].displayName ?? ''
-                          }
+                          name={taskThread?.task?.assignees[0].name ?? ''}
                           width="24"
                         />
                       </div>
                     </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
-                      {taskThread?.task?.assignees[0].displayName}
+                      {getEntityName(taskThread?.task?.assignees[0])}
                     </Typography.Text>
                   </div>
                 ) : (
@@ -1050,6 +1049,34 @@ export const TaskTabNew = ({
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };
+
+  const posts = useMemo(() => {
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(taskThread.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={taskThread}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [taskThread, closeFeedEditor, isPostsLoading]);
 
   useEffect(() => {
     closeFeedEditor();
@@ -1132,11 +1159,11 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                    <UserPopOverCard userName={currentUser?.name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
                           key={taskThread.id}
-                          name={getEntityName(currentUser)}
+                          name={currentUser?.name ?? ''}
                           width="32"
                         />
                       </div>
@@ -1153,22 +1180,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts
-                  ?.slice()
-                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply, index, arr) => (
-                    <CommentCard
-                      closeFeedEditor={closeFeedEditor}
-                      feed={taskThread}
-                      isLastReply={index === arr.length - 1}
-                      key={reply.id}
-                      post={reply}
-                    />
-                  ))}
-              </Col>
-            )}
+            {posts}
           </div>
         </Col>
       </Col>

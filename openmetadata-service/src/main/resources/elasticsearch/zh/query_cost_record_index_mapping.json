@@ -307,15 +307,6 @@
                     "entityType": {
                         "type": "keyword"
                     },
-                    "suggest": {
-                        "type": "completion"
-                    },
-                    "column_suggest": {
-                        "type": "completion"
-                    },
-                    "service_suggest": {
-                        "type": "completion"
-                    },
                     "domain": {
                         "properties": {
                             "id": {
@@ -420,9 +411,6 @@
                         "type": "long",
                         "null_value": 0
                     },
-                    "votes": {
-                        "type": "object"
-                    }
                 }
             },
             "service": {
