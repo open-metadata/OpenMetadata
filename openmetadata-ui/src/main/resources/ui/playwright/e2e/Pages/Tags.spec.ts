@@ -437,3 +437,45 @@ test.fixme('Classification Page', async ({ page }) => {
     ).not.toBeVisible();
   });
 });
+
+test('Search tag using display name should work', async ({ page }) => {
+  const displayNameToSearch = tag.responseData.displayName;
+
+  await table.visitEntityPage(page);
+
+  await page.waitForLoadState('networkidle');
+
+  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
+
+  await page
+    .getByTestId('KnowledgePanel.Tags')
+    .getByTestId('tags-container')
+    .getByTestId('add-tag')
+    .first()
+    .click();
+
+  await initialQueryResponse;
+
+  const tagSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(displayNameToSearch)}*`
+  );
+
+  // Enter the display name in the search box
+  await page.fill('[data-testid="tag-selector"] input', displayNameToSearch);
+
+  const response = await tagSearchResponse;
+  const searchResults = await response.json();
+
+  // Verify that we got search results
+  expect(searchResults.hits.hits.length).toBeGreaterThan(0);
+
+  // Verify that the tag with matching display name is shown in dropdown
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(displayNameToSearch);
+
+  // Verify the tag is selectable in the dropdown
+  await expect(
+    page.getByTestId(`tag-${tag.responseData.fullyQualifiedName}`)
+  ).toBeVisible();
+});
