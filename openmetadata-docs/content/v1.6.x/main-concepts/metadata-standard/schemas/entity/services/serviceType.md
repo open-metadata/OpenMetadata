@@ -1,6 +1,8 @@
 ---
 title: serviceType
 slug: /main-concepts/metadata-standard/schemas/entity/services/servicetype
+noindex: true
+nofollow: true
 ---
 
 # Service Type

@@ -1,6 +1,8 @@
 ---
 title: secretsManagerClientLoader
 slug: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerclientloader
+noindex: true
+nofollow: true
 ---
 
 # Secrets Manager Client Loader

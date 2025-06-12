@@ -1,6 +1,8 @@
 ---
 title: serviceTokenEnum
 slug: /main-concepts/metadata-standard/schemas/auth/servicetokenenum
+noindex: true
+nofollow: true
 ---
 
 # ServiceTokenType

@@ -1,6 +1,8 @@
 ---
 title: changeEventType
 slug: /main-concepts/metadata-standard/schemas/type/changeeventtype
+noindex: true
+nofollow: true
 ---
 
 # EventType

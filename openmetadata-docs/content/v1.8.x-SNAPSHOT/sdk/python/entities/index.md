@@ -1,6 +1,8 @@
 ---
 title: Python SDK Entities
 slug: /sdk/python/entities
+noindex: true
+nofollow: true
 ---
 
 # Python SDK Entities
