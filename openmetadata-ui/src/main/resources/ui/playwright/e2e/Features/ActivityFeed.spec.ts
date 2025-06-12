@@ -52,8 +52,11 @@ const entity = new TableClass();
 const entity2 = new TableClass();
 const entity3 = new TableClass();
 const entity4 = new TableClass();
+const entity5 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
+const user4 = new UserClass();
 const adminUser = new UserClass();
 
 const test = base.extend<{ page: Page }>({
@@ -76,8 +79,11 @@ test.describe('Activity feed', () => {
     await entity2.create(apiContext);
     await entity3.create(apiContext);
     await entity4.create(apiContext);
+    await entity5.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
+    await user4.create(apiContext);
 
     await afterAction();
   });
@@ -88,8 +94,11 @@ test.describe('Activity feed', () => {
     await entity2.delete(apiContext);
     await entity3.delete(apiContext);
     await entity4.delete(apiContext);
+    await entity5.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.delete(apiContext);
+    await user4.delete(apiContext);
     await adminUser.delete(apiContext);
 
     await afterAction();
@@ -241,6 +250,26 @@ test.describe('Activity feed', () => {
     await expect(
       page.locator('.right-container [data-testid="feed-replies"]')
     ).toContainText('Reply message');
+  });
+
+  test('Should be able to open and close emoji container in feed editor', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await visitOwnProfilePage(page);
+    await page.waitForLoadState('networkidle');
+
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+    commentInput.click();
+
+    await page.locator('.textarea-emoji-control').click();
+
+    await expect(page.locator('#textarea-emoji')).toBeVisible();
+
+    // Click on the main content area which is outside the emoji container
+    await page.locator('.center-container').click();
+
+    await expect(page.locator('#textarea-emoji')).not.toBeVisible();
   });
 
   test('Update Description Task on Columns', async ({ page }) => {
@@ -530,18 +559,18 @@ test.describe('Activity feed', () => {
   test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
-    const { page: page2, afterAction: afterActionUser2 } =
-      await performUserLogin(browser, user2);
+    const { page: page2, afterAction: afterActionUser3 } =
+      await performUserLogin(browser, user3);
 
-    await base.step('Create and Assign Task to User 2', async () => {
+    await base.step('Create and Assign Task to User 3', async () => {
       await redirectToHomePage(page1);
       await entity.visitEntityPage(page1);
 
-      // Create task for the user 2
+      // Create task for the user 3
       await page1.getByTestId('request-description').click();
       await createDescriptionTask(page1, {
         term: entity.entity.displayName,
-        assignee: user2.responseData.name,
+        assignee: user3.responseData.name,
       });
 
       await afterActionUser1();
@@ -570,6 +599,7 @@ test.describe('Activity feed', () => {
         .click();
 
       await taskResponse;
+      await page2.waitForLoadState('networkidle');
 
       await expect(
         page2.locator(
@@ -597,7 +627,7 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
       // Check the Task based on Created by me task filter
@@ -618,21 +648,23 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
-      await afterActionUser2();
+      await afterActionUser3();
     });
   });
 
   test('Verify feed count', async ({ page }) => {
     await redirectToHomePage(page);
-    await entity.visitEntityPage(page);
+    await entity5.visitEntityPage(page);
     await page.getByTestId('request-description').click();
     await createDescriptionTask(page, {
-      term: entity.entity.displayName,
-      assignee: user1.responseData.name,
+      term: entity5.entity.displayName,
+      assignee: user4.responseData.name,
     });
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
   });
