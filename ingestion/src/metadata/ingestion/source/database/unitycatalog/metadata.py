@@ -340,7 +340,7 @@ class UnitycatalogSource(
                         schema_name=schema_name,
                     )
                 ),
-                owners=self.get_owner_ref(table_name),
+                owners=self.get_owner_ref(table.owner),
             )
             yield Either(right=table_request)
 
@@ -524,18 +524,24 @@ class UnitycatalogSource(
     def close(self):
         """Nothing to close"""
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(
+        self, table_owner: Optional[str]
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
+        if self.source_config.includeOwners is False:
+            return None
         try:
-            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
-            owner = self.api_client.get_owner_info(full_table_name)
-            if not owner:
+            if not table_owner or not isinstance(table_owner, str):
                 return
-            owner_ref = self.metadata.get_reference_by_email(email=owner)
+            owner_ref = self.metadata.get_reference_by_email(email=table_owner)
+            if owner_ref:
+                return owner_ref
+            table_name = table_owner.split("@")[0]
+            owner_ref = self.metadata.get_reference_by_name(name=table_name)
             return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+            logger.warning(f"Error processing owner {table_owner}: {exc}")
         return
