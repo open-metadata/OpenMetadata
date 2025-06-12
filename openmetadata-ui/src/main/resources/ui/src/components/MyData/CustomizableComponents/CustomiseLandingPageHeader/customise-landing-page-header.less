@@ -13,14 +13,14 @@
 @import (reference) url('../../../../styles/variables.less');
 
 .customise-landing-page {
-  margin: 20px 0;
-  padding: 20px;
-  border-radius: 24px;
+  margin: @margin-mlg 0;
+  padding: @padding-mlg;
+  border-radius: @border-radius-xl;
   background: linear-gradient(
     106.44deg,
-    #1568da 0.76%,
-    rgba(33, 93, 243, 0.9) 47.51%,
-    #2196f3 115.4%
+    @blue-29 0.76%,
+    @blue-30 47.51%,
+    @blue-27 115.4%
   );
 }
 
@@ -29,39 +29,38 @@
 
   .welcome-user {
     font-size: @size-xl;
-    line-height: 44px;
     font-weight: @font-semibold;
     color: @white;
   }
 
   .customise-header-btn {
     background-color: transparent;
-    border: 1px solid #dbe0e7;
-    border-radius: 8px;
+    border: 1px solid @grey-25;
+    border-radius: @border-radius-xs;
   }
 
   .customise-header-btn:hover,
   .customise-header-btn:focus {
     background-color: transparent;
-    border: 1px solid #dbe0e7;
+    border: 1px solid @grey-25;
   }
 }
 
 .customise-search-container {
   width: 35vw;
-  border: 1px solid #dbe0e7;
-  border-radius: 12px;
+  border: 1px solid @grey-25;
+  border-radius: @border-radius-sm;
   background: @white;
-  padding: 8px 12px;
+  padding: @padding-xs @padding-sm;
 }
 
 .domain-icon,
 .dropdown-icon {
-  color: #6b7f99;
+  color: @grey-26;
 }
 
 .domain-title {
-  color: #414651;
+  color: @grey-700;
 }
 
 .customise-recently-viewed-data {
@@ -70,8 +69,8 @@
   gap: 50px;
   overflow-x: auto;
   white-space: nowrap;
-  padding-bottom: 4px;
-  margin-bottom: 48px;
+  padding-bottom: @padding-xss;
+  margin-bottom: @size-2xl;
 
   .recent-item {
     flex-shrink: 0;
@@ -82,7 +81,7 @@
     width: 56px;
     height: 56px;
     border-radius: 40px;
-    background-color: #eff8ff;
+    background-color: @primary-button-background;
 
     .entity-icon {
       width: 40px;
@@ -103,4 +102,9 @@
     word-break: break-all;
     text-align: center;
   }
+}
+
+.overlapped-background {
+  height: 150px;
+  width: 100%;
 }

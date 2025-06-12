@@ -124,7 +124,7 @@ const CustomiseLandingPageHeader = () => {
         </Col>
         <Col span={6} />
       </Row>
-      <Row style={{ height: '150px', width: '100%' }} />
+      <Row className="overlapped-background" />
     </Row>
   );
 };

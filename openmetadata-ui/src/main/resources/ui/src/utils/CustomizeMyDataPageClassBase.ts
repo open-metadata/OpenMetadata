@@ -50,14 +50,14 @@ class CustomizeMyDataPageClassBase {
   landingPageMaxGridSize = 4;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 6,
-    announcements: 3,
-    following: 3,
-    recentlyViewed: 3,
-    myData: 3,
-    kpi: 3,
-    totalAssets: 3,
-    DataAssets: 3,
+    activityFeed: 4,
+    announcements: 4,
+    following: 4,
+    recentlyViewed: 4,
+    myData: 4,
+    kpi: 4,
+    totalAssets: 4,
+    DataAssets: 4,
   };
 
   announcementWidget: WidgetConfig = {
@@ -81,7 +81,7 @@ class CustomizeMyDataPageClassBase {
     {
       h: this.landingPageWidgetDefaultHeights.DataAssets,
       i: LandingPageWidgetKeys.DATA_ASSETS,
-      w: 1,
+      w: 2,
       x: 1,
       y: 0,
       static: false,
