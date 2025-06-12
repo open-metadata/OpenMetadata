@@ -36,11 +36,7 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_DESCRIPTION,
               MetadataOperation.EDIT_DISPLAY_NAME,
               MetadataOperation.EDIT_GLOSSARY_TERMS,
-              MetadataOperation.EDIT_TIER,
-              MetadataOperation.EDIT_SCIM,
-              MetadataOperation.VIEW_SCIM,
-              MetadataOperation.CREATE_SCIM,
-              MetadataOperation.DELETE_SCIM));
+              MetadataOperation.EDIT_TIER));
 
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
