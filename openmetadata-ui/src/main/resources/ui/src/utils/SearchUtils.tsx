@@ -43,7 +43,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -59,9 +59,7 @@ export const getSearchAPIQueryParams = (
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
 
-  const encodedQueryString = queryString
-    ? getEncodedFqn(escapeESReservedCharacters(queryString))
-    : '';
+  const encodedQueryString = queryString ? getEncodedFqn(queryString) : '';
 
   const query =
     wildcard && encodedQueryString !== WILD_CARD_CHAR

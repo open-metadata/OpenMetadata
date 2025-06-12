@@ -52,10 +52,7 @@ import {
   filterTreeNodeOptions,
   findItemByFqn,
 } from '../../../utils/GlossaryUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
@@ -268,7 +265,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const onSearch = debounce(async (value: string) => {
     if (value) {
       setIsLoading(true);
-      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+      const encodedValue = getEncodedFqn(value);
       const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
       setSearchOptions(filterTreeNodeOptions(results, filterOptions));

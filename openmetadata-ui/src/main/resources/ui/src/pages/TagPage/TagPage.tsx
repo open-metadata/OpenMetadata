@@ -87,10 +87,7 @@ import {
   getClassificationDetailsPath,
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -327,7 +324,7 @@ const TagPage = () => {
 
   const fetchClassificationTagAssets = async () => {
     try {
-      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(tagFqn));
+      const encodedFqn = getEncodedFqn(tagFqn);
       const res = await searchData(
         '',
         1,

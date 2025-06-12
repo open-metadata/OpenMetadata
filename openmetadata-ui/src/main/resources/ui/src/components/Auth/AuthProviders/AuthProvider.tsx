@@ -83,7 +83,6 @@ import {
   setRefreshToken,
 } from '../../../utils/LocalStorageUtils';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
@@ -470,9 +469,7 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-          activeDomain
-        )}")`;
+        const domainStatement = `(domain.fullyQualifiedName:"${activeDomain}")`;
         queryParams.q = queryParams.q ?? '';
         queryParams.q += isEmpty(queryParams.q)
           ? domainStatement

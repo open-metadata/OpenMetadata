@@ -60,10 +60,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -181,9 +178,7 @@ const DataProductsDetailsPage = ({
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
-        );
+        const encodedFqn = getEncodedFqn(dataProduct.fullyQualifiedName ?? '');
         const res = await searchData(
           '',
           1,

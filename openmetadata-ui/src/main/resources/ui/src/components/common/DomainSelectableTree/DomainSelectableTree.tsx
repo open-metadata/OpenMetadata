@@ -35,10 +35,7 @@ import {
 } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import './domain-selectable.less';
@@ -179,7 +176,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     if (value) {
       try {
         setIsLoading(true);
-        const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+        const encodedValue = getEncodedFqn(value);
         const results: Domain[] = await searchDomains(encodedValue);
         const updatedTreeData = convertDomainsToTreeOptions(
           results,
