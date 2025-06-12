@@ -137,9 +137,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Rename Tag name', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -163,9 +162,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Restyle Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -189,9 +187,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Edit Tag Description', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('edit-description').click();
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
@@ -212,9 +209,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Delete a Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
