@@ -40,9 +40,9 @@
         "uniqueItems": true,
         "items": {
           "type": "string",
-          "enum": ["Managed", "Shared", "Personal"]
+          "enum": ["Managed", "Shared", "Personal", "Data"]
         },
-        "default": ["Managed", "Shared", "Personal"],
+        "default": ["Managed", "Shared", "Personal", "Data"],
         "minItems": 1
       },
       "dashboardFilterPattern": {

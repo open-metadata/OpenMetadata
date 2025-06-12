@@ -21,6 +21,7 @@ class QlikSpaceType(Enum):
     MANAGED = "Managed"
     SHARED = "Shared"
     PERSONAL = "Personal"
+    DATA = "Data"
 
 
 # Space Models
