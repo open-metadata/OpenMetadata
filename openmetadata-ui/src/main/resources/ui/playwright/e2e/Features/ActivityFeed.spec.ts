@@ -230,20 +230,6 @@ test.describe('Activity feed', () => {
     const commentInput = page.locator('[data-testid="comments-input-field"]');
     commentInput.click();
 
-    await test.step(
-      'Should be able to open and close emoji container',
-      async () => {
-        await page.locator('.textarea-emoji-control').click();
-
-        await expect(page.locator('#textarea-emoji')).toBeVisible();
-
-        // Click on the main content area which is outside the emoji container
-        await page.locator('.center-container').click();
-
-        await expect(page.locator('#textarea-emoji')).not.toBeVisible();
-      }
-    );
-
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       `Reply message`
@@ -255,6 +241,26 @@ test.describe('Activity feed', () => {
     await expect(
       page.locator('.right-container [data-testid="feed-replies"]')
     ).toContainText('Reply message');
+  });
+
+  test('Should be able to open and close emoji container in feed editor', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await visitOwnProfilePage(page);
+    await page.waitForLoadState('networkidle');
+
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+    commentInput.click();
+
+    await page.locator('.textarea-emoji-control').click();
+
+    await expect(page.locator('#textarea-emoji')).toBeVisible();
+
+    // Click on the main content area which is outside the emoji container
+    await page.locator('.center-container').click();
+
+    await expect(page.locator('#textarea-emoji')).not.toBeVisible();
   });
 
   test('Update Description Task on Columns', async ({ page }) => {
