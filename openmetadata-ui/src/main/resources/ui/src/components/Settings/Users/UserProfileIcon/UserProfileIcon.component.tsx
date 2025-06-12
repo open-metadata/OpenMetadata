@@ -208,6 +208,10 @@ export const UserProfileIcon = () => {
     [currentUser]
   );
 
+  const handleCloseDropdown = useCallback(() => {
+    setIsDropdownOpen(false);
+  }, []);
+
   const items: ItemType[] = useMemo(
     () => [
       {
@@ -217,7 +221,7 @@ export const UserProfileIcon = () => {
           <Link
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
-            onClick={() => setIsDropdownOpen(false)}>
+            onClick={handleCloseDropdown}>
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
