@@ -74,7 +74,7 @@ export const hashtagSuggestion = () => ({
             props.clientRect as Props['getReferenceClientRect'],
           appendTo: () => document.body,
           content: component.element,
-          showOnCreate: true,
+          showOnCreate: false,
           interactive: true,
           trigger: 'manual',
           placement: 'bottom-start',
