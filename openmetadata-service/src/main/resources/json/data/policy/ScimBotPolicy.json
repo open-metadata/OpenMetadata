@@ -8,11 +8,11 @@
   "provider": "system",
   "rules": [
     {
-      "name": "Deny-All-Others",
-      "description": "Deny all access to non-SCIM endpoints",
-      "resources": ["All"],
+      "name": "Allow-Scim-Endpoints",
+      "description": "Allow access to SCIM endpoints",
+      "resources": ["scim"],
       "operations": ["Create", "EditAll", "ViewAll", "Delete"],
-      "effect": "deny"
+      "effect": "allow"
     }
   ]
 }
