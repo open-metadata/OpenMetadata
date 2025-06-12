@@ -206,7 +206,9 @@ vars:
         self.assertEqual(
             vars_section["openmetadata_host_port"], "http://test-server:port/endpoint"
         )
-        self.assertEqual(vars_section["openmetadata_jwt_token"], "test-jwt-token")
+        # Get the expected JWT token from environment variable (same as what gets substituted)
+        expected_jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN")
+        self.assertEqual(vars_section["openmetadata_jwt_token"], expected_jwt_token)
         self.assertEqual(vars_section["openmetadata_service_name"], "test_service")
 
         # Test file not found error
@@ -493,7 +495,9 @@ vars:
         self.assertEqual(
             om_config.openmetadata_host_port, "http://test-server:port/endpoint"
         )
-        self.assertEqual(om_config.openmetadata_jwt_token, "test-jwt-token")
+        # Get the expected JWT token from environment variable (same as what gets substituted)
+        expected_jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN")
+        self.assertEqual(om_config.openmetadata_jwt_token, expected_jwt_token)
         self.assertEqual(om_config.openmetadata_service_name, "test_service")
 
         # Verify optional configuration from test file
@@ -544,11 +548,13 @@ vars:
                 ],
                 "http://test-server:port/endpoint",
             )
+            # Get the expected JWT token from environment variable (same as what gets substituted)
+            expected_jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN")
             self.assertEqual(
                 workflow_config["workflowConfig"]["openMetadataServerConfig"][
                     "securityConfig"
                 ]["jwtToken"],
-                "test-jwt-token",
+                expected_jwt_token,
             )
 
             # Validate the optional config in the workflow
