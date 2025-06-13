@@ -54,7 +54,7 @@ const CustomiseLandingPageHeader = () => {
     <Row className="customise-landing-page">
       <Row gutter={[24, 24]}>
         <Col className="dashboardHeader" span={18}>
-          <Row className="d-flex items-center gap-4 mb-8">
+          <div className="d-flex items-center gap-4 mb-5">
             <Typography.Text className="welcome-user">
               {t('label.welcome', {
                 name: currentUser?.displayName ?? currentUser?.name,
@@ -70,7 +70,7 @@ const CustomiseLandingPageHeader = () => {
                 />
               }
             />
-          </Row>
+          </div>
           <Row className="d-flex items-center gap-4 mb-8">
             <div className="flex-center customise-search-container">
               {!isNLPEnabled && (
@@ -97,7 +97,9 @@ const CustomiseLandingPageHeader = () => {
                 type="text"
               />
             </div>
-            <div className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white">
+            <div
+              className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white"
+              data-testid="domain-selector">
               <DomainIcon className="domain-icon" height={22} width={22} />
               <Typography.Text className="text-sm font-medium domain-title">
                 {t('label.all-domain-plural')}
