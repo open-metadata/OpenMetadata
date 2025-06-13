@@ -6,7 +6,10 @@
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
+  ],
   "definitions": {
     "dataModelType": {
       "javaType": "org.openmetadata.schema.type.DataModelType",
@@ -25,7 +28,8 @@
         "QlikDataModel",
         "QuickSightDataModel",
         "SigmaDataModel",
-        "PowerBIDataFlow"
+        "PowerBIDataFlow",
+        "MicroStrategyDataset"
       ],
       "javaEnums": [
         {
@@ -63,6 +67,9 @@
         },
         {
           "name": "PowerBIDataFlow"
+        },
+        {
+          "name": "MicroStrategyDataset"
         }
       ]
     }
@@ -109,9 +116,9 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this data model.",
