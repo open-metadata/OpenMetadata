@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.*;
 
 public class ElasticSearchSourceBuilderFactory
@@ -48,6 +49,11 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    // Handle empty queries with match_all
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      return QueryBuilders.matchAllQuery();
+    }
+
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -59,7 +65,7 @@ public class ElasticSearchSourceBuilderFactory
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     QueryStringQueryBuilder fuzzyQueryBuilder =
-        QueryBuilders.queryStringQuery(query)
+        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
             .fields(fuzzyFields)
             .type(MOST_FIELDS)
             .defaultOperator(Operator.AND)
@@ -123,7 +129,8 @@ public class ElasticSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
@@ -152,7 +159,7 @@ public class ElasticSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
+        QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
             .fields(SearchIndex.getAllFields())
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10);
@@ -199,7 +206,7 @@ public class ElasticSearchSourceBuilderFactory
       baseQuery.must(QueryBuilders.matchAllQuery());
     } else if (containsQuerySyntax(query)) {
       QueryStringQueryBuilder fuzzyQueryBuilder =
-          QueryBuilders.queryStringQuery(query)
+          QueryBuilders.queryStringQuery(SearchUtils.escapeSpecialCharactersForQuery(query))
               .fields(fuzzyFields)
               .defaultOperator(Operator.AND)
               .type(MOST_FIELDS)

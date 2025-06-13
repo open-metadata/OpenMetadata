@@ -180,4 +180,39 @@ public final class SearchUtils {
     }
     return Collections.emptyList();
   }
+
+  public static String escapeSpecialCharactersForQuery(String query) {
+    if (nullOrEmpty(query)) {
+      return query;
+    }
+
+    // Define the special characters that need to be escaped for Elasticsearch/OpenSearch
+    // query_string query
+    // Reference:
+    // https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#_reserved_characters
+    String[] specialChars = {
+      "\\", // Must be first to avoid double escaping
+      "+", "-", "=", "&&", "||", ">", "<", "!", "(", ")", "{", "}", "[", "]", "^", "\"", "~", "*",
+      "?", ":", "/", "|"
+    };
+
+    String escapedQuery = query;
+    for (String specialChar : specialChars) {
+      // Escape each special character by adding a backslash before it
+      escapedQuery = escapedQuery.replace(specialChar, "\\" + specialChar);
+    }
+
+    return escapedQuery;
+  }
+
+  public static void logQueryForDebugging(String originalQuery, String finalQuery, String context) {
+    System.out.println(
+        "DEBUG ["
+            + context
+            + "] Original query: '"
+            + originalQuery
+            + "' -> Final query: '"
+            + finalQuery
+            + "'");
+  }
 }

@@ -120,6 +120,86 @@
       "sourceUrl": "http://localhost:808/superset/dashboard/forecast_sales_performance/",
       "charts": ["sample_superset.211"],
       "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
+    },
+    {
+      "id": "sc-dash-001",
+      "name": "sales_analytics_dashboard",
+      "displayName": "Sales&Marketing!Dashboard",
+      "fullyQualifiedName": "sample_superset.sales_analytics_dashboard",
+      "description": "Dashboard for sales(revenue) and marketing*campaigns analysis with customer^tracking",
+      "sourceUrl": "http://localhost:808/superset/dashboard/sales_analytics/",
+      "charts": ["sample_superset.183", "sample_superset.170", "sample_superset.197"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-001"
+    },
+    {
+      "id": "sc-dash-002", 
+      "name": "customer_behavior_dashboard",
+      "displayName": "Customer^Analytics:Dashboard",
+      "fullyQualifiedName": "sample_superset.customer_behavior_dashboard",
+      "description": "Analytics~dashboard with customer[behavior] tracking and performance{metrics}",
+      "sourceUrl": "http://localhost:808/superset/dashboard/customer_behavior/",
+      "charts": ["sample_superset.117", "sample_superset.197"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-002"
+    },
+    {
+      "id": "sc-dash-003",
+      "name": "financial_reporting_dashboard", 
+      "displayName": "Financial/Reporting\"Dashboard\"",
+      "fullyQualifiedName": "sample_superset.financial_reporting_dashboard",
+      "description": "Financial reporting dashboard with profit\\loss analysis and budget*tracking",
+      "sourceUrl": "http://localhost:808/superset/dashboard/financial_reporting/",
+      "charts": ["sample_superset.127", "sample_superset.166", "sample_superset.114"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-003"
+    },
+    {
+      "id": "sc-dash-004",
+      "name": "operations_monitoring_dashboard",
+      "displayName": "Operations&Monitoring!System",
+      "fullyQualifiedName": "sample_superset.operations_monitoring_dashboard", 
+      "description": "Real-time operations monitoring with alerts!notifications and system~performance metrics",
+      "sourceUrl": "http://localhost:808/superset/dashboard/operations_monitoring/",
+      "charts": ["sample_superset.183", "sample_superset.197", "sample_superset.170", "sample_superset.180"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-004"
+    },
+    {
+      "id": "sc-dash-005",
+      "name": "product_analytics_dashboard",
+      "displayName": "Product(Analytics)Dashboard",
+      "fullyQualifiedName": "sample_superset.product_analytics_dashboard",
+      "description": "Product analytics with user^engagement and feature[usage] tracking",
+      "sourceUrl": "http://localhost:808/superset/dashboard/product_analytics/",
+      "charts": ["sample_superset.127", "sample_superset.197"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-005"
+    },
+    {
+      "id": "sc-dash-006",
+      "name": "compliance_audit_dashboard",
+      "displayName": "Compliance[Audit]&Governance*Dashboard",
+      "fullyQualifiedName": "sample_superset.compliance_audit_dashboard",
+      "description": "Compliance dashboard with audit{trails} and regulatory\"requirements\" monitoring/tracking",
+      "sourceUrl": "http://localhost:808/superset/dashboard/compliance_audit/",
+      "charts": ["sample_superset.114", "sample_superset.92"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-006"
+    },
+    {
+      "id": "sc-dash-007",
+      "name": "inventory_management_dashboard",
+      "displayName": "Inventory~Management:Control&System!",
+      "fullyQualifiedName": "sample_superset.inventory_management_dashboard",
+      "description": "Inventory management with stock^levels and supply(chain) optimization*strategies",
+      "sourceUrl": "http://localhost:808/superset/dashboard/inventory_management/",
+      "charts": ["sample_superset.161", "sample_superset.170"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-007"
+    },
+    {
+      "id": "sc-dash-008",
+      "name": "quality_metrics_dashboard",
+      "displayName": "Quality\"Metrics\"/Performance\\Analysis",
+      "fullyQualifiedName": "sample_superset.quality_metrics_dashboard",
+      "description": "Quality metrics dashboard with performance{indicators} and validation[results] tracking",
+      "sourceUrl": "http://localhost:808/superset/dashboard/quality_metrics/",
+      "charts": ["sample_superset.180", "sample_superset.183"],
+      "href": "http://localhost:8585/api/v1/dashboards/sc-dash-008"
     }
   ]
 }

@@ -185,6 +185,138 @@
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}]
+		},
+		{
+			"name": "customer_analytics_pipeline",
+			"displayName": "Customer&Analytics!Pipeline",
+			"description": "Pipeline for customer(behavior) analysis with data*processing and performance^tracking",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=customer_analytics_pipeline",
+			"scheduleInterval": "0 2 * * *",
+			"tasks": [
+				{
+					"name": "extract_customer_data",
+					"displayName": "Extract(Customer)Data&Events!",
+					"description": "Extract customer data with behavior*tracking and engagement^metrics collection",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=extract_customer_data",
+					"downstreamTasks": ["transform_analytics_data"],
+					"taskType": "PythonOperator"
+				},
+				{
+					"name": "transform_analytics_data",
+					"displayName": "Transform[Analytics]Data~Processing",
+					"description": "Transform analytics data with aggregation{rules} and quality/validation checks",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=transform_analytics_data",
+					"downstreamTasks": ["load_performance_metrics"],
+					"taskType": "SparkOperator"
+				},
+				{
+					"name": "load_performance_metrics",
+					"displayName": "Load\"Performance\"Metrics*",
+					"description": "Load performance metrics with tracking\\data and validation(checks) completion",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=load_performance_metrics",
+					"downstreamTasks": [],
+					"taskType": "PostgresOperator"
+				}
+			]
+		},
+		{
+			"name": "sales_revenue_pipeline",
+			"displayName": "Sales(Revenue)&Profit*Pipeline",
+			"description": "Pipeline for sales/revenue processing with profit\"analysis\" and performance\\tracking",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=sales_revenue_pipeline",
+			"scheduleInterval": "0 4 * * *",
+			"tasks": [
+				{
+					"name": "extract_sales_data",
+					"displayName": "Extract^Sales:Data&Events",
+					"description": "Extract sales data with transaction(details) and revenue*calculations",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=extract_sales_data",
+					"downstreamTasks": ["calculate_profit_metrics"],
+					"taskType": "SQLOperator"
+				},
+				{
+					"name": "calculate_profit_metrics",
+					"displayName": "Calculate[Profit]Metrics~Analysis",
+					"description": "Calculate profit metrics with margin{analysis} and performance\"indicators\"",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=calculate_profit_metrics",
+					"downstreamTasks": ["generate_revenue_reports"],
+					"taskType": "PythonOperator"
+				},
+				{
+					"name": "generate_revenue_reports",
+					"displayName": "Generate/Revenue\\Reports!",
+					"description": "Generate revenue reports with insights*data and trend(analysis) completion",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=generate_revenue_reports",
+					"downstreamTasks": [],
+					"taskType": "EmailOperator"
+				}
+			]
+		},
+		{
+			"name": "data_quality_pipeline",
+			"displayName": "Data(Quality)&Governance*Pipeline",
+			"description": "Pipeline for data quality/validation with governance\"rules\" and compliance\\tracking",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=data_quality_pipeline",
+			"scheduleInterval": "0 6 * * *",
+			"tasks": [
+				{
+					"name": "validate_data_sources",
+					"displayName": "Validate^Data:Sources&Quality!",
+					"description": "Validate data sources with quality(checks) and integrity*verification",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=validate_data_sources",
+					"downstreamTasks": ["apply_governance_rules"],
+					"taskType": "GreatExpectationsOperator"
+				},
+				{
+					"name": "apply_governance_rules",
+					"displayName": "Apply[Governance]Rules~Compliance",
+					"description": "Apply governance rules with compliance{checks} and policy\"enforcement\"",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=apply_governance_rules",
+					"downstreamTasks": ["generate_quality_reports"],
+					"taskType": "DataQualityOperator"
+				},
+				{
+					"name": "generate_quality_reports",
+					"displayName": "Generate/Quality\\Reports*",
+					"description": "Generate quality reports with metrics&analysis and compliance(status) updates",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=generate_quality_reports",
+					"downstreamTasks": [],
+					"taskType": "ReportingOperator"
+				}
+			]
+		},
+		{
+			"name": "product_catalog_pipeline",
+			"displayName": "Product^Catalog:Management~Pipeline",
+			"description": "Pipeline for product catalog/management with inventory\"updates\" and pricing\\strategies",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=product_catalog_pipeline",
+			"scheduleInterval": "0 8 * * *",
+			"tasks": [
+				{
+					"name": "sync_product_data",
+					"displayName": "Sync&Product!Data(Updates)",
+					"description": "Sync product data with catalog*updates and inventory^tracking",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=sync_product_data",
+					"downstreamTasks": ["update_pricing_info"],
+					"taskType": "APIOperator"
+				},
+				{
+					"name": "update_pricing_info",
+					"displayName": "Update[Pricing]Info~Strategy",
+					"description": "Update pricing information with strategy{rules} and discount\"calculations\"",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=update_pricing_info",
+					"downstreamTasks": ["validate_catalog_integrity"],
+					"taskType": "PricingOperator"
+				},
+				{
+					"name": "validate_catalog_integrity",
+					"displayName": "Validate/Catalog\\Integrity*",
+					"description": "Validate catalog integrity with consistency&checks and data(validation) completion",
+					"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=validate_catalog_integrity",
+					"downstreamTasks": [],
+					"taskType": "ValidationOperator"
+				}
+			]
 		}
 	]
 }

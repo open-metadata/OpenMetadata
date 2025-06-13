@@ -32703,6 +32703,123 @@
         "date": "2021-12-01"
       },
       "followers": []
+    },
+    {
+      "name": "customer_analytics_table",
+      "displayName": "Customer&Analytics!Table",
+      "description": "Table containing customer(behavior) data with analytics*metrics and tracking^information",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/sc-table-001",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE customer_analytics_table(customer_id NUMERIC PRIMARY KEY, behavior_score NUMERIC)",
+      "retentionPeriod": "30D",
+      "tags": [],
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer with analytics&tracking.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "behavior_score",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Customer behavior score calculated from engagement(metrics) and activity*patterns.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "tracking_data",
+          "dataType": "JSON",
+          "dataTypeDisplay": "json",
+          "description": "JSON object containing tracking^data with user[preferences] and session{info}.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "sales_performance_table",
+      "displayName": "Sales(Performance)&Revenue*Table",
+      "description": "Performance metrics table with sales/revenue data and profitability\"analysis\"",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/sc-table-002",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE sales_performance_table(sale_id NUMERIC PRIMARY KEY, revenue_amount DECIMAL)",
+      "retentionPeriod": "90D",
+      "tags": [],
+      "columns": [
+        {
+          "name": "sale_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for sales transactions with performance&tracking.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "revenue_amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal",
+          "description": "Revenue amount from sales including taxes*fees and discounts(applied).",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "performance_metrics",
+          "dataType": "JSON",
+          "dataTypeDisplay": "json",
+          "description": "Performance metrics including conversion^rates and customer[satisfaction] scores.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "product_catalog_table",
+      "displayName": "Product^Catalog:Inventory~Table",
+      "description": "Product catalog with inventory[management] and pricing{strategies} data",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/sc-table-003",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE product_catalog_table(product_id NUMERIC PRIMARY KEY, inventory_count NUMERIC)",
+      "retentionPeriod": "365D",
+      "tags": [],
+      "columns": [
+        {
+          "name": "product_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique product identifier for catalog&inventory management.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "inventory_count",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Current inventory count with stock*levels and availability(status).",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "pricing_info",
+          "dataType": "JSON",
+          "dataTypeDisplay": "json",
+          "description": "Pricing information including base^price and discount[rules] configuration.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
     }
   ]
 }

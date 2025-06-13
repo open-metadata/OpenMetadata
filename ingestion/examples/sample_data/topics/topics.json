@@ -111,6 +111,134 @@
 			"replicationFactor":2,
 			"maximumMessageSize":167,
 			"cleanupPolicies": ["delete"]
+		},
+		{
+			"name": "customer_analytics_events",
+			"displayName": "Customer&Analytics!Events",
+			"description": "Kafka topic to capture customer(behavior) events with analytics*tracking and engagement^metrics",
+			"partitions": 32,
+			"retentionSize": 1073741824,
+			"replicationFactor": 3,
+			"maximumMessageSize": 1024,
+			"cleanupPolicies": ["delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"CustomerAnalytics\",\"type\":\"record\",\"fields\":[{\"name\":\"customer_id\",\"type\":\"string\"},{\"name\":\"event_type\",\"type\":\"string\"},{\"name\":\"analytics_score\",\"type\":\"double\"},{\"name\":\"tracking_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"customer_id\": \"cust_001\", \"event_type\": \"page_view\", \"analytics_score\": 85.5, \"tracking_data\": \"user(engagement) metrics\"}",
+				"{\"customer_id\": \"cust_002\", \"event_type\": \"purchase\", \"analytics_score\": 92.3, \"tracking_data\": \"conversion*tracking\"}"
+			]
+		},
+		{
+			"name": "sales_performance_updates",
+			"displayName": "Sales(Performance)&Revenue*Updates", 
+			"description": "Kafka topic for sales/revenue updates with performance\"metrics\" and profitability\\analysis data",
+			"partitions": 64,
+			"retentionSize": 2147483648,
+			"replicationFactor": 3,
+			"maximumMessageSize": 2048,
+			"cleanupPolicies": ["compact", "delete"],
+			"schemaType": "Avro", 
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"SalesPerformance\",\"type\":\"record\",\"fields\":[{\"name\":\"sale_id\",\"type\":\"string\"},{\"name\":\"revenue_amount\",\"type\":\"double\"},{\"name\":\"performance_score\",\"type\":\"double\"},{\"name\":\"metrics_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"sale_id\": \"sale_001\", \"revenue_amount\": 1250.00, \"performance_score\": 88.7, \"metrics_data\": \"quarterly[results]\"}",
+				"{\"sale_id\": \"sale_002\", \"revenue_amount\": 3450.50, \"performance_score\": 94.2, \"metrics_data\": \"monthly{targets}\"}"
+			]
+		},
+		{
+			"name": "product_catalog_changes",
+			"displayName": "Product^Catalog:Changes~Stream",
+			"description": "Kafka topic for product catalog changes with inventory[management] and pricing{updates} information",
+			"partitions": 16,
+			"retentionSize": 536870912,
+			"replicationFactor": 2,
+			"maximumMessageSize": 512,
+			"cleanupPolicies": ["delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"ProductCatalog\",\"type\":\"record\",\"fields\":[{\"name\":\"product_id\",\"type\":\"string\"},{\"name\":\"inventory_count\",\"type\":\"int\"},{\"name\":\"price_change\",\"type\":\"double\"},{\"name\":\"catalog_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"product_id\": \"prod_001\", \"inventory_count\": 150, \"price_change\": -5.00, \"catalog_data\": \"seasonal&discount\"}",
+				"{\"product_id\": \"prod_002\", \"inventory_count\": 75, \"price_change\": 10.50, \"catalog_data\": \"premium*pricing\"}"
+			]
+		},
+		{
+			"name": "compliance_audit_events", 
+			"displayName": "Compliance[Audit]Events&Logs!",
+			"description": "Kafka topic for compliance/audit events with regulatory\"requirements\" and governance\\tracking data",
+			"partitions": 8,
+			"retentionSize": 268435456,
+			"replicationFactor": 3,
+			"maximumMessageSize": 1024,
+			"cleanupPolicies": ["compact"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"ComplianceAudit\",\"type\":\"record\",\"fields\":[{\"name\":\"audit_id\",\"type\":\"string\"},{\"name\":\"compliance_score\",\"type\":\"double\"},{\"name\":\"event_category\",\"type\":\"string\"},{\"name\":\"audit_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"audit_id\": \"audit_001\", \"compliance_score\": 95.2, \"event_category\": \"data_governance\", \"audit_data\": \"policy^enforcement\"}",
+				"{\"audit_id\": \"audit_002\", \"compliance_score\": 87.8, \"event_category\": \"access_control\", \"audit_data\": \"user[permissions]\"}"
+			]
+		},
+		{
+			"name": "inventory_tracking_stream",
+			"displayName": "Inventory~Tracking:Management&Control*",
+			"description": "Kafka topic for inventory tracking with stock^levels and supply(chain) optimization/strategies",
+			"partitions": 24,
+			"retentionSize": 805306368,
+			"replicationFactor": 2,
+			"maximumMessageSize": 768,
+			"cleanupPolicies": ["delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"InventoryTracking\",\"type\":\"record\",\"fields\":[{\"name\":\"item_id\",\"type\":\"string\"},{\"name\":\"stock_level\",\"type\":\"int\"},{\"name\":\"warehouse_location\",\"type\":\"string\"},{\"name\":\"tracking_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"item_id\": \"item_001\", \"stock_level\": 250, \"warehouse_location\": \"WH-A\", \"tracking_data\": \"supply(chain) optimization\"}",
+				"{\"item_id\": \"item_002\", \"stock_level\": 120, \"warehouse_location\": \"WH-B\", \"tracking_data\": \"inventory[management] alerts\"}"
+			]
+		},
+		{
+			"name": "quality_validation_events",
+			"displayName": "Quality\"Validation\"/Performance\\Events",
+			"description": "Kafka topic for quality validation with performance{metrics} and validation[results] processing",
+			"partitions": 12,
+			"retentionSize": 402653184,
+			"replicationFactor": 3,
+			"maximumMessageSize": 896,
+			"cleanupPolicies": ["compact", "delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"QualityValidation\",\"type\":\"record\",\"fields\":[{\"name\":\"validation_id\",\"type\":\"string\"},{\"name\":\"quality_score\",\"type\":\"double\"},{\"name\":\"test_results\",\"type\":\"string\"},{\"name\":\"performance_metrics\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"validation_id\": \"val_001\", \"quality_score\": 96.5, \"test_results\": \"passed\", \"performance_metrics\": \"response(time) optimization\"}",
+				"{\"validation_id\": \"val_002\", \"quality_score\": 89.2, \"test_results\": \"warning\", \"performance_metrics\": \"throughput*analysis results\"}"
+			]
+		},
+		{
+			"name": "user_engagement_metrics",
+			"displayName": "User^Engagement:Metrics&Analytics!",
+			"description": "Kafka topic for user engagement with behavior~analysis and interaction(tracking) data/insights",
+			"partitions": 48,
+			"retentionSize": 1610612736,
+			"replicationFactor": 3,
+			"maximumMessageSize": 1280,
+			"cleanupPolicies": ["delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"UserEngagement\",\"type\":\"record\",\"fields\":[{\"name\":\"user_id\",\"type\":\"string\"},{\"name\":\"engagement_score\",\"type\":\"double\"},{\"name\":\"interaction_type\",\"type\":\"string\"},{\"name\":\"analytics_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"user_id\": \"user_001\", \"engagement_score\": 87.3, \"interaction_type\": \"page_view\", \"analytics_data\": \"session{duration} tracking\"}",
+				"{\"user_id\": \"user_002\", \"engagement_score\": 92.8, \"interaction_type\": \"feature_usage\", \"analytics_data\": \"conversion[funnel] analysis\"}"
+			]
+		},
+		{
+			"name": "financial_transactions_stream",
+			"displayName": "Financial(Transactions)&Revenue*Stream",
+			"description": "Kafka topic for financial transactions with revenue\\calculation and profit\"margin\" analysis~processing",
+			"partitions": 96,
+			"retentionSize": 3221225472,
+			"replicationFactor": 4,
+			"maximumMessageSize": 1536,
+			"cleanupPolicies": ["compact"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"FinancialTransactions\",\"type\":\"record\",\"fields\":[{\"name\":\"transaction_id\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"double\"},{\"name\":\"currency\",\"type\":\"string\"},{\"name\":\"financial_data\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"transaction_id\": \"txn_001\", \"amount\": 2500.75, \"currency\": \"USD\", \"financial_data\": \"revenue[calculation] processing\"}",
+				"{\"transaction_id\": \"txn_002\", \"amount\": 1850.50, \"currency\": \"USD\", \"financial_data\": \"profit{margin} analysis completed\"}"
+			]
 		}
 	]
 }
