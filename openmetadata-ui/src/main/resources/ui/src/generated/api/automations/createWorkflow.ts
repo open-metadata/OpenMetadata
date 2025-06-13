@@ -449,6 +449,10 @@ export interface ConfigClass {
      */
     type?: RESTType;
     /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -910,6 +914,10 @@ export interface ConfigClass {
      */
     queryHistoryTable?: string;
     /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -1281,6 +1289,16 @@ export interface ConfigClass {
      */
     redashVersion?: string;
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * Airbyte API version.
+     *
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
      * Tableau Site Name.
      */
     siteName?: string;
@@ -1355,14 +1373,6 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
-    /**
-     * Sigma API version.
-     *
-     * Airbyte API version.
-     *
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3649,6 +3659,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
