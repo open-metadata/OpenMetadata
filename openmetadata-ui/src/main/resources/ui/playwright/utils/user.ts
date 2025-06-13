@@ -578,6 +578,11 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+  await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
