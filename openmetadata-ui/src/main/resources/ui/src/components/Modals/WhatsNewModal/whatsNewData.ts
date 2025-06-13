@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_7_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_7_3'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1841,6 +1841,29 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Fix setIdleTimeout with lower jetty version.
 - Fixed the new tags component not showing in the automator form. 
 - Remove SearchSuggest.
+`,
+    },
+  },
+  {
+    id: 71,
+    version: 'v1.7.3',
+    description: 'Released on 13th June 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Add missing ngram fields for displayName and name in jp/zh indexes.
+- Improve UC owner ingestion.
+- Add missing Data space type in qlikcloud.
+- Added Microstrategy Lineage`,
+      Fixes: `- Close emoji feed editor on outside click.
+- Close profile dropdown on redirection to user profile page.
+- Lineage expand collapse operation on nodes.
+- Hashlist in view blocks leftsidebar.
+- Test Cases Not Returned When Service Name Contains Spaces.
+- Update Reset Link Template.
+- Unable to connect to Opensearch using AWS Credentials.
+- Tag search based on displayName.
+- Fix Hybrid Websocket Timeout. ${CollateIconWithLinkMD}
+- Fix automator for empty description entities & children. ${CollateIconWithLinkMD}
 `,
     },
   },
