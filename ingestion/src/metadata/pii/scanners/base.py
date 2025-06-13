@@ -9,16 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-PII constants
+Basic Scanner ABC
 """
+from abc import ABC, abstractmethod
+from typing import Any
 
-PII = "PII"
 
-# Constants for Presidio
-PRESIDIO_LOGGER = "presidio-analyzer"
-SPACY_EN_MODEL = "en_core_web_md"
+class BaseScanner(ABC):
+    """Basic scanner abstract class"""
 
-# Supported language for Presidio.
-# Don't change this unless you know what you are doing.
-# We are doing some tricks to make Presidio work for our use case.
-SUPPORTED_LANG = "en"
+    @abstractmethod
+    def scan(self, data: Any):
+        """Scan the given data from a column"""

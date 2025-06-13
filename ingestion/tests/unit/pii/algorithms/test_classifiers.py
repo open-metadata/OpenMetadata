@@ -11,7 +11,7 @@
 import inspect
 from typing import Iterable, Tuple
 
-from metadata.pii.algorithms.column_labelers import ColumnLabeler, HeuristicPIILabeler
+from metadata.pii.algorithms.classifiers import ColumnClassifier, HeuristicPIIClassifier
 from metadata.pii.algorithms.tags import PIITag
 
 from .data import pii_samples
@@ -27,7 +27,7 @@ def get_sample_data() -> Iterable[Tuple[str, LabeledData]]:
             yield name, obj
 
 
-def run_test_on_pii_classifier(pii_classifier: ColumnLabeler[PIITag]) -> str:
+def run_test_on_pii_classifier(pii_classifier: ColumnClassifier[PIITag]) -> str:
     """Apply the classifier to the data and check the results"""
     tested_datasets = 0
 
@@ -49,6 +49,6 @@ def run_test_on_pii_classifier(pii_classifier: ColumnLabeler[PIITag]) -> str:
 
 def test_pii_heuristic_classifier(pii_test_logger):
     """Test the PII heuristic classifier"""
-    heuristic_classifier = HeuristicPIILabeler()
+    heuristic_classifier = HeuristicPIIClassifier()
     results = run_test_on_pii_classifier(heuristic_classifier)
     pii_test_logger.info(results)

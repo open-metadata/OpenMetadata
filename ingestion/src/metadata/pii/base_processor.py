@@ -112,6 +112,7 @@ class AutoClassificationProcessor(Processor, ABC):
                     )
                     column_tags.append(column_tag)
             except Exception as err:
+                # TODO: Shouldn't we return a Left here?
                 self.status.failed(
                     StackTraceError(
                         name=record.table.fullyQualifiedName.root,
