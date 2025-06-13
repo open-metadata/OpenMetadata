@@ -283,7 +283,7 @@ export const getELKLayoutedElements = async (
     });
 
     return { nodes: updatedNodes, edges: edges ?? [] };
-  } catch (error) {
+  } catch {
     return { nodes: [], edges: [] };
   }
 };
@@ -1725,10 +1725,16 @@ export const getNodesBoundsReactFlow = (nodes: Node[]) => {
 
   nodes.forEach((node) => {
     const { x, y } = node.position;
-    bounds.xMin = Math.min(bounds.xMin, x);
-    bounds.yMin = Math.min(bounds.yMin, y);
-    bounds.xMax = Math.max(bounds.xMax, x + (node.width ?? 0));
-    bounds.yMax = Math.max(bounds.yMax, y + (node.height ?? 0));
+    const width = node.width ?? 0;
+    const height = node.height ?? 0;
+
+    // Add padding to ensure nodes are fully visible
+    const padding = 20;
+
+    bounds.xMin = Math.min(bounds.xMin, x - padding);
+    bounds.yMin = Math.min(bounds.yMin, y - padding);
+    bounds.xMax = Math.max(bounds.xMax, x + width + padding);
+    bounds.yMax = Math.max(bounds.yMax, y + height + padding);
   });
 
   return bounds;
@@ -1744,13 +1750,23 @@ export const getViewportForBoundsReactFlow = (
   const width = bounds.xMax - bounds.xMin;
   const height = bounds.yMax - bounds.yMin;
 
-  // Scale the image to fit the container
+  // Add extra padding to ensure content is fully visible
+  const padding = 20;
+  const paddedWidth = width + padding * 2;
+  const paddedHeight = height + padding * 2;
+
+  // Scale the image to fit the container while maintaining aspect ratio
   const scale =
-    Math.min(imageWidth / width, imageHeight / height) * scaleFactor;
+    Math.min(
+      (imageWidth - padding * 2) / paddedWidth,
+      (imageHeight - padding * 2) / paddedHeight
+    ) * scaleFactor;
 
   // Calculate translation to center the flow
-  const translateX = (imageWidth - width * scale) / 2 - bounds.xMin * scale;
-  const translateY = (imageHeight - height * scale) / 2 - bounds.yMin * scale;
+  const translateX =
+    (imageWidth - paddedWidth * scale) / 2 - bounds.xMin * scale;
+  const translateY =
+    (imageHeight - paddedHeight * scale) / 2 - bounds.yMin * scale;
 
   return { x: translateX, y: translateY, zoom: scale };
 };
@@ -1766,8 +1782,13 @@ export const getViewportForLineageExport = (
 
   const nodesBounds = getNodesBoundsReactFlow(nodes);
 
-  // Calculate the viewport to fit all nodes
-  return getViewportForBoundsReactFlow(nodesBounds, imageWidth, imageHeight);
+  // Calculate the viewport to fit all nodes with padding
+  return getViewportForBoundsReactFlow(
+    nodesBounds,
+    imageWidth,
+    imageHeight,
+    0.9
+  ); // Scale down slightly to ensure padding
 };
 
 export const getLineageEntityExclusionFilter = () => {

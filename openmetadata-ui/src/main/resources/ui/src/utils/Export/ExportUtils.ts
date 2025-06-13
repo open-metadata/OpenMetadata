@@ -54,6 +54,9 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
     backgroundColor: '#ffffff',
     width: imageWidth + padding * 2,
     height: imageHeight + padding * 2,
+    pixelRatio: 3,
+    quality: 1.0,
+    skipAutoScale: true,
     style: {
       width: imageWidth.toString(),
       height: imageHeight.toString(),
