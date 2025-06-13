@@ -389,8 +389,15 @@ export const assignTag = async (
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`).click();
 
+  // Wait for the specific loader in the tag dropdown to disappear
+  await page.waitForSelector('.ant-select-dropdown [data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const tagSelector = `tag-${tagFqn ? `${tagFqn}` : tag}`;
+  await page.getByTestId(tagSelector).waitFor({ state: 'visible' });
+  await page.getByTestId(tagSelector).click();
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
     { state: 'visible' }
@@ -399,6 +406,8 @@ export const assignTag = async (
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
+
+  await page.waitForLoadState('networkidle');
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 

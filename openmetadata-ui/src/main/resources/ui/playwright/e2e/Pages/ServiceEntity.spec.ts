@@ -112,6 +112,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
@@ -120,6 +122,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.tag(page, 'PersonalData.Personal', 'PII.None');
     });
 
@@ -132,10 +136,14 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Announcement create & delete`, async ({ page }) => {
+      test.slow(true);
+
       await entity.announcement(page);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {
+      test.slow(true);
+
       await entity.inactiveAnnouncement(page);
     });
 
