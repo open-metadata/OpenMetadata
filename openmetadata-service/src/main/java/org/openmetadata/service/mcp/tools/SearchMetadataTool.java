@@ -91,8 +91,7 @@ public class SearchMetadataTool implements McpTool {
             .withIndex(index)
             .withSize(limit)
             .withFrom(0)
-            .withFetchSource(true)
-            .withDeleted(includeDeleted);
+            .withFetchSource(true);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);

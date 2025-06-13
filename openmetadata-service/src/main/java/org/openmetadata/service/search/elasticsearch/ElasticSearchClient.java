@@ -398,24 +398,6 @@ public class ElasticSearchClient implements SearchClient {
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request
             .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request
-            .getIndex()
             .equalsIgnoreCase(
                 Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
         || request
@@ -445,11 +427,6 @@ public class ElasticSearchClient implements SearchClient {
                     .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
                     .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {

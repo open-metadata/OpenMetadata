@@ -509,7 +509,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .withFetchSource(true)
               .withTrackTotalHits(false)
               .withSortFieldParam("_score")
-              .withDeleted(false)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
       Response response = searchRepository.search(searchRequest, null);

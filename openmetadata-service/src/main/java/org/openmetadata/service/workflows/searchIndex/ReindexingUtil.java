@@ -136,7 +136,6 @@ public class ReindexingUtil {
             .withFetchSource(true)
             .withTrackTotalHits(false)
             .withSortFieldParam("_score")
-            .withDeleted(false)
             .withSortOrder("desc")
             .withIncludeSourceFields(new ArrayList<>());
     List<EntityReference> entities = new ArrayList<>();

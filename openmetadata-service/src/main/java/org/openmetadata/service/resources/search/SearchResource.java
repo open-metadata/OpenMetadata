@@ -113,11 +113,6 @@ public class SearchResource {
           @DefaultValue("table_search_index")
           @QueryParam("index")
           String index,
-      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @DefaultValue("false")
-          @QueryParam("deleted")
-          @Deprecated(forRemoval = true)
-          boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
           @QueryParam("from")
@@ -200,7 +195,6 @@ public class SearchResource {
             .withFetchSource(fetchSource)
             .withTrackTotalHits(trackTotalHits)
             .withSortFieldParam(sortFieldParam)
-            .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
             .withIsHierarchy(getHierarchy)
@@ -349,7 +343,6 @@ public class SearchResource {
             .withFetchSource(fetchSource)
             .withTrackTotalHits(trackTotalHits)
             .withSortFieldParam(sortFieldParam)
-            .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
             .withIsHierarchy(getHierarchy)

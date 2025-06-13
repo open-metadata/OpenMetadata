@@ -1214,7 +1214,6 @@ public class SearchRepository {
               .withFetchSource(true)
               .withTrackTotalHits(false)
               .withSortFieldParam("_score")
-              .withDeleted(false)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
 

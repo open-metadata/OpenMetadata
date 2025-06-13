@@ -19,10 +19,6 @@ export interface SearchRequest {
      */
     applyDomainFilter?: boolean;
     /**
-     * Filter documents by deleted param.
-     */
-    deleted?: boolean;
-    /**
      * Internal Object to filter by Domains.
      */
     domains?: any;
