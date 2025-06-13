@@ -411,6 +411,68 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Get CollectionDAO for read operations (uses replica if available).
+   * Use this method for operations that only read data.
+   */
+  protected CollectionDAO getReadDAO() {
+    try {
+      return DAOFactory.getReadCollectionDAO();
+    } catch (Exception e) {
+      // Fallback to primary DAO if replica is not available
+      return daoCollection;
+    }
+  }
+
+  /**
+   * Get CollectionDAO for write operations (always uses primary).
+   * Use this method for operations that modify data.
+   */
+  protected CollectionDAO getWriteDAO() {
+    try {
+      return DAOFactory.getWriteCollectionDAO();
+    } catch (Exception e) {
+      // Fallback to primary DAO if replica is not available
+      return daoCollection;
+    }
+  }
+
+  /**
+   * Get CollectionDAO based on operation type.
+   * @param httpMethod The HTTP method (GET, POST, PUT, DELETE, PATCH)
+   */
+  protected CollectionDAO getDAO(String httpMethod) {
+    return DAOFactory.getCollectionDAO(httpMethod);
+  }
+
+  /**
+   * Get EntityDAO for read operations (uses replica if available).
+   * Use this method for read-only operations that don't modify data.
+   */
+  @SuppressWarnings("unchecked")
+  protected EntityDAO<T> getReadEntityDAO() {
+    try {
+      return (EntityDAO<T>) DAOFactory.getReadDAO(dao.getClass());
+    } catch (Exception e) {
+      // Fallback to primary DAO if replica is not available
+      return dao;
+    }
+  }
+
+  /**
+   * Get EntityDAO for write operations (always uses primary).
+   * Use this method for operations that modify data.
+   */
+  @SuppressWarnings("unchecked")
+  protected EntityDAO<T> getWriteEntityDAO() {
+    try {
+      return (EntityDAO<T>) DAOFactory.getWriteDAO(dao.getClass());
+    } catch (Exception e) {
+      // Fallback to primary DAO if replica is not available
+      return dao;
+    }
+  }
+
+  /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
@@ -4243,7 +4305,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityByName(fqn, ALL);
+
+      // Use read DAO for cache loading if available, otherwise fallback to primary DAO
+      EntityDAO<?> dao;
+      try {
+        dao = DAOFactory.getReadDAO(repository.getDao().getClass());
+      } catch (Exception e) {
+        // Fallback to primary DAO if replica is not available (e.g., during migrations)
+        dao = repository.getDao();
+      }
+
+      return dao.findEntityByName(fqn, ALL);
     }
   }
 
@@ -4254,7 +4326,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityById(id, ALL);
+
+      // Use read DAO for cache loading if available, otherwise fallback to primary DAO
+      EntityDAO<?> dao;
+      try {
+        dao = DAOFactory.getReadDAO(repository.getDao().getClass());
+      } catch (Exception e) {
+        // Fallback to primary DAO if replica is not available (e.g., during migrations)
+        dao = repository.getDao();
+      }
+
+      return dao.findEntityById(id, ALL);
     }
   }
 

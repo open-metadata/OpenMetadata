@@ -51,6 +51,7 @@ import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -70,7 +71,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "system")
 @Slf4j
-public class SystemResource {
+public class SystemResource extends ReplicaAwareResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;

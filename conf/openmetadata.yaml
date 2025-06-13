@@ -168,6 +168,21 @@ database:
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
+readReplica:
+  host: ${DB_REPLICA_HOST:-}
+  port: ${DB_REPLICA_PORT:-}
+  databaseName: ${DB_REPLICA_NAME:-}
+  auth:
+    username: ${DB_REPLICA_USER:-}
+    password: ${DB_REPLICA_PASSWORD:-}
+  maxSize: ${DB_REPLICA_CONNECTION_POOL_MAX_SIZE:-}
+  minSize: ${DB_REPLICA_CONNECTION_POOL_MIN_SIZE:-}
+  initialSize: ${DB_REPLICA_CONNECTION_POOL_INITIAL_SIZE:-}
+  checkConnectionWhileIdle: ${DB_REPLICA_CHECK_CONNECTION_WHILE_IDLE:-}
+  checkConnectionOnBorrow: ${DB_REPLICA_CHECK_CONNECTION_ON_BORROW:-}
+  evictionInterval: ${DB_REPLICA_EVICTION_INTERVAL:-}
+  minIdleTime: ${DB_REPLICA_MIN_IDLE_TIME:-}
+
 objectStorage:
   enabled: false
   provider: NOOP

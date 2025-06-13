@@ -13,8 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
-
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -90,6 +88,7 @@ import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DatabaseManager;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -203,7 +202,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize HTTP and JDBI timers
     MicrometerBundleSingleton.initLatencyEvents();
 
-    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    // Initialize DatabaseManager with primary and replica connections
+    DatabaseManager.initialize(environment, catalogConfig);
+    DatabaseManager dbManager = DatabaseManager.getInstance();
+
+    // Set primary JDBI for backward compatibility and write operations
+    jdbi = dbManager.getJdbi();
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
@@ -562,7 +566,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
         new MigrationWorkflow(
-            jdbi,
+            DatabaseManager.getInstance().getWriteJdbi(),
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),

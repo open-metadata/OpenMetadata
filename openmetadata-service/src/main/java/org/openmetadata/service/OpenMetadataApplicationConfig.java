@@ -36,6 +36,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.ReadReplicaConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.util.JsonUtils;
@@ -54,6 +55,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @NotNull
   @Valid
   private DataSourceFactory dataSourceFactory;
+
+  @JsonProperty("readReplica")
+  private ReadReplicaConfiguration readReplicaConfiguration;
 
   @JsonProperty("swagger")
   private SwaggerBundleConfiguration swaggerBundleConfig;

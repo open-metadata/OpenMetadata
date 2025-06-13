@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -45,7 +46,7 @@ import org.openmetadata.service.util.ResultList;
 @Tag(name = "Permissions", description = "APIs related to getting access permission for a User.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "permissions")
-public class PermissionsResource {
+public class PermissionsResource extends ReplicaAwareResource {
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
