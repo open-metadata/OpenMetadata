@@ -182,9 +182,9 @@ const AddTestSuitePipeline = ({
                   <AddTestCaseList
                     filters={
                       !testSuiteId
-                        ? `testSuite.fullyQualifiedName:${escapeESReservedCharacters(
+                        ? `testSuite.fullyQualifiedName:"${escapeESReservedCharacters(
                             testSuite?.fullyQualifiedName ?? fqn
-                          )}`
+                          )}"`
                         : undefined
                     }
                     showButton={false}
