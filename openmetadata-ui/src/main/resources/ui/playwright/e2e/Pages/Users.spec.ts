@@ -99,6 +99,8 @@ const test = base.extend<{
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await adminUser.create(apiContext);
@@ -117,6 +119,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -429,7 +433,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await addOwner({
       page: adminPage,
-      owner: user.responseData.displayName,
+      owner: user.responseData.displayName ?? user.responseData.name,
       type: 'Users',
       endpoint: EntityTypeEndpoint.Table,
       dataTestId: 'data-assets-header',
@@ -483,9 +487,10 @@ test.describe('User Profile Feed Interactions', () => {
     );
 
     const avatar = adminPage
-      .locator('[data-testid="message-container"]')
+      .locator('#feedData [data-testid="message-container"]')
       .first()
-      .locator('[data-testid="profile-avatar"]');
+      .locator('[data-testid="profile-avatar"]')
+      .first();
 
     await avatar.hover();
     await adminPage.waitForSelector('.ant-popover-card');
@@ -499,5 +504,25 @@ test.describe('User Profile Feed Interactions', () => {
     await expect(
       adminPage.locator('[data-testid="user-display-name"]')
     ).toHaveText(fullyQualifiedName);
+  });
+
+  test('Close the profile dropdown after redirecting to user profile page', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await adminPage.locator('[data-testid="dropdown-profile"] svg').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+    const userResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*?fields=*&include=all'
+    );
+    await adminPage.getByTestId('user-name').click();
+    await userResponse;
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(
+      adminPage.locator('.user-profile-dropdown-overlay')
+    ).not.toBeVisible();
   });
 });
