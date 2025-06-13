@@ -216,6 +216,13 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    test('Certification Add Remove', async ({ page }) => {
+      await entity.certification(
+        page,
+        EntityDataClass.certificationTag1.data.displayName
+      );
+    });
+
     if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
       test(`${entityName} page should show the project name`, async ({
         page,
