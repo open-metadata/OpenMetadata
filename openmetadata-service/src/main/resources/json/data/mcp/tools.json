@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'. Here make sure to use 'Href' is available in result to create a hyperlink to the entity in OpenMetadata.",
+      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'.",
       "parameters": {
         "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
         "type": "object",
@@ -148,6 +148,36 @@
           "entityType",
           "entityFqn",
           "patch"
+        ]
+      }
+    },  
+    {
+      "name": "get_test_definitions",
+      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column.",
+      "parameters": {
+        "description": "These test definition are required to create a test case for table or a table's column.",
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
+          },
+          "testPlatform": {
+            "type": "string",
+            "description": "Default value can be 'OpenMetadata'. Other Platform can be 'OpenMetadata','GreatExpectations', 'DBT', 'Deequ', 'Soda', 'Other' if the user specifically gives the platform name."
+          },
+          "after": {
+            "type": "string",
+            "description": "This can be used to paginate the results. In the response you will get a nextCursor value, which can be used to get the next set of results. For the first call, this should be ignored."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results to return. Default is 10."
+          }
+        },
+        "required": [
+          "fromEntity",
+          "toEntity"
         ]
       }
     }
