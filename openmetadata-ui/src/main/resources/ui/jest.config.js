@@ -15,6 +15,11 @@ module.exports = {
   // Project name
   displayName: '@openmetadata',
 
+  // Performance optimizations
+  maxWorkers: '50%', // Use half of available CPU cores
+  cache: true,
+  cacheDirectory: './node_modules/.cache/jest',
+
   globals: {
     // TypeScript
     'ts-jest': {
