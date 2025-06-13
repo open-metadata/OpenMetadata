@@ -100,11 +100,21 @@ const CustomiseLandingPageHeader = () => {
             <div
               className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white"
               data-testid="domain-selector">
-              <DomainIcon className="domain-icon" height={22} width={22} />
+              <DomainIcon
+                className="domain-icon"
+                data-testid="domain-icon"
+                height={22}
+                width={22}
+              />
               <Typography.Text className="text-sm font-medium domain-title">
                 {t('label.all-domain-plural')}
               </Typography.Text>
-              <DropdownIcon className="dropdown-icon" height={14} width={14} />
+              <DropdownIcon
+                className="dropdown-icon"
+                data-testid="dropdown-icon"
+                height={14}
+                width={14}
+              />
             </div>
           </Row>
           {recentlyViewData.length > 0 && (
