@@ -81,7 +81,7 @@ function AlertDetailsPage({
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
-  const [loadingCount, setLoadingCount] = useState(1);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -111,6 +111,7 @@ function AlertDetailsPage({
 
   const fetchResourcePermission = useCallback(async () => {
     try {
+      setLoadingCount((count) => count + 1);
       if (fqn) {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.EVENT_SUBSCRIPTION,
@@ -326,7 +327,7 @@ function AlertDetailsPage({
     [alertEventCounts, alertEventCountsLoading]
   );
 
-  if (!loadingCount && !viewPermission) {
+  if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"
