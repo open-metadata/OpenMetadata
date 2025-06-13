@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { Page, test as setup } from '@playwright/test';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -27,17 +27,56 @@ const dataStewardFile = 'playwright/.auth/dataSteward.json';
 const editDescriptionFile = 'playwright/.auth/editDescription.json';
 const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
+const ownerFile = 'playwright/.auth/owner.json';
+
+// Create and setup all users
+const dataConsumer = new UserClass({
+  firstName: 'PW ',
+  lastName: 'DataConsumer',
+  email: `pw-data-consumer-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
+const dataSteward = new UserClass({
+  firstName: 'PW ',
+  lastName: 'DataSteward',
+  email: `pw-data-steward-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editDescriptionUser = new UserClass({
+  firstName: 'PW ',
+  lastName: 'EditDescription',
+  email: `pw-edit-description-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editTagsUser = new UserClass({
+  firstName: 'PW ',
+  lastName: 'EditTags',
+  email: `pw-edit-tags-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editGlossaryTermUser = new UserClass({
+  firstName: 'PW ',
+  lastName: 'EditGlossaryTerm',
+  email: `pw-edit-glossary-term-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
+const ownerUser = new UserClass({
+  firstName: 'PW ',
+  lastName: 'Owner',
+  email: `pw-owner-${uuid()}@gmail.com`,
+  password: 'User@OMD123',
+});
 
 setup('authenticate all users', async ({ browser }) => {
-  // Set timeout to 5 minutes (300000ms) for this setup test
-  setup.setTimeout(300000);
+  setup.describe.configure({ timeout: 120 * 1000 });
 
-  let adminPage;
-  let dataConsumerPage;
-  let dataStewardPage;
-  let editDescriptionPage;
-  let editTagsPage;
-  let editGlossaryTermPage;
+  let adminPage: Page;
+  let dataConsumerPage: Page;
+  let dataStewardPage: Page;
+  let editDescriptionPage: Page;
+  let editTagsPage: Page;
+  let editGlossaryTermPage: Page;
+  let ownerPage: Page;
 
   try {
     // Create admin page and context
@@ -46,49 +85,18 @@ setup('authenticate all users', async ({ browser }) => {
     await loginAsAdmin(adminPage, admin);
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
-    // Create and setup all users
-    const dataConsumer = new UserClass({
-      firstName: 'PW ',
-      lastName: 'DataConsumer',
-      email: `pw-data-consumer-${uuid()}@gmail.com`,
-      password: 'User@OMD123',
-    });
-    const dataSteward = new UserClass({
-      firstName: 'PW ',
-      lastName: 'DataSteward',
-      email: `pw-data-steward-${uuid()}@gmail.com`,
-      password: 'User@OMD123',
-    });
-    const editDescriptionUser = new UserClass({
-      firstName: 'PW ',
-      lastName: 'EditDescription',
-      email: `pw-edit-description-${uuid()}@gmail.com`,
-      password: 'User@OMD123',
-    });
-    const editTagsUser = new UserClass({
-      firstName: 'PW ',
-      lastName: 'EditTags',
-      email: `pw-edit-tags-${uuid()}@gmail.com`,
-      password: 'User@OMD123',
-    });
-    const editGlossaryTermUser = new UserClass({
-      firstName: 'PW ',
-      lastName: 'EditGlossaryTerm',
-      email: `pw-edit-glossary-term-${uuid()}@gmail.com`,
-      password: 'User@OMD123',
-    });
-
-    // Create all users
-    await Promise.all([
+    // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
+    await Promise.allSettled([
       dataConsumer.create(apiContext, false),
       dataSteward.create(apiContext, false),
       editDescriptionUser.create(apiContext, false),
       editTagsUser.create(apiContext, false),
       editGlossaryTermUser.create(apiContext, false),
+      ownerUser.create(apiContext, false),
     ]);
 
-    // Set up roles and policies
-    await Promise.all([
+    // Set up roles and policies, Using allSettled to avoid failing the setup if one of the users fails to create
+    await Promise.allSettled([
       dataConsumer.setDataConsumerRole(apiContext),
       dataSteward.setDataStewardRole(apiContext),
       editDescriptionUser.setCustomRulePolicy(
@@ -106,6 +114,7 @@ setup('authenticate all users', async ({ browser }) => {
         EDIT_GLOSSARY_TERM_RULE,
         'PW%Edit-Glossary-Term'
       ),
+      ownerUser.setDataConsumerRole(apiContext),
     ]);
 
     // Save admin state
@@ -118,7 +127,9 @@ setup('authenticate all users', async ({ browser }) => {
       editDescriptionPage,
       editTagsPage,
       editGlossaryTermPage,
+      ownerPage,
     ] = await Promise.all([
+      browser.newPage(),
       browser.newPage(),
       browser.newPage(),
       browser.newPage(),
@@ -151,6 +162,10 @@ setup('authenticate all users', async ({ browser }) => {
       .context()
       .storageState({ path: editGlossaryTermFile });
 
+    await ownerUser.login(ownerPage);
+    await ownerPage.waitForLoadState('networkidle');
+    await ownerPage.context().storageState({ path: ownerFile });
+
     await afterAction();
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -159,9 +174,6 @@ setup('authenticate all users', async ({ browser }) => {
     throw error;
   } finally {
     // Close pages sequentially to avoid conflicts
-    if (adminPage) {
-      await adminPage.close();
-    }
     if (dataConsumerPage) {
       await dataConsumerPage.close();
     }
@@ -176,6 +188,9 @@ setup('authenticate all users', async ({ browser }) => {
     }
     if (editGlossaryTermPage) {
       await editGlossaryTermPage.close();
+    }
+    if (ownerPage) {
+      await ownerPage.close();
     }
   }
 });

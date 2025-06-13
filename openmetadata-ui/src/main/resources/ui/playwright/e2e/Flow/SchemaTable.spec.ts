@@ -10,64 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { test } from '../fixtures/pages';
 
 import { redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntityChildren } from '../../utils/entity';
 
-const test = base.extend<{
-  adminPage: Page;
-  userPage: Page;
-  editDescriptionPage: Page;
-  editTagsPage: Page;
-  editGlossaryTermPage: Page;
-}>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage({
-      storageState: 'playwright/.auth/admin.json',
-    });
-
-    await use(adminPage);
-    await adminPage.close();
-  },
-  userPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/dataConsumer.json',
-    });
-
-    await use(page);
-    await page.close();
-  },
-  editDescriptionPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editDescription.json',
-    });
-
-    await use(page);
-    await page.close();
-  },
-  editTagsPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editTags.json',
-    });
-
-    await use(page);
-    await page.close();
-  },
-  editGlossaryTermPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editGlossaryTerm.json',
-    });
-
-    await use(page);
-    await page.close();
-  },
-});
-
-test.beforeEach(async ({ adminPage, userPage }) => {
-  await redirectToHomePage(adminPage);
-  await redirectToHomePage(userPage);
-});
+test.beforeEach(
+  async ({ editDescriptionPage, editTagsPage, editGlossaryTermPage }) => {
+    await redirectToHomePage(editDescriptionPage);
+    await redirectToHomePage(editTagsPage);
+    await redirectToHomePage(editGlossaryTermPage);
+  }
+);
 
 const crudColumnDisplayName = async (
   page: Page,
@@ -93,8 +48,6 @@ const crudColumnDisplayName = async (
 };
 
 test('schema table test', async ({
-  //   adminPage,
-  //   userPage,
   editDescriptionPage,
   editTagsPage,
   editGlossaryTermPage,
