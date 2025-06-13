@@ -89,6 +89,12 @@
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "autoTune": {
+      "title": "Auto Tune",
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

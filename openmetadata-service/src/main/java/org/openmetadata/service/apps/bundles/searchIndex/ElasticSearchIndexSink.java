@@ -23,6 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHeaders;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -44,6 +45,8 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
   private final long initialBackoffMillis;
   private final long maxBackoffMillis;
   private final Semaphore semaphore;
+  private static final RequestOptions COMPRESSED_REQUEST_OPTIONS =
+      RequestOptions.DEFAULT.toBuilder().addHeader(HttpHeaders.CONTENT_ENCODING, "gzip").build();
 
   public ElasticSearchIndexSink(
       SearchClient client,
@@ -144,7 +147,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
       ((RestHighLevelClient) client.getClient())
           .bulkAsync(
               bulkRequest,
-              RequestOptions.DEFAULT,
+              COMPRESSED_REQUEST_OPTIONS,
               new ActionListener<BulkResponse>() {
                 @Override
                 public void onResponse(BulkResponse response) {
@@ -223,7 +226,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
 
     try {
       BulkResponse response =
-          ((RestHighLevelClient) client.getClient()).bulk(bulkRequest, RequestOptions.DEFAULT);
+          ((RestHighLevelClient) client.getClient()).bulk(bulkRequest, COMPRESSED_REQUEST_OPTIONS);
 
       // Collect all bulk item failures
       for (int i = 0; i < response.getItems().length; i++) {

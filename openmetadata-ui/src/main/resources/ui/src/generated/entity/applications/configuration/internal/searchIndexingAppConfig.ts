@@ -15,6 +15,11 @@
  */
 export interface SearchIndexingAppConfig {
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Maximum number of events sent in a batch (Default 100).
      */
     batchSize?: number;
