@@ -60,6 +60,9 @@ public class DefaultToolContext {
         case "get_test_definitions":
           result = new TestDefinitionsTool().execute(authorizer, securityContext, params);
           break;
+        case "create_test_case":
+          result = new CreateTestCaseTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return new McpSchema.CallToolResult(
               List.of(
@@ -83,7 +86,7 @@ public class DefaultToolContext {
                           403)))),
           true);
     } catch (Exception ex) {
-      LOG.error("Error executing tool: {}", ex.getMessage());
+      LOG.error("Error executing tool: ", ex);
       return new McpSchema.CallToolResult(
           List.of(
               new McpSchema.TextContent(

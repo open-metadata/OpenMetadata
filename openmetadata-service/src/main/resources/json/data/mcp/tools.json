@@ -153,7 +153,7 @@
     },  
     {
       "name": "get_test_definitions",
-      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column.",
+      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column. While creating column test for entity, column data type should be in supportedDataTypes of parameterDefinition.",
       "parameters": {
         "description": "These test definition are required to create a test case for table or a table's column.",
         "type": "object",
@@ -176,8 +176,64 @@
           }
         },
         "required": [
-          "fromEntity",
-          "toEntity"
+          "entityType"
+        ]
+      }
+    },
+    {
+      "name": "create_test_case",
+      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations.",
+      "parameters": {
+        "description": "This tool can be used to create a test case for a table or a table's column. It requires the test definition and the entity (table or column) to be tested.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the test case. Either the user tells the name or auto generate a name based on the test definition and entity fqn."
+          },
+          "entityFqn": {
+            "type": "string",
+            "description": "Name of the asset or entity for which the test case is being added. It is asset fqn that user originally ask to add test for , and not column fqn in case of column tests."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Type of the entity for which the test case is being added. Default is 'table'. It can only be one of these values 'container', 'workflowDefinition', 'testSuite', 'pipelineService', 'messagingService', 'type', 'dataContract', 'metadataService', 'appMarketPlaceDefinition', 'tag', 'dashboard', 'app', 'dataProduct', 'persona', 'workflow', 'kpi', 'apiService', 'query', 'searchIndex', 'classification', 'dashboardDataModel', 'glossary', 'apiEndpoint', 'storageService', 'domain', 'topic', 'databaseSchema', 'role', 'dataInsightChart', 'bot', 'mlmodelService', 'document', 'ingestionPipeline', 'database', 'searchService', 'testConnectionDefinition', 'webAnalyticEvent', 'table', 'policy', 'storedProcedure', 'databaseService', 'eventsubscription', 'dashboardService', 'apiCollection', 'team', 'mlmodel', 'glossaryTerm', 'pipeline', 'dataInsightCustomChart', 'metric', 'report', 'chart', 'user', 'testCase', 'testDefinition'."
+          },
+          "testDefinitionName": {
+            "type": "string",
+            "description": "Fully qualified name of the test definition to be used for the test case."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the test case. This can be auto generated based on entity details, the test definition and type of test."
+          },
+          "parameterValues": {
+            "type": "array",
+            "description": "Parameter values for the test case. This is an array of objects, where each object contains the parameter name (this is 'name' from parameter definition in test definition) and value (can be asked from user or auto supplied). These parameter can be found from the testDefinitions from `parameterDefinition` which has name, description, dataType and whether it is required mandatorily.",
+            "items": {
+              "type": "object",
+              "description": "Parameter values that can be passed for a Test Case.",
+              "properties": {
+                "name": {
+                  "description": "Ma,e of the parameter. Must match the parameter names in testCaseParameterDefinition",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "testDefinition",
+          "parameterValues"
         ]
       }
     }
