@@ -16,7 +16,15 @@ import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { t } from 'i18next';
-import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import {
+  get,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -839,6 +847,7 @@ export const createEdgesAndEdgeMaps = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
   entityFqn: string,
+  isColumnLayerActive: boolean,
   hidden?: boolean
 ) => {
   const lineageEdgesV1: Edge[] = [];
@@ -851,10 +860,6 @@ export const createEdgesAndEdgeMaps = (
     const sourceId = edge.fromEntity.id;
     const targetId = edge.toEntity.id;
 
-    // Update edge maps for fast lookup
-    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
-    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
-
     const sourceType = nodes.find((n) => sourceId === n.id);
     const targetType = nodes.find((n) => targetId === n.id);
 
@@ -862,7 +867,11 @@ export const createEdgesAndEdgeMaps = (
       return;
     }
 
-    if (!isUndefined(edge.columns)) {
+    // Update edge maps for fast lookup
+    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
+    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
+
+    if (!isUndefined(edge.columns) && isColumnLayerActive) {
       edge.columns?.forEach((e) => {
         const toColumn = e.toColumn ?? '';
         if (toColumn && e.fromColumns?.length) {
@@ -1133,7 +1142,7 @@ export const getConnectedNodesEdges = (
 
   return {
     nodes: outgoers,
-    edges: connectedEdges,
+    edges: uniqWith(connectedEdges, isEqual),
     nodeFqn: childNodeFqn,
   };
 };
@@ -1406,9 +1415,16 @@ const processNodeArray = (
     .map((node: NodeData) => ({
       ...node.entity,
       paging: node.paging,
-      expandPerformed:
-        (node.entity as LineageEntityReference).expandPerformed ||
-        node.entity.fullyQualifiedName === entityFqn,
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1509,7 +1525,8 @@ const processPagination = (
 
 export const parseLineageData = (
   data: LineageData,
-  entityFqn: string
+  entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
+  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1518,7 +1535,7 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, entityFqn);
+  const nodesArray = processNodeArray(nodes, rootFqn);
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges

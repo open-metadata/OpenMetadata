@@ -266,3 +266,24 @@ class MicroStrategyClient:
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
 
         return None
+
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> Optional[str]:
+        """
+        Get Cube SQL Details
+        """
+        try:
+            headers = {
+                "X-MSTR-ProjectID": project_id,
+                "cubeId": cube_id,
+            } | self.auth_params.auth_header
+
+            resp_dataset = self.client._request(  # pylint: disable=protected-access
+                "GET", path=f"/v2/cubes/{cube_id}/sqlView", headers=headers
+            )
+            return resp_dataset["sqlStatement"]
+
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the cube with id: {cube_id}")
+
+        return None

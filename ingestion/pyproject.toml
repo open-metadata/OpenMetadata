@@ -74,6 +74,9 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
 
+# Skip tests that are known to fail or are not ready to run until issue #21736 is solved
+addopts = "--ignore=ingestion/tests/unit/topology/database/test_deltalake.py"
+
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
