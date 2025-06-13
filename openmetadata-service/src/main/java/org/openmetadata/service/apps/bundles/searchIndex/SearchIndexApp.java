@@ -16,13 +16,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -84,8 +81,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
-  private final ExecutorService jobExecutor = Executors.newCachedThreadPool();
-  private BlockingQueue<Runnable> producerQueue = new LinkedBlockingQueue<>(100);
+  private final ExecutorService jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
   private JobExecutionContext jobExecutionContext;
@@ -240,17 +236,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numProducers = jobData.getProducerThreads();
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
-
-    producerQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
-    producerExecutor =
-        new ThreadPoolExecutor(
-            numProducers,
-            numProducers,
-            0L,
-            TimeUnit.MILLISECONDS,
-            producerQueue,
-            new ThreadPoolExecutor.CallerRunsPolicy());
-
+    producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
     try {
       processEntityReindex(jobExecutionContext);
     } catch (Exception e) {
@@ -279,27 +265,30 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
-              Semaphore semaphore = new Semaphore(jobData.getQueueSize());
+              Semaphore semaphore = new Semaphore(Math.max(jobData.getQueueSize(), 100));
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
                   semaphore.acquire();
                   LOG.debug(
-                      "Submitting producer task current queue size: {}", producerQueue.size());
+                      "Submitting virtual thread producer task for batch {}/{}",
+                      i + 1,
+                      loadPerThread);
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
                           LOG.debug(
-                              "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}",
+                              "Virtual thread processing offset: {}, remaining batches: {}",
                               currentOffset,
                               producerLatch.getCount());
                           processReadTask(jobExecutionContext, entityType, source, currentOffset);
                         } catch (Exception e) {
-                          LOG.error("Error processing entity type {}", entityType, e);
+                          LOG.error(
+                              "Error processing entity type {} with virtual thread", entityType, e);
                         } finally {
                           LOG.debug(
-                              "Producer Latch Down and Semaphore Release, Current : {}",
-                              producerLatch.getCount());
+                              "Virtual thread completed batch, remaining: {}",
+                              producerLatch.getCount() - 1);
                           producerLatch.countDown();
                           semaphore.release();
                         }

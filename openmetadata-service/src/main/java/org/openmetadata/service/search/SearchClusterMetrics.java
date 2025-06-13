@@ -140,16 +140,16 @@ public class SearchClusterMetrics {
       long maxContentLength,
       long totalEntities) {
 
-    int baseThreadsPerNode = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-    int recommendedProducerThreads = Math.min(20, baseThreadsPerNode * totalNodes);
+    int baseThreadsPerNode = Runtime.getRuntime().availableProcessors() * 4;
+    int recommendedProducerThreads = Math.min(100, baseThreadsPerNode * totalNodes);
 
-    if (cpuUsagePercent > 70) {
-      recommendedProducerThreads = Math.max(1, recommendedProducerThreads / 2);
-    } else if (cpuUsagePercent < 30) {
-      recommendedProducerThreads = Math.min(20, recommendedProducerThreads * 2);
+    if (cpuUsagePercent > 80) {
+      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 2);
+    } else if (cpuUsagePercent < 40) {
+      recommendedProducerThreads = Math.min(200, recommendedProducerThreads * 3);
     }
 
-    int baseConcurrentRequests = totalNodes * 50; // 50 requests per node baseline
+    int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
       baseConcurrentRequests = Math.max(10, baseConcurrentRequests / 2);
     } else if (memoryUsagePercent < 50) {
@@ -170,7 +170,8 @@ public class SearchClusterMetrics {
 
     if (totalEntities > 1000000) {
       recommendedBatchSize = Math.max(500, recommendedBatchSize);
-      recommendedProducerThreads = Math.min(10, recommendedProducerThreads);
+      recommendedProducerThreads =
+          Math.min(50, recommendedProducerThreads); // Increased from 10 to 50
     }
 
     return SearchClusterMetrics.builder()
@@ -193,18 +194,20 @@ public class SearchClusterMetrics {
     try {
       long defaultMaxContentLength = 100 * 1024 * 1024L; // 100MB
 
-      Map<String, Object> persistent = (Map<String, Object>) clusterSettings.get("persistent");
-      Map<String, Object> transient_ = (Map<String, Object>) clusterSettings.get("transient");
+      Map<String, Object> persistentSettings =
+          (Map<String, Object>) clusterSettings.get("persistent");
+      Map<String, Object> transientSettings =
+          (Map<String, Object>) clusterSettings.get("transient");
 
       String maxContentLengthStr = null;
-      if (persistent != null && persistent.containsKey("http.max_content_length")) {
-        maxContentLengthStr = (String) persistent.get("http.max_content_length");
+      if (persistentSettings != null && persistentSettings.containsKey("http.max_content_length")) {
+        maxContentLengthStr = (String) persistentSettings.get("http.max_content_length");
       }
 
       if (maxContentLengthStr == null
-          && transient_ != null
-          && transient_.containsKey("http.max_content_length")) {
-        maxContentLengthStr = (String) transient_.get("http.max_content_length");
+          && transientSettings != null
+          && transientSettings.containsKey("http.max_content_length")) {
+        maxContentLengthStr = (String) transientSettings.get("http.max_content_length");
       }
 
       if (maxContentLengthStr != null) {
@@ -246,8 +249,9 @@ public class SearchClusterMetrics {
 
   private static SearchClusterMetrics getConservativeDefaults(long totalEntities) {
     int conservativeBatchSize = totalEntities > 100000 ? 200 : 100;
-    int conservativeThreads = totalEntities > 500000 ? 3 : 2;
-    int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
+    // More aggressive defaults with virtual threads - they're lightweight
+    int conservativeThreads = totalEntities > 500000 ? 20 : 10; // Increased from 3:2 to 20:10
+    int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50; // Doubled
 
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
@@ -274,14 +278,17 @@ public class SearchClusterMetrics {
         "Heap: {} MB total, {} MB available",
         heapSizeBytes / (1024 * 1024),
         availableMemoryBytes / (1024 * 1024));
-    LOG.info("=== Auto-Tune Recommendations ===");
+    LOG.info("=== Auto-Tune Recommendations (Virtual Threads Optimized) ===");
     LOG.info("Batch Size: {}", recommendedBatchSize);
-    LOG.info("Producer Threads: {}", recommendedProducerThreads);
+    LOG.info(
+        "Producer Threads: {} (virtual threads - lightweight & scalable)",
+        recommendedProducerThreads);
     LOG.info("Concurrent Requests: {}", recommendedConcurrentRequests);
     LOG.info(
         "Max Payload Size: {} MB (with compression optimization)",
         maxPayloadSizeBytes / (1024 * 1024));
+    LOG.info("Note: Virtual threads enable high concurrency for I/O-bound operations");
     LOG.info("Note: Request compression is enabled (~75% size reduction for JSON)");
-    LOG.info("===================================");
+    LOG.info("================================================================");
   }
 }
