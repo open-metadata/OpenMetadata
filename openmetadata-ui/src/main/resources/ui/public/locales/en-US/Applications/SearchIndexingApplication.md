@@ -81,3 +81,10 @@ $$section
 Recreate Indexes with updated Language
 
 $$
+
+$$section
+### Auto Tune $(id="autoTune")
+
+Enable automatic performance tuning based on cluster capabilities and database entity count
+
+$$
