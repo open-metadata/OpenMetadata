@@ -105,6 +105,19 @@
     />
     <link rel="manifest" href="${basePath}manifest.json" />
 
+    <script>
+      let images = [
+        '${basePath}images/data-collbration.png',
+        '${basePath}images/governce.png',
+      ];
+
+      images.forEach((image) => {
+        let img = new Image();
+        img.loading = 'eager';
+        img.src = window.location.origin + image;
+      });
+    </script>
+
     <title>OpenMetadata</title>
   </head>
   <body>

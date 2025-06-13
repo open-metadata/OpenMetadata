@@ -221,45 +221,119 @@ a.ant-typography,
   }
 }
 
-// Font Style Definitions
 .display-lg {
-  .text-style(48px, 60px, -2%);
-
+  .text-style(3rem, 3.75rem, -2%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1.5rem;
+  }
 }
 
 .display-md {
-  .text-style(36px, 44px, -2%);
-
+  .text-style(2.25rem, 2.75rem, -2%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1.25rem;
+  }
 }
 
 .display-sm {
-  .text-style(30px, 38px, 0%);
-
+  .text-style(1.875rem, 2.375rem, 0%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 1rem;
+  }
 }
 
 .display-xs {
-  .text-style(24px, 32px, 0%);
-
+  .text-style(1.5rem, 2rem, 0%);
   .font-weight-variants();
+
+  &.ant-typography {
+    margin-bottom: 0.875rem;
+  }
 }
 
 .text-xl {
-  .text-style(20px, 30px);
+  .text-style(1.25rem, 1.875rem);
+
+  &.ant-typography {
+    margin-bottom: 0.75rem;
+  }
 }
+
 .text-lg {
-  .text-style(18px, 28px);
+  .text-style(1.125rem, 1.75rem);
+
+  &.ant-typography {
+    margin-bottom: 0.625rem;
+  }
 }
+
 .text-md {
-  .text-style(16px, 24px);
+  .text-style(1rem, 1.5rem);
+
+  &.ant-typography {
+    margin-bottom: 0.5rem;
+  }
 }
+
 .text-sm {
-  .text-style(14px, 20px);
+  .text-style(0.875rem, 1.25rem);
+
+  &.ant-typography {
+    margin-bottom: 0.375rem;
+  }
 }
+
 .text-xs {
-  .text-style(12px, 18px);
+  .text-style(0.75rem, 1.125rem);
+
+  &.ant-typography {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.ant-typography {
+  // Font Style Definitions - Aligned with Ant Design Typography
+  &.display-lg {
+    .display-lg();
+  }
+
+  &.display-md {
+    .display-md();
+  }
+
+  &.display-sm {
+    .display-sm;
+  }
+
+  &.display-xs {
+    .display-xs();
+  }
+
+  &.text-xl {
+    .text-xl();
+  }
+
+  &.text-lg {
+    .text-lg();
+  }
+
+  &.text-md {
+    .text-md();
+  }
+
+  &.text-sm {
+    .text-sm();
+  }
+
+  &.text-xs {
+    .text-xs();
+  }
 }
 
 // =============================== End of New Design System ===============================

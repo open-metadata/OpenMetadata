@@ -13,6 +13,14 @@
 
 @import (reference) url('./variables.less');
 
+html {
+  font-size: 14px;
+
+  @media screen and (min-width: 1650px) {
+    font-size: 16px;
+  }
+}
+
 /* Generic */
 
 body {
@@ -387,20 +395,6 @@ a[href].link-text-grey,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* SSO layout style  */
-.sso-container {
-  width: 100%;
-  height: 580px;
-  display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  flex-direction: column;
-
-  span {
-    margin: 0;
-  }
 }
 
 .transform-180 {
