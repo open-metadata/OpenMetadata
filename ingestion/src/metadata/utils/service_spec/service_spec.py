@@ -19,6 +19,7 @@ from metadata.utils.importer import (
     TYPE_SEPARATOR,
     DynamicImportException,
     get_class_path,
+    get_module_dir,
     import_from_module,
 )
 from metadata.utils.logger import utils_logger
@@ -113,7 +114,7 @@ class DefaultSourceLoader(SourceLoader):
             "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
                 from_,
                 service_type.name.lower(),
-                source_type.lower(),
+                get_module_dir(source_type),
                 "service_spec",
             )
         )
