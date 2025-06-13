@@ -73,6 +73,7 @@ export type ModifiedColumn = Column & {
 export interface ProfilerProgressWidgetProps {
   value: number;
   strokeColor?: string;
+  direction?: 'left' | 'right';
 }
 
 export interface ProfilerSettingsModalProps {

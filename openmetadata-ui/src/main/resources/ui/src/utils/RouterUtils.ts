@@ -487,11 +487,26 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
-  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+export const getDataQualityPagePath = (
+  tab?: DataQualityPageTabs,
+  subTab?: string
+) => {
+  let path = ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = ROUTES.DATA_QUALITY_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.DATA_QUALITY_WITH_SUB_TAB;
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
   return path;

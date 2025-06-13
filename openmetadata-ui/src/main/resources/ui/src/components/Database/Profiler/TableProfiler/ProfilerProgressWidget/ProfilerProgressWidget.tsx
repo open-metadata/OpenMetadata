@@ -12,23 +12,30 @@
  */
 
 import { Col, Progress, Row } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
 const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
   value,
   strokeColor,
+  direction = 'left',
 }) => {
   const modifedValue = Math.round(value * 100);
 
   return (
-    <Row data-testid="profiler-progress-bar-container">
+    <Row
+      className={classNames('flex-row', {
+        'flex-row-reverse': direction === 'right',
+      })}
+      data-testid="profiler-progress-bar-container"
+      gutter={16}>
       <Col span={6}>
         <p className="percent-info" data-testid="percent-info">
           {`${modifedValue}%`}
         </p>
       </Col>
-      <Col span={16}>
+      <Col span={18}>
         <Progress
           data-testid="progress-bar"
           percent={modifedValue}

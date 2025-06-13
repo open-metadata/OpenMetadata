@@ -10,14 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Select, Space, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -34,7 +44,10 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import {
   getListTestSuitesBySearch,
@@ -43,6 +56,7 @@ import {
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
+  getDataQualityPagePath,
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../../utils/RouterUtils';
@@ -61,13 +75,17 @@ import { SummaryPanel } from '../../SummaryPannel/SummaryPanel.component';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
+  const {
+    tab = DataQualityPageTabs.TEST_CASES,
+    subTab = DataQualitySubTabs.TABLE_SUITES,
+  } = useParams<{
+    tab?: DataQualityPageTabs;
+    subTab?: DataQualitySubTabs;
+  }>();
   const history = useHistory();
   const location = useCustomLocation();
-  const {
-    isTestCaseSummaryLoading,
-    testCaseSummary,
-    activeTab: tab,
-  } = useDataQualityProvider();
+  const { isTestCaseSummaryLoading, testCaseSummary } =
+    useDataQualityProvider();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -181,6 +199,7 @@ export const TestSuites = () => {
 
           return (
             <ProfilerProgressWidget
+              direction="right"
               strokeColor={PROGRESS_BAR_COLOR}
               value={percent}
             />
@@ -205,9 +224,9 @@ export const TestSuites = () => {
         q: searchValue ? `*${searchValue}*` : undefined,
         owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,
-        includeEmptyTestSuites: tab !== DataQualityPageTabs.TABLES,
+        includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
         testSuiteType:
-          tab === DataQualityPageTabs.TABLES
+          subTab === DataQualitySubTabs.TABLE_SUITES
             ? TestSuiteType.basic
             : TestSuiteType.logical,
         sortField: 'testCaseResultSummary.timestamp',
@@ -251,6 +270,12 @@ export const TestSuites = () => {
     );
   };
 
+  const handleSubTabChange = (e: RadioChangeEvent) => {
+    history.replace(
+      getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs)
+    );
+  };
+
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
       fetchTestSuites(INITIAL_PAGING_VALUE, {
@@ -259,7 +284,7 @@ export const TestSuites = () => {
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner]);
+  }, [testSuitePermission, pageSize, searchValue, owner, subTab]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
@@ -332,6 +357,27 @@ export const TestSuites = () => {
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />
+      </Col>
+      <Col span={24}>
+        <Row gutter={[16, 16]}>
+          <Col span={16}>
+            <Radio.Group value={subTab} onChange={handleSubTabChange}>
+              <Radio.Button value={DataQualitySubTabs.TABLE_SUITES}>
+                {t('label.table-suite-plural')}
+              </Radio.Button>
+              <Radio.Button value={DataQualitySubTabs.BUNDLE_SUITES}>
+                {t('label.bundle-suite-plural')}
+              </Radio.Button>
+            </Radio.Group>
+          </Col>
+          <Col span={8}>
+            <Searchbar
+              removeMargin
+              searchValue={searchValue}
+              onSearch={(value) => handleSearchParam(value, 'searchValue')}
+            />
+          </Col>
+        </Row>
       </Col>
       <Col span={24}>
         <Table

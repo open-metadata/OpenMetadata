@@ -447,7 +447,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           ResourceEntity.TEST_SUITE,
           permissions
         )}
-        path={[ROUTES.DATA_QUALITY_WITH_TAB, ROUTES.DATA_QUALITY]}
+        path={[
+          ROUTES.DATA_QUALITY_WITH_TAB,
+          ROUTES.DATA_QUALITY,
+          ROUTES.DATA_QUALITY_WITH_SUB_TAB,
+        ]}
       />
 
       <AdminProtectedRoute
