@@ -9,6 +9,7 @@ from pydantic import model_validator
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import Source
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -53,6 +54,7 @@ class BaseSpec(BaseModel):
     usage_source_class: Optional[str] = None
     sampler_class: Optional[str] = None
     data_diff: Optional[str] = None
+    connection_class: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -110,6 +112,10 @@ def import_profiler_class(
     service_type: ServiceType, source_type: str
 ) -> Type[ProfilerInterface]:
     class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
+    if not class_path:
+        raise ValueError(
+            f"Profiler class not found for service type {service_type} and source type {source_type}"
+        )
     return cast(Type[ProfilerInterface], import_from_module(class_path))
 
 
@@ -127,6 +133,10 @@ def import_test_suite_class(
             ).test_suite_class
         else:
             raise
+    if not class_path:
+        raise ValueError(
+            f"Test suite class not found for service type {service_type} and source type {source_type}"
+        )
     return cast(Type[TestSuiteInterface], import_from_module(class_path))
 
 
@@ -144,4 +154,23 @@ def import_sampler_class(
             ).sampler_class
         else:
             raise
+    if not class_path:
+        raise ValueError(
+            f"Sampler class not found for service type {service_type} and source type {source_type}"
+        )
     return cast(Type[SamplerInterface], import_from_module(class_path))
+
+
+def import_connection_class(
+    service_type: ServiceType,
+    source_type: str,
+) -> Type[BaseConnection]:
+    """
+    Import the connection class for a given service type and source type.
+    """
+    class_path = BaseSpec.get_for_source(service_type, source_type).connection_class
+    if not class_path:
+        raise ValueError(
+            f"Connection class not found for service type {service_type} and source type {source_type}"
+        )
+    return cast(Type[BaseConnection], import_from_module(class_path))
