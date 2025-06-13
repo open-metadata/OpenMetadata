@@ -71,6 +71,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -572,13 +573,13 @@ public class SearchRepository {
     }
 
     AssetCertification certification = getCertificationFromEntity(entity);
-    if (certification != null && certification.getTagLabel() != null) {
-      updateEntityCertificationInSearch(entity, certification);
-    }
+    updateEntityCertificationInSearch(entity, certification);
   }
 
   private boolean isCertificationUpdated(ChangeDescription change) {
-    return change.getFieldsUpdated().stream()
+    return Stream.concat(
+            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+            change.getFieldsDeleted().stream())
         .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
   }
 
@@ -591,10 +592,18 @@ public class SearchRepository {
     IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
     String indexName = indexMapping.getIndexName(clusterAlias);
     Map<String, Object> paramMap = new HashMap<>();
-    paramMap.put("name", certification.getTagLabel().getName());
-    paramMap.put("description", certification.getTagLabel().getDescription());
-    paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
-    paramMap.put("style", certification.getTagLabel().getStyle());
+
+    if (certification != null && certification.getTagLabel() != null) {
+      paramMap.put("name", certification.getTagLabel().getName());
+      paramMap.put("description", certification.getTagLabel().getDescription());
+      paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
+      paramMap.put("style", certification.getTagLabel().getStyle());
+    } else {
+      paramMap.put("name", null);
+      paramMap.put("description", null);
+      paramMap.put("tagFQN", null);
+      paramMap.put("style", null);
+    }
 
     searchClient.updateEntity(
         indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
