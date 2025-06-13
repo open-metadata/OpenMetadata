@@ -181,7 +181,8 @@
                         }
                     },
                     "query": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "index": false
                     },
                     "queryDate": {
                         "type": "long"
