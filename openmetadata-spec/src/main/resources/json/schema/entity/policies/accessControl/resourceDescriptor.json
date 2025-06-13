@@ -54,7 +54,11 @@
         "Deploy",
         "Trigger",
         "Kill",
-        "GenerateToken"
+        "GenerateToken",
+        "EditScim",
+        "CreateScim",
+        "DeleteScim",
+        "ViewScim"
       ]
     }
   },
