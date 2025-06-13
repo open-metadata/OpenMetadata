@@ -21,3 +21,6 @@ CREATE TABLE IF NOT EXISTS data_contract_entity (
 -- Add index for deleted flag
 ALTER TABLE data_contract_entity ADD INDEX index_data_contract_entity_deleted(deleted);
 
+-- remove old reset link email template
+DELETE from doc_Store where name = 'reset-link' and entityType = 'EmailTemplate';
+
