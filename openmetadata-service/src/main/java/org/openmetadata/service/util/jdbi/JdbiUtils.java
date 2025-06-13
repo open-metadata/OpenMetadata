@@ -14,6 +14,11 @@ import org.openmetadata.service.util.RestUtil;
 public class JdbiUtils {
 
   public static Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    return createAndSetupJDBI(environment, dbFactory, "database");
+  }
+
+  public static Jdbi createAndSetupJDBI(
+      Environment environment, DataSourceFactory dbFactory, String name) {
     DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
         .ifPresent(
             databaseAuthenticationProvider -> {
@@ -23,7 +28,7 @@ public class JdbiUtils {
               dbFactory.setPassword(token);
             });
 
-    Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
+    Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, name);
     jdbiInstance.setSqlLogger(new OMSqlLogger());
     // Set the Database type for choosing correct queries from annotations
     jdbiInstance

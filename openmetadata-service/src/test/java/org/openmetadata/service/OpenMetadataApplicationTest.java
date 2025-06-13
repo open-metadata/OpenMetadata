@@ -94,6 +94,7 @@ public abstract class OpenMetadataApplicationTest {
 
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
+  private static JdbcDatabaseContainer<?> REPLICA_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -132,6 +133,7 @@ public abstract class OpenMetadataApplicationTest {
     LOG.info(
         "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
+    // Primary database container setup
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName)
@@ -143,6 +145,58 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withPassword("password");
     sqlContainer.withUsername("username");
     sqlContainer.start();
+
+    // Check if replica testing is enabled
+    boolean replicaTestEnabled =
+        Boolean.parseBoolean(System.getProperty("test.readreplica.enabled", "false"));
+    JdbcDatabaseContainer<?> replicaContainer = null;
+
+    if (replicaTestEnabled) {
+      LOG.info("Read replica testing enabled - setting up replica container");
+      String replicaContainerClassName =
+          System.getProperty("readreplica.container.className", jdbcContainerClassName);
+      String replicaContainerImage =
+          System.getProperty("readreplica.container.image", jdbcContainerImage);
+
+      LOG.info(
+          "Using replica container class {} and image {}",
+          replicaContainerClassName,
+          replicaContainerImage);
+
+      // Set up replica container
+      replicaContainer =
+          (JdbcDatabaseContainer<?>)
+              Class.forName(replicaContainerClassName)
+                  .getConstructor(String.class)
+                  .newInstance(replicaContainerImage);
+      replicaContainer.withReuse(false);
+      replicaContainer.withStartupTimeoutSeconds(240);
+      replicaContainer.withConnectTimeoutSeconds(240);
+      replicaContainer.withPassword("replica_password");
+      replicaContainer.withUsername("replica_user");
+      replicaContainer.start();
+
+      // Store replica container for cleanup
+      REPLICA_CONTAINER = replicaContainer;
+
+      LOG.info(
+          "Replica container started at {}:{}",
+          replicaContainer.getHost(),
+          replicaContainer.getFirstMappedPort());
+
+      // Add replica configuration overrides
+      configOverrides.add(ConfigOverride.config("readReplica.host", replicaContainer.getHost()));
+      configOverrides.add(
+          ConfigOverride.config(
+              "readReplica.port", String.valueOf(replicaContainer.getFirstMappedPort())));
+      configOverrides.add(
+          ConfigOverride.config("readReplica.databaseName", replicaContainer.getDatabaseName()));
+      configOverrides.add(
+          ConfigOverride.config("readReplica.auth.username", replicaContainer.getUsername()));
+      configOverrides.add(
+          ConfigOverride.config("readReplica.auth.password", replicaContainer.getPassword()));
+      configOverrides.add(ConfigOverride.config("readReplica.maxSize", "25"));
+    }
 
     // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
     DataSourceFactory dataSourceFactory = new DataSourceFactory();
@@ -287,7 +341,16 @@ public abstract class OpenMetadataApplicationTest {
       APP.after();
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    ELASTIC_SEARCH_CONTAINER.stop();
+
+    if (ELASTIC_SEARCH_CONTAINER != null) {
+      ELASTIC_SEARCH_CONTAINER.stop();
+    }
+
+    // Stop replica container if it was started
+    if (REPLICA_CONTAINER != null) {
+      LOG.info("Stopping replica container");
+      REPLICA_CONTAINER.stop();
+    }
 
     if (client != null) {
       client.close();

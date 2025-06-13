@@ -38,7 +38,8 @@ public class DatabaseManager {
 
   private DatabaseManager(Environment environment, OpenMetadataApplicationConfig config) {
     // Initialize primary database connection
-    this.primaryJdbi = JdbiUtils.createAndSetupJDBI(environment, config.getDataSourceFactory());
+    this.primaryJdbi =
+        JdbiUtils.createAndSetupJDBI(environment, config.getDataSourceFactory(), "database");
     LOG.info("Initialized primary database connection (write operations)");
 
     // Initialize replica database connection if configured
@@ -52,7 +53,9 @@ public class DatabaseManager {
         DataSourceFactory replicaDataSourceFactory =
             replicaConfig.toDataSourceFactory(config.getDataSourceFactory());
         if (replicaDataSourceFactory != null) {
-          tempReplicaJdbi = JdbiUtils.createAndSetupJDBI(environment, replicaDataSourceFactory);
+          tempReplicaJdbi =
+              JdbiUtils.createAndSetupJDBI(
+                  environment, replicaDataSourceFactory, "database-replica");
           tempReplicaEnabled = true;
           LOG.info(
               "Initialized read-replica database connection (read operations) at {}:{}",

@@ -1079,6 +1079,94 @@
           </plugins>
         </build>
       </profile>
+      <profile>
+        <id>mysql-replica-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <!-- Primary MySQL container configuration -->
+                  <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
+                  <!-- Search container configuration -->
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                  <!-- Read replica configuration -->
+                  <test.readreplica.enabled>true</test.readreplica.enabled>
+                  <readreplica.container.className>org.testcontainers.containers.MySQLContainer</readreplica.container.className>
+                  <readreplica.container.image>mysql:8.3.0</readreplica.container.image>
+                  <readreplica.test.mode>dual</readreplica.test.mode>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>mysql-replica-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>postgres-replica-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <!-- Primary PostgreSQL container configuration -->
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <!-- Search container configuration -->
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                  <!-- Read replica configuration -->
+                  <test.readreplica.enabled>true</test.readreplica.enabled>
+                  <readreplica.container.className>org.testcontainers.containers.PostgreSQLContainer</readreplica.container.className>
+                  <readreplica.container.image>postgres:15</readreplica.container.image>
+                  <readreplica.test.mode>dual</readreplica.test.mode>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-replica-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
   </profiles>
   <build>
     <plugins>
