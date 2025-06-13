@@ -19,6 +19,7 @@ import {
   getServiceLogo,
   getServiceTypeExploreQueryFilter,
 } from '../../../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
@@ -41,6 +42,10 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
       }),
     [key]
   );
+  const formattedServiceType = useMemo(
+    () => entityUtilClassBase.getFormattedServiceType(key),
+    [key]
+  );
 
   return (
     <Link
@@ -57,7 +62,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         <Typography.Text
           className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
           data-testid={`service-name-${key}`}>
-          {serviceUtilClassBase.getServiceName(key)}
+          {formattedServiceType}
         </Typography.Text>
 
         <AppBadge

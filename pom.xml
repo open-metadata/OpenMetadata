@@ -102,7 +102,7 @@
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.4</postgres.connector.version>
+    <postgres.connector.version>42.7.7</postgres.connector.version>
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.36</lombok.version>
@@ -153,7 +153,7 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>11.0.24</jetty.version>
+    <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>0.8.1</mcp-sdk.version>
   </properties>
@@ -915,8 +915,8 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.13.0</version>
           <configuration>
-            <source>17</source>
-            <target>17</target>
+            <source>21</source>
+            <target>21</target>
             <annotationProcessorPaths>
               <path>
                 <groupId>org.projectlombok</groupId>

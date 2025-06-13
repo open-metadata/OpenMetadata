@@ -34,10 +34,8 @@ public class MigrationUtil {
         deleteIndexTemplate(searchClient);
         deleteComponentTemplate(searchClient);
         deleteIlmPolicy(searchClient, null);
-        LOG.info("Successfully completed Data Insights objects cleanup");
       } catch (Exception e) {
         LOG.error("Error deleting Data Insights objects", e);
-        throw e;
       }
     } else {
       LOG.info("No CLUSTER_ALIAS found, skipping cleanup");
@@ -72,7 +70,6 @@ public class MigrationUtil {
       }
     } catch (Exception e) {
       LOG.error("Error deleting data insights data streams", e);
-      throw e;
     }
   }
 
@@ -87,7 +84,6 @@ public class MigrationUtil {
       searchClient.deleteILMPolicy(getClusteredPrefix(clusterAlias, ILM_POLICY_NAME));
     } catch (Exception e) {
       LOG.error("Error deleting ILM policies", e);
-      throw e;
     }
   }
 
@@ -97,7 +93,6 @@ public class MigrationUtil {
       searchClient.deleteIndexTemplate(INDEX_TEMPLATE_NAME);
     } catch (Exception e) {
       LOG.error("Error deleting index template", e);
-      throw e;
     }
   }
 
@@ -108,7 +103,6 @@ public class MigrationUtil {
         searchClient.deleteComponentTemplate(componentName);
       } catch (Exception e) {
         LOG.error("Error deleting component template", e);
-        throw e;
       }
     }
   }
