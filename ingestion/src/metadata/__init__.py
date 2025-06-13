@@ -11,7 +11,7 @@
 """
 OpenMetadata package initialization.
 """
-from typing import Callable, cast
+from typing import cast
 
 from metadata.utils.dependency_injector.dependency_injector import DependencyContainer
 from metadata.utils.service_spec.service_spec import SourceLoader, default_source_loader
