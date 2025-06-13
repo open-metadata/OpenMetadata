@@ -57,12 +57,6 @@ public class DefaultToolContext {
         case "patch_entity":
           result = new PatchEntityTool().execute(authorizer, limits, securityContext, params);
           break;
-        case "get_test_definitions":
-          result = new TestDefinitionsTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_test_case":
-          result = new CreateTestCaseTool().execute(authorizer, securityContext, params);
-          break;
         default:
           return new McpSchema.CallToolResult(
               List.of(
@@ -86,7 +80,7 @@ public class DefaultToolContext {
                           403)))),
           true);
     } catch (Exception ex) {
-      LOG.error("Error executing tool: ", ex);
+      LOG.error("Error executing tool: {}", ex.getMessage());
       return new McpSchema.CallToolResult(
           List.of(
               new McpSchema.TextContent(
