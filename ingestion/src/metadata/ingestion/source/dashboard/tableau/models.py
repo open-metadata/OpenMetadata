@@ -16,7 +16,7 @@ Tableau Source Model module
 import uuid
 from typing import Dict, List, Optional, Set, Union
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Table
