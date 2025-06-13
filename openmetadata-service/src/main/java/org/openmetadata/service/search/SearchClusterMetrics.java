@@ -20,6 +20,7 @@ public class SearchClusterMetrics {
   private final double cpuUsagePercent;
   private final double memoryUsagePercent;
   private final long maxPayloadSizeBytes;
+  private final long requestBreakerLimitBytes;
   private final int recommendedConcurrentRequests;
   private final int recommendedBatchSize;
   private final int recommendedProducerThreads;
@@ -71,6 +72,7 @@ public class SearchClusterMetrics {
       double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
 
       long maxContentLength = extractMaxContentLength(clusterSettings);
+      long requestBreakerLimit = extractRequestBreakerLimit(clusterSettings);
 
       return calculateRecommendations(
           totalNodes,
@@ -79,6 +81,7 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
+          requestBreakerLimit,
           totalEntities);
 
     } catch (Exception e) {
@@ -115,6 +118,7 @@ public class SearchClusterMetrics {
       double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
 
       long maxContentLength = extractMaxContentLength(clusterSettings);
+      long requestBreakerLimit = extractRequestBreakerLimit(clusterSettings);
 
       return calculateRecommendations(
           totalNodes,
@@ -123,6 +127,7 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
+          requestBreakerLimit,
           totalEntities);
 
     } catch (Exception e) {
@@ -138,6 +143,7 @@ public class SearchClusterMetrics {
       double memoryUsagePercent,
       long heapMaxBytes,
       long maxContentLength,
+      long requestBreakerLimit,
       long totalEntities) {
 
     int baseThreadsPerNode = Runtime.getRuntime().availableProcessors() * 4;
@@ -161,8 +167,15 @@ public class SearchClusterMetrics {
 
     double compressionRatio = 0.25; // Conservative estimate: compressed size is 25% of original
     long effectiveMaxContentLength = (long) (maxContentLength / compressionRatio);
+    long effectiveRequestBreakerLimit = (long) (requestBreakerLimit / compressionRatio);
+
+    // Use the most restrictive limit among heap, content length, and request breaker
     long maxPayloadSize =
-        Math.min(heapBasedPayloadSize, effectiveMaxContentLength * 8 / 10); // Use 80% for safety
+        Math.min(
+            heapBasedPayloadSize,
+            Math.min(effectiveMaxContentLength, effectiveRequestBreakerLimit)
+                * 8
+                / 10); // Use 80% for safety
 
     int avgEntitySizeKB = 2; // Assume 2KB average entity size (uncompressed)
     int recommendedBatchSize = (int) Math.min(2000, maxPayloadSize / (avgEntitySizeKB * 1024L));
@@ -183,6 +196,7 @@ public class SearchClusterMetrics {
         .cpuUsagePercent(cpuUsagePercent)
         .memoryUsagePercent(memoryUsagePercent)
         .maxPayloadSizeBytes(maxPayloadSize)
+        .requestBreakerLimitBytes(requestBreakerLimit)
         .recommendedConcurrentRequests(baseConcurrentRequests)
         .recommendedBatchSize(recommendedBatchSize)
         .recommendedProducerThreads(recommendedProducerThreads)
@@ -218,6 +232,47 @@ public class SearchClusterMetrics {
     } catch (Exception e) {
       LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
       return 100 * 1024 * 1024L; // Default 100MB
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static long extractRequestBreakerLimit(Map<String, Object> clusterSettings) {
+    try {
+      // Default request breaker limit is 60% of heap size
+      long defaultRequestBreakerLimit = Runtime.getRuntime().maxMemory() * 60 / 100;
+
+      Map<String, Object> persistentSettings =
+          (Map<String, Object>) clusterSettings.get("persistent");
+      Map<String, Object> transientSettings =
+          (Map<String, Object>) clusterSettings.get("transient");
+
+      String requestBreakerLimitStr = null;
+      if (persistentSettings != null
+          && persistentSettings.containsKey("indices.breaker.request.limit")) {
+        requestBreakerLimitStr = (String) persistentSettings.get("indices.breaker.request.limit");
+      }
+
+      if (requestBreakerLimitStr == null
+          && transientSettings != null
+          && transientSettings.containsKey("indices.breaker.request.limit")) {
+        requestBreakerLimitStr = (String) transientSettings.get("indices.breaker.request.limit");
+      }
+
+      if (requestBreakerLimitStr != null) {
+        if (requestBreakerLimitStr.endsWith("%")) {
+          // Handle percentage values like "60%"
+          String percentStr = requestBreakerLimitStr.replace("%", "").trim();
+          double percent = Double.parseDouble(percentStr);
+          return (long) (Runtime.getRuntime().maxMemory() * percent / 100);
+        } else {
+          return parseByteSize(requestBreakerLimitStr);
+        }
+      }
+
+      return defaultRequestBreakerLimit;
+    } catch (Exception e) {
+      LOG.warn("Failed to extract request breaker limit from cluster settings: {}", e.getMessage());
+      return Runtime.getRuntime().maxMemory() * 60 / 100; // Default 60% of heap
     }
   }
 
@@ -262,6 +317,8 @@ public class SearchClusterMetrics {
         .cpuUsagePercent(50.0)
         .memoryUsagePercent(50.0)
         .maxPayloadSizeBytes(50 * 1024 * 1024L) // Conservative 50MB
+        .requestBreakerLimitBytes(
+            Runtime.getRuntime().maxMemory() * 60 / 100) // Default 60% of heap
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)
@@ -287,6 +344,9 @@ public class SearchClusterMetrics {
     LOG.info(
         "Max Payload Size: {} MB (with compression optimization)",
         maxPayloadSizeBytes / (1024 * 1024));
+    LOG.info(
+        "Request Breaker Limit: {} MB (circuit breaker protection)",
+        requestBreakerLimitBytes / (1024 * 1024));
     LOG.info("Note: Virtual threads enable high concurrency for I/O-bound operations");
     LOG.info("Note: Request compression is enabled (~75% size reduction for JSON)");
     LOG.info("================================================================");
