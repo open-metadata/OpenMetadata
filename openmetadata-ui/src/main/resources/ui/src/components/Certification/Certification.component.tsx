@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import {
-  Card,
-  Popover,
-  Radio,
-  RadioChangeEvent,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import Icon, { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
@@ -56,6 +48,12 @@ const Certification = ({
   const [certificationCardData, setCertificationCardData] = useState<
     Array<CardWithListItems>
   >([]);
+  const [selectedCertification, setSelectedCertification] = useState<{
+    id?: string;
+    title?: string;
+  }>({ title: currentCertificate });
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
   const updateCertificationData = async (value?: string) => {
     setIsLoadingCertificationData(true);
     const certification = certifications.find(
@@ -63,6 +61,7 @@ const Certification = ({
     );
     await onCertificationUpdate?.(certification);
     setIsLoadingCertificationData(false);
+    setIsPopoverOpen(false);
   };
   const getCertificationData = async () => {
     setIsLoadingCertificationData(true);
@@ -111,10 +110,9 @@ const Certification = ({
     }
   };
 
-  const handleCertificationSelection = async ({
-    target: { value },
-  }: RadioChangeEvent) => {
-    updateCertificationData(value);
+  const handleCloseCertification = async () => {
+    setSelectedCertification({ title: currentCertificate });
+    setIsPopoverOpen(false);
   };
 
   return (
@@ -145,8 +143,7 @@ const Certification = ({
             indicator={<Loader size="small" />}
             spinning={isLoadingCertificationData}>
             <Radio.Group
-              value={currentCertificate}
-              onChange={handleCertificationSelection}>
+              value={selectedCertification.id ?? selectedCertification.title}>
               {certificationCardData.map((card) => {
                 const tagSrc = getTagImageSrc(card.style?.iconURL || '');
 
@@ -155,7 +152,12 @@ const Certification = ({
                     className="certification-card-item"
                     key={card.id}
                     style={{ cursor: 'pointer' }}
-                    onClick={() => updateCertificationData(card.id)}>
+                    onClick={() => {
+                      setSelectedCertification({
+                        id: card.id,
+                        title: card.title,
+                      });
+                    }}>
                     <Radio
                       className="certification-radio-top-right"
                       data-testid={`radio-btn-${card.title}`}
@@ -176,14 +178,30 @@ const Certification = ({
                 );
               })}
             </Radio.Group>
+            <div className="flex justify-end text-lg gap-2 mt-4">
+              <Button type="default" onClick={handleCloseCertification}>
+                <CloseOutlined />
+              </Button>
+              <Button
+                type="primary"
+                onClick={() =>
+                  updateCertificationData(selectedCertification.id)
+                }>
+                <CheckOutlined />
+              </Button>
+            </div>
           </Spin>
         </Card>
       }
+      open={isPopoverOpen}
       overlayClassName="certification-card-popover"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) => visible && getCertificationData()}>
+      onOpenChange={(visible) => {
+        setIsPopoverOpen(visible);
+        visible && getCertificationData();
+      }}>
       <div className="d-flex align-start extra-info-container">
         <Typography.Text
           className="whitespace-nowrap text-sm d-flex flex-col gap-2"
