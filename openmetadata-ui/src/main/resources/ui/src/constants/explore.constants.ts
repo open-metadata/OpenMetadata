@@ -45,7 +45,7 @@ export const tableSortingFields: SortingField[] = [
   },
   {
     name: i18n.t('label.name'),
-    value: 'displayName',
+    value: 'displayName.keyword',
   },
   {
     name: i18n.t('label.weekly-usage'),
