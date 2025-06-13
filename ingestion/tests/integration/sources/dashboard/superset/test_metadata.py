@@ -11,13 +11,13 @@
 """
 Test superset source
 """
-
 import json
 import uuid
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
@@ -349,10 +349,9 @@ def set_testcontainers():
     return superset_container, postgres_container
 
 
-class SupersetUnitTest(TestCase):
-    """
-    Validate how we work with Superset metadata
-    """
+@pytest.mark.xdist_group("superset-integration")
+class TestSupersetMetadataIntegration(TestCase):
+    """Test suite for Superset metadata integration tests."""
 
     @classmethod
     def teardown_class(cls):
