@@ -1382,13 +1382,17 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index)
+  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
+    BoolQueryBuilder query =
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
+            .filter(QueryBuilders.termQuery("deleted", deleted));
+    searchSourceBuilder.query(query);
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
