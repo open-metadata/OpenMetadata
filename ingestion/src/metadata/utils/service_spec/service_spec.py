@@ -25,10 +25,6 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# SourceLoader = NewType(
-#     "SourceLoader", Type[Callable[[ServiceType, str, str], Type[Any]]]
-# )
-
 
 class SourceLoader(ABC):
     @abstractmethod
