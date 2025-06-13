@@ -93,6 +93,10 @@
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },
