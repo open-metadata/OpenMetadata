@@ -75,10 +75,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       try {
         const { data, paging } = await getSuggestionsList({
           entityFQN: entityFqn,
-          limit:
-            (limit ?? suggestionLimit) < PAGE_SIZE
-              ? PAGE_SIZE
-              : limit ?? suggestionLimit,
+          limit: limit ?? suggestionLimit,
         });
         setSuggestions(data);
 

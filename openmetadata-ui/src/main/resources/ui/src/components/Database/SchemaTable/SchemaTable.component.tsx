@@ -42,11 +42,16 @@ import {
   Column,
   Table as TableType,
 } from '../../../generated/entity/data/table';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../../generated/entity/feed/suggestion';
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
+import { useSub } from '../../../hooks/usePubSub';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
@@ -71,9 +76,11 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findColumnByEntityLink,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
+  updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -249,6 +256,49 @@ const SchemaTable = () => {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  const updateDescriptionTagFromSuggestions = useCallback(
+    (suggestion: Suggestion) => {
+      setTableColumns((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const activeCol = findColumnByEntityLink(
+          tableFqn ?? '',
+          prev,
+          suggestion.entityLink
+        );
+
+        if (activeCol) {
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
+
+          return updatedColumns;
+        }
+
+        return prev;
+      });
+    },
+    []
+  );
+
+  useSub(
+    'updateDetails',
+    (suggestion: Suggestion) => {
+      updateDescriptionTagFromSuggestions(suggestion);
+    },
+    [tableColumns]
+  );
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
