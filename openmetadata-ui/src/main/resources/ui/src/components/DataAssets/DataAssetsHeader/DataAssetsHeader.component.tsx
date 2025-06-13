@@ -715,21 +715,41 @@ export const DataAssetsHeader = ({
                   ? dataAsset.certification?.tagLabel?.tagFQN
                   : undefined
               }
-              dataTestId="certification-label"
-              label={t('label.certification')}
-              permission={editCertificationPermission}
-              value={
-                (dataAsset as Table).certification ? (
-                  <CertificationTag
-                    showName
-                    certification={(dataAsset as Table).certification!}
-                  />
-                ) : (
-                  t('label.no-entity', { entity: t('label.certification') })
-                )
-              }
-              onCertificationUpdate={onCertificationUpdate}
-            />
+              permission={false}
+              onCertificationUpdate={onCertificationUpdate}>
+              <div className="d-flex align-start extra-info-container">
+                <Typography.Text
+                  className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                  data-testid="certification-label">
+                  <div className="flex gap-2">
+                    <span className="extra-info-label-heading">
+                      {t('label.certification')}
+                    </span>
+
+                    {editCertificationPermission && (
+                      <EditIconButton
+                        newLook
+                        data-testid="edit-certification"
+                        size="small"
+                        title={t('label.edit-entity', {
+                          entity: t('label.certification'),
+                        })}
+                      />
+                    )}
+                  </div>
+                  <div className="font-medium certification-value">
+                    {(dataAsset as Table).certification ? (
+                      <CertificationTag
+                        showName
+                        certification={(dataAsset as Table).certification!}
+                      />
+                    ) : (
+                      t('label.no-entity', { entity: t('label.certification') })
+                    )}
+                  </div>
+                </Typography.Text>
+              </div>
+            </Certification>
             {extraInfo}
           </div>
         </Col>

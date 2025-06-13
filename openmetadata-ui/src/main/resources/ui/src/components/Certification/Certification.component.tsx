@@ -14,45 +14,66 @@ import Icon, { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ReactComponent as AssigneesIcon } from '../../assets/svg/ic-assignees.svg';
 import { Tag } from '../../generated/entity/classification/tag';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getTagImageSrc } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { EditIconButton } from '../common/IconButtons/EditIconButton';
 import Loader from '../common/Loader/Loader';
-import { CardWithListItems } from '../common/TierCard/TierCard.interface';
+import { CertificationProps } from './Certification.interface';
 import './certification.less';
 const Certification = ({
-  label,
-  value,
-  dataTestId,
-  permission,
-  currentCertificate,
+  currentCertificate = '',
+  children,
   onCertificationUpdate,
-}: {
-  label: string;
-  value: string | number | React.ReactNode;
-  dataTestId?: string;
-  inlineLayout?: boolean;
-  permission: boolean;
-  onCertificationUpdate?: (certification?: Tag) => Promise<void>;
-  currentCertificate?: string;
-}) => {
+}: CertificationProps) => {
   const [isLoadingCertificationData, setIsLoadingCertificationData] =
     useState<boolean>(false);
   const [certifications, setCertifications] = useState<Array<Tag>>([]);
-  const [certificationCardData, setCertificationCardData] = useState<
-    Array<CardWithListItems>
-  >([]);
-  const [selectedCertification, setSelectedCertification] = useState<{
-    id?: string;
-    title?: string;
-  }>({ title: currentCertificate });
+  const [selectedCertification, setSelectedCertification] =
+    useState<string>('');
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const certificationCardData = useMemo(() => {
+    return (
+      <Radio.Group value={selectedCertification}>
+        {certifications.map((certificate) => {
+          const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
+          const title = getEntityName(certificate);
+          const { id, fullyQualifiedName, description } = certificate;
+
+          return (
+            <div
+              className="certification-card-item cursor-pointer"
+              key={id}
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                setSelectedCertification(fullyQualifiedName ?? '');
+              }}>
+              <Radio
+                className="certification-radio-top-right"
+                data-testid={`radio-btn-${title}`}
+                value={fullyQualifiedName}
+              />
+              <div className="certification-card-content">
+                {tagSrc && <img alt={title} src={tagSrc} />}
+                <div>
+                  <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
+                    {title}
+                  </Typography.Paragraph>
+                  <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                    {description.replace(/\*/g, '')}
+                  </Typography.Paragraph>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </Radio.Group>
+    );
+  }, [certifications, selectedCertification]);
 
   const updateCertificationData = async (value?: string) => {
     setIsLoadingCertificationData(true);
@@ -70,34 +91,7 @@ const Certification = ({
         parent: 'Certification',
         limit: 50,
       });
-
-      if (data) {
-        const certificationData: CardWithListItems[] =
-          data.map((cert) => ({
-            id: cert.fullyQualifiedName || '',
-            title: getEntityName(cert),
-            description: cert.description
-              ? cert.description.indexOf('\n\n') > -1
-                ? cert.description.substring(
-                    0,
-                    cert.description.indexOf('\n\n')
-                  )
-                : cert.description
-              : '',
-            data: cert.description
-              ? cert.description.indexOf('\n\n') > -1
-                ? cert.description.substring(
-                    cert.description.indexOf('\n\n') + 1
-                  )
-                : ''
-              : '',
-            style: cert.style,
-          })) ?? [];
-        setCertificationCardData(certificationData);
-        setCertifications(data);
-      } else {
-        setCertificationCardData([]);
-      }
+      setCertifications(data);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -111,7 +105,7 @@ const Certification = ({
   };
 
   const handleCloseCertification = async () => {
-    setSelectedCertification({ title: currentCertificate });
+    setSelectedCertification(currentCertificate);
     setIsPopoverOpen(false);
   };
 
@@ -142,51 +136,14 @@ const Certification = ({
           <Spin
             indicator={<Loader size="small" />}
             spinning={isLoadingCertificationData}>
-            <Radio.Group
-              value={selectedCertification.id ?? selectedCertification.title}>
-              {certificationCardData.map((card) => {
-                const tagSrc = getTagImageSrc(card.style?.iconURL || '');
-
-                return (
-                  <div
-                    className="certification-card-item"
-                    key={card.id}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      setSelectedCertification({
-                        id: card.id,
-                        title: card.title,
-                      });
-                    }}>
-                    <Radio
-                      className="certification-radio-top-right"
-                      data-testid={`radio-btn-${card.title}`}
-                      value={card.id}
-                    />
-                    <div className="certification-card-content">
-                      {tagSrc && <img alt={card.title} src={tagSrc} />}
-                      <div>
-                        <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
-                          {card.title}
-                        </Typography.Paragraph>
-                        <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                          {card.description.replace(/\*/g, '')}
-                        </Typography.Paragraph>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </Radio.Group>
+            {certificationCardData}
             <div className="flex justify-end text-lg gap-2 mt-4">
               <Button type="default" onClick={handleCloseCertification}>
                 <CloseOutlined />
               </Button>
               <Button
                 type="primary"
-                onClick={() =>
-                  updateCertificationData(selectedCertification.id)
-                }>
+                onClick={() => updateCertificationData(selectedCertification)}>
                 <CheckOutlined />
               </Button>
             </div>
@@ -202,28 +159,7 @@ const Certification = ({
         setIsPopoverOpen(visible);
         visible && getCertificationData();
       }}>
-      <div className="d-flex align-start extra-info-container">
-        <Typography.Text
-          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-          data-testid={dataTestId}>
-          <div className="flex gap-2">
-            {!isEmpty(label) && (
-              <span className="extra-info-label-heading">{label}</span>
-            )}
-            {permission && (
-              <EditIconButton
-                newLook
-                data-testid="edit-certification"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.certification'),
-                })}
-              />
-            )}
-          </div>
-          <div className="font-medium certification-value">{value}</div>
-        </Typography.Text>
-      </div>
+      {children}
     </Popover>
   );
 };
