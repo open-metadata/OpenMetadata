@@ -142,6 +142,10 @@ CREATE TABLE IF NOT EXISTS metadata_service_entity (
     UNIQUE (name)
 );
 
+-- Set replica identity for tables created in this migration that will be updated later
+ALTER TABLE data_insight_chart REPLICA IDENTITY USING INDEX data_insight_chart_pkey;
+ALTER TABLE metadata_service_entity REPLICA IDENTITY USING INDEX metadata_service_entity_pkey;
+
 -- We are starting to store the current deployed flag. Let's mark it as false by default
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{deployed}';

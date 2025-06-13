@@ -428,3 +428,38 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
     UNIQUE (fullyQualifiedName)
 );
 
+--
+-- Set replica identity for PostgreSQL replication support
+-- This is required for PostgreSQL read replicas to handle UPDATE statements properly
+-- See: https://github.com/open-metadata/OpenMetadata/issues/12880
+--
+
+-- Set replica identity for tables that will be updated in subsequent migrations
+-- Using the unique constraints and primary keys created above
+-- This covers ALL tables that have UPDATE statements in any migration file
+
+-- Tables with unique constraints (non-primary key)
+ALTER TABLE tag_category REPLICA IDENTITY USING INDEX tag_category_name_key;
+ALTER TABLE tag REPLICA IDENTITY USING INDEX tag_fullyqualifiedname_key;
+
+-- Entity tables with primary keys that get updated in migrations
+ALTER TABLE bot_entity REPLICA IDENTITY USING INDEX bot_entity_pkey;
+ALTER TABLE chart_entity REPLICA IDENTITY USING INDEX chart_entity_pkey;
+ALTER TABLE dashboard_entity REPLICA IDENTITY USING INDEX dashboard_entity_pkey;
+ALTER TABLE dashboard_service_entity REPLICA IDENTITY USING INDEX dashboard_service_entity_pkey;
+ALTER TABLE dbservice_entity REPLICA IDENTITY USING INDEX dbservice_entity_pkey;
+ALTER TABLE ingestion_pipeline_entity REPLICA IDENTITY USING INDEX ingestion_pipeline_entity_pkey;
+ALTER TABLE messaging_service_entity REPLICA IDENTITY USING INDEX messaging_service_entity_pkey;
+ALTER TABLE ml_model_entity REPLICA IDENTITY USING INDEX ml_model_entity_pkey;
+ALTER TABLE pipeline_entity REPLICA IDENTITY USING INDEX pipeline_entity_pkey;
+ALTER TABLE pipeline_service_entity REPLICA IDENTITY USING INDEX pipeline_service_entity_pkey;
+ALTER TABLE policy_entity REPLICA IDENTITY USING INDEX policy_entity_pkey;
+ALTER TABLE role_entity REPLICA IDENTITY USING INDEX role_entity_pkey;
+ALTER TABLE storage_service_entity REPLICA IDENTITY USING INDEX storage_service_entity_pkey;
+ALTER TABLE table_entity REPLICA IDENTITY USING INDEX table_entity_pkey;
+ALTER TABLE team_entity REPLICA IDENTITY USING INDEX team_entity_pkey;
+ALTER TABLE thread_entity REPLICA IDENTITY USING INDEX thread_entity_pkey;
+ALTER TABLE topic_entity REPLICA IDENTITY USING INDEX topic_entity_pkey;
+ALTER TABLE user_entity REPLICA IDENTITY USING INDEX user_entity_pkey;
+ALTER TABLE webhook_entity REPLICA IDENTITY USING INDEX webhook_entity_pkey;
+

@@ -114,6 +114,10 @@ CREATE TABLE IF NOT EXISTS metadata_service_entity (
     UNIQUE (name)
 );
 
+-- MySQL replication compatibility note  
+-- Tables created in this migration have replica identity handled automatically
+-- See: https://github.com/open-metadata/OpenMetadata/issues/12880
+
 -- We are starting to store the current deployed flag. Let's mark it as false by default
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json ,'$.deployed');

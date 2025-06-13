@@ -105,6 +105,10 @@ CREATE TABLE IF NOT EXISTS openmetadata_settings (
     UNIQUE(configType)
 );
 
+-- MySQL replication compatibility note
+-- MySQL replication doesn't require replica identity statements (PostgreSQL specific)
+-- See: https://github.com/open-metadata/OpenMetadata/issues/12880
+
 DELETE FROM entity_extension 
 WHERE jsonSchema IN ('tableProfile', 'columnTest', 'tableTest');
 

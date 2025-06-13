@@ -141,6 +141,9 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     UNIQUE (fullyQualifiedName)
 );
 
+-- Set replica identity for tables created in this migration that will be updated later
+ALTER TABLE dashboard_data_model_entity REPLICA IDENTITY USING INDEX dashboard_data_model_entity_pkey;
+
 UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb #- '{connection,config,database}', '{connection,config,databaseName}', json#> '{connection,config,database}', true)
 WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not null;

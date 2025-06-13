@@ -100,6 +100,11 @@ CREATE TABLE IF NOT EXISTS openmetadata_settings (
     UNIQUE(configType)
 );
 
+-- Set replica identity for tables created in this migration that will be updated later
+ALTER TABLE test_definition REPLICA IDENTITY USING INDEX test_definition_pkey;
+-- entity_extension_time_series has UPDATE statements in v009, but no primary key - use full replica identity
+ALTER TABLE entity_extension_time_series REPLICA IDENTITY FULL;
+
 DELETE FROM entity_extension
 WHERE jsonSchema IN ('tableProfile', 'columnTest', 'tableTest');
 
