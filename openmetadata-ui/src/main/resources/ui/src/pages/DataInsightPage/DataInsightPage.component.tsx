@@ -117,6 +117,9 @@ const DataInsightPage = () => {
     return (
       <ErrorPlaceHolder
         className="border-none h-min-80"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-insight'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
@@ -128,6 +131,9 @@ const DataInsightPage = () => {
         <Col span={24}>
           <ErrorPlaceHolder
             className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-insight'),
+            })}
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </Col>

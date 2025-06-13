@@ -52,8 +52,11 @@ const entity = new TableClass();
 const entity2 = new TableClass();
 const entity3 = new TableClass();
 const entity4 = new TableClass();
+const entity5 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
+const user4 = new UserClass();
 const adminUser = new UserClass();
 
 const test = base.extend<{ page: Page }>({
@@ -76,8 +79,11 @@ test.describe('Activity feed', () => {
     await entity2.create(apiContext);
     await entity3.create(apiContext);
     await entity4.create(apiContext);
+    await entity5.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
+    await user4.create(apiContext);
 
     await afterAction();
   });
@@ -88,8 +94,11 @@ test.describe('Activity feed', () => {
     await entity2.delete(apiContext);
     await entity3.delete(apiContext);
     await entity4.delete(apiContext);
+    await entity5.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.delete(apiContext);
+    await user4.delete(apiContext);
     await adminUser.delete(apiContext);
 
     await afterAction();
@@ -365,6 +374,52 @@ test.describe('Activity feed', () => {
     await checkTaskCountInActivityFeed(page, 0, 1);
   });
 
+  test('Replies should be visible in the task feed', async ({ page }) => {
+    const value: TaskDetails = {
+      term: entity2.entity.displayName,
+      assignee: user1.responseData.name,
+    };
+    await redirectToHomePage(page);
+
+    await entity2.visitEntityPage(page);
+
+    await page.getByTestId('request-description').click();
+
+    await createDescriptionTask(page, value);
+
+    // Task 1 - Update Description right panel check
+    const descriptionTask = await page.getByTestId('task-title').innerText();
+
+    expect(descriptionTask).toContain('Request to update description');
+
+    for (let i = 0; i < 10; i++) {
+      const commentInput = page.locator('[data-testid="comments-input-field"]');
+      commentInput.click();
+
+      await page.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        `Reply message ${i}`
+      );
+      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+      await page.getByTestId('send-button').click({ force: true });
+      await sendReply;
+    }
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'hidden',
+    });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('feed-reply-card')).toHaveCount(10);
+
+    for (let i = 0; i < 10; i++) {
+      await expect(
+        page.locator('.right-container [data-testid="feed-replies"]')
+      ).toContainText(`Reply message ${i}`);
+    }
+  });
+
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
     page,
   }) => {
@@ -484,18 +539,18 @@ test.describe('Activity feed', () => {
   test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
-    const { page: page2, afterAction: afterActionUser2 } =
-      await performUserLogin(browser, user2);
+    const { page: page2, afterAction: afterActionUser3 } =
+      await performUserLogin(browser, user3);
 
-    await base.step('Create and Assign Task to User 2', async () => {
+    await base.step('Create and Assign Task to User 3', async () => {
       await redirectToHomePage(page1);
       await entity.visitEntityPage(page1);
 
-      // Create task for the user 2
+      // Create task for the user 3
       await page1.getByTestId('request-description').click();
       await createDescriptionTask(page1, {
         term: entity.entity.displayName,
-        assignee: user2.responseData.name,
+        assignee: user3.responseData.name,
       });
 
       await afterActionUser1();
@@ -524,6 +579,7 @@ test.describe('Activity feed', () => {
         .click();
 
       await taskResponse;
+      await page2.waitForLoadState('networkidle');
 
       await expect(
         page2.locator(
@@ -551,7 +607,7 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
       // Check the Task based on Created by me task filter
@@ -572,11 +628,25 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName).first()
+        page2.getByText(user3.responseData.displayName).first()
       ).toBeVisible();
 
-      await afterActionUser2();
+      await afterActionUser3();
     });
+  });
+
+  test('Verify feed count', async ({ page }) => {
+    await redirectToHomePage(page);
+    await entity5.visitEntityPage(page);
+    await page.getByTestId('request-description').click();
+    await createDescriptionTask(page, {
+      term: entity5.entity.displayName,
+      assignee: user4.responseData.name,
+    });
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('left-panel-task-count')).toHaveText('1');
   });
 });
 
@@ -664,10 +734,10 @@ base.describe('Activity feed with Data Consumer User', () => {
         '[data-testid="editor-wrapper"] .ql-editor',
         'Closing the task with comment'
       );
-      await page1
-        .locator('.activity-feed-editor-send-btn')
-        .scrollIntoViewIfNeeded();
+
+      const commentPostResponse = page1.waitForResponse('/api/v1/feed/*/posts');
       await page1.locator('.activity-feed-editor-send-btn').click();
+      await commentPostResponse;
       const commentWithCloseTask = page1.waitForResponse(
         '/api/v1/feed/tasks/*/close'
       );

@@ -1,15 +1,3 @@
-/*
- *  Copyright 2025 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * Defines a background job that is triggered on insertion of new record in background_jobs
  * table.
@@ -40,6 +28,11 @@ export interface BackgroundJob {
      */
     methodName: string;
     /**
+     * Timestamp when the job was run in Unix epoch time milliseconds (default: as soon as
+     * possible).
+     */
+    runAt?: number;
+    /**
      * Current status of the job.
      */
     status: Status;
@@ -58,15 +51,16 @@ export interface EnumCleanupArgs {
     /**
      * Type of the entity.
      */
-    entityType: string;
+    entityType?: string;
     /**
      * Name of the property.
      */
-    propertyName: string;
+    propertyName?: string;
     /**
      * List of removed enum keys.
      */
-    removedEnumKeys: string[];
+    removedEnumKeys?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -74,6 +68,8 @@ export interface EnumCleanupArgs {
  */
 export enum JobType {
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
+    DeleteEntity = "DELETE_ENTITY",
+    DeleteToken = "DELETE_TOKEN",
 }
 
 /**

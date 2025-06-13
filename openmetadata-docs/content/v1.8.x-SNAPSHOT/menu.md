@@ -26,11 +26,15 @@ site_menu:
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
     url: /deployment/bare-metal/security
+  - category: Deployment / Bare Metal Deployment / Enable Subpath
+    url: /deployment/bare-metal/subpath
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
+  - category: Deployment / Docker Deployment / Enable Subpath
+    url: /deployment/docker/subpath
 
   - category: Deployment / Kubernetes Deployment
     url: /deployment/kubernetes
@@ -46,6 +50,8 @@ site_menu:
     url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
+  - category: Deployment / Kubernetes Deployment / Enable Subpath
+    url: /deployment/kubernetes/subpath
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
 
@@ -951,7 +957,13 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
-  - category: How-to Guides / Data Discovery / Troubleshooting
+  - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
+    url: /how-to-guides/data-discovery/bulk-upload
+  - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
+    url: /how-to-guides/data-discovery/import
+  - category: How-to Guides / Data Discovery / How to Export Data Asset
+    url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Import-Export Troubleshooting
     url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Table Constraint
     url: /how-to-guides/data-discovery/table-constraint
@@ -1013,8 +1025,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/external-workflow
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -1098,6 +1108,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -1119,6 +1131,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.7.1 Release
+    url: /releases/all-releases/#1.7.1-release
+  - category: Releases / All Releases / 1.7.0 Release
+    url: /releases/all-releases/#1.7.0-release
+  - category: Releases / All Releases / 1.6.11 Release
+    url: /releases/all-releases/#1.6.11-release
   - category: Releases / All Releases / 1.6.10 Release
     url: /releases/all-releases/#1.6.10-release
   - category: Releases / All Releases / 1.6.9 Release

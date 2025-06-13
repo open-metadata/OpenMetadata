@@ -185,8 +185,7 @@ const DashboardDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {

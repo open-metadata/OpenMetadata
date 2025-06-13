@@ -70,6 +70,7 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -277,6 +279,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataProductDAO dataProductDAO();
+
+  @CreateSqlObject
+  DataContractDAO dataContractDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -1346,6 +1351,15 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getRecordWithOffset(
         @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsPaginated(
+        @Bind("offset") long offset, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
+    long getTotalRelationshipCount();
+
     //
     // Delete Operations
     //
@@ -1391,6 +1405,12 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship "
+            + "WHERE (toId IN (<ids>) AND toEntity = :entity) "
+            + "   OR (fromId IN (<ids>) AND fromEntity = :entity)")
+    void deleteAllByThreadIds(@BindList("ids") List<String> ids, @Bind("entity") String entity);
 
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
     void deleteAllWithId(@BindUUID("id") UUID id);
@@ -1496,6 +1516,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM thread_entity WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)",
@@ -2058,6 +2081,14 @@ public interface CollectionDAO {
           glossaryTermLink.getFullyQualifiedFieldType());
     }
 
+    default List<String> listThreadsByTaskAssignee(String taskAssigneesId) {
+      String condition = String.format(" WHERE taskAssigneesIds LIKE '%%%s%%'", taskAssigneesId);
+      return listThreadsByTaskAssigneesId(condition);
+    }
+
+    @SqlQuery("SELECT json FROM thread_entity <cond>")
+    List<String> listThreadsByTaskAssigneesId(@Define("cond") String cond);
+
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count "
             + "FROM ( "
@@ -2270,6 +2301,12 @@ public interface CollectionDAO {
       deleteAllByPrefixInternal(condition, bindMap);
     }
 
+    default void deleteAllByPrefixes(List<String> threadIds) {
+      for (String threadId : threadIds) {
+        deleteAllByPrefix(threadId);
+      }
+    }
+
     @SqlUpdate("DELETE from field_relationship <cond>")
     void deleteAllByPrefixInternal(
         @Define("cond") String cond, @BindMap Map<String, String> bindings);
@@ -2415,6 +2452,23 @@ public interface CollectionDAO {
     @Override
     default boolean supportsSoftDelete() {
       return false;
+    }
+  }
+
+  interface DataContractDAO extends EntityDAO<DataContract> {
+    @Override
+    default String getTableName() {
+      return "data_contract_entity";
+    }
+
+    @Override
+    default Class<DataContract> getEntityClass() {
+      return DataContract.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
     }
   }
 
@@ -2869,6 +2923,11 @@ public interface CollectionDAO {
         condition += serviceCondition;
       }
 
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
       String serviceType = filter.getQueryParam("serviceType");
       if (!nullOrEmpty(serviceType)) {
@@ -2903,6 +2962,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -2944,6 +3008,11 @@ public interface CollectionDAO {
       if (filter.getQueryParam("service") != null) {
         String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
         condition += serviceCondition;
+      }
+
+      if (filter.getQueryParam("provider") != null) {
+        String providerCondition = String.format(" and %s", filter.getProviderCondition());
+        condition += providerCondition;
       }
 
       Map<String, Object> bindMap = new HashMap<>();
@@ -5756,6 +5825,7 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
+        case SUPPORT_TOKEN -> JsonUtils.readValue(json, SupportToken.class);
       };
     }
   }

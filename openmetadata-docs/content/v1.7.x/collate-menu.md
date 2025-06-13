@@ -529,6 +529,10 @@ site_menu:
     url: /connectors/pipeline/spline/yaml
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
+  - category: Connectors / Pipeline / SSIS
+    url: /connectors/pipeline/SSIS
+  - category: Connectors / Pipeline / SSIS / Run Externally
+    url: /connectors/pipeline/SSIS/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -719,6 +723,8 @@ site_menu:
   - category: Collate AI
     url: /collateai
 
+  - category: Collate AI / Autopilot
+    url: /collateai/collate-ai-autopilot-workflows
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
   - category: Collate AI / Collate AI Tier Agent
@@ -829,14 +835,14 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
-  - category: How-to Guides / Data Discovery / Troubleshooting
-    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
     url: /how-to-guides/data-discovery/bulk-upload
   - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Import-Export Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Table Constraint
     url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
@@ -896,8 +902,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -995,6 +999,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification

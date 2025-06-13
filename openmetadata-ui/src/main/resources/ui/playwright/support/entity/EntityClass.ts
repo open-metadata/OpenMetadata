@@ -35,6 +35,7 @@ import {
   assignTag,
   assignTagToChildren,
   assignTier,
+  checkExploreSearchFilter,
   createAnnouncement,
   createInactiveAnnouncement,
   deleteAnnouncement,
@@ -68,6 +69,7 @@ export class EntityClass {
   serviceType?: ServiceTypes;
   childrenTabId?: string;
   childrenSelectorId?: string;
+  childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
 
@@ -203,9 +205,24 @@ export class EntityClass {
     }
   }
 
-  async tier(page: Page, tier1: string, tier2: string) {
+  async tier(
+    page: Page,
+    tier1: string,
+    tier2: string,
+    tier2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTier(page, tier1, this.endpoint);
     await assignTier(page, tier2, this.endpoint);
+    if (entity && tier2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tier',
+        'tier.tagFQN',
+        tier2Fqn,
+        entity
+      );
+    }
     await removeTier(page, this.endpoint);
   }
 
@@ -222,10 +239,29 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
-  async tag(page: Page, tag1: string, tag2: string) {
+  async tag(
+    page: Page,
+    tag1: string,
+    tag2: string,
+    tag2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit');
-    await removeTag(page, [tag2]);
+    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    if (entity && tag2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        tag2Fqn,
+        entity
+      );
+    }
+    if (tag2Fqn) {
+      await removeTag(page, [tag2Fqn]);
+    } else {
+      await removeTag(page, [tag2]);
+    }
     await removeTag(page, [tag1]);
 
     await page
@@ -279,9 +315,19 @@ export class EntityClass {
   async glossaryTerm(
     page: Page,
     glossaryTerm1: GlossaryTerm['responseData'],
-    glossaryTerm2: GlossaryTerm['responseData']
+    glossaryTerm2: GlossaryTerm['responseData'],
+    entity?: EntityClass
   ) {
     await assignGlossaryTerm(page, glossaryTerm1);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        glossaryTerm1.fullyQualifiedName,
+        entity
+      );
+    }
     await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 

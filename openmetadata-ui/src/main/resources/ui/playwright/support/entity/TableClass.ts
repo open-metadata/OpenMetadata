@@ -324,7 +324,6 @@ export class TableClass extends EntityClass {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
-          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
@@ -344,8 +343,8 @@ export class TableClass extends EntityClass {
     testCaseFqn: string,
     testCaseResult: unknown
   ) {
-    const testCaseResultResponse = await apiContext.put(
-      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
       { data: testCaseResult }
     );
 

@@ -203,4 +203,13 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       });
     }
   );
+
+  it('should return the correct value for the input value', () => {
+    const inputValue = 224813364.39; // input in seconds
+    const expectedValue = '7Y 2M 22d 9m 24s';
+
+    expect(convertMillisecondsToHumanReadableFormat(inputValue * 1000)).toBe(
+      expectedValue
+    );
+  });
 });

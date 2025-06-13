@@ -13,7 +13,7 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIITag
-from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
+from metadata.pii.constants import SUPPORTED_LANG
 
 
 def test_analyzer_supports_all_expected_pii_entities():
@@ -25,4 +25,7 @@ def test_analyzer_supports_all_expected_pii_entities():
 
     entities = set(PIITag.values())
     supported_entities = set(analyzer.get_supported_entities(SUPPORTED_LANG))
-    assert entities <= supported_entities
+    assert entities <= supported_entities, (
+        f"Analyzer does not support all expected PII entities. "
+        f"{entities - supported_entities}"
+    )

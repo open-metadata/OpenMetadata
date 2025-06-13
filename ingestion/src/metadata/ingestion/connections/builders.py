@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
     IamAuthConfigurationSource,
 )
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
+from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 from metadata.utils.logger import cli_logger
@@ -75,6 +76,8 @@ def create_generic_db_connection(
         echo=False,
         max_overflow=-1,
     )
+
+    attach_query_tracker(engine)
 
     if hasattr(connection, "supportsQueryComment"):
         listen(

@@ -116,8 +116,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.api-endpoint'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {

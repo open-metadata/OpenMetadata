@@ -1,7 +1,7 @@
-# 1.7.0 Release 🎉
+# 1.7.2 Release 🎉
 
 {% note noteType="Tip" %}
-**Apr 15th, 2025**
+**June 10th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,165 +10,102 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.7.0!
+Learn how to upgrade your OpenMetadata instance to 1.7.2!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.7.0-release).
-
-The latest Release 1.7 of OpenMetadata and Collate delivers new features to accelerate the onboarding of both data services and users, taking discovery, automations, and customizations one step further.
-
-# What's Changed
-
-## Breaking Changes
-
-### Removing support for Python 3.8
-
-Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
-started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
-versions of our dependencies.
-
-This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
-
-We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
-However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.7.2-release).
 
 # What's New
 
-### Putting your Metadata Ingestion on AutoPilot
+## Improvements
 
-{%  youtube videoId="lo4SrBAmTZM" start="0:00" end="2:06" width="800px" height="450px" /%}
+- Made Trino query table configurable.
+- Added company name details in Pendo.
+- Introduced Databricks Sampler and refactored Unity Catalog Sampler.
+- Implemented Looker column lineage between views and tables.
+- Implemented Looker column lineage between explores and views.
+- Added support for dbt tags filter.
+- Introduced a utility in openmetadata-ops.sh to delete orphaned relations.
+- Added lineage dialect support for Exasol, Trino, and Vertica.
+- Upgraded google-cloud-secret-manager Python dependency version.
+- Introduced data insights migrations to remove stale objects.
+- Added Turkish language support.
+- Added method to filter ingestion pipelines based on metadata.
+- Improved rendering time for profiler charts with large datasets.
+- Added logic to handle WorkflowContext during ingestion.
+- Exposed Pendo integration key in API response.
+- Introduced support for SSIS connector.
+- Enhanced PDF export to improve image handling and support dynamic spacing.
+- Implemented reverse metadata extensions.
 
-OpenMetadata provides workflows out of the box to extract different types of metadata from your data services such as schemas, lineage, usage and profiling. To accelerate the onboarding of new services, we have created the new AutoPilot Application, which will automatically deploy and trigger all these Metadata Agents when a new service is created!
+## Fixes
 
-As part of the new flow, we’ve also improved how you define filters for your service: We’re adding default filters to ensure you are only ingesting relevant metadata and giving you the autonomy to add other default filters that can be applied to any other workflow. This helps you move faster and ensure consistency.
+- Corrected Explore tabs with ellipsis to render label and count correctly.
+- Documented reason for Snowflake owner ingestion limitation.
+- Addressed TooManyNestedClauses error in complex queries.
+- Resolved BigQuery import issue.
+- Fixed loading issue in react-awesome-query
+- Japanese localization: updated "view-in-service-type" translation from "{{serviceType}}에서 보기" to "{{serviceType}}で表示".
+- Changed references from jakarta to javax.
+- Resolved search indexing issue: exceeded total fields limit [1000].
+- Fixed DB2 custom driver installation problem.
+- Corrected domain deletion via import.
+- Displayed correct timestamp in freshness test results.
+- Updated file upload input option in service config.
+- Removed unwanted type from pdfLayout config.
+- Aligned the profile config plus icon correctly.
+- Fixed additional nodes issue in upstream lineage.
+- Improved Tableau connector functionalities and validation.
+- Resolved Looker CLL parsing and error handling issues.
+- Enhanced domain truncation and consistent domain UI/UX.
+- Fixed SQL query viewer-related errors.
+- Corrected redirection issue for profiles with displayName.
+- Truncated entity header text appropriately.
+- Made select popup sticky in scrollable containers.
+- Resolved overflow in frequently joined table widget.
+- Fixed persona switch UI update issue without customization.
+- Ensured schema, tags, and API collection switches reflect correct content.
+- Prevented Excel copy-paste from triggering file upload.
+- Added displayName to asset selection model.
+- Applied background color highlight in explore cards.
+- Fixed glossary permission-related error.
+- Handled pydantic_fields exceptions gracefully.
+- Resolved flickering and tooltip issues in lineage column nodes.
+- Corrected row sampling error.
+- Fixed tier tag updates in search filters.
+- Enabled support for multiple owners in dbt models.
+- Removed unused getBasePath import from RouterUtils.ts.
+- Resolved tag dropdown overlap when multiple dropdowns are open.
+- Enabled ingestion pipeline filtering by provider.
+- Prevented automation workflow updates by Service Manager; added cleanup migration.
+- Fixed bot usage in pipelines and workflows.
+- Removed Tier filters from AI agents in Autopilot.
+- Improved column name space handling in lineage child node cards.
+- Implemented graceful logout handling.
+- Added schema description support for Databricks.
+- Made dashboard data model name column non-clickable.
+- Set pagination limits for dashboards.
+- Resolved issue with agents dropdown not showing auto-classification agent.
+- Filtered announcement widget from customization options.
+- Updated Snowflake tests based on new configuration settings.
+- Fixed PII false positives for DateTime fields.
+- Corrected profile picture display issues.
+- Resolved persona customization widget style issues.
+- Updated Lightdash connector.
+- Fixed Doris ingestion failure.
+- Corrected query builder widget behavior for any and not operations.
+- Reverted search order and adjusted minor UI styles.
+- Increased indices.query.bool.max_clause_count to 4096.
+- Made presidio_analyzer a lazy import in the PII processor.
+- Fixed empty expression value issue in Power BI datasets.
+- Applied fixes to limits and logging functionality.
+- Addressed import failure caused by double-encoded database service paths.
+- Corrected auto tier serialization with followers.
+- Cleaned up WAII-generated descriptions.
+- Resolved review activity tracking issue.
+- Fixed setIdleTimeout with lower Jetty versions.
+- Resolved missing new tags in automator form component.
+- Removed deprecated SearchSuggest component.
 
-Additionally, the new Service Insights page provides immediate KPIs on your data, based on your data assets distribution, and coverage on key metrics such as descriptions, ownership, tiering and PII.
-
-With OpenMetadata AutoPilot, you can get all of your metadata with just one click!
-
-### Accelerating Onboarding New Services with Collate AI Agents
-
-{%  youtube videoId="PKvKWZ8vseU" start="0:00" end="1:45" width="800px" height="450px" /%}
-
-At Collate, we’re taking the AutoPilot experience one step further by adding AI Agents to the mix. Based on the information extracted from the Metadata Agents, Collate AI Agents will automatically generate tiers, descriptions, and Data Quality tests:
-
-- The Tier Agent analyzes your table usage and lineage to determine the business criticality of each asset in your organization.
-- The Documentation Agent automatically generates descriptions based on the shape of your data, as well as enabling a Text2SQL chat experience.
-- The Data Quality Agent validates tables’ constraints to intelligently create Data Quality Tests, in addition to learning from what tests are already present in similar tables.
-
-Collate also brings **enhanced Service Insights** helping you:
-
-- Track how much metadata has been automatically generated by Collate AI.
-- Identify your Service distribution of PII and Tiers.
-- Analyze what are your most used data assets.
-- As well as a new view for your most expensive queries for Snowflake and BigQuery, which you can then have Collate AI optimize for you!
-- And understand the Data Quality health and coverage of your Service.
-
-Collate AI Agents in AutoPilot are like having additional team members, helping you evaluate your metadata management to the next level while saving you time and resources.
-
-### Boosting your Discovery thanks to Search Relevancy Settings
-
-{%  youtube videoId="9Uy95t11hs0" start="0:00" end="1:56" width="800px" height="450px" /%}
-
-As Data Platforms grow, ensuring that the right piece of data appears first for your search results can help reduce time to action for your users. OpenMetadata was already boosting results based on Tiers - business criticality - and usage. However, different organizations might have different ranking needs based on other properties.
-
-We are introducing Search Relevancy Settings to help you **customize the discovery** experience for your users, giving you complete control over:
-
-- Choosing which fields of the asset you want to match during the search, such as names, descriptions, or columns.
-- Changing the default boosting on Tiers and uage, or add other tags you want to boost higher.
-- Specifying the above to all or specific asset types, such as Tables, Dashboards, or Topics.
-
-Thanks to the new Search Relevancy customization, you can ensure your users will always find the right data!
-
-### Understanding Data Better with New Lineage Layers
-
-{%  youtube videoId="5iiN2gtJzwo" start="0:00" end="1:13" width="800px" height="450px" /%}
-
-OpenMetadata continues to make improvements to the lineage, both in how we capture and parse queries, as well as how users can explore and utilize lineage information.
-
-In Release 1.7, we’re adding exciting additions to the Lineage UI, including:
-
-- An enhanced toolbar,
-- A minimap to better explore large lineage,
-- And new lineage layers!
-
-The existing Column and Observability Layers already help you understand how your data moves, as well as analyze both the root cause and impact of Data Quality issues.
-
-Now, we’re adding a **Service Layer**, giving you a comprehensive view of how data flows from service to service. We’re also introducing a Domain Layer, which will help you better visualize the shape of your Data Mesh, along with the Data Product Layer.
-
-Lineage is a key element for understanding your data, and OpenMetadata enhances this further by providing even more perspectives to it.
-
-### Catering to All your Users Needs with Persona Customizations
-
-{%  youtube videoId="Cf-dSJLRQcc" start="0:00" end="2:32" width="800px" height="450px" /%}
-
-OpenMetadata has detailed information about your data assets, including their schema, lineage, data quality, and observability. Now, we’ve focused on making sure different users can concentrate on the specific information most important for them!
-
-In previous releases, we allowed the customization of the Landing Page based on your User Personas. Release 1.7 expands these capabilities to the left **navigation panel, governance entities**, and **data assets**.
-
-- Add, remove, and sort the elements of the navigation panel,
-- And for governance entities and data assets, reorganize the existing tabs, add new tabs, or remove them! You can then add and size widgets to better showcase Custom Properties, have larger spaces for descriptions, and more!
-
-UI Customizations are a flexible and powerful approach that will let you tailor the experience for each of your users, improving the experience of managing all of your processes within OpenMetadata.
-
-### Finding the Right Data Faster with the New UX
-
-{%  youtube videoId="r5CMDA4Fcsw" start="0:00" end="1:24" width="800px" height="450px" /%}
-
-With Release 1.7, we’ve invested in our core design principles with improvements to the User Experience, particularly for addressing the needs of the diverse Personas that rely on OpenMetadata daily.
-
-These changes include:
-- Streamlining the navigation panels, 
-- Improving the placement and labeling of key information in the asset pages,
-- And restructuring the information on user pages, highlighting profile information, and improving how users can navigate and manage their open tasks.
-
-Combined with the improvements around Search Relevancy, Customizable UI for Personas, and the AutoPilot Application, this release accelerates the onboarding of both Services and users, in addition to making it easier for users to find the right data faster and act upon it.
-
-### Activating your Metadata in Collate with Reverse Metadata
-
-{%  youtube videoId="EWYDfhCgW8k" start="0:00" end="2:16" width="800px" height="450px" /%}
-
-Thanks to Collate’s collaboration and automation features, it’s simple to add tags, descriptions, and owners to all your assets. But how can we ensure this metadata is seen and used by the source systems as well?
-
-Reverse Metadata is a new application that will allow you to send descriptions, tags, and owners collected in Collate back into the source! You can configure which assets you want to listen for changes, and updates will be **propagated in real time!**
-
-Pairing this feature with source systems capabilities, such as Snowflake handling Masking Policies based on tags, it’s a powerful approach to centralize policy management directly in Collate.
-
-Moreover, linking this application to other features such as Metadata Automations or Auto Classification workflows, Collate becomes a key pillar in your **end-to-end automated governance strategy**.
-
-### Discover the Right Data Even Faster with an Enhanced UX
-
-OpenMetadata is already known for its intuitive UI and simplified user experience. In Release 1.7, the UX is elevated further, making it even easier for diverse user personas to quickly find and act on the data they need.
-
-**Key UX improvements include:**
-
-- **Streamlined Navigation:** Simplified navigation panels to quickly guide users through key actions.
-- **Clearer Asset Information:** Improved placement and labeling of critical information on data asset pages, ensuring immediate understanding.
-- **Enhanced User Profiles:** Restructured user pages for better visibility into profile details and more intuitive management of open tasks.
-
-### PNG & PDF Exports
-Support for exporting **Lineage** and **ER diagrams** in **PNG**, and **Data Quality**, **Data Insights**, and more in **PDF**!
-
-### Bulk Edit Action
-Enable **bulk editing** capabilities for **Database**, **Schema**, **Table**, and **Column** entities — allowing efficient management of multiple items simultaneously.
-
-### Recursive Import/Export
-You can now **import and export the entire entity hierarchy** with all related data, including **parent-child relationships** and **dependencies**!
-
-### Asynchronous Deletion
-Support for both **soft** and **hard deletion** operations across **all services**, **entities**, **glossary**, and **term entries** — improving overall performance.
-
-### Expanded Connector Ecosystem and Diversity
-
-OpenMetadata’s ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
-
-We bring new connectors in each release, continuously expanding our coverage. This time, Release 1.7 comes with four new connectors:
-
-- **Opensearch:** Bringing your index metadata into OpenMetadata.
-- **Cassandra:** Ingesting from the NoSQL Distributed Database.
-- **Cockroach DB:** The cloud native distributed SQL Database.
-
-And in Collate, we are bringing a new Pipeline connector: **Wherescape**.
-
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.10-release...1.7.0-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.7.1-release...1.7.2-release)

@@ -144,13 +144,13 @@ const APICollectionPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.API_COLLECTION,
       decodedAPICollectionFQN,
       handleFeedCount
     );
-  };
+  }, [handleFeedCount, decodedAPICollectionFQN]);
 
   const fetchAPICollectionDetails = useCallback(async () => {
     try {
@@ -302,8 +302,7 @@ const APICollectionPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.collection'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -351,7 +350,11 @@ const APICollectionPage: FunctionComponent = () => {
       fetchAPICollectionDetails();
       getEntityFeedCount();
     }
-  }, [viewAPICollectionPermission]);
+  }, [
+    viewAPICollectionPermission,
+    fetchAPICollectionDetails,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
@@ -470,7 +473,15 @@ const APICollectionPage: FunctionComponent = () => {
   }
 
   if (!viewAPICollectionPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.api-collection'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

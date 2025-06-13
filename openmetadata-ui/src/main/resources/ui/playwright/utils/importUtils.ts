@@ -46,9 +46,19 @@ export const createGlossaryTermRowDetails = () => {
 export const fillTextInputDetails = async (page: Page, text: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
+  const isVisible = await page
+    .locator('.ant-layout-content')
+    .getByRole('textbox')
+    .isVisible();
+
+  if (!isVisible) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
+
   const textboxLocator = page
     .locator('.ant-layout-content')
     .getByRole('textbox');
+
   await textboxLocator.fill(text);
   await textboxLocator.press('Enter', { delay: 100 });
 };
@@ -713,16 +723,46 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
-  for (let i = 0; i < length; i++) {
-    const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
-    const isActive = await activeCell.isVisible();
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
 
-    if (!isActive) {
-      await page.click('.InovuaReactDataGrid__cell--cell-active');
+  for (let i = 0; i < length; i++) {
+    let retryCount = 0;
+    let success = false;
+
+    while (!success && retryCount < maxRetries) {
+      try {
+        // Wait for the active cell to be visible
+        const activeCell = page.locator(
+          '.InovuaReactDataGrid__cell--cell-active'
+        );
+        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
+
+        // Ensure the cell is focused
+        if (!(await activeCell.isVisible())) {
+          await activeCell.click({ timeout: 5000 });
+        }
+
+        // Perform the key press with a longer delay
+        await activeCell.press(key, { delay: 200 });
+
+        // Verify the key press was successful by checking if the cell is still active
+        await page.waitForTimeout(100); // Small delay to allow for state updates
+        const isStillActive = await activeCell.isVisible();
+
+        if (isStillActive) {
+          success = true;
+        } else {
+          // If cell lost focus, try to regain it
+          await activeCell.click({ timeout: 5000 });
+          retryCount++;
+          await page.waitForTimeout(retryDelay);
+        }
+      } catch {
+        retryCount++;
+        await page.waitForTimeout(retryDelay);
+      }
     }
-    await page
-      .locator('.InovuaReactDataGrid__cell--cell-active')
-      .press(key, { delay: 100 });
   }
 };
 

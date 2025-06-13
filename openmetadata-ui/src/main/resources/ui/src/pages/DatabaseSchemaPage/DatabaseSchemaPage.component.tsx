@@ -171,13 +171,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.DATABASE_SCHEMA,
       decodedDatabaseSchemaFQN,
       handleFeedCount
     );
-  };
+  }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -328,8 +328,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database-schema'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -404,10 +403,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission]);
+  }, [
+    viewDatabaseSchemaPermission,
+    fetchDatabaseSchemaDetails,
+    fetchStoreProcedureCount,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     fetchTableCount();
@@ -603,7 +606,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   if (!viewDatabaseSchemaPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.database-schema'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

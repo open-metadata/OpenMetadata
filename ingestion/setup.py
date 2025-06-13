@@ -46,7 +46,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
+    "databricks-sdk": "databricks-sdk~=0.20.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -68,6 +68,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "presidio-analyzer": "presidio-analyzer==2.2.358",
 }
 
 COMMONS = {
@@ -133,7 +134,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager>=2.19.0,<2.20.1",
+    "google-cloud-secret-manager==2.22.1",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -208,7 +209,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -291,7 +292,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny>=2.3.0"},
+    "mlflow": {"mlflow-skinny~=2.22.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -338,6 +339,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
@@ -353,8 +355,9 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.355",
+        VERSIONS["presidio-analyzer"],
     },
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
 }
 
 dev = {
@@ -370,6 +373,17 @@ dev = {
     "twine",
     "build",
     *plugins["sample-data"],
+}
+
+# Dependencies for unit testing in addition to dev dependencies and plugins
+test_unit = {
+    "pytest==7.0.0",
+    "pytest-cov",
+    "pytest-order",
+    "dirty-equals",
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    # TODO: Remove once no unit test requires testcontainers
+    "testcontainers",
 }
 
 test = {
@@ -437,7 +451,7 @@ test = {
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
-    "faker==37.1.0",  # Fixed the version to prevent flaky tests!
+    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
 }
 
 if sys.version_info >= (3, 9):
@@ -463,12 +477,9 @@ playwright_dependencies = {
     *plugins["airflow"],
     *plugins["datalake-s3"],
     *plugins["dbt"],
-    *e2e_test
+    *plugins["presidio-analyzer"],
+    *e2e_test,
     # Add other plugins as needed for Playwright tests
-}
-
-extended_testing = {
-    "Faker",  # For Sample Data Generation
 }
 
 
@@ -488,13 +499,19 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 setup(
     install_requires=list(base_requirements),
     extras_require={
-        "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
-        "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
+        # FIXME: all-dev-env is a temporary solution to install all dependencies except
+        #   those that might conflict with each other or cause issues in the dev environment
+        #   This covers all development cases where none of the plugins are used
+        "all-dev-env": filter_requirements(
+            {"airflow", "db2", "great-expectations", "pymssql"}
+        ),
+        # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
