@@ -50,6 +50,7 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
@@ -61,7 +62,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "search")
-public class SearchResource {
+public class SearchResource extends ReplicaAwareResource {
   private final SearchRepository searchRepository;
 
   public SearchResource(Authorizer authorizer) {
