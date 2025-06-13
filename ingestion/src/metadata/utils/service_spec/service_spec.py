@@ -2,7 +2,8 @@
 Manifests are used to store class information
 """
 
-from typing import Any, Callable, NewType, Optional, Type, cast
+from abc import ABC, abstractmethod
+from typing import Any, Optional, Type, cast
 
 from pydantic import model_validator
 
@@ -24,9 +25,17 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-SourceLoader = NewType(
-    "SourceLoader", Type[Callable[[ServiceType, str, str], Type[Any]]]
-)
+# SourceLoader = NewType(
+#     "SourceLoader", Type[Callable[[ServiceType, str, str], Type[Any]]]
+# )
+
+
+class SourceLoader(ABC):
+    @abstractmethod
+    def __call__(
+        self, service_type: ServiceType, source_type: str, from_: str
+    ) -> Type[Any]:
+        """Load the service spec for a given service type and source type."""
 
 
 class BaseSpec(BaseModel):
@@ -96,20 +105,22 @@ class BaseSpec(BaseModel):
         return cls.model_validate(source_loader(service_type, source_type, from_))
 
 
-def default_source_loader(
-    service_type: ServiceType,
-    source_type: str,
-    from_: str = "ingestion",
-) -> Type[Any]:
-    """Default implementation for loading service specifications."""
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
-            from_,
-            service_type.name.lower(),
-            source_type.lower(),
-            "service_spec",
+class DefaultSourceLoader(SourceLoader):
+    def __call__(
+        self,
+        service_type: ServiceType,
+        source_type: str,
+        from_: str = "ingestion",
+    ) -> Type[Any]:
+        """Default implementation for loading service specifications."""
+        return import_from_module(
+            "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
+                from_,
+                service_type.name.lower(),
+                source_type.lower(),
+                "service_spec",
+            )
         )
-    )
 
 
 def import_source_class(

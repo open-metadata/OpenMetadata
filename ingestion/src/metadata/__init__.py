@@ -11,13 +11,12 @@
 """
 OpenMetadata package initialization.
 """
-from typing import cast
 
 from metadata.utils.dependency_injector.dependency_injector import DependencyContainer
-from metadata.utils.service_spec.service_spec import SourceLoader, default_source_loader
+from metadata.utils.service_spec.service_spec import DefaultSourceLoader, SourceLoader
 
 # Initialize the dependency container
 container = DependencyContainer()
 
 # Register the source loader
-container.register(SourceLoader, lambda: cast(SourceLoader, default_source_loader))
+container.register(SourceLoader, DefaultSourceLoader)
