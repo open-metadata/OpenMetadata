@@ -251,7 +251,6 @@ export const addAssetsToGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: dryRun,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -269,7 +268,6 @@ export const removeAssetsFromGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: false,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<

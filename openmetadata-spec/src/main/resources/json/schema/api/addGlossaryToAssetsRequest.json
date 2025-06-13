@@ -6,26 +6,10 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.AddGlossaryToAssetsRequest",
   "properties": {
-    "operation": {
-      "description": "Operation to be performed",
-      "type": "string",
-      "enum": [
-        "AddAssets",
-        "AddGlossaryTags"
-      ]
-    },
     "dryRun": {
       "description": "If true, the request will be validated but no changes will be made",
       "type": "boolean",
       "default": true
-    },
-    "glossaryTags": {
-      "description": "Glossary Tags to be added",
-      "type": "array",
-      "items": {
-        "$ref": "../type/tagLabel.json"
-      },
-      "default": null
     },
     "assets": {
       "description": "List of assets to be created against which the glossary needs to be added.",
