@@ -1091,6 +1091,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(4, TagSource.CLASSIFICATION),
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
@@ -1099,6 +1101,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
+        .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
         .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
