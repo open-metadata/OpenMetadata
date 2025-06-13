@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { groupBy, uniqBy } from 'lodash';
+import { groupBy, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,13 +172,17 @@ const ModelTab = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>
+    column: Partial<Column>,
+    field?: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
 
     setPaginatedColumns((prev) =>
       prev.map((col) =>
-        col.fullyQualifiedName === columnFqn ? { ...col, ...response } : col
+        col.fullyQualifiedName === columnFqn
+          ? // Have to omit the field which is being updated to avoid persisted old value
+            { ...omit(col, field ?? ''), ...response }
+          : col
       )
     );
 
@@ -188,9 +192,13 @@ const ModelTab = () => {
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
       if (editColumnTag.fullyQualifiedName) {
-        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
-          tags: selectedTags,
-        });
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
       }
     },
     [updateColumnDetails]
@@ -199,9 +207,13 @@ const ModelTab = () => {
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
       if (editColumnDescription?.fullyQualifiedName) {
-        await updateColumnDetails(editColumnDescription.fullyQualifiedName, {
-          description: updatedDescription,
-        });
+        await updateColumnDetails(
+          editColumnDescription.fullyQualifiedName,
+          {
+            description: updatedDescription,
+          },
+          'description'
+        );
 
         setEditColumnDescription(undefined);
       }
@@ -219,9 +231,13 @@ const ModelTab = () => {
       return; // Early return if id is not provided
     }
 
-    await updateColumnDetails(fullyQualifiedName, {
-      displayName,
-    });
+    await updateColumnDetails(
+      fullyQualifiedName,
+      {
+        displayName,
+      },
+      'displayName'
+    );
   };
 
   const searchProps = useMemo(

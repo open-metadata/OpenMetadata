@@ -205,7 +205,9 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await page.getByTestId('next').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
 
@@ -219,7 +221,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -231,7 +232,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -261,7 +261,9 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await page.getByTestId('next').click();
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
 
@@ -281,7 +283,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -295,7 +296,6 @@ test.describe('Table & Data Model columns table pagination', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });

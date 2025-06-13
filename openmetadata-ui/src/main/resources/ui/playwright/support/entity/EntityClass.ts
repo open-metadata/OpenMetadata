@@ -480,7 +480,7 @@ export class EntityClass {
     // Remove display name
     await removeDisplayNameForEntityChildren(
       page,
-      `Playwright ${columnName} updated`,
+      `Playwright ${columnName} updated again`,
       this.childrenSelectorId ?? '',
       rowSelector
     );

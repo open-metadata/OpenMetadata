@@ -387,14 +387,18 @@ export const updateDescriptionForChildren = async (
   await page.locator(descriptionBox).first().click();
   await page.locator(descriptionBox).first().clear();
   await page.locator(descriptionBox).first().fill(description);
+  const updateRequest = page.waitForResponse((req) =>
+    ['PATCH', 'PUT'].includes(req.request().method())
+  );
   await page.getByTestId('save').click();
+  await updateRequest;
+
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
 
   isEmpty(description)
     ? await expect(
-        page
-          .locator(`[${rowSelector}="${rowId}"]`)
-          .getByTestId('viewer-container')
-      ).toContainText('No description')
+        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+      ).toContainText('No Description')
     : await expect(
         page
           .locator(`[${rowSelector}="${rowId}"]`)
@@ -1068,12 +1072,12 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const putRequest = page.waitForResponse(
-    `/api/v1/columns/name/*?entityType=*`
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
   );
 
   await page.click('[data-testid="save-button"]');
-  await putRequest;
+  await updateRequest;
 
   await expect(
     page
@@ -1099,16 +1103,15 @@ export const removeDisplayNameForEntityChildren = async (
 
   await expect(page.locator('#displayName')).toBeVisible();
 
-  expect(page.locator('#displayName')).toHaveText(displayName);
+  expect(await page.locator('#displayName').inputValue()).toBe(displayName);
 
   await page.locator('#displayName').fill('');
 
-  const putRequest = page.waitForResponse(
-    `/api/v1/columns/name/${rowId}?entityType=*`
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
   );
-
   await page.click('[data-testid="save-button"]');
-  await putRequest;
+  await updateRequest;
 
   await expect(
     page

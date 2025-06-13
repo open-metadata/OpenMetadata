@@ -15,7 +15,7 @@ import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, uniqBy } from 'lodash';
+import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -309,13 +309,17 @@ const SchemaTable = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>
+    column: Partial<Column>,
+    field?: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
 
     setTableColumns((prev) =>
       prev.map((col) =>
-        col.fullyQualifiedName === columnFqn ? { ...col, ...response } : col
+        col.fullyQualifiedName === columnFqn
+          ? // Have to omit the field which is being updated to avoid persisted old value
+            { ...omit(col, field ?? ''), ...response }
+          : col
       )
     );
 
@@ -324,9 +328,13 @@ const SchemaTable = () => {
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      await updateColumnDetails(editColumn.fullyQualifiedName, {
-        description: columnDescription,
-      });
+      await updateColumnDetails(
+        editColumn.fullyQualifiedName,
+        {
+          description: columnDescription,
+        },
+        'description'
+      );
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -338,9 +346,13 @@ const SchemaTable = () => {
     editColumnTag: Column
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
-      await updateColumnDetails(editColumnTag.fullyQualifiedName, {
-        tags: selectedTags,
-      });
+      await updateColumnDetails(
+        editColumnTag.fullyQualifiedName,
+        {
+          tags: selectedTags,
+        },
+        'tags'
+      );
     }
   };
 
@@ -424,14 +436,18 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      await updateColumnDetails(editColumnDisplayName.fullyQualifiedName, {
-        displayName: displayName,
-        ...(isEmpty(constraint)
-          ? {
-              removeConstraint: true,
-            }
-          : { constraint }),
-      });
+      await updateColumnDetails(
+        editColumnDisplayName.fullyQualifiedName,
+        {
+          displayName: displayName,
+          ...(isEmpty(constraint)
+            ? {
+                removeConstraint: true,
+              }
+            : { constraint }),
+        },
+        'displayName'
+      );
 
       setEditColumnDisplayName(undefined);
     } else {
