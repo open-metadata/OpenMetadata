@@ -125,7 +125,11 @@ from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureRe
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
@@ -172,9 +176,9 @@ COLUMNS_PER_TABLE = 50
 NUM_THREADS = 10
 BATCH_SIZE = 10
 COLUMNS = [
-                Column(name=f"column_{i}", dataType=DataType.STRING)
-                for i in range(COLUMNS_PER_TABLE)
-            ]
+    Column(name=f"column_{i}", dataType=DataType.STRING)
+    for i in range(COLUMNS_PER_TABLE)
+]
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
@@ -1917,9 +1921,7 @@ class SampleDataSource(
             endpoint_request = CreateAPIEndpointRequest(**endpoint)
             yield Either(right=endpoint_request)
 
-    def create_database_service(
-        self, service_idx: int
-    ) -> None:
+    def create_database_service(self, service_idx: int) -> None:
         """Create a database service and its databases.
 
         Args:
@@ -1940,78 +1942,75 @@ class SampleDataSource(
             )
 
             # Create service with minimal required fields
-            yield Either(right=CreateDatabaseServiceRequest(
-                name=service_name,
-                serviceType=DatabaseServiceType.Snowflake,
-                connection=connection,
-            ))
+            yield Either(
+                right=CreateDatabaseServiceRequest(
+                    name=service_name,
+                    serviceType=DatabaseServiceType.Snowflake,
+                    connection=connection,
+                )
+            )
 
             logger.info(f"Created database service {service_name} ({NUM_SERVICES})")
             tasks = []
             # Create databases sequentially
             for db_idx in range(DATABASES_PER_SERVICE):
-                yield from self.create_database( service_name, db_idx)
-
-            
+                yield from self.create_database(service_name, db_idx)
 
         except Exception as e:
             logger.error(f"Failed to create database service {service_name}: {e}")
 
-    def process_service_batch(
-        self
-    ) -> None:
+    def process_service_batch(self) -> None:
         """Process a batch of services.
 
         Args:
             start_idx: Start index of service batch
             end_idx: End index of service batch
         """
-        
+
         services_per_thread = NUM_SERVICES // NUM_THREADS
         # Create tasks for each thread
         for service_idx in range(NUM_SERVICES):
-            yield from self.create_database_service( service_idx)
-            
+            yield from self.create_database_service(service_idx)
+
         # create table and column lineage from the snowflake sample data to Mysql Table `Tags`
         yield from self.create_table_lineage()
-        
-        
+
     def create_table_lineage(self) -> None:
         """Create table lineage from the snowflake sample data to Mysql Table `Tags`"""
         source_table_list = list(
             self.metadata.list_entities(
-                entity=Table, limit=5, params={"database": "openmetadata-0.openmetadata-db-0"}
+                entity=Table,
+                limit=5,
+                params={"database": "openmetadata-0.openmetadata-db-0"},
             ).entities
         )
-        destination_table = self.metadata.get_by_name(Table, "mysql_sample.default.posts_db.Tags")
-        
+        destination_table = self.metadata.get_by_name(
+            Table, "mysql_sample.default.posts_db.Tags"
+        )
+
         for source_table in source_table_list:
-            yield Either(right=AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=source_table.id, type="table"),
-                    toEntity=EntityReference(
-                        id=destination_table.id, type="table"
-                    ),
-                    lineageDetails=LineageDetails(
-                        columnsLineage=[
-                            ColumnLineage(
-                                fromColumns=[
-                                    from_column.fullyQualifiedName.root
-                                    for from_column in source_table.columns
-                                ],
-                                toColumn=to_column.fullyQualifiedName.root,
-                            )
-                            for to_column in destination_table.columns
-                        ]
-                    ),
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=source_table.id, type="table"),
+                        toEntity=EntityReference(id=destination_table.id, type="table"),
+                        lineageDetails=LineageDetails(
+                            columnsLineage=[
+                                ColumnLineage(
+                                    fromColumns=[
+                                        from_column.fullyQualifiedName.root
+                                        for from_column in source_table.columns
+                                    ],
+                                    toColumn=to_column.fullyQualifiedName.root,
+                                )
+                                for to_column in destination_table.columns
+                            ]
+                        ),
+                    )
                 )
             )
-        )
-        
-            
-    def create_database(
-        self, service_name: str, db_idx: int
-    ) -> None:
+
+    def create_database(self, service_name: str, db_idx: int) -> None:
         """Create a database.
 
         Args:
@@ -2022,20 +2021,20 @@ class SampleDataSource(
 
         try:
             # Create with minimal required fields
-            db_request = Either(right=CreateDatabaseRequest(name=db_name, service=service_name))
+            db_request = Either(
+                right=CreateDatabaseRequest(name=db_name, service=service_name)
+            )
             yield db_request
             database_fqn = f"{service_name}.{db_name}"
 
             # Create schemas sequentially to avoid overwhelming the API
             for schema_idx in range(SCHEMAS_PER_DATABASE):
-                yield from self.create_schema( database_fqn, schema_idx)
+                yield from self.create_schema(database_fqn, schema_idx)
 
         except Exception as e:
             logger.error(f"Failed to create database {db_name}: {e}")
 
-    def create_schema(
-        self, database_fqn: str, schema_idx: int
-    ) -> None:
+    def create_schema(self, database_fqn: str, schema_idx: int) -> None:
         """Create a schema.
 
         Args:
@@ -2046,20 +2045,20 @@ class SampleDataSource(
 
         try:
             # Create with minimal required fields
-            schema_request = Either(right=CreateDatabaseSchemaRequest(
-                name=schema_name, database=database_fqn
-            ))
+            schema_request = Either(
+                right=CreateDatabaseSchemaRequest(
+                    name=schema_name, database=database_fqn
+                )
+            )
             yield schema_request
             schema_name = f"{database_fqn}.{schema_name}"
             # Create tables sequentially to avoid overwhelming the API
-            yield from self.create_table( schema_name)
+            yield from self.create_table(schema_name)
 
         except Exception as e:
             logger.error(f"Failed to create schema {schema_name}: {e}")
 
-    def create_table(
-        self, schema_fqn: str
-    ) -> None:
+    def create_table(self, schema_fqn: str) -> None:
         """Create a batch of tables for a schema.
 
         Args:
@@ -2071,9 +2070,11 @@ class SampleDataSource(
 
             # Create with minimal required fields
             try:
-                table_request = Either(right=CreateTableRequest(
-                    name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
-                ))
+                table_request = Either(
+                    right=CreateTableRequest(
+                        name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
+                    )
+                )
                 yield table_request
             except Exception as e:
                 logger.warning(f"Error creating table request: {e}")
