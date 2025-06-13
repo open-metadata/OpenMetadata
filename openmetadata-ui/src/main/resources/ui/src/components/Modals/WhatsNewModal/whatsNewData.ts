@@ -1862,6 +1862,8 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Update Reset Link Template.
 - Unable to connect to Opensearch using AWS Credentials.
 - Tag search based on displayName.
+- Fix Hybrid Websocket Timeout. ${CollateIconWithLinkMD}
+- Fix automator for empty description entities & children. ${CollateIconWithLinkMD}
 `,
     },
   },
