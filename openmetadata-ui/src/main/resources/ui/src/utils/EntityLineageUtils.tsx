@@ -278,6 +278,9 @@ export const getELKLayoutedElements = async (
       return {
         ...node,
         position: { x: layoutedNode?.x ?? 0, y: layoutedNode?.y ?? 0 },
+        // layoutedNode contains the total height of the node including the children height
+        // Needed to calculate the bounds height of the nodes in the export
+        height: layoutedNode?.height ?? node.height,
         hidden: false,
       };
     });
