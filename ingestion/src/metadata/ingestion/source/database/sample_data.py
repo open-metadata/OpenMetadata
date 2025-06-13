@@ -2000,7 +2000,7 @@ class SampleDataSource(
                                     fromColumns=[
                                         from_column.fullyQualifiedName.root
                                         for from_column in source_table.columns
-                                    ],
+                                    ][:5],
                                     toColumn=to_column.fullyQualifiedName.root,
                                 )
                                 for to_column in destination_table.columns
