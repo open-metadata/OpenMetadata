@@ -113,6 +113,9 @@ def get_test_connection_fn(connection: BaseModel) -> Callable:
     )
 
 
+# ------------------------------------------------------------
+
+
 def get_connection(connection: BaseModel) -> Any:
     """
     Main method to prepare a connection from
