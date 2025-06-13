@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
@@ -534,8 +535,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       // After successful write, create a new StepStats for the current batch
       StepStats currentEntityStats = new StepStats();
-      currentEntityStats.setSuccessRecords(entities.getData().size());
-      currentEntityStats.setFailedRecords(entities.getErrors().size());
+      currentEntityStats.setSuccessRecords(listOrEmpty(entities.getData()).size());
+      currentEntityStats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
       // Do NOT set Total Records here
 
       // Update statistics in a thread-safe manner

@@ -39,6 +39,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -51,7 +52,7 @@ import org.quartz.JobExecutionContext;
 
 @ExtendWith(MockitoExtension.class)
 @Slf4j
-public class SearchIndexAppTest {
+public class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
   @Mock private CollectionDAO collectionDAO;
   @Mock private SearchRepository searchRepository;
