@@ -19,6 +19,3 @@ CREATE TABLE IF NOT EXISTS data_contract_entity (
 -- Create indexes
 CREATE INDEX IF NOT EXISTS data_contract_entity_name_index ON data_contract_entity (name);
 CREATE INDEX IF NOT EXISTS index_data_contract_entity_deleted ON data_contract_entity (fqnHash, deleted);
-
--- remove old reset link email template
-DELETE from doc_Store where name = 'reset-link' and entityType = 'EmailTemplate';
