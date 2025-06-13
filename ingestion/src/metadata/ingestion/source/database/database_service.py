@@ -605,7 +605,11 @@ class DatabaseServiceSource(
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        # TODO: Remove this once we migrate all connectors to use the new test connection function
+        try:
+            result = test_connection_fn(self.metadata)
+        except TypeError:
+            result = test_connection_fn(
+                self.metadata, self.connection_obj, self.service_connection
+            )
         raise_test_connection_exception(result)
