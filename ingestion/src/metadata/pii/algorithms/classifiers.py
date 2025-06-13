@@ -12,8 +12,10 @@
 Classifier for PII detection and sensitivity tagging.
 """
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import (
     Any,
+    DefaultDict,
     Dict,
     Generic,
     Hashable,
@@ -45,12 +47,12 @@ from metadata.pii.algorithms.presidio_utils import (
     build_analyzer_engine,
     set_presidio_logger_level,
 )
-from metadata.pii.algorithms.tags import PIITag
+from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 
 T = TypeVar("T", bound=Hashable)
 
 
-class ColumnLabeler(ABC, Generic[T]):
+class ColumnClassifier(ABC, Generic[T]):
     """
     Base class for column classifiers.
     This class defines the interface for classifiers that predict the class
@@ -75,7 +77,7 @@ class ColumnLabeler(ABC, Generic[T]):
 
 
 @final
-class HeuristicPIILabeler(ColumnLabeler[PIITag]):
+class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     """
     Heuristic PII Column Classifier
     """
@@ -138,12 +140,45 @@ class HeuristicPIILabeler(ColumnLabeler[PIITag]):
             if tag in column_name_matches:
                 final_score += self._column_name_contribution
             # Apply the score cutoff
-            if final_score < self._score_cutoff:
-                continue
-            final_results[tag] = final_score
-
-        # Make sure all scores are capped at 1.0
-        for tag in final_results:
-            final_results[tag] = min(final_results[tag], 1.0)
+            if final_score >= self._score_cutoff:
+                final_results[tag] = final_score
 
         return final_results
+
+
+class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
+    """
+    Implements a classifier for PII sensitivity tags based on a given
+    PII column classifier. If no classifier is provided, it defaults to
+    using the HeuristicPIIColumnClassifier.
+    """
+
+    def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):
+        self.classifier: ColumnClassifier[PIITag] = (
+            classifier or HeuristicPIIClassifier()
+        )
+
+    def predict_scores(
+        self,
+        sample_data: Sequence[Any],
+        column_name: Optional[str] = None,
+        column_data_type: Optional[DataType] = None,
+    ) -> Mapping[PIISensitivityTag, float]:
+        pii_tags = self.classifier.predict_scores(
+            sample_data, column_name, column_data_type
+        )
+        results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)
+        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)
+
+        for tag, score in pii_tags.items():
+            # Convert PIITag to PIISensitivityTag
+            pii_sensitivity = tag.sensitivity()
+            results[pii_sensitivity] += score
+            counts[pii_sensitivity] += 1
+
+        # Normalize the scores
+        for tag in results:
+            if counts[tag] > 0:
+                results[tag] /= counts[tag]
+
+        return results
