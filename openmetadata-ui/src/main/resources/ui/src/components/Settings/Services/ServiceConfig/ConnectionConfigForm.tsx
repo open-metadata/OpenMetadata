@@ -54,6 +54,8 @@ const ConnectionConfigForm = ({
   onSave,
   onFocus,
   disableTestConnection = false,
+  hasTestedConnection,
+  onTestConnection,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
@@ -157,6 +159,7 @@ const ConnectionConfigForm = ({
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}
+        hasTestedConnection={hasTestedConnection}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}
@@ -196,6 +199,7 @@ const ConnectionConfigForm = ({
               isTestingDisabled={disableTestConnection}
               serviceCategory={serviceCategory}
               serviceName={data?.name}
+              onTestConnection={onTestConnection}
               onValidateFormRequiredFields={handleRequiredFieldsValidation}
             />
           )}

@@ -81,7 +81,7 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
-
+  const [hasTestedConnection, setHasTestedConnection] = useState(false);
   const slashedBreadcrumb = getAddServiceEntityBreadcrumb(serviceCategory);
 
   const handleServiceTypeClick = (type: string) => {
@@ -274,6 +274,7 @@ const AddServicePage = () => {
               <ConnectionConfigForm
                 cancelText={t('label.back')}
                 data={serviceConfig as ServicesType}
+                hasTestedConnection={hasTestedConnection}
                 okText={t('label.next')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}
@@ -283,6 +284,7 @@ const AddServicePage = () => {
                 onSave={async (e) => {
                   e.formData && handleConfigUpdate(e.formData);
                 }}
+                onTestConnection={() => setHasTestedConnection(true)}
               />
             )}
 
