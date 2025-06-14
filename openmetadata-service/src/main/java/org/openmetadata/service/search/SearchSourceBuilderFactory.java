@@ -55,10 +55,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
           "classification.name",
           "classification.displayName",
           "glossary.name",
-          "glossary.displayName",
-          "name.keyword",
-          "displayName.keyword",
-          "fullyQualifiedName.keyword");
+          "glossary.displayName");
 
   // Keyword fields added to fuzzy because Lucene needs keyword fields for wildcard/prefix queries
   // in query_string
@@ -237,14 +234,16 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   default boolean isFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
     return FUZZY_FIELDS.contains(key);
   }
 
   default boolean isNonFuzzyField(String key) {
-    if (!FUZZY_FIELDS.contains(key)) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
       return true;
     }
-
-    return FUZZY_AND_NON_FUZZY_FIELDS.contains(key);
+    return !FUZZY_FIELDS.contains(key);
   }
 }
