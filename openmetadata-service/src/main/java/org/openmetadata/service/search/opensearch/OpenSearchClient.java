@@ -414,7 +414,25 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.searchAfter(request.getSearchAfter().toArray());
     }
 
+    /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
+      BoolQueryBuilder deletedOptions =
+          QueryBuilders.boolQuery()
+              .should(
+                  QueryBuilders.boolQuery()
+                      .must(QueryBuilders.existsQuery("deleted"))
+                      .must(QueryBuilders.termQuery("deleted", request.getDeleted())))
+              .should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("deleted")));
+      BoolQueryBuilder combined =
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(deletedOptions);
+
+      searchSourceBuilder.query(combined);
+    } else if (request
             .getIndex()
             .equalsIgnoreCase(
                 Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
@@ -445,6 +463,11 @@ public class OpenSearchClient implements SearchClient {
                     .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
                     .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
+    } else {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
     }
 
     if (!nullOrEmpty(request.getSortFieldParam())
