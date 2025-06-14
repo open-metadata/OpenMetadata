@@ -29,41 +29,43 @@ const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
 const ownerFile = 'playwright/.auth/owner.json';
 
+const userUUID = uuid();
+
 // Create and setup all users
 const dataConsumer = new UserClass({
   firstName: 'PW ',
-  lastName: 'DataConsumer',
-  email: `pw-data-consumer-${uuid()}@gmail.com`,
+  lastName: `DataConsumer ${userUUID}`,
+  email: `pw-data-consumer-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 const dataSteward = new UserClass({
   firstName: 'PW ',
-  lastName: 'DataSteward',
-  email: `pw-data-steward-${uuid()}@gmail.com`,
+  lastName: `DataSteward ${userUUID}`,
+  email: `pw-data-steward-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 const editDescriptionUser = new UserClass({
   firstName: 'PW ',
-  lastName: 'EditDescription',
-  email: `pw-edit-description-${uuid()}@gmail.com`,
+  lastName: `EditDescription ${userUUID}`,
+  email: `pw-edit-description-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 const editTagsUser = new UserClass({
   firstName: 'PW ',
-  lastName: 'EditTags',
-  email: `pw-edit-tags-${uuid()}@gmail.com`,
+  lastName: `EditTags ${userUUID}`,
+  email: `pw-edit-tags-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 const editGlossaryTermUser = new UserClass({
   firstName: 'PW ',
-  lastName: 'EditGlossaryTerm',
-  email: `pw-edit-glossary-term-${uuid()}@gmail.com`,
+  lastName: `EditGlossaryTerm ${userUUID}`,
+  email: `pw-edit-glossary-term-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 const ownerUser = new UserClass({
   firstName: 'PW ',
-  lastName: 'Owner',
-  email: `pw-owner-${uuid()}@gmail.com`,
+  lastName: `Owner ${userUUID}`,
+  email: `pw-owner-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
 

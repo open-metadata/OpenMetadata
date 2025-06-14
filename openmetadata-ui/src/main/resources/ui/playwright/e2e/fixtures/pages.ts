@@ -14,7 +14,7 @@ import { Page, test as base } from '@playwright/test';
 
 // Define the type for our custom fixtures
 export type CustomFixtures = {
-  adminPage: Page;
+  page: Page;
   dataConsumerPage: Page;
   dataStewardPage: Page;
   editDescriptionPage: Page;
@@ -25,15 +25,7 @@ export type CustomFixtures = {
 
 // Create a new test object with our custom fixtures
 export const test = base.extend<CustomFixtures>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage({
-      storageState: 'playwright/.auth/admin.json',
-    });
-
-    await use(adminPage);
-    await adminPage.close();
-  },
-  // Keeping page to avoid any changes to existing tests
+  // Admin page as default page value
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage({
       storageState: 'playwright/.auth/admin.json',

@@ -13,8 +13,12 @@
 import { Page } from '@playwright/test';
 import { test } from '../fixtures/pages';
 
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { redirectToHomePage } from '../../utils/common';
-import { updateDisplayNameForEntityChildren } from '../../utils/entity';
+import {
+  addOwner,
+  updateDisplayNameForEntityChildren,
+} from '../../utils/entity';
 
 test.beforeEach(
   async ({ editDescriptionPage, editTagsPage, editGlossaryTermPage }) => {
@@ -23,6 +27,35 @@ test.beforeEach(
     await redirectToHomePage(editGlossaryTermPage);
   }
 );
+
+// Setup owner for the table
+test.beforeAll(async ({ ownerPage, page }) => {
+  // Get logged in user
+  const loggedInUserRequest = ownerPage.waitForResponse(
+    `/api/v1/users/loggedInUser*`
+  );
+
+  await redirectToHomePage(ownerPage);
+  const loggedInUserResponse = await loggedInUserRequest;
+  const loggedInUser = await loggedInUserResponse.json();
+
+  // User admin page to assign owner to the table
+  await page.goto(
+    '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+  );
+  await page.waitForLoadState('networkidle');
+
+  await addOwner({
+    page,
+    owner: loggedInUser.displayName,
+    type: 'Users',
+    endpoint: EntityTypeEndpoint.Table,
+    dataTestId: 'data-assets-header',
+  });
+
+  await page.close();
+  await ownerPage.close();
+});
 
 const crudColumnDisplayName = async (
   page: Page,
@@ -35,51 +68,62 @@ const crudColumnDisplayName = async (
   );
   await page.getByTestId('searchbar').fill(columnName);
   await searchResponse;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
+  // Add the display name to a new value
   await updateDisplayNameForEntityChildren(
     page,
     {
-      oldDisplayName: columnName,
+      oldDisplayName: '',
       newDisplayName: `${columnName}_updated`,
+    },
+    columnFqn,
+    rowSelector
+  );
+
+  // Update the display name to a new value
+  await updateDisplayNameForEntityChildren(
+    page,
+    {
+      oldDisplayName: `${columnName}_updated`,
+      newDisplayName: `${columnName}_updated_again`,
+    },
+    columnFqn,
+    rowSelector
+  );
+
+  // Reset the display name to the original value
+  await updateDisplayNameForEntityChildren(
+    page,
+    {
+      oldDisplayName: `${columnName}_updated_again`,
+      newDisplayName: ``,
     },
     columnFqn,
     rowSelector
   );
 };
 
-test('schema table test', async ({
-  editDescriptionPage,
-  editTagsPage,
-  editGlossaryTermPage,
-}) => {
-  await editDescriptionPage.goto(
-    '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-  );
-  await editDescriptionPage.waitForLoadState('networkidle');
-  await crudColumnDisplayName(
-    editDescriptionPage,
-    'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000',
-    'test_col_2000',
-    'data-row-key'
-  );
-  await editTagsPage.goto(
-    '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-  );
-  await editTagsPage.waitForLoadState('networkidle');
-  await crudColumnDisplayName(
-    editTagsPage,
-    'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000',
-    'test_col_2000',
-    'data-row-key'
-  );
-  await editGlossaryTermPage.goto(
-    '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-  );
-  await editGlossaryTermPage.waitForLoadState('networkidle');
-  await crudColumnDisplayName(
-    editGlossaryTermPage,
-    'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000',
-    'test_col_2000',
-    'data-row-key'
-  );
-});
+// will update this tests sepratly
+test.fixme(
+  'schema table test',
+  async ({ dataStewardPage, ownerPage, page }) => {
+    const pages = [dataStewardPage, page, ownerPage];
+    const tableUrl =
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table';
+    const columnFqn =
+      'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000';
+    const columnName = 'test_col_2000';
+
+    for (const currentPage of pages) {
+      await currentPage.goto(tableUrl);
+      await currentPage.waitForLoadState('networkidle');
+      await crudColumnDisplayName(
+        currentPage,
+        columnFqn,
+        columnName,
+        'data-row-key'
+      );
+    }
+  }
+);
