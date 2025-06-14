@@ -345,6 +345,36 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
+export const assignCertification = async (
+  page: Page,
+  certification: string,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId(`radio-btn-${certification}`).click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification
+  );
+};
+
+export const removeCertification = async (page: Page, endpoint: string) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId('clear-certification').click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    'No Certification'
+  );
+};
+
 export const updateDescription = async (
   page: Page,
   description: string,

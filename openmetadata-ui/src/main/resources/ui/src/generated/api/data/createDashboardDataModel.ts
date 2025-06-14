@@ -600,6 +600,7 @@ export enum DataModelType {
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
+    MicroStrategyDataset = "MicroStrategyDataset",
     PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",

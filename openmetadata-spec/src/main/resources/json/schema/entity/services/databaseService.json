@@ -395,6 +395,9 @@
       },
       "default": []
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
