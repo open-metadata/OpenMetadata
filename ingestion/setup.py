@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -377,7 +377,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -396,7 +396,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
