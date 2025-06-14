@@ -186,14 +186,14 @@ public final class SearchUtils {
       return query;
     }
 
-    // Define the special characters that need to be escaped for Elasticsearch/OpenSearch
-    // query_string query
+    // Only escape characters that are problematic and not part of valid Lucene syntax
+    // We exclude '*' and ':' as they are commonly used for wildcards and field queries
     // Reference:
     // https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#_reserved_characters
     String[] specialChars = {
       "\\", // Must be first to avoid double escaping
-      "+", "-", "=", "&&", "||", ">", "<", "!", "(", ")", "{", "}", "[", "]", "^", "\"", "~", "*",
-      "?", ":", "/", "|"
+      "+", "-", "=", "&&", "||", ">", "<", "!", "(", ")", "{", "}", "[", "]", "^", "\"", "~", "?",
+      "/", "|"
     };
 
     String escapedQuery = query;
