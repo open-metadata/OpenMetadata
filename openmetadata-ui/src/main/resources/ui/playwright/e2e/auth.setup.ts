@@ -68,7 +68,7 @@ const ownerUser = new UserClass({
 });
 
 setup('authenticate all users', async ({ browser }) => {
-  setup.describe.configure({ timeout: 120 * 1000 });
+  setup.setTimeout(120 * 1000);
 
   let adminPage: Page;
   let dataConsumerPage: Page;
