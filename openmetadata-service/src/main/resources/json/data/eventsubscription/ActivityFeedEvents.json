@@ -10,7 +10,7 @@
       {
         "name": "matchAnyEventType",
         "effect": "include",
-        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !isBot() && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
         "prefixCondition": "AND"
       },
       {
@@ -26,9 +26,9 @@
         "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
       },
       {
-        "name": "matchUpdatedBy",
+        "name": "isBot",
         "effect": "exclude",
-        "condition": "matchUpdatedBy({'ingestion-bot'})",
+        "condition": "isBot()",
         "prefixCondition": "AND"
       }
     ]
@@ -107,17 +107,9 @@
         ]
       },
       {
-        "name": "filterByUpdaterName",
+        "name": "filterByUpdaterIsBot",
         "effect" : "exclude",
-        "prefixCondition": "AND",
-        "arguments": [
-          {
-            "name": "updateByUserList",
-            "input": [
-              "ingestion-bot"
-            ]
-          }
-        ]
+        "prefixCondition": "AND"
       }
     ]
   },
