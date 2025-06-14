@@ -42,6 +42,8 @@ public class SearchUtil {
           Entity.GLOSSARY_TERM,
           "glossary_search_index",
           Entity.GLOSSARY,
+          "metric_search_index",
+          Entity.METRIC,
           "tag_search_index",
           Entity.TAG,
           "search_entity_search_index",
@@ -108,7 +110,8 @@ public class SearchUtil {
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
       case "team_search_index", Entity.TEAM -> Entity.TEAM;
-      case "user_Search_index", Entity.USER -> Entity.USER;
+      case "user_search_index", Entity.USER -> Entity.USER;
+      case "metric_search_index", Entity.METRIC -> Entity.METRIC;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
     };
