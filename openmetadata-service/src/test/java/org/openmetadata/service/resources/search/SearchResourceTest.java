@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
@@ -201,7 +202,8 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
   @Test
   public void testSpecialCharacterSearchQueries() throws IOException, InterruptedException {
     // Test characters that are safe for URL parameters first
-    String[] urlSafeSpecialCharacters = {"!", "(", ")", "^", "~", "*", ":"};
+    // Note: We don't escape '*' and ':' as they're part of valid Lucene syntax
+    String[] urlSafeSpecialCharacters = {"!", "(", ")", "^", "~"};
 
     for (String specialChar : urlSafeSpecialCharacters) {
       String searchQueryWithSpecialChar = "table" + specialChar + "test";
@@ -287,7 +289,8 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   public void testSpecialCharacterSearchInTopicQueries() throws IOException, InterruptedException {
-    String[] specialCharacters = {"&", "!", "(", ")", "^", "~", "*", ":"};
+    // Note: '*' and ':' are not escaped as they're part of valid Lucene syntax
+    String[] specialCharacters = {"&", "!", "(", ")", "^", "~"};
 
     for (String specialChar : specialCharacters) {
       String searchQueryWithSpecialChar = "topic" + specialChar + "search";
@@ -470,6 +473,120 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
           assertTrue(response2.getStatus() == 200, "Search for ')' should succeed");
         },
         "Search should handle individual parentheses correctly");
+  }
+
+  @Test
+  public void testValidLuceneSyntaxIsNotEscaped() throws IOException, InterruptedException {
+    // Test that valid Lucene syntax with * and : works correctly
+    String[] luceneQueries = {
+      "*", // Match all wildcard
+      "*test*", // Wildcard search
+      "name:*", // Field with wildcard
+      "displayName:test*", // Field with wildcard suffix
+      "name:aaron AND isAdmin:false", // Field queries with boolean
+      "email.keyword:test@example.com" // Field query with special chars
+    };
+
+    for (String luceneQuery : luceneQueries) {
+      assertDoesNotThrow(
+          () -> {
+            Response response = searchWithQuery(luceneQuery, "table_search_index");
+            assertTrue(
+                response.getStatus() == 200, "Lucene query '" + luceneQuery + "' should succeed");
+
+            String responseBody = (String) response.getEntity();
+            assertNotNull(responseBody);
+          },
+          "Valid Lucene syntax should work without escaping: " + luceneQuery);
+    }
+  }
+
+  @Test
+  public void testUserSearchWithFieldQueries() throws IOException, InterruptedException {
+    // Test the specific use case from the feedback - searching users with field queries
+    String[] userSearchQueries = {
+      "*aaron* AND isAdmin:false AND isBot:false", // Wildcard with field queries
+      "email.keyword:random.user.es@getcollate.io", // Email field query
+      "name:john OR name:jane", // OR query with fields
+      "teams.keyword:DataEngineering", // Nested field query
+      "isAdmin:true", // Boolean field query
+      "*@example.com AND isBot:false" // Wildcard email with field query
+    };
+
+    for (String userQuery : userSearchQueries) {
+      assertDoesNotThrow(
+          () -> {
+            // Test on user index
+            Response response = searchWithQuery(userQuery, "user_search_index");
+            assertTrue(
+                response.getStatus() == 200,
+                "User search query '" + userQuery + "' should succeed");
+
+            String responseBody = (String) response.getEntity();
+            assertNotNull(responseBody);
+
+            // Verify the query doesn't have escaped colons (field queries should work)
+            assertFalse(
+                responseBody.contains("\\:"), "Colon in field queries should not be escaped");
+          },
+          "User field queries should work correctly: " + userQuery);
+    }
+  }
+
+  @Test
+  public void testProblematicCharactersAreEscaped() throws IOException, InterruptedException {
+    // Test that characters that cause Elasticsearch exceptions are properly escaped
+    // Some characters need URL encoding to avoid Jersey template parsing issues
+    String[][] problematicCharsWithEncodingNeeded = {
+      {"!", "false"},
+      {"(", "false"},
+      {")", "false"},
+      {"^", "false"},
+      {"~", "false"},
+      {"\"", "true"},
+      {"\\", "true"},
+      {"/", "true"},
+      {"+", "false"},
+      {"-", "false"},
+      {"=", "false"},
+      {"&&", "true"},
+      {"||", "false"},
+      {">", "false"},
+      {"<", "false"},
+      {"{", "true"},
+      {"}", "true"},
+      {"[", "true"},
+      {"]", "true"},
+      {"?", "false"},
+      {"|", "false"}
+    };
+
+    for (String[] charInfo : problematicCharsWithEncodingNeeded) {
+      String problemChar = charInfo[0];
+      boolean needsEncoding = Boolean.parseBoolean(charInfo[1]);
+      String searchQueryWithProblematicChar = "test" + problemChar + "search";
+
+      assertDoesNotThrow(
+          () -> {
+            Response response;
+            if (needsEncoding) {
+              response =
+                  searchWithQueryEncoded(searchQueryWithProblematicChar, "table_search_index");
+            } else {
+              response = searchWithQuery(searchQueryWithProblematicChar, "table_search_index");
+            }
+            assertTrue(
+                response.getStatus() == 200,
+                "Search query with problematic character '"
+                    + problemChar
+                    + "' should succeed after escaping");
+
+            String responseBody = (String) response.getEntity();
+            assertNotNull(responseBody);
+          },
+          "Problematic characters should be escaped and not throw Elasticsearch exceptions: "
+              + problemChar);
+    }
   }
 
   @Test
