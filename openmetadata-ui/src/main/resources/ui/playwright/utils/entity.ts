@@ -43,10 +43,10 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -375,6 +375,7 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
+  tagFqn?: string,
   parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
@@ -388,7 +389,7 @@ export const assignTag = async (
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
+  await page.getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`).click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -405,7 +406,7 @@ export const assignTag = async (
     page
       .getByTestId(parentId)
       .getByTestId('tags-container')
-      .getByTestId(`tag-${tag}`)
+      .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
   ).toBeVisible();
 };
 
@@ -1281,7 +1282,27 @@ export const softDeleteEntity = async (
   await page.reload();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  // Retry mechanism for checking deleted badge
+  let deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (attempts < maxAttempts) {
+    const isVisible = await deletedBadge.isVisible();
+    if (isVisible) {
+      break;
+    }
+
+    attempts++;
+    if (attempts < maxAttempts) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      deletedBadge = page.locator('[data-testid="deleted-badge"]');
+    }
+  }
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1346,11 +1367,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
-  await toastNotification(
-    page,
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
     /(deleted successfully!|Delete operation initiated)/,
-    BIG_ENTITY_DELETE_TIMEOUT
+    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
   );
 };
 

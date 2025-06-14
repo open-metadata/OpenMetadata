@@ -31,10 +31,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libkrb5-dev build-essential
 
-      - name: Setup JDK 17
+      - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Generate Python Data Models

@@ -55,7 +55,6 @@ import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
-import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
@@ -93,11 +92,6 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
-import es.org.elasticsearch.search.suggest.Suggest;
-import es.org.elasticsearch.search.suggest.SuggestBuilder;
-import es.org.elasticsearch.search.suggest.SuggestBuilders;
-import es.org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
@@ -1466,43 +1460,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response suggest(SearchRequest request) throws IOException {
-    String fieldName = request.getFieldName();
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder =
-        SuggestBuilders.completionSuggestion(fieldName)
-            .prefix(request.getQuery(), Fuzziness.AUTO)
-            .size(request.getSize())
-            .skipDuplicates(true);
-    if (fieldName.equalsIgnoreCase("suggest")) {
-      suggestionBuilder.contexts(
-          Collections.singletonMap(
-              "deleted",
-              Collections.singletonList(
-                  CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.getDeleted()))
-                      .build())));
-    }
-    SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder
-        .suggest(suggestBuilder)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS))
-        .fetchSource(
-            new FetchSourceContext(
-                request.getFetchSource(),
-                request.getIncludeSourceFields().toArray(String[]::new),
-                new String[] {}));
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-            .source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    Suggest suggest = searchResponse.getSuggest();
-    return Response.status(OK).entity(suggest.toString()).build();
-  }
-
-  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
@@ -2648,6 +2605,48 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
       throw new IOException(
           "Failed to remove ILM policy from component template: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
     }
   }
 }
