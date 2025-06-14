@@ -55,3 +55,10 @@ export const MOCK_USER_DATA = {
     total: 1,
   },
 };
+
+export const MOCK_EMPTY_USER_DATA = {
+  data: [],
+  paging: {
+    total: 0,
+  },
+};

@@ -348,34 +348,18 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <PageLayoutV1 pageTitle={t('label.user-plural')}>
-        <Row>
-          <Col className="w-full d-flex justify-end">
-            <span>
-              <Switch
-                checked={isDeleted}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedUserChange}
-              />
-              <span className="m-l-xs">{t('label.deleted')}</span>
-            </span>
-          </Col>
-          <Col className="mt-24" span={24}>
-            <ErrorPlaceHolder
-              className="border-none"
-              heading={t('label.user')}
-              permission={isAdminUser}
-              permissionValue={t('label.create-entity', {
-                entity: t('label.user'),
-              })}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={handleAddNewUser}
-            />
-          </Col>
-        </Row>
-      </PageLayoutV1>
+      <ErrorPlaceHolder
+        className="border-none m-y-md"
+        heading={t('label.user')}
+        permission={isAdminUser}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.user'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddNewUser}
+      />
     ),
-    [isAdminUser, isDeleted]
+    [isAdminUser]
   );
 
   const emptyPlaceHolderText = useMemo(() => {
@@ -430,10 +414,6 @@ const UserListPageV1 = () => {
   ) {
     // This component is not accessible for the given tab
     return <Redirect to={ROUTES.NOT_FOUND} />;
-  }
-
-  if (isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue) {
-    return errorPlaceHolder;
   }
 
   return (
@@ -495,11 +475,17 @@ const UserListPageV1 = () => {
             }
             loading={isDataLoading}
             locale={{
-              emptyText: (
-                <FilterTablePlaceHolder
-                  placeholderText={emptyPlaceHolderText}
-                />
-              ),
+              emptyText:
+                isEmpty(userList) &&
+                !isDeleted &&
+                !isDataLoading &&
+                !searchValue ? (
+                  errorPlaceHolder
+                ) : (
+                  <FilterTablePlaceHolder
+                    placeholderText={emptyPlaceHolderText}
+                  />
+                ),
             }}
             pagination={false}
             rowKey="id"
