@@ -130,14 +130,14 @@ public class PIIMasker {
     return searchIndex;
   }
 
-  public static Table getTableProfile(Table table) {
-    for (Column column : table.getColumns()) {
+  public static List<Column> getTableProfile(List<Column> columns) {
+    for (Column column : columns) {
       if (hasPiiSensitiveTag(column)) {
         column.setProfile(null);
         column.setName(flagMaskedName(column.getName()));
       }
     }
-    return table;
+    return columns;
   }
 
   public static List<ColumnProfile> getColumnProfile(

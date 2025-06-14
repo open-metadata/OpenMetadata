@@ -41,6 +41,7 @@ import {
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeDisplayNameForEntityChildren,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -51,7 +52,9 @@ import {
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDescriptionForChildren,
   updateDisplayNameForEntity,
+  updateDisplayNameForEntityChildren,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
@@ -232,6 +235,37 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
+  async descriptionUpdateChildren(
+    page: Page,
+    rowId: string,
+    rowSelector: string
+  ) {
+    const description =
+      // eslint-disable-next-line max-len
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
+
+    // Add description
+    await updateDescriptionForChildren(
+      page,
+      description,
+
+      rowId,
+      rowSelector
+    );
+
+    // Update description
+    await updateDescriptionForChildren(
+      page,
+      description + ' updated',
+
+      rowId,
+      rowSelector
+    );
+
+    // Remove description
+    await updateDescriptionForChildren(page, '', rowId, rowSelector);
+  }
+
   async tag(
     page: Page,
     tag1: string,
@@ -409,6 +443,46 @@ export class EntityClass {
       page,
       `Cypress ${entityName} updated`,
       this.endpoint
+    );
+  }
+
+  async displayNameChildren({
+    page,
+    columnName,
+    rowSelector,
+  }: {
+    page: Page;
+    columnName: string;
+    rowSelector: string;
+  }) {
+    // Add display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: '',
+        newDisplayName: `Playwright ${columnName} updated`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Update display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: `Playwright ${columnName} updated`,
+        newDisplayName: `Playwright ${columnName} updated again`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Remove display name
+    await removeDisplayNameForEntityChildren(
+      page,
+      `Playwright ${columnName} updated again`,
+      this.childrenSelectorId ?? '',
+      rowSelector
     );
   }
 
