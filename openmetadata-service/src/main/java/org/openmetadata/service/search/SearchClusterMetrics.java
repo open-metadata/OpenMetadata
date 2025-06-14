@@ -164,10 +164,12 @@ public class SearchClusterMetrics {
     recommendedProducerThreads = Math.min(recommendedProducerThreads, maxProducerThreads);
 
     LOG.info(
-        "Database connection pool analysis - Total: {}, Reserved for traffic: {}, Available for indexing: {}, Final producer threads: {}",
+        "AUTO-TUNE DB ANALYSIS: MaxDbConnections param: {}, Effective: {}, Reserved (60%): {}, Available for indexing: {}, Calculated producer threads: {}, Final producer threads: {}",
+        maxDbConnections,
         effectiveMaxDbConnections,
         reservedConnections,
         maxProducerThreads,
+        Math.min(100, baseThreadsPerNode * totalNodes),
         recommendedProducerThreads);
 
     int baseConcurrentRequests = totalNodes * 50;
@@ -284,10 +286,12 @@ public class SearchClusterMetrics {
     conservativeThreads = Math.min(conservativeThreads, maxProducerThreads);
 
     LOG.info(
-        "Conservative defaults - Database connection pool analysis - Total: {}, Reserved for traffic: {}, Available for indexing: {}, Final producer threads: {}",
+        "AUTO-TUNE CONSERVATIVE DB ANALYSIS: MaxDbConnections param: {}, Effective: {}, Reserved (60%): {}, Available for indexing: {}, Original conservative threads: {}, Final producer threads: {}",
+        maxDbConnections,
         effectiveMaxDbConnections,
         reservedConnections,
         maxProducerThreads,
+        totalEntities > 500000 ? 20 : 10,
         conservativeThreads);
 
     return SearchClusterMetrics.builder()
