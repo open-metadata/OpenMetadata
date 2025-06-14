@@ -250,6 +250,7 @@ export const ROUTES = {
   // data quality
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_QUALITY_WITH_SUB_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
 
