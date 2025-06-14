@@ -87,6 +87,10 @@ export interface Tag {
      */
     name: string;
     /**
+     * Owners of this glossary term.
+     */
+    owners?: EntityReference[];
+    /**
      * Reference to the parent tag. When null, the term is at the root of the Classification.
      */
     parent?:   EntityReference;
