@@ -670,10 +670,10 @@ describe('Test EntityLineageUtils utility', () => {
       const bounds = getNodesBoundsReactFlow(nodes);
 
       expect(bounds).toEqual({
-        xMin: 100,
-        yMin: 200,
-        xMax: 150, // x + width
-        yMax: 230, // y + height
+        xMin: 80, // x - padding
+        yMin: 180, // y - padding
+        xMax: 170, // x + width + padding
+        yMax: 250, // y + height + padding
       });
     });
 
@@ -705,10 +705,10 @@ describe('Test EntityLineageUtils utility', () => {
       const bounds = getNodesBoundsReactFlow(nodes);
 
       expect(bounds).toEqual({
-        xMin: 0,
-        yMin: 0,
-        xMax: 260, // rightmost x (200) + width (60)
-        yMax: 340, // bottom y (300) + height (40)
+        xMin: -20, // x - padding
+        yMin: -20, // y - padding
+        xMax: 280, // rightmost x (200) + width (60) + padding
+        yMax: 360, // bottom y (300) + height (40) + padding
       });
     });
 
@@ -729,10 +729,10 @@ describe('Test EntityLineageUtils utility', () => {
       const bounds = getNodesBoundsReactFlow(nodes);
 
       expect(bounds).toEqual({
-        xMin: 100,
-        yMin: 200,
-        xMax: 200,
-        yMax: 300,
+        xMin: 80,
+        yMin: 180,
+        xMax: 220,
+        yMax: 320,
       });
     });
 
@@ -770,10 +770,10 @@ describe('Test EntityLineageUtils utility', () => {
       const bounds = getNodesBoundsReactFlow(nodes);
 
       expect(bounds).toEqual({
-        xMin: -100,
-        yMin: -200,
-        xMax: 140, // rightmost x (100) + width (40)
-        yMax: 220, // bottom y (200) + height (20)
+        xMin: -120, // x - padding
+        yMin: -220, // y - padding
+        xMax: 160, // rightmost x (100) + width (40) + padding
+        yMax: 240, // bottom y (200) + height (20) + padding
       });
     });
   });
@@ -796,9 +796,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: 0,
-        y: 0,
-        zoom: 2,
+        x: 20,
+        y: 20,
+        zoom: 1.1428571428571428,
       });
     });
 
@@ -821,9 +821,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: 100,
-        y: 100,
-        zoom: 1,
+        x: 110,
+        y: 97.5,
+        zoom: 0.75,
       });
     });
 
@@ -844,9 +844,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: 200,
-        y: 200,
-        zoom: 2,
+        x: 170,
+        y: 170,
+        zoom: 1.5,
       });
     });
 
@@ -867,9 +867,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: 0,
-        y: 50,
-        zoom: 0.5,
+        x: 20,
+        y: 56.36363636363636,
+        zoom: 0.36363636363636365,
       });
     });
 
@@ -890,9 +890,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: NaN,
-        y: NaN,
-        zoom: Infinity,
+        x: 20,
+        y: 20,
+        zoom: 4,
       });
     });
 
@@ -915,9 +915,9 @@ describe('Test EntityLineageUtils utility', () => {
       );
 
       expect(viewport).toEqual({
-        x: -100,
-        y: -100,
-        zoom: 4,
+        x: -60,
+        y: -60,
+        zoom: 2.2857142857142856,
       });
     });
   });
