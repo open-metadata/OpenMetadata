@@ -57,7 +57,8 @@
     "deleted": {
       "description": "Filter documents by deleted param.",
       "type": "boolean",
-      "default": false
+      "default": null,
+      "existingJavaType": "java.lang.Boolean"
     },
     "sortFieldParam": {
       "description": "Sort the search results by field, available fields to sort weekly_stats daily_stats, monthly_stats, last_updated_timestamp.",
