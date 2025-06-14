@@ -146,9 +146,15 @@ public class SearchRepository {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
   protected NLQService nlqService;
+  @Getter private final Integer databaseMaxPoolSize;
 
   public SearchRepository(ElasticSearchConfiguration config) {
+    this(config, null);
+  }
+
+  public SearchRepository(ElasticSearchConfiguration config, Integer databaseMaxPoolSize) {
     elasticSearchConfiguration = config;
+    this.databaseMaxPoolSize = databaseMaxPoolSize;
     searchClient = buildSearchClient(config);
     searchIndexFactory = buildIndexFactory();
     language =

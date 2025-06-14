@@ -717,12 +717,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.info("Auto-tune: JSON payloads will be gzip compressed (~75% size reduction)");
 
       long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
+      // Log database pool configuration BEFORE calling SearchClusterMetrics
+      Integer dbMaxPoolSize = searchRepository.getDatabaseMaxPoolSize();
+      LOG.info(
+          "AUTO-TUNE DEBUG: Database pool configuration from SearchRepository: {}", dbMaxPoolSize);
+
       SearchClusterMetrics clusterMetrics =
           SearchClusterMetrics.fetchClusterMetrics(searchRepository, totalEntities);
       clusterMetrics.logRecommendations();
-      LOG.info("Applying auto-tuned parameters...");
+      LOG.info("AUTO-TUNE DEBUG: Applying auto-tuned parameters...");
       LOG.info(
-          "Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          "AUTO-TUNE DEBUG: Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
@@ -734,7 +739,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
       LOG.info(
-          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          "AUTO-TUNE DEBUG: Final Applied - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
