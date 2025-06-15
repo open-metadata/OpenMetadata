@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -165,6 +166,11 @@ public class DatabaseServiceRepository
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
+      addField(
+          recordList,
+          entity.getCertification() != null && entity.getCertification().getTagLabel() != null
+              ? entity.getCertification().getTagLabel().getTagFQN()
+              : "");
 
       if (recursive) {
         Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
@@ -226,8 +232,8 @@ public class DatabaseServiceRepository
         database = new Database().withService(service.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
-      // Field 1,2,3,6,7 - database service name, displayName, description
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
+      // domain, extension
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -236,6 +242,9 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
       database
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(databaseFqn)
@@ -243,8 +252,9 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 8));
+          .withCertification(certification)
+          .withDomain(getEntityReference(printer, csvRecord, 8, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 9));
 
       if (processRecord) {
         createEntity(printer, csvRecord, database, DATABASE);
@@ -256,8 +266,8 @@ public class DatabaseServiceRepository
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
-      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : DATABASE;
-      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
+      String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE;
+      String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
 
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
@@ -298,15 +308,17 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
       database
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withCertification(certification)
+          .withSourceUrl(csvRecord.get(9))
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
         createEntity(printer, csvRecord, database, DATABASE);
@@ -364,6 +376,7 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
       schema
           .withId(UUID.randomUUID())
           .withName(csvRecord.get(0))
@@ -372,10 +385,11 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10))
+          .withCertification(certification)
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11))
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);
       if (processRecord) {

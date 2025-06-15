@@ -85,7 +85,7 @@ import {
   getVersionPath,
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -516,6 +516,21 @@ const DatabaseDetails: FunctionComponent = () => {
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (database) {
+        const certificationTag: Database['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...database,
+          certification: certificationTag,
+        };
+
+        await settingsUpdateHandler(updatedTableDetails as Database);
+      }
+    },
+    [settingsUpdateHandler, database]
+  );
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
@@ -559,6 +574,7 @@ const DatabaseDetails: FunctionComponent = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}

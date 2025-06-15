@@ -78,7 +78,7 @@ public class DatabaseSchemaResource
   private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
   static final String FIELDS =
-      "owners,tables,usageSummary,tags,extension,domain,sourceHash,followers";
+      "owners,tables,usageSummary,tags,certification,extension,domain,sourceHash,followers";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {

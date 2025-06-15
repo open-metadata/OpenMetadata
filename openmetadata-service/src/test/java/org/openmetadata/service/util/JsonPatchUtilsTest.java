@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Set;
 import java.util.UUID;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -275,5 +277,94 @@ class JsonPatchUtilsTest {
         operations.contains(MetadataOperation.EDIT_TAGS),
         "MetadataOperations should contain EDIT_TAGS");
     assertEquals(1, operations.size(), "There should be exactly one MetadataOperation");
+  }
+
+  @Test
+  void testAddCertificationTag() throws JsonPatchException, IOException {
+    // Create a patch to add a new Certification tag
+    long currentTime = System.currentTimeMillis();
+    String patchString = getPatchString(currentTime, "    \"op\": \"add\",\n");
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  @Test
+  void testReplaceCertificationTag() throws JsonPatchException, IOException {
+    // Create a patch to replace the Certification tag
+    long currentTime = System.currentTimeMillis();
+    String patchString = getPatchString(currentTime, "    \"op\": \"replace\",\n");
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  @Test
+  void testRemoveCertificationTag() throws JsonPatchException, IOException {
+    // Create a patch to remove the Certification tag
+    String patchString =
+        """
+            [
+              {
+                "op": "remove",
+                "path": "/certification"
+              }
+            ]""";
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
+    assertEquals(1, operations.size());
+  }
+
+  private static @NotNull String getPatchString(long currentTime, String operationString) {
+    long oneYearInMillis = 365L * 24 * 60 * 60 * 1000;
+    long expiryTime = currentTime + oneYearInMillis;
+    return "[\n"
+        + "  {\n"
+        + operationString
+        + "    \"path\": \"/certification\",\n"
+        + "    \"value\": {\n"
+        + "      \"tagLabel\": {\n"
+        + "        \"tagFQN\": \"Certification.Gold\",\n"
+        + "        \"labelType\": \"Manual\",\n"
+        + "        \"state\": \"Confirmed\"\n"
+        + "      },\n"
+        + "      \"appliedDate\": "
+        + currentTime
+        + ",\n"
+        + "      \"expiryDate\": "
+        + expiryTime
+        + "\n"
+        + "    }\n"
+        + "  }\n"
+        + "]";
   }
 }
