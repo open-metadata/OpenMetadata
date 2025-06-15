@@ -94,6 +94,7 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -1062,5 +1063,197 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   private void resetSystemConfig() throws HttpResponseException {
     WebTarget target = getResource("system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value());
     TestUtils.put(target, Response.Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  @Order(99)
+  void testReadReplicaInfrastructure() throws HttpResponseException {
+    LOG.info("Testing read replica infrastructure");
+
+    // Test DatabaseManager is properly initialized
+    assertNotNull(
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance(),
+        "DatabaseManager should be initialized");
+
+    // Test that read and write connections are available
+    assertNotNull(
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getWriteJdbi(),
+        "Write JDBI should be available");
+    assertNotNull(
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getReadJdbi(),
+        "Read JDBI should be available");
+
+    // Test backward compatibility
+    assertNotNull(
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getJdbi(),
+        "Backward compatibility JDBI should be available");
+
+    LOG.info("Read replica infrastructure test passed");
+  }
+
+  @Test
+  @Order(100)
+  void testReadReplicaRouting() {
+    LOG.info("Testing read replica routing logic");
+
+    // Test read operations
+    assertTrue(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("GET"),
+        "GET should be read operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("HEAD"),
+        "HEAD should be write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("OPTIONS"),
+        "OPTIONS should be write operation");
+
+    // Test write operations
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("POST"),
+        "POST should be write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("PUT"),
+        "PUT should be write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("DELETE"),
+        "DELETE should be write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("PATCH"),
+        "PATCH should be write operation");
+
+    // Test case insensitivity
+    assertTrue(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("get"),
+        "Lowercase GET should be read operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("post"),
+        "Lowercase POST should be write operation");
+
+    // Test edge cases
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation(null),
+        "Null method should default to write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation(""),
+        "Empty method should default to write operation");
+    assertFalse(
+        org.openmetadata.service.jdbi3.DAOFactory.isReadOperation("UNKNOWN"),
+        "Unknown method should default to write operation");
+
+    LOG.info("Read replica routing test passed");
+  }
+
+  @Test
+  @Order(101)
+  void testReadReplicaConfiguration() {
+    LOG.info("Testing read replica configuration");
+
+    // Test ReadReplicaConfiguration creation and validation
+    org.openmetadata.service.config.ReadReplicaConfiguration config =
+        new org.openmetadata.service.config.ReadReplicaConfiguration();
+
+    config.setHost("test-replica-host");
+    config.setPort(3307);
+    config.setDatabaseName("replica_db");
+    config.setMaxSize(50);
+
+    assertEquals("test-replica-host", config.getHost());
+    assertEquals(3307, config.getPort().intValue());
+    assertEquals("replica_db", config.getDatabaseName());
+    assertEquals(50, config.getMaxSize().intValue());
+
+    // Test auth configuration
+    org.openmetadata.service.config.ReadReplicaConfiguration.AuthConfiguration auth =
+        new org.openmetadata.service.config.ReadReplicaConfiguration.AuthConfiguration();
+    auth.setUsername("replica_user");
+    auth.setPassword("replica_pass");
+    config.setAuth(auth);
+
+    assertEquals("replica_user", config.getAuth().getUsername());
+    assertEquals("replica_pass", config.getAuth().getPassword());
+
+    LOG.info("Read replica configuration test passed");
+  }
+
+  @Test
+  @Order(102)
+  void testSystemStatusWithReplica() throws HttpResponseException {
+    LOG.info("Testing system status with replica infrastructure");
+
+    // Test that status endpoint works with replica infrastructure
+    WebTarget target = getResource("system/status");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+
+    assertEquals(
+        Response.Status.OK.getStatusCode(),
+        response.getStatus(),
+        "Status check should succeed with replica infrastructure");
+
+    // Test that GET operations work (these would use read connection if replica was configured)
+    WebTarget settingsTarget = getResource("system/settings");
+    Response settingsResponse = SecurityUtil.addHeaders(settingsTarget, ADMIN_AUTH_HEADERS).get();
+
+    assertTrue(
+        settingsResponse.getStatus() >= 200 && settingsResponse.getStatus() < 300,
+        "GET operations should work with replica infrastructure");
+
+    LOG.info("System status with replica test passed");
+  }
+
+  @Test
+  @Order(103)
+  void testReplicaBackwardCompatibility() {
+    LOG.info("Testing replica backward compatibility");
+
+    // Test that existing patterns still work
+    org.jdbi.v3.core.Jdbi primaryJdbi =
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getWriteJdbi();
+    org.jdbi.v3.core.Jdbi backwardJdbi =
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getJdbi();
+
+    assertEquals(
+        primaryJdbi, backwardJdbi, "Backward compatibility JDBI should be same as write JDBI");
+
+    // Test that in test environment (without replica), read and write are the same
+    org.jdbi.v3.core.Jdbi readJdbi =
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().getReadJdbi();
+    assertEquals(
+        primaryJdbi,
+        readJdbi,
+        "Without replica configuration, read and write JDBI should be the same");
+
+    // Test that replica is not enabled in test environment
+    assertFalse(
+        org.openmetadata.service.jdbi3.DatabaseManager.getInstance().isReplicaEnabled(),
+        "Replica should not be enabled in test environment");
+
+    LOG.info("Replica backward compatibility test passed");
+  }
+
+  @Test
+  @Order(104)
+  void testReplicaResourceIntegration() throws HttpResponseException {
+    LOG.info("Testing replica resource integration");
+
+    // Test that resources extending ReplicaAwareResource work correctly
+    // This tests the integration indirectly through actual API calls
+
+    // Test settings endpoint (should work with replica infrastructure)
+    WebTarget settingsTarget = getResource("system/settings");
+    Response settingsResponse = SecurityUtil.addHeaders(settingsTarget, ADMIN_AUTH_HEADERS).get();
+
+    assertTrue(
+        settingsResponse.getStatus() >= 200 && settingsResponse.getStatus() < 300,
+        "Settings endpoint should work with replica infrastructure");
+
+    // Test status endpoint
+    WebTarget statusTarget = getResource("system/status");
+    Response statusResponse = SecurityUtil.addHeaders(statusTarget, ADMIN_AUTH_HEADERS).get();
+
+    assertTrue(
+        statusResponse.getStatus() >= 200 && statusResponse.getStatus() < 300,
+        "Status endpoint should work with ReplicaAwareResource");
+
+    LOG.info("Replica resource integration test passed");
   }
 }
