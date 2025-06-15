@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Pagination, PaginationProps } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
 

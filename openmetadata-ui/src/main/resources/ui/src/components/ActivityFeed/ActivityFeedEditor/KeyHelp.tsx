@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const KeyHelp = ({ editorValue }: { editorValue: string }) => {

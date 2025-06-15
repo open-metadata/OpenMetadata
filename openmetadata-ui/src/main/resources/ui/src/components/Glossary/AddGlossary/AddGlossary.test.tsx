@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
 jest.mock('../../MyData/LeftSidebar/LeftSidebar.component', () =>

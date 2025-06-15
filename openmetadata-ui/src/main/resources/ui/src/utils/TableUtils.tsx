@@ -15,7 +15,6 @@ import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   get,
   isEmpty,
@@ -28,8 +27,8 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties, Fragment } from 'react';
-import { useHistory } from 'react-router-dom';
+import { CSSProperties, Fragment } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -174,7 +173,7 @@ import {
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
@@ -1161,11 +1160,10 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
 export const ExtraTableDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
-
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -1175,14 +1173,14 @@ export const ExtraTableDropdownOptions = (
             label: (
               <LimitWrapper resource="table">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.table'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.table'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(getEntityImportPath(EntityType.TABLE, fqn))
+                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
                   }
                 />
               </LimitWrapper>
@@ -1196,12 +1194,12 @@ export const ExtraTableDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.table'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.table'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,

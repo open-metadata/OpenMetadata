@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-
 import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';

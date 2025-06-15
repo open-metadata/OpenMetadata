@@ -18,7 +18,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface StoredProcedureVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: StoredProcedure;
   isVersionLoading: boolean;
   owners: StoredProcedure['owners'];

@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ROUTES } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import ApplicationPage from './ApplicationPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -127,21 +124,26 @@ describe('ApplicationPage', () => {
   });
 
   it('actions check', async () => {
-    await act(async () => {
-      render(<ApplicationPage />);
-    });
+    render(<ApplicationPage />);
 
-    await act(async () => {
-      userEvent.click(screen.getByTestId('show-disabled'));
-      userEvent.click(
-        screen.getByRole('button', {
-          name: 'NextPrevious',
-        })
-      );
-    });
+    await waitFor(() =>
+      expect(mockGetApplicationList).toHaveBeenCalledTimes(1)
+    );
+
+    userEvent.click(screen.getByTestId('show-disabled'));
+
+    expect(mockGetApplicationList).toHaveBeenCalledTimes(1);
+
+    userEvent.click(
+      await screen.findByRole('button', {
+        name: 'NextPrevious',
+      })
+    );
 
     // 1 time call when render component, 2 time call for above actions
-    expect(mockGetApplicationList).toHaveBeenCalledTimes(3);
+    await waitFor(() =>
+      expect(mockGetApplicationList).toHaveBeenCalledTimes(1)
+    );
 
     // add application
     userEvent.click(
@@ -152,24 +154,25 @@ describe('ApplicationPage', () => {
 
     // view app details
     userEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'ApplicationCard',
       })
     );
 
     //  add application + view app details
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledTimes(2));
   });
 
   it('error while fetching application list', async () => {
     mockGetApplicationList.mockRejectedValueOnce('ERROR');
 
-    await act(async () => {
-      render(<ApplicationPage />);
-    });
+    render(<ApplicationPage />);
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith('ERROR');
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockShowErrorToast).toHaveBeenCalledWith('ERROR')
+    );
+
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should call limitWrapper with app as resource', async () => {

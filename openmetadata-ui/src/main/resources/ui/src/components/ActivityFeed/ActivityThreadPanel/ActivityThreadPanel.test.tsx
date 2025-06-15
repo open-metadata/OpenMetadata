@@ -12,7 +12,6 @@
  */
 
 import { act, findAllByText, render, screen } from '@testing-library/react';
-import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
@@ -54,19 +53,17 @@ describe('Test ActivityThreadPanel Component', () => {
   });
 
   it('Check if it has all child elements', async () => {
-    await act(async () => {
-      const { container } = render(
-        <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-        { wrapper: MemoryRouter }
-      );
+    const { container } = render(
+      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      { wrapper: MemoryRouter }
+    );
 
-      const panelThreadList = await findAllByText(
-        container,
-        /ActivityThreadList/i
-      );
+    const panelThreadList = await findAllByText(
+      container,
+      /ActivityThreadList/i
+    );
 
-      expect(panelThreadList).toHaveLength(1);
-    });
+    expect(panelThreadList).toHaveLength(1);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

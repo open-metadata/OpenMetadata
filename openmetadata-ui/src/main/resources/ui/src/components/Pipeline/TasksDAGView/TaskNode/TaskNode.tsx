@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import classNames from 'classnames';
-import React, { CSSProperties, Fragment } from 'react';
+import { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'reactflow';
 import { EntityLineageNodeType } from '../../../../enums/entity.enum';
 import './task-node.style.less';

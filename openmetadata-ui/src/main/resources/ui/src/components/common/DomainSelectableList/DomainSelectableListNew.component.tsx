@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { RefSelectProps as BaseSelectRef } from 'antd/es/select';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -92,7 +92,7 @@ const DomainSelectableListNew = ({
   };
 
   const [popoverHeight, setPopoverHeight] = useState<number>(156);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<BaseSelectRef>(null);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {

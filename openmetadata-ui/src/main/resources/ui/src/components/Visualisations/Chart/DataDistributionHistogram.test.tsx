@@ -12,7 +12,6 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import React from 'react';
 import DataDistributionHistogram from './DataDistributionHistogram.component';
 
 const MOCK_HISTOGRAM_DATA = [

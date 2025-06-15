@@ -13,9 +13,9 @@
 import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
 import { Button, Card, Modal, Space, Typography } from 'antd';
 import { kebabCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -34,18 +34,17 @@ export const CustomizablePageHeader = ({
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
   const { currentPageType } = useCustomizeStore();
-  const history = useHistory();
-  const [saving, setSaving] = React.useState(false);
-  const [confirmationModalOpen, setConfirmationModalOpen] =
-    React.useState(false);
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
+  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false);
 
-  const [confirmationModalType, setConfirmationModalType] = React.useState<
+  const [confirmationModalType, setConfirmationModalType] = useState<
     'reset' | 'close'
   >('close');
 
   const handleCancel = () => {
     // Go back in history
-    history.goBack();
+    navigate(-1);
   };
 
   const { modalTitle, modalDescription } = useMemo(() => {

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Col, Row, Tag, Typography } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -28,14 +28,14 @@ const SummaryDataProducts = ({
   };
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const dataProducts = useMemo(() => {
     return dataAsset?.dataProducts ?? [];
   }, [dataAsset]);
 
   const redirectLink = useCallback((fqn: string) => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+    navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
   }, []);
 
   return (

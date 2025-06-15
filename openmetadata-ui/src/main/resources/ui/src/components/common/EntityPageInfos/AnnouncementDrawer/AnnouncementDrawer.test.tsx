@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import AnnouncementDrawer from './AnnouncementDrawer';
 
 jest.mock('../../../../utils/EntityUtils', () => ({

@@ -11,22 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import React from 'react';
-
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { mockPipelineActionsDropdownProps } from '../../../../../../mocks/IngestionListTable.mock';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
-
-const mockPush = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
-}));
 
 jest.mock(
   '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
@@ -41,20 +30,16 @@ jest.mock(
 const clickOnMoreActions = async () => {
   const moreActions = screen.getByTestId('more-actions');
 
-  await act(async () => {
-    userEvent.click(moreActions);
-  });
+  fireEvent.click(moreActions);
+
+  // Wait for dropdown menu items to appear
+  await screen.findByTestId('edit-button');
 };
 
 describe('PipelineActionsDropdown', () => {
   it('should only display edit, kill and delete button when pipeline is not deployed', async () => {
-    await act(async () => {
-      render(
-        <PipelineActionsDropdown {...mockPipelineActionsDropdownProps} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+    render(<PipelineActionsDropdown {...mockPipelineActionsDropdownProps} />, {
+      wrapper: MemoryRouter,
     });
 
     await clickOnMoreActions();
@@ -138,9 +123,7 @@ describe('PipelineActionsDropdown', () => {
 
     const deployButton = screen.getByTestId('deploy-button');
 
-    await act(async () => {
-      userEvent.click(deployButton);
-    });
+    fireEvent.click(deployButton);
 
     expect(
       mockPipelineActionsDropdownProps.deployIngestion
@@ -167,9 +150,7 @@ describe('PipelineActionsDropdown', () => {
 
     const reDeployButton = screen.getByTestId('re-deploy-button');
 
-    await act(async () => {
-      userEvent.click(reDeployButton);
-    });
+    fireEvent.click(reDeployButton);
 
     expect(
       mockPipelineActionsDropdownProps.deployIngestion
@@ -196,9 +177,7 @@ describe('PipelineActionsDropdown', () => {
 
     const runButton = screen.getByTestId('run-button');
 
-    await act(async () => {
-      userEvent.click(runButton);
-    });
+    fireEvent.click(runButton);
 
     expect(
       mockPipelineActionsDropdownProps.triggerIngestion
@@ -225,9 +204,7 @@ describe('PipelineActionsDropdown', () => {
 
     const editButton = screen.getByTestId('edit-button');
 
-    await act(async () => {
-      userEvent.click(editButton);
-    });
+    fireEvent.click(editButton);
 
     expect(
       mockPipelineActionsDropdownProps.handleEditClick
@@ -254,9 +231,7 @@ describe('PipelineActionsDropdown', () => {
 
     const deleteButton = screen.getByTestId('delete-button');
 
-    await act(async () => {
-      userEvent.click(deleteButton);
-    });
+    fireEvent.click(deleteButton);
 
     expect(
       mockPipelineActionsDropdownProps.handleDeleteSelection
@@ -283,9 +258,7 @@ describe('PipelineActionsDropdown', () => {
 
     const killButton = screen.getByTestId('kill-button');
 
-    await act(async () => {
-      userEvent.click(killButton);
-    });
+    fireEvent.click(killButton);
 
     expect(screen.getByText('KillIngestionPipelineModal')).toBeInTheDocument();
   });
@@ -310,17 +283,13 @@ describe('PipelineActionsDropdown', () => {
 
     const killButton = screen.getByTestId('kill-button');
 
-    await act(async () => {
-      userEvent.click(killButton);
-    });
+    fireEvent.click(killButton);
 
     expect(screen.getByText('KillIngestionPipelineModal')).toBeInTheDocument();
 
     const closeModal = screen.getByText('KillIngestionPipelineModal');
 
-    await act(async () => {
-      userEvent.click(closeModal);
-    });
+    fireEvent.click(closeModal);
 
     expect(screen.queryByText('KillIngestionPipelineModal')).toBeNull();
   });

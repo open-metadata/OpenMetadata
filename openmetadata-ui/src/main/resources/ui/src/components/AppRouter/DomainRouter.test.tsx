@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter, Route, Switch } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import DomainRouter from './DomainRouter';
 
@@ -24,9 +23,10 @@ jest.mock('../Domain/DomainPage.component', () => {
   return jest.fn().mockReturnValue(<div>DomainPage</div>);
 });
 
-jest.mock('./AdminProtectedRoute', () => {
-  return jest.fn().mockImplementation((props) => <Route {...props} />);
-});
+jest.mock('./AdminProtectedRoute', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ children }) => children),
+}));
 
 jest.mock('../../utils/PermissionsUtils', () => {
   return {
@@ -39,10 +39,8 @@ jest.mock('../../utils/PermissionsUtils', () => {
 describe('DomainRouter', () => {
   it('should render AddDomain component for the ADD_DOMAIN route', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_DOMAIN]}>
-        <Switch>
-          <DomainRouter />
-        </Switch>
+      <MemoryRouter initialEntries={['/add']}>
+        <DomainRouter />
       </MemoryRouter>
     );
 
@@ -52,9 +50,7 @@ describe('DomainRouter', () => {
   it('should render DomainPage component for the DOMAIN route when user has domain view permission', async () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.DOMAIN]}>
-        <Switch>
-          <DomainRouter />
-        </Switch>
+        <DomainRouter />
       </MemoryRouter>
     );
 
@@ -64,9 +60,7 @@ describe('DomainRouter', () => {
   it('should render DomainPage component for the DOMAIN_DETAILS and DOMAIN_DETAILS_WITH_TAB routes when user has domain view permission', async () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.DOMAIN_DETAILS]}>
-        <Switch>
-          <DomainRouter />
-        </Switch>
+        <DomainRouter />
       </MemoryRouter>
     );
 

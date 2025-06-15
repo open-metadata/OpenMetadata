@@ -12,7 +12,7 @@
  */
 
 import { Col, Row } from 'antd';
-import React, { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   Bar,
   Brush,

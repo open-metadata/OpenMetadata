@@ -12,10 +12,11 @@
  */
 
 import { DefaultOptionType, SelectProps } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -51,6 +52,8 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     () => tagType === TagSource.Glossary,
     [tagType]
   );
+
+  const { t } = useTranslation();
 
   const handleTagSelection = (
     newValue: DefaultOptionType | DefaultOptionType[]

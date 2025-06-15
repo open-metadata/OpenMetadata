@@ -16,9 +16,9 @@ import { Button, Card, Col, Modal, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -59,7 +59,7 @@ interface AddAttribute {
 }
 
 const RolesDetailPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -114,7 +114,7 @@ const RolesDetailPage = () => {
   }, [rolePermission]);
 
   const fetchRolePermission = useCallback(
-    async (fqn) => {
+    async (fqn: string) => {
       try {
         const response = await getEntityPermissionByFqn(
           ResourceEntity.ROLE,
@@ -381,7 +381,7 @@ const RolesDetailPage = () => {
                 ghost
                 className="m-t-sm"
                 type="primary"
-                onClick={() => history.push(rolesPath)}>
+                onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}
               </Button>
             </div>
@@ -409,7 +409,7 @@ const RolesDetailPage = () => {
               <Col span={1}>
                 <ManageButton
                   isRecursiveDelete
-                  afterDeleteAction={() => history.push(rolesPath)}
+                  afterDeleteAction={() => navigate(rolesPath)}
                   allowSoftDelete={false}
                   canDelete={hasDeletePermission}
                   displayName={role?.displayName}

@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import AppearanceConfigSettingsPage from './AppearanceConfigSettingsPage';
 
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -30,9 +28,7 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../rest/settingConfigAPI', () => ({
@@ -75,16 +71,16 @@ describe('Test appearance config page', () => {
 
   it('Should call goBack function on click of cancel button', async () => {
     render(<AppearanceConfigSettingsPage />);
-    const cancelButton = screen.getByTestId('cancel-btn');
-    userEvent.click(cancelButton);
+    const cancelButton = await screen.findByTestId('cancel-btn');
+    fireEvent.click(cancelButton);
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Should call updateSettingsConfig function on click of reset button', async () => {
     render(<AppearanceConfigSettingsPage />);
-    const resetButton = screen.getByTestId('reset-button');
-    userEvent.click(resetButton);
+    const resetButton = await screen.findByTestId('reset-button');
+    fireEvent.click(resetButton);
 
     expect(updateSettingsConfig).toHaveBeenCalled();
   });
@@ -107,53 +103,51 @@ describe('Test appearance config page', () => {
     const infoColorColorInput = screen.getByTestId('infoColor-color-input');
     const saveButton = screen.getByTestId('save-btn');
 
-    await act(async () => {
-      fireEvent.change(customLogoUrlPath, {
-        target: { value: 'https://www.google.com' },
-      });
-      fireEvent.change(customMonogramUrlPath, {
-        target: { value: 'https://www.google.com' },
-      });
-      fireEvent.change(customFaviconUrlPath, {
-        target: { value: 'https://www.google.com' },
-      });
-      fireEvent.change(primaryColorColorInput, {
-        target: { value: '#ffffff' },
-      });
-      fireEvent.change(errorColorColorInput, {
-        target: { value: '#ffffff' },
-      });
-      fireEvent.change(successColorColorInput, {
-        target: { value: '#ffffff' },
-      });
-      fireEvent.change(warningColorColorInput, {
-        target: { value: '#ffffff' },
-      });
-      fireEvent.change(infoColorColorInput, {
-        target: { value: '#ffffff' },
-      });
+    fireEvent.change(customLogoUrlPath, {
+      target: { value: 'https://www.google.com' },
+    });
+    fireEvent.change(customMonogramUrlPath, {
+      target: { value: 'https://www.google.com' },
+    });
+    fireEvent.change(customFaviconUrlPath, {
+      target: { value: 'https://www.google.com' },
+    });
+    fireEvent.change(primaryColorColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(errorColorColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(successColorColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(warningColorColorInput, {
+      target: { value: '#ffffff' },
+    });
+    fireEvent.change(infoColorColorInput, {
+      target: { value: '#ffffff' },
     });
 
-    await act(async () => {
-      userEvent.click(saveButton);
-    });
+    fireEvent.click(saveButton);
 
-    expect(updateSettingsConfig).toHaveBeenCalledWith({
-      config_type: 'customUiThemePreference',
-      config_value: {
-        customLogoConfig: {
-          customFaviconUrlPath: 'https://www.google.com',
-          customLogoUrlPath: 'https://www.google.com',
-          customMonogramUrlPath: 'https://www.google.com',
+    await waitFor(() =>
+      expect(updateSettingsConfig).toHaveBeenCalledWith({
+        config_type: 'customUiThemePreference',
+        config_value: {
+          customLogoConfig: {
+            customFaviconUrlPath: 'https://www.google.com',
+            customLogoUrlPath: 'https://www.google.com',
+            customMonogramUrlPath: 'https://www.google.com',
+          },
+          customTheme: {
+            errorColor: '#ffffff',
+            infoColor: '#ffffff',
+            primaryColor: '#ffffff',
+            successColor: '#ffffff',
+            warningColor: '#ffffff',
+          },
         },
-        customTheme: {
-          errorColor: '#ffffff',
-          infoColor: '#ffffff',
-          primaryColor: '#ffffff',
-          successColor: '#ffffff',
-          warningColor: '#ffffff',
-        },
-      },
-    });
+      })
+    );
   });
 });
