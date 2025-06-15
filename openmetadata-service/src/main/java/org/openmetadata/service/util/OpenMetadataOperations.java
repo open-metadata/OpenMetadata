@@ -142,6 +142,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup'");
+    LOG.info(
+        "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
   }
 
@@ -805,6 +807,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum number of retries for failed search requests.")
           int retries,
       @Option(
+              names = {"--auto-tune"},
+              defaultValue = "false",
+              description =
+                  "Enable automatic performance tuning based on cluster capabilities and database entity count. When enabled, overrides manual parameter settings.")
+          boolean autoTune,
+      @Option(
               names = {"--entities"},
               defaultValue = "'all'",
               description =
@@ -812,7 +820,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String entityStr) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
@@ -823,7 +831,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
@@ -847,7 +856,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -886,7 +896,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int backOff,
       int maxBackOff,
       int maxRequests,
-      int retries) {
+      int retries,
+      boolean autoTune) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
 
@@ -902,7 +913,19 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withInitialBackoff(backOff)
             .withMaxBackoff(maxBackOff)
             .withMaxConcurrentRequests(maxRequests)
-            .withMaxRetries(retries);
+            .withMaxRetries(retries)
+            .withAutoTune(autoTune);
+
+    // Log auto-tune behavior
+    if (autoTune) {
+      LOG.info(
+          "Auto-tune enabled: SearchIndexApp will analyze cluster capabilities and optimize parameters automatically");
+      LOG.info("Manual parameter settings will be overridden by auto-tuned values based on:");
+      LOG.info("  - OpenSearch/ElasticSearch cluster stats and settings");
+      LOG.info("  - Database entity counts");
+      LOG.info("  - Available cluster resources and capacity");
+      LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
+    }
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();

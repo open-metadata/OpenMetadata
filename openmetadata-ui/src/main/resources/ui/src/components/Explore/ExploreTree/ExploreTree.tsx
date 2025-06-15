@@ -28,6 +28,7 @@ import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
@@ -52,31 +53,36 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <Tooltip
-    overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
-    title={
-      <Typography.Text className="text-white">
-        {node.title}
-        {node.type && (
-          <span className="text-grey-400">{` (${node.type})`}</span>
+const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
+  const tooltipText = node.tooltip ?? node.title;
+
+  return (
+    <Tooltip
+      title={
+        <Typography.Text className="text-white">
+          {tooltipText}
+          {node.type && (
+            <span className="text-grey-400">{` (${node.type})`}</span>
+          )}
+        </Typography.Text>
+      }>
+      <div className="d-flex justify-between">
+        <Typography.Text
+          className={classNames({
+            'm-l-xss': node.data?.isRoot,
+          })}
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          {node.title}
+        </Typography.Text>
+        {!isUndefined(node.count) && (
+          <span className="explore-node-count">
+            {getCountBadge(node.count)}
+          </span>
         )}
-      </Typography.Text>
-    }>
-    <div className="d-flex justify-between">
-      <Typography.Text
-        className={classNames({
-          'm-l-xss': node.data?.isRoot,
-        })}
-        data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-        {node.title}
-      </Typography.Text>
-      {!isUndefined(node.count) && (
-        <span className="explore-node-count">{getCountBadge(node.count)}</span>
-      )}
-    </div>
-  </Tooltip>
-);
+      </div>
+    </Tooltip>
+  );
+};
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
@@ -207,12 +213,16 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
+          const formattedEntityType =
+            entityUtilClassBase.getFormattedServiceType(bucket.key);
+
           return {
             title: isEntityType ? (
               <>{getPluralizeEntityName(bucket.key)}</>
             ) : (
               <>{bucket.key}</>
             ),
+            tooltip: formattedEntityType,
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             type,
@@ -342,7 +352,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
-              <a href={DATA_DISCOVERY_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label="Learn more about data discovery"
+                href={DATA_DISCOVERY_DOCS}
+                rel="noreferrer"
+                target="_blank">
+                {t('label.learn-more')}
+              </a>
             }
             values={{
               doc: t('message.see-how-to-get-started'),

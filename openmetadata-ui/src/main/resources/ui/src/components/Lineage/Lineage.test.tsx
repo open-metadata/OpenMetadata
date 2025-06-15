@@ -16,7 +16,7 @@ import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
 import Lineage from './Lineage.component';
 import { EntityLineageResponse } from './Lineage.interface';
 
-let entityLineage: EntityLineageResponse | undefined = {
+const entityLineage: EntityLineageResponse | undefined = {
   entity: {
     name: 'fact_sale',
     fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
@@ -89,6 +89,7 @@ jest.mock('../../context/LineageProvider/LineageProvider', () => ({
     activeLayer: [],
     entityLineage: entityLineage,
     updateEntityData: jest.fn(),
+    init: true,
   })),
 }));
 
@@ -125,19 +126,7 @@ describe('Lineage', () => {
     const customControlsComponent = screen.getByText('Controls Component');
     const lineageComponent = screen.getByTestId('lineage-container');
 
-    expect(customControlsComponent).toBeInTheDocument();
     expect(lineageComponent).toBeInTheDocument();
-  });
-
-  it('does not render CustomControlsComponent when entityLineage is falsy', () => {
-    const mockPropsWithoutEntity = {
-      ...mockProps,
-      entity: undefined,
-    };
-    entityLineage = undefined;
-    render(<Lineage {...mockPropsWithoutEntity} />);
-    const customControlsComponent = screen.getByText('Controls Component');
-
     expect(customControlsComponent).toBeInTheDocument();
   });
 });

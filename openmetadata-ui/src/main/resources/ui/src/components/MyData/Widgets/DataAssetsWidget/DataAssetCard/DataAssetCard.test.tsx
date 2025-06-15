@@ -57,7 +57,7 @@ describe('DataAssetCard', () => {
     render(<DataAssetCard service={mockServiceData} />);
 
     expect(screen.getByText('getServiceLogo')).toBeInTheDocument();
-    expect(screen.getByText('Mysql')).toBeInTheDocument();
+    expect(screen.getByText('MySQL')).toBeInTheDocument();
     expect(screen.getByText('AppBadge')).toBeInTheDocument();
 
     expect(getExplorePath).toHaveBeenCalledWith({

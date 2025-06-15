@@ -2607,4 +2607,46 @@ public class ElasticSearchClient implements SearchClient {
           "Failed to remove ILM policy from component template: " + e.getMessage());
     }
   }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
+    }
+  }
 }
