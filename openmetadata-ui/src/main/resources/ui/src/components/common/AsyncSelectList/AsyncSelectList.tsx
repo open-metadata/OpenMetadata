@@ -103,8 +103,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       setIsLoading(true);
       try {
         const res = await fetchOptions(value, 1);
-        setOptions(getFilteredOptions(res.data));
-        setPaging(res.paging);
+        if (Array.isArray(res)) {
+          setOptions(getFilteredOptions(res));
+          setPaging({ total: res.length } as Paging);
+        } else {
+          setOptions(getFilteredOptions(res.data));
+          setPaging(res.paging);
+        }
         setSearchValue(value);
         setCurrentPage(1);
       } catch (error) {
@@ -124,26 +129,35 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   const tagOptions = useMemo(() => {
     const newTags = options.map((tag) => {
       const displayName = tag.data?.displayName;
-      const parts = Fqn.split(tag.label);
+      const labelString = typeof tag.label === 'string' ? tag.label : tag.value;
+      const parts = Fqn.split(labelString);
       const lastPartOfTag = isEmpty(displayName)
         ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
         : displayName;
       parts.pop();
 
       return {
-        label: tag.label,
-        displayName: (
-          <Space className="w-full" direction="vertical" size={0}>
-            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
-              {parts.join(FQN_SEPARATOR_CHAR)}
-            </Typography.Paragraph>
-            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
-              {lastPartOfTag}
-            </Typography.Text>
-          </Space>
-        ),
+        label: labelString,
+        displayName:
+          typeof tag.label === 'string' ? (
+            <Space className="w-full" direction="vertical" size={0}>
+              <Typography.Paragraph
+                ellipsis
+                className="text-grey-muted m-0 p-0">
+                {parts.join(FQN_SEPARATOR_CHAR)}
+              </Typography.Paragraph>
+              <Typography.Text
+                ellipsis
+                style={{ color: tag.data?.style?.color }}>
+                {lastPartOfTag}
+              </Typography.Text>
+            </Space>
+          ) : (
+            tag.label
+          ),
         value: tag.value,
         data: tag.data,
+        field: tag.field,
       };
     });
 
@@ -161,8 +175,15 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
         try {
           setHasContentLoading(true);
           const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
-          setPaging(res.paging);
+          if (Array.isArray(res)) {
+            // Plain array response - no pagination support, just append results
+            setOptions((prev) => [...prev, ...getFilteredOptions(res)]);
+            // Don't update paging for plain arrays as they don't support true pagination
+          } else {
+            // PagingResponse response - proper pagination
+            setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
+            setPaging(res.paging);
+          }
           setCurrentPage((prev) => prev + 1);
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -261,30 +282,52 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     );
   };
 
-  const handleChange: SelectProps['onChange'] = (values: string[], options) => {
-    const selectedValues = values.map((value) => {
+  const handleChange: SelectProps['onChange'] = (values, options) => {
+    // Handle both single and multiple selection modes
+    const valuesArray =
+      mode === 'multiple' ? (values as string[]) : [values as string];
+    const optionsArray =
+      mode === 'multiple'
+        ? (options as SelectOption[])
+        : [options as SelectOption];
+
+    const selectedValues = valuesArray.map((value, index) => {
       const initialData = initialOptions?.find(
         (item) => item.value === value
       )?.data;
-      const data = (options as SelectOption[]).find(
-        (option) => option.value === value
-      );
 
-      return (
-        (initialData
-          ? {
-              value,
-              label: value,
-              data: initialData,
-            }
-          : data) ?? {
-          value,
-          label: value,
-        }
-      );
+      // For single selection, get the option from optionsArray
+      // For multiple selection, find the option by value
+      const optionData =
+        mode === 'multiple'
+          ? (optionsArray as SelectOption[]).find(
+              (option) => option.value === value
+            )
+          : optionsArray[index];
+
+      // Include the field property from the original option if it exists
+      const result = initialData
+        ? {
+            value,
+            label: value,
+            data: initialData,
+            field: optionData?.field,
+          }
+        : optionData ?? {
+            value,
+            label: value,
+          };
+
+      return result;
     });
     selectedTagsRef.current = selectedValues;
-    onChange?.(selectedValues);
+
+    // For single selection, pass the single option; for multiple, pass the array
+    if (mode === 'multiple') {
+      onChange?.(selectedValues);
+    } else {
+      onChange?.(selectedValues[0]);
+    }
   };
 
   useEffect(() => {
@@ -325,11 +368,12 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       onPopupScroll={onScroll}
       onSearch={debounceFetcher}
       {...props}>
-      {tagOptions.map(({ label, value, displayName, data }) => (
+      {tagOptions.map(({ label, value, displayName, data, field }) => (
         <Select.Option
           className={`${optionClassName} w-full`}
           data={data}
           data-testid={`tag-${value}`}
+          field={field}
           key={label}
           value={value}>
           <Tooltip
