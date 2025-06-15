@@ -18,9 +18,10 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagSource } from '../../../generated/type/tagLabel';
 
 export type SelectOption = {
-  label: string;
+  label: string | JSX.Element;
   value: string;
   data?: Tag | GlossaryTerm;
+  field?: string;
 };
 
 export interface AsyncSelectListProps {
@@ -28,8 +29,8 @@ export interface AsyncSelectListProps {
   optionClassName?: string;
   placeholder?: string;
   debounceTimeout?: number;
-  defaultValue?: string[];
-  value?: string[];
+  defaultValue?: string | string[];
+  value?: string | string[];
   tagType?: TagSource;
   initialOptions?: SelectOption[];
   filterOptions?: string[]; // array of fqn
@@ -39,7 +40,7 @@ export interface AsyncSelectListProps {
   fetchOptions: (
     search: string,
     page: number
-  ) => Promise<PagingResponse<SelectOption[]>>;
+  ) => Promise<PagingResponse<SelectOption[]> | SelectOption[]>;
   open?: boolean;
   hasNoActionButtons?: boolean;
 }
