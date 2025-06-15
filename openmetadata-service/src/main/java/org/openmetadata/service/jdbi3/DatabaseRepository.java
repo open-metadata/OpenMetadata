@@ -19,6 +19,7 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
@@ -26,7 +27,9 @@ import static org.openmetadata.service.Entity.TABLE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -78,7 +81,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("name", this::fetchAndSetService);
+    fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
+    fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
   @Override
@@ -114,6 +122,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public EntityInterface getParentEntity(Database entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -185,6 +196,68 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
               : null);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Database> entities) {
+    // Always set default service field for all databases
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    fetchAndSetDatabaseSpecificFields(entities, fields);
+    setInheritedFields(entities, fields);
+
+    for (Database entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
+    if (databases == null || databases.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains("databaseSchemas")) {
+      fetchAndSetDatabaseSchemas(databases, fields);
+    }
+
+    if (fields.contains(DATABASE_PROFILER_CONFIG)) {
+      fetchAndSetDatabaseProfilerConfigs(databases, fields);
+    }
+
+    if (fields.contains("usageSummary")) {
+      fetchAndSetUsageSummaries(databases, fields);
+    }
+  }
+
+  private void fetchAndSetDatabaseSchemas(List<Database> databases, Fields fields) {
+    if (!fields.contains("databaseSchemas") || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, databases, batchFetchDatabaseSchemas(databases), Database::setDatabaseSchemas);
+  }
+
+  private void fetchAndSetDatabaseProfilerConfigs(List<Database> databases, Fields fields) {
+    if (!fields.contains(DATABASE_PROFILER_CONFIG) || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        databases,
+        batchFetchDatabaseProfilerConfigs(databases),
+        Database::setDatabaseProfilerConfig);
+  }
+
+  private void fetchAndSetUsageSummaries(List<Database> databases, Fields fields) {
+    if (!fields.contains("usageSummary") || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        databases,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(databases)),
+        Database::setUsageSummary);
   }
 
   public void clearFields(Database database, Fields fields) {
@@ -261,6 +334,106 @@ public class DatabaseRepository extends EntityRepository<Database> {
     for (Database database : entities) {
       database.setService(service);
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
+    Map<UUID, List<EntityReference>> schemasMap = new HashMap<>();
+    if (databases == null || databases.isEmpty()) {
+      return schemasMap;
+    }
+
+    // Initialize empty lists for all databases
+    for (Database database : databases) {
+      schemasMap.put(database.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all schemas for all databases
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(databases), Relationship.CONTAINS.ordinal(), DATABASE_SCHEMA);
+
+    // Group schemas by database ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID databaseId = UUID.fromString(record.getFromId());
+      EntityReference schemaRef =
+          Entity.getEntityReferenceById(
+              DATABASE_SCHEMA, UUID.fromString(record.getToId()), NON_DELETED);
+      schemasMap.get(databaseId).add(schemaRef);
+    }
+
+    return schemasMap;
+  }
+
+  private Map<UUID, DatabaseProfilerConfig> batchFetchDatabaseProfilerConfigs(
+      List<Database> databases) {
+    Map<UUID, DatabaseProfilerConfig> configMap = new HashMap<>();
+    if (databases == null || databases.isEmpty()) {
+      return configMap;
+    }
+
+    // Use batch extension query for profiler configs
+    List<CollectionDAO.ExtensionRecordWithId> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsBatch(entityListToStrings(databases), DATABASE_PROFILER_CONFIG_EXTENSION);
+
+    for (CollectionDAO.ExtensionRecordWithId record : records) {
+      try {
+        DatabaseProfilerConfig config =
+            JsonUtils.readValue(record.extensionJson(), DatabaseProfilerConfig.class);
+        configMap.put(record.id(), config);
+      } catch (Exception e) {
+        configMap.put(record.id(), null);
+      }
+    }
+
+    // Ensure all databases have an entry (null if no config found)
+    for (Database database : databases) {
+      if (!configMap.containsKey(database.getId())) {
+        configMap.put(database.getId(), null);
+      }
+    }
+
+    return configMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Database> databases) {
+    if (databases == null || databases.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all databases
+    Map<UUID, EntityReference> serviceMap = batchFetchServices(databases);
+
+    // Set service for all databases
+    for (Database database : databases) {
+      database.setService(serviceMap.get(database.getId()));
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Database> databases) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (databases == null || databases.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all databases
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(databases), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID databaseId = UUID.fromString(record.getToId());
+      EntityReference serviceRef =
+          Entity.getEntityReferenceById(
+              Entity.DATABASE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+      serviceMap.put(databaseId, serviceRef);
+    }
+
+    return serviceMap;
   }
 
   public class DatabaseUpdater extends EntityUpdater {

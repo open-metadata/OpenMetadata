@@ -26,6 +26,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -67,6 +68,10 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetFieldTags);
   }
 
   @Override
@@ -126,6 +131,24 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public void clearFields(SearchIndex searchIndex, Fields fields) {
     /* Nothing to do */
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetFollowers(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, searchIndexes, batchFetchFollowers(searchIndexes), SearchIndex::setFollowers);
+  }
+
+  private void fetchAndSetFieldTags(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
   }
 
   @Override
@@ -366,6 +389,37 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       }
     }
     return childrenSchemaField;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return followersMap;
+    }
+
+    // Initialize empty lists for all search indexes
+    for (SearchIndex searchIndex : searchIndexes) {
+      followersMap.put(searchIndex.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all followers for all search indexes
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(searchIndexes),
+                org.openmetadata.schema.type.Relationship.FOLLOWS.ordinal());
+
+    // Group followers by search index ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID searchIndexId = UUID.fromString(record.getToId());
+      EntityReference followerRef =
+          Entity.getEntityReferenceById(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+      followersMap.get(searchIndexId).add(followerRef);
+    }
+
+    return followersMap;
   }
 
   public class SearchIndexUpdater extends EntityUpdater {

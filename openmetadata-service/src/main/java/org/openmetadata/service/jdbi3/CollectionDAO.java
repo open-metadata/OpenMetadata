@@ -4208,6 +4208,15 @@ public interface CollectionDAO {
             + "WHERE usageDate IN (SELECT MAX(usageDate) FROM entity_usage WHERE id = :id) AND id = :id")
     UsageDetails getLatestUsage(@Bind("id") String id);
 
+    /** Get latest usage records for multiple entities in one query */
+    @RegisterRowMapper(UsageDetailsWithIdMapper.class)
+    @SqlQuery(
+        "SELECT u1.id, u1.usageDate, u1.entityType, u1.count1, u1.count7, u1.count30, "
+            + "u1.percentile1, u1.percentile7, u1.percentile30 FROM entity_usage u1 "
+            + "INNER JOIN (SELECT id, MAX(usageDate) as maxDate FROM entity_usage WHERE id IN (<ids>) GROUP BY id) u2 "
+            + "ON u1.id = u2.id AND u1.usageDate = u2.maxDate")
+    List<UsageDetailsWithId> getLatestUsageBatch(@BindList("ids") List<String> ids);
+
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
 
@@ -4269,6 +4278,51 @@ public interface CollectionDAO {
             .withDailyStats(dailyStats)
             .withWeeklyStats(weeklyStats)
             .withMonthlyStats(monthlyStats);
+      }
+    }
+
+    /** Usage details with entity ID for batch operations */
+    public static class UsageDetailsWithId {
+      private final String entityId;
+      private final UsageDetails usageDetails;
+
+      public UsageDetailsWithId(String entityId, UsageDetails usageDetails) {
+        this.entityId = entityId;
+        this.usageDetails = usageDetails;
+      }
+
+      public String getEntityId() {
+        return entityId;
+      }
+
+      public UsageDetails getUsageDetails() {
+        return usageDetails;
+      }
+    }
+
+    class UsageDetailsWithIdMapper implements RowMapper<UsageDetailsWithId> {
+      @Override
+      public UsageDetailsWithId map(ResultSet r, StatementContext ctx) throws SQLException {
+        String entityId = r.getString("id");
+        UsageStats dailyStats =
+            new UsageStats()
+                .withCount(r.getInt("count1"))
+                .withPercentileRank(r.getDouble("percentile1"));
+        UsageStats weeklyStats =
+            new UsageStats()
+                .withCount(r.getInt("count7"))
+                .withPercentileRank(r.getDouble("percentile7"));
+        UsageStats monthlyStats =
+            new UsageStats()
+                .withCount(r.getInt("count30"))
+                .withPercentileRank(r.getDouble("percentile30"));
+        UsageDetails usageDetails =
+            new UsageDetails()
+                .withDate(r.getString("usageDate"))
+                .withDailyStats(dailyStats)
+                .withWeeklyStats(weeklyStats)
+                .withMonthlyStats(monthlyStats);
+        return new UsageDetailsWithId(entityId, usageDetails);
       }
     }
   }

@@ -252,13 +252,35 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void processEntityReindex(JobExecutionContext jobExecutionContext)
       throws InterruptedException {
     int latchCount = getTotalLatchCount(jobData.getEntities());
+    LOG.info("[SearchIndex] Total batches to process: {}", latchCount);
+
     CountDownLatch producerLatch = new CountDownLatch(latchCount);
+    long startTime = System.currentTimeMillis();
+
     submitProducerTask(jobExecutionContext, producerLatch);
-    producerLatch.await();
+
+    // Wait with periodic status updates
+    while (!producerLatch.await(30, TimeUnit.SECONDS)) {
+      long remaining = producerLatch.getCount();
+      long processed = latchCount - remaining;
+      long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+      LOG.info(
+          "[SearchIndex] Progress: {}/{} batches processed ({}%) in {}s",
+          processed, latchCount, Math.round(processed * 100.0 / latchCount), elapsedSeconds);
+    }
+
+    long totalTime = System.currentTimeMillis() - startTime;
+    LOG.info("[SearchIndex] Completed all {} batches in {}ms", latchCount, totalTime);
   }
 
   private void submitProducerTask(
       JobExecutionContext jobExecutionContext, CountDownLatch producerLatch) {
+    LOG.info(
+        "[SearchIndex] Starting producer tasks for {} entity types with batch size: {}, producer threads: {}",
+        jobData.getEntities().size(),
+        batchSize.get(),
+        jobData.getProducerThreads());
+
     for (String entityType : jobData.getEntities()) {
       jobExecutor.submit(
           () -> {
@@ -266,30 +288,29 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+
+              LOG.info(
+                  "[SearchIndex] Processing entityType: {}, totalRecords: {}, batches: {}",
+                  entityType,
+                  totalEntityRecords,
+                  loadPerThread);
+
               Semaphore semaphore = new Semaphore(Math.max(jobData.getQueueSize(), 100));
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
                   semaphore.acquire();
-                  LOG.debug(
-                      "Submitting virtual thread producer task for batch {}/{}",
-                      i + 1,
-                      loadPerThread);
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
-                          LOG.debug(
-                              "Virtual thread processing offset: {}, remaining batches: {}",
-                              currentOffset,
-                              producerLatch.getCount());
                           processReadTask(jobExecutionContext, entityType, source, currentOffset);
                         } catch (Exception e) {
                           LOG.error(
-                              "Error processing entity type {} with virtual thread", entityType, e);
+                              "[SearchIndex] Error processing entity type {} at offset {}",
+                              entityType,
+                              currentOffset,
+                              e);
                         } finally {
-                          LOG.debug(
-                              "Virtual thread completed batch, remaining: {}",
-                              producerLatch.getCount() - 1);
                           producerLatch.countDown();
                           semaphore.release();
                         }
@@ -297,7 +318,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 }
               }
             } catch (Exception e) {
-              LOG.error("Error processing entity type {}", entityType, e);
+              LOG.error(
+                  "[SearchIndex] Error setting up producer for entity type {}", entityType, e);
             }
           });
     }
@@ -655,18 +677,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processReadTask(
       JobExecutionContext jobExecutionContext, String entityType, Source<?> source, int offset) {
+    long startTime = System.currentTimeMillis();
     try {
+      LOG.debug(
+          "[SearchIndex] Reading batch for entityType: {}, offset: {}, batchSize: {}",
+          entityType,
+          offset,
+          batchSize.get());
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
-      LOG.debug("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
+      long readTime = System.currentTimeMillis() - startTime;
+
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
+        LOG.info(
+            "[SearchIndex] Read {} entities of type {} in {}ms (offset: {})",
+            entities.getData().size(),
+            entityType,
+            readTime,
+            offset);
+
         if (!nullOrEmpty(entities.getData())) {
           IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
           processTask(task, jobExecutionContext);
         }
       }
     } catch (SearchIndexException e) {
-      LOG.error("Error while reading source for entityType: {}", entityType, e);
+      LOG.error(
+          "[SearchIndex] Error reading batch for entityType: {} at offset: {} after {}ms",
+          entityType,
+          offset,
+          System.currentTimeMillis() - startTime,
+          e);
       synchronized (jobDataLock) {
         jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
         jobData.setFailure(e.getIndexingError());
@@ -733,17 +774,30 @@ public class SearchIndexApp extends AbstractNativeApplication {
           jobData.getMaxConcurrentRequests(),
           jobData.getPayLoadSize() / (1024 * 1024));
 
+      // Apply auto-tuned parameters with safety limits
       jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
-      jobData.setProducerThreads(clusterMetrics.getRecommendedProducerThreads());
+
+      // Limit producer threads to prevent database connection pool exhaustion
+      // With 300 connections, we should leave some for other operations
+      int maxProducerThreads = Math.min(clusterMetrics.getRecommendedProducerThreads(), 50);
+      if (clusterMetrics.getRecommendedProducerThreads() > maxProducerThreads) {
+        LOG.warn(
+            "AUTO-TUNE: Limiting producer threads from {} to {} to prevent connection pool exhaustion",
+            clusterMetrics.getRecommendedProducerThreads(),
+            maxProducerThreads);
+      }
+      jobData.setProducerThreads(maxProducerThreads);
+
       jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
       LOG.info(
-          "AUTO-TUNE DEBUG: Final Applied - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          "AUTO-TUNE: Final Applied - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB, Total Entities: {}",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
-          jobData.getPayLoadSize() / (1024 * 1024));
+          jobData.getPayLoadSize() / (1024 * 1024),
+          totalEntities);
 
     } catch (Exception e) {
       LOG.warn("Auto-tuning failed, using original parameters: {}", e.getMessage());
