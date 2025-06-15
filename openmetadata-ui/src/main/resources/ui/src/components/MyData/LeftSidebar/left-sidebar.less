@@ -12,9 +12,8 @@
  */
 @import (reference) url('../../../styles/variables.less');
 
-@selected-color: #1570ef;
-@hover-color: #d1e9ff;
-@active-color: #175cd3;
+@hover-color: @primary-1;
+@active-color: @primary-7;
 @left-sidebar-icon-size: 28px;
 
 .logo-container {
@@ -88,7 +87,7 @@
         border-radius: 12px;
 
         &.ant-menu-item-selected {
-          background: @selected-color;
+          background: @primary-color;
           color: @white;
 
           .ant-menu-title-content {
@@ -161,7 +160,7 @@
       }
 
       &.ant-menu-item-selected {
-        background-color: @selected-color;
+        background-color: @primary-color;
         color: @white;
 
         svg {
@@ -202,7 +201,7 @@
     overflow: hidden;
 
     .ant-menu-submenu-title {
-      background-color: @active-color;
+      background-color: @primary-color;
       font-weight: 600;
       line-height: 20px;
       font-size: 14px;
@@ -267,7 +266,7 @@
       color: @active-color;
 
       .ant-menu-submenu-title {
-        background: @active-color;
+        background: @primary-color;
         color: @white;
         border-radius: 12px;
 
