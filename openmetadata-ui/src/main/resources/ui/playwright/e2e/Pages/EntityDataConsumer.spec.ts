@@ -59,6 +59,9 @@ const test = base.extend<{
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
+  const rowSelector =
+    entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -132,9 +135,34 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
         });
+      });
+
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName edit for child entities should not be allowed', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await expect(
+            page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('edit-displayName-button')
+          ).not.toBeVisible();
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector
+        );
       });
     }
 

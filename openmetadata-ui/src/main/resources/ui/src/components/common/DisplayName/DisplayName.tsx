@@ -30,6 +30,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   onEditDisplayName,
   link,
   allowRename,
+  hasEditPermission = false,
 }) => {
   const { t } = useTranslation();
 
@@ -85,7 +86,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         {renderMainContent}
       </Typography.Text>
 
-      {allowRename ? (
+      {hasEditPermission ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
             ghost

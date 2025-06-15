@@ -58,8 +58,8 @@ export const getServiceMainTabColumns = (
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
-        allowRename={editDisplayNamePermission}
         displayName={record.displayName}
+        hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}

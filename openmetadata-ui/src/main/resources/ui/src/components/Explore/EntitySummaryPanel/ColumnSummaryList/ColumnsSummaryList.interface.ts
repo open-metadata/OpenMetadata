@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import { EntityType } from '../../../../enums/entity.enum';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
+import { Table } from '../../../../generated/entity/data/table';
 
-export interface DisplayNameProps {
-  id: string;
-  name?: ReactNode;
-  displayName?: ReactNode;
-  link?: string;
-  onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
-  /**
-   * To allow renaming the `name` field of the entity
-   */
-  allowRename?: boolean;
-  /**
-   * To allow renaming the `displayName` field of the entity
-   */
-  hasEditPermission?: boolean;
+export interface ColumnSummaryListProps {
+  entityType: EntityType;
+  entityInfo: Table | DashboardDataModel;
+  highlights?: Record<string, string[]>;
 }

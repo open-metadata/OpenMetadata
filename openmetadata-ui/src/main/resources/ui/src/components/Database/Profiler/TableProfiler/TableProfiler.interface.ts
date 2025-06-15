@@ -91,6 +91,7 @@ export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
+  key: string;
 };
 
 export type TableProfilerChartProps = {

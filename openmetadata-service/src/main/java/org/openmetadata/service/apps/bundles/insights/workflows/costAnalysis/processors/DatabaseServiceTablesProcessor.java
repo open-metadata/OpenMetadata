@@ -59,7 +59,7 @@ public class DatabaseServiceTablesProcessor
         // TODO: Does the DataInsightsProcess have access to PII?
         Table tableProfileData =
             ((TableRepository) Entity.getEntityRepository(Entity.TABLE))
-                .getLatestTableProfile(table.getFullyQualifiedName(), true);
+                .getLatestTableProfile(table.getFullyQualifiedName(), true, false);
 
         Optional<TableProfile> oTableProfile = Optional.ofNullable(tableProfileData.getProfile());
 

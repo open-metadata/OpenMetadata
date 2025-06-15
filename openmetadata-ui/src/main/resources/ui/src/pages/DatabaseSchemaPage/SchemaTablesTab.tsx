@@ -190,8 +190,8 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              allowRename={allowEditDisplayNamePermission}
               displayName={record.displayName}
+              hasEditPermission={allowEditDisplayNamePermission}
               id={record.id}
               key={record.id}
               link={entityUtilClassBase.getEntityLink(

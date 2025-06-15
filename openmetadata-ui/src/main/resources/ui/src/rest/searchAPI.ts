@@ -202,6 +202,7 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      exclude_source_fields: req.excludeSourceFields,
     },
     paramsSerializer: {
       indexes: null,

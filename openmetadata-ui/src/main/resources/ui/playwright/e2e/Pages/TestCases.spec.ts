@@ -42,7 +42,7 @@ test('Table difference test case', async ({ page }) => {
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table1.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest`
+    )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
@@ -184,7 +184,7 @@ test('Custom SQL Query', async ({ page }) => {
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table.entityResponseData?.['fullyQualifiedName']
-    )}/tableProfile/latest`
+    )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();
   await profileResponse;

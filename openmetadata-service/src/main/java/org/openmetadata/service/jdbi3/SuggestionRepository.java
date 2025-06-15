@@ -247,10 +247,9 @@ public class SuggestionRepository {
   public RestUtil.PutResponse<List<Suggestion>> acceptSuggestionList(
       UriInfo uriInfo,
       List<Suggestion> suggestions,
-      SuggestionType suggestionType,
       SecurityContext securityContext,
       Authorizer authorizer) {
-    acceptSuggestionList(suggestions, suggestionType, securityContext, authorizer);
+    acceptSuggestionList(suggestions, securityContext, authorizer);
     List<Suggestion> updatedHref =
         suggestions.stream()
             .map(suggestion -> SuggestionsResource.addHref(uriInfo, suggestion))
@@ -288,10 +287,7 @@ public class SuggestionRepository {
 
   @Transaction
   protected void acceptSuggestionList(
-      List<Suggestion> suggestions,
-      SuggestionType suggestionType,
-      SecurityContext securityContext,
-      Authorizer authorizer) {
+      List<Suggestion> suggestions, SecurityContext securityContext, Authorizer authorizer) {
     String user = securityContext.getUserPrincipal().getName();
 
     // Entity being updated
@@ -307,12 +303,9 @@ public class SuggestionRepository {
       // Validate all suggestions indeed talk about the same entity
       if (entity == null) {
         // Initialize the Entity and the Repository
-        entity =
-            Entity.getEntity(
-                entityLink,
-                suggestionType == SuggestionType.SuggestTagLabel ? "tags" : "",
-                NON_DELETED);
         repository = Entity.getEntityRepository(entityLink.getEntityType());
+        entity =
+            Entity.getEntity(entityLink, repository.getSuggestionFields(suggestion), NON_DELETED);
         origJson = JsonUtils.pojoToJson(entity);
         suggestionWorkflow = repository.getSuggestionWorkflow(entity);
       } else if (!entity.getFullyQualifiedName().equals(entityLink.getEntityFQN())) {
