@@ -27,7 +27,7 @@ import { settingClick, sidebarClick } from '../../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const dashboardEntity = new DashboardClass();
-const propertyName = `12${uuid()}`;
+const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
 const propertyValue = `dashboardcustomproperty_${uuid()}`;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
