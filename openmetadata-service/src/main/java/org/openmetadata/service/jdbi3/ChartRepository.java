@@ -152,6 +152,9 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public EntityInterface getParentEntity(Chart entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 

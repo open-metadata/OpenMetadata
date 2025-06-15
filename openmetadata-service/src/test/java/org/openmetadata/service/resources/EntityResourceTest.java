@@ -802,9 +802,43 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Test bulk field fetching with different field combinations
-    String[] fieldCombinations = {
-      "owners,tags", "followers,owners", "domain,tags,owners", getAllowedFields()
-    };
+    // Build combinations based on what the entity actually supports
+    List<String> fieldCombinationsList = new ArrayList<>();
+
+    // Add combinations based on supported fields
+    if (supportsOwners && supportsTags) {
+      fieldCombinationsList.add("owners,tags");
+    } else if (supportsOwners) {
+      fieldCombinationsList.add("owners");
+    }
+
+    if (supportsFollowers && supportsOwners) {
+      fieldCombinationsList.add("followers,owners");
+    } else if (supportsFollowers) {
+      fieldCombinationsList.add("followers");
+    }
+
+    // Build a combination with domain, tags, and owners if supported
+    StringBuilder complexFields = new StringBuilder();
+    if (supportsDomain) {
+      complexFields.append("domain");
+    }
+    if (supportsTags) {
+      if (complexFields.length() > 0) complexFields.append(",");
+      complexFields.append("tags");
+    }
+    if (supportsOwners) {
+      if (complexFields.length() > 0) complexFields.append(",");
+      complexFields.append("owners");
+    }
+    if (complexFields.length() > 0) {
+      fieldCombinationsList.add(complexFields.toString());
+    }
+
+    // Always test with all allowed fields
+    fieldCombinationsList.add(getAllowedFields());
+
+    String[] fieldCombinations = fieldCombinationsList.toArray(new String[0]);
 
     for (String fields : fieldCombinations) {
       if (fields == null || fields.isEmpty()) continue;

@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -79,6 +82,9 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
   @Override
   public EntityInterface getParentEntity(APICollection entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -88,6 +94,63 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         fields.contains("apiEndpoints")
             ? getAPIEndpoints(apiCollection)
             : apiCollection.getApiEndpoints());
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<APICollection> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Bulk fetch and set service for all API collections first
+    fetchAndSetServices(entities);
+
+    // Then call parent's implementation which handles standard fields
+    super.setFieldsInBulk(fields, entities);
+  }
+
+  private void fetchAndSetServices(List<APICollection> apiCollections) {
+    if (apiCollections == null || apiCollections.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all API collections
+    Map<UUID, EntityReference> serviceRefs = batchFetchServices(apiCollections);
+
+    // Set service field for all API collections
+    for (APICollection apiCollection : apiCollections) {
+      EntityReference serviceRef = serviceRefs.get(apiCollection.getId());
+      if (serviceRef != null) {
+        apiCollection.withService(serviceRef);
+      }
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<APICollection> apiCollections) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (apiCollections == null || apiCollections.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Batch query to get all services that contain these API collections
+    // findFromBatch finds relationships where the provided IDs are in the "to" position
+    // So this finds: API_SERVICE (from) -> CONTAINS -> API_COLLECTION (to)
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(apiCollections), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      // We're looking for records where API Service contains API Collection
+      if (Entity.API_SERVICE.equals(record.getFromEntity())) {
+        UUID apiCollectionId = UUID.fromString(record.getToId());
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.API_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
+        serviceMap.put(apiCollectionId, serviceRef);
+      }
+    }
+
+    return serviceMap;
   }
 
   public void clearFields(APICollection apiCollection, Fields fields) {

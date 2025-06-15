@@ -88,11 +88,21 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   @Override
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
-    APICollection apiCollection =
-        Entity.getEntity(
-            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
-    inheritOwners(endpoint, fields, apiCollection);
-    inheritDomain(endpoint, fields, apiCollection);
+    // Ensure apiCollection is populated before accessing it
+    if (endpoint.getApiCollection() == null) {
+      EntityReference apiCollectionRef = getContainer(endpoint.getId());
+      if (apiCollectionRef != null) {
+        endpoint.withApiCollection(apiCollectionRef);
+      }
+    }
+
+    if (endpoint.getApiCollection() != null) {
+      APICollection apiCollection =
+          Entity.getEntity(
+              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
+      inheritOwners(endpoint, fields, apiCollection);
+      inheritDomain(endpoint, fields, apiCollection);
+    }
   }
 
   @Override

@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
@@ -188,6 +189,30 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<DashboardDataModel> dataModels) {
+    if (dataModels.isEmpty()) {
+      return;
+    }
+
+    // Bulk fetch tags for columns if needed
+    fetchAndSetColumnTags(dataModels, fields);
+
+    // Bulk fetch services if needed
+    if (fields.contains(FIELD_SERVICE)) {
+      // For dashboard data models, the service is already in the container reference
+      // Just need to set it from the container
+      for (DashboardDataModel dataModel : dataModels) {
+        if (dataModel.getService() == null) {
+          EntityReference service = getContainer(dataModel.getId());
+          if (service != null) {
+            dataModel.withService(service);
+          }
+        }
+      }
+    }
+  }
+
+  @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
     super.restorePatchAttributes(original, updated);
@@ -203,6 +228,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, ALL);
   }
 
