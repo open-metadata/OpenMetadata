@@ -136,6 +136,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -810,9 +811,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Example implementation can be found in {@link GlossaryTermRepository#setFieldsInBulk}.
    */
   public void setFieldsInBulk(Fields fields, List<T> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
     for (T entity : entities) {
-      setFieldsInternal(entity, fields);
-      setInheritedFields(entity, fields);
       clearFieldsInternal(entity, fields);
     }
   }
@@ -4532,39 +4536,221 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return childrenMap;
   }
 
-  private List<String> entityListToStrings(List<T> entities) {
+  List<String> entityListToStrings(List<T> entities) {
     return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
   }
 
   private Iterator<Either<T, EntityError>> serializeJsons(
       List<String> jsons, Fields fields, UriInfo uriInfo) {
-    return new Iterator<>() {
-      private final Iterator<String> iterator = jsons.iterator();
+    // Process all entities in bulk
+    List<Either<T, EntityError>> results = new ArrayList<>();
+    List<T> entities = new ArrayList<>();
 
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
-
-      @Override
-      public Either<T, EntityError> next() {
-        String json = iterator.next();
+    // First, deserialize all JSONs into entities
+    for (String json : jsons) {
+      try {
         T entity = JsonUtils.readValue(json, entityClass);
-        try {
-          setFieldsInternal(entity, fields);
-          setInheritedFields(entity, fields);
-          clearFieldsInternal(entity, fields);
-          if (!nullOrEmpty(uriInfo)) {
-            entity = withHref(uriInfo, entity);
+        entities.add(entity);
+      } catch (Exception e) {
+        // If deserialization fails, create an error entry
+        EntityError entityError =
+            new EntityError()
+                .withMessage("Failed to deserialize entity: " + e.getMessage())
+                .withEntity(null);
+        results.add(Either.right(entityError));
+      }
+    }
+
+    // Process all successfully deserialized entities in bulk
+    if (!entities.isEmpty()) {
+      try {
+        // Use bulk operations for better performance
+        setFieldsInBulk(fields, entities);
+
+        // Apply href to all entities if uriInfo is provided
+        if (!nullOrEmpty(uriInfo)) {
+          entities.forEach(entity -> withHref(uriInfo, entity));
+        }
+
+        // Add all successfully processed entities to results
+        for (T entity : entities) {
+          results.add(Either.left(entity));
+        }
+      } catch (Exception e) {
+        // If bulk processing fails, fall back to individual processing with error handling
+        for (T entity : entities) {
+          try {
+            setFieldsInternal(entity, fields);
+            setInheritedFields(entity, fields);
+            clearFieldsInternal(entity, fields);
+            if (!nullOrEmpty(uriInfo)) {
+              entity = withHref(uriInfo, entity);
+            }
+            results.add(Either.left(entity));
+          } catch (Exception individualError) {
+            clearFieldsInternal(entity, fields);
+            EntityError entityError =
+                new EntityError().withMessage(individualError.getMessage()).withEntity(entity);
+            results.add(Either.right(entityError));
           }
-          return Either.left(entity);
-        } catch (Exception e) {
-          clearFieldsInternal(entity, fields);
-          EntityError entityError =
-              new EntityError().withMessage(e.getMessage()).withEntity(entity);
-          return Either.right(entityError);
         }
       }
-    };
+    }
+
+    // Return an iterator over the processed results
+    return results.iterator();
+  }
+
+  // Bulk loading helper methods
+  protected <V> void setFieldFromMap(
+      boolean includeField, List<T> entities, Map<UUID, V> valueMap, BiConsumer<T, V> setter) {
+    if (!includeField || entities.isEmpty()) {
+      return;
+    }
+    for (T entity : entities) {
+      V value = valueMap.get(entity.getId());
+      setter.accept(entity, value);
+    }
+  }
+
+  protected <V> void setFieldFromMapSingleRelation(
+      boolean includeField, List<T> entities, Map<UUID, V> valueMap, BiConsumer<T, V> setter) {
+    if (!includeField || entities.isEmpty()) {
+      return;
+    }
+    for (T entity : entities) {
+      V value = valueMap.get(entity.getId());
+      setter.accept(entity, value);
+    }
+  }
+
+  protected Map<UUID, List<EntityReference>> batchFetchFromIdsManyToOne(
+      List<T> entities, Relationship relationship, String toEntityType) {
+    Map<UUID, List<EntityReference>> resultMap = new HashMap<>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(entities), relationship.ordinal(), toEntityType);
+
+    Map<String, EntityReference> idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                toEntityType,
+                records.stream().map(e -> UUID.fromString(e.getToId())).distinct().toList(),
+                NON_DELETED)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID entityId = UUID.fromString(record.getFromId());
+      EntityReference relatedRef = idReferenceMap.get(record.getToId());
+      if (relatedRef != null) {
+        resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+      }
+    }
+
+    return resultMap;
+  }
+
+  protected Map<UUID, EntityReference> batchFetchFromIdsAndRelationSingleRelation(
+      List<T> entities, Relationship relationship) {
+    Map<UUID, EntityReference> resultMap = new HashMap<>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(entities), relationship.ordinal());
+
+    Map<String, EntityReference> idReferenceMap = new HashMap<>();
+
+    // Group by entity type to make efficient batch calls
+    Map<String, List<String>> entityTypeToIds =
+        records.stream()
+            .collect(
+                Collectors.groupingBy(
+                    CollectionDAO.EntityRelationshipObject::getFromEntity,
+                    Collectors.mapping(
+                        CollectionDAO.EntityRelationshipObject::getFromId, Collectors.toList())));
+
+    for (Map.Entry<String, List<String>> entry : entityTypeToIds.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids = entry.getValue().stream().map(UUID::fromString).distinct().toList();
+
+      List<EntityReference> refs = Entity.getEntityReferencesByIds(entityType, ids, NON_DELETED);
+      for (EntityReference ref : refs) {
+        idReferenceMap.put(ref.getId().toString(), ref);
+      }
+    }
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID entityId = UUID.fromString(record.getToId());
+      EntityReference relatedRef = idReferenceMap.get(record.getFromId());
+      if (relatedRef != null) {
+        resultMap.put(entityId, relatedRef);
+      }
+    }
+
+    return resultMap;
+  }
+
+  /**
+   * Bulk populate entity field tags for multiple entities efficiently.
+   * This replaces individual calls to populateEntityFieldTags() to avoid N+1 queries.
+   */
+  protected <F extends FieldInterface> void bulkPopulateEntityFieldTags(
+      List<T> entities,
+      String entityType,
+      java.util.function.Function<T, List<F>> fieldExtractor,
+      java.util.function.Function<T, String> fqnExtractor) {
+
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Collect all FQN prefixes for batch tag fetching
+    Set<String> allPrefixes = new HashSet<>();
+    for (T entity : entities) {
+      String fqnPrefix = fqnExtractor.apply(entity);
+      if (fqnPrefix != null) {
+        allPrefixes.add(fqnPrefix);
+      }
+    }
+
+    // Batch fetch all tags for all prefixes in one call
+    Map<String, List<TagLabel>> allTags = new HashMap<>();
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    for (String prefix : allPrefixes) {
+      Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(prefix, ".%");
+      if (prefixTags != null) {
+        allTags.putAll(prefixTags);
+      }
+    }
+
+    // Apply tags to all fields of all entities
+    for (T entity : entities) {
+      List<F> fields = fieldExtractor.apply(entity);
+      if (fields != null) {
+        List<F> flattenedFields = EntityUtil.getFlattenedEntityField(fields);
+        for (F field : listOrEmpty(flattenedFields)) {
+          List<TagLabel> fieldTags =
+              allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName()));
+          if (fieldTags == null) {
+            field.setTags(new ArrayList<>());
+          } else {
+            field.setTags(addDerivedTags(fieldTags));
+          }
+        }
+      }
+    }
+  }
+
+  protected List<UUID> entityListToUUID(List<T> entities) {
+    return entities.stream().map(EntityInterface::getId).toList();
   }
 }

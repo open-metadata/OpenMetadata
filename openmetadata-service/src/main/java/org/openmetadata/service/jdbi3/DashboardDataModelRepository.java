@@ -54,6 +54,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
   @Override
@@ -164,6 +167,19 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetColumnTags(List<DashboardDataModel> dataModels, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
+      return;
+    }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        dataModels,
+        entityType,
+        DashboardDataModel::getColumns,
+        DashboardDataModel::getFullyQualifiedName);
   }
 
   @Override
