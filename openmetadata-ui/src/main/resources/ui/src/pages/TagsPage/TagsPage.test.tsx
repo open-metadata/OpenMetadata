@@ -65,6 +65,7 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563400,
     updatedBy: 'admin',
+    owners: [],
     href: 'http://localhost:8585/api/v1/tags/PersonalData',
     usageCount: 0,
     children: [
@@ -108,6 +109,7 @@ const mockCategory = [
     updatedAt: 1649665563410,
     updatedBy: 'admin',
     provider: 'user',
+    owners: [],
     href: 'http://localhost:8585/api/v1/tags/PII',
     usageCount: 0,
     children: [
@@ -282,6 +284,69 @@ jest.mock('../../components/Modals/FormModal', () => {
 jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
+
+jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
+  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
+}));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn().mockReturnValue({
+      data: {
+        id: '93285c04-d8b6-4833-997e-56dc5f973427',
+        name: 'PersonalData',
+        description: 'description',
+        version: 0.1,
+        updatedAt: 1649665563400,
+        updatedBy: 'admin',
+        owners: [],
+        href: 'http://localhost:8585/api/v1/tags/PersonalData',
+        usageCount: 0,
+        children: [
+          {
+            id: '8a218558-7b8f-446f-ace7-29b031c856b3',
+            name: 'Personal',
+            fullyQualifiedName: 'PersonalData.Personal',
+            description:
+              'Data that can be used to directly or indirectly identify a person.',
+            version: 0.1,
+            updatedAt: 1649665563400,
+            updatedBy: 'admin',
+            href: 'http://localhost:8585/api/v1/tags/PersonalData/Personal',
+            usageCount: 0,
+            deprecated: false,
+            deleted: false,
+            associatedTags: [],
+          },
+          {
+            id: '4a2d7e47-9129-4cfe-91e8-e4f4df15f41d',
+            name: 'SpecialCategory',
+            fullyQualifiedName: 'PersonalData.SpecialCategory',
+            description: 'description',
+            version: 0.1,
+            updatedAt: 1649665563400,
+            updatedBy: 'admin',
+            href: 'http://localhost:8585/api/v1/tags/PersonalData/SpecialCategory',
+            usageCount: 0,
+            deprecated: false,
+            deleted: false,
+            associatedTags: [],
+          },
+        ],
+        deleted: false,
+      },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    }),
+    GenericProvider: jest.fn().mockImplementation(({ children }) => children),
+    _esModule: true,
+  })
+);
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
 
 describe('Test TagsPage page', () => {
   it('Component should render', async () => {
