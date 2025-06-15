@@ -1,6 +1,9 @@
 package org.openmetadata.service.cache;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipCount;
@@ -22,6 +25,8 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   private static final String FIND_TO_KEY = "findTo";
   private static final String FIND_FROM_KEY = "findFrom";
 
+  private static final Executor PREFETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+
   public CachedEntityRelationshipDAO(CollectionDAO.EntityRelationshipDAO delegate) {
     this.delegate = delegate;
   }
@@ -40,17 +45,6 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
       String cacheKey = createEntityCacheKey(entityId.toString(), entityType);
       RelationshipCache.evict(cacheKey);
       LOG.debug("Evicted cache for entity: {} ({})", entityId, entityType);
-    }
-  }
-
-  private void updateTagUsage(String relationshipType, Object data, long delta) {
-    if ("tags".equals(relationshipType) && data instanceof Collection) {
-      Collection<?> tags = (Collection<?>) data;
-      for (Object tag : tags) {
-        if (tag instanceof String) {
-          RelationshipCache.bumpTag((String) tag, delta);
-        }
-      }
     }
   }
 
@@ -111,7 +105,14 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
         if (data instanceof List) {
           @SuppressWarnings("unchecked")
           List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
-          LOG.debug("Cache hit for findTo: {} ({}), relations: {}", fromId, fromEntity, relation);
+          boolean isPrefetched =
+              cached.containsKey("prefetched") && (Boolean) cached.get("prefetched");
+          LOG.debug(
+              "Cache hit{} for findTo: {} ({}), relations: {}",
+              isPrefetched ? " (prefetched)" : "",
+              fromId,
+              fromEntity,
+              relation);
           return cachedResults;
         }
       }
@@ -119,10 +120,8 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
       LOG.warn("Error reading from cache for findTo: {} ({})", fromId, fromEntity, e);
     }
 
-    // Cache miss - query database
     List<EntityRelationshipRecord> results = delegate.findTo(fromId, fromEntity, relation);
 
-    // Cache the results
     try {
       Map<String, Object> cacheData = new HashMap<>();
       cacheData.put("relationships", results);
@@ -134,6 +133,10 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
           fromEntity,
           relation,
           results.size());
+
+      // Trigger simple background prefetching for this entity
+      triggerSimplePrefetch(fromId, fromEntity);
+
     } catch (Exception e) {
       LOG.warn("Error caching findTo results: {} ({})", fromId, fromEntity, e);
     }
@@ -204,8 +207,11 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
         if (data instanceof List) {
           @SuppressWarnings("unchecked")
           List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
+          boolean isPrefetched =
+              cached.containsKey("prefetched") && (Boolean) cached.get("prefetched");
           LOG.debug(
-              "Cache hit for findFrom: {} ({}), relation: {}, fromEntity: {}",
+              "Cache hit{} for findFrom: {} ({}), relation: {}, fromEntity: {}",
+              isPrefetched ? " (prefetched)" : "",
               toId,
               toEntity,
               relation,
@@ -217,11 +223,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
       LOG.warn("Error reading from cache for findFrom: {} ({})", toId, toEntity, e);
     }
 
-    // Cache miss - query database
     List<EntityRelationshipRecord> results =
         delegate.findFrom(toId, toEntity, relation, fromEntity);
 
-    // Cache the results
     try {
       Map<String, Object> cacheData = new HashMap<>();
       cacheData.put("relationships", results);
@@ -234,6 +238,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
           relation,
           fromEntity,
           results.size());
+
+      triggerSimplePrefetch(toId, toEntity);
+
     } catch (Exception e) {
       LOG.warn("Error caching findFrom results: {} ({})", toId, toEntity, e);
     }
@@ -398,6 +405,15 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   }
 
   @Override
+  public void deleteAllByThreadIds(List<String> ids, String entity) {
+    delegate.deleteAllByThreadIds(ids, entity);
+    for (String id : ids) {
+      evictEntityFromCache(UUID.fromString(id), entity);
+    }
+    LOG.debug("Deleted all relationships for {} ({}) and evicted cache", ids, entity);
+  }
+
+  @Override
   public void deleteAllWithId(UUID id) {
     delegate.deleteAllWithId(id);
     LOG.debug("Deleted all relationships for entity ID: {} - consider broader cache eviction", id);
@@ -448,7 +464,6 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
       List<String> fromIds, UUID toId, String fromEntity, String toEntity, int relation) {
     delegate.bulkRemoveFrom(fromIds, toId, fromEntity, toEntity, relation);
 
-    // Evict cache for the to entity and all from entities
     evictEntityFromCache(toId, toEntity);
     for (String fromIdStr : fromIds) {
       try {
@@ -464,5 +479,77 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
         fromIds.size(),
         toId,
         toEntity);
+  }
+
+  private void triggerSimplePrefetch(UUID entityId, String entityType) {
+    if (!RelationshipCache.isAvailable()) {
+      return;
+    }
+
+    // Run simple prefetching in background
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            prefetchAllRelationshipsForEntity(entityId, entityType);
+          } catch (Exception e) {
+            LOG.debug(
+                "Background prefetch failed for {} ({}): {}", entityId, entityType, e.getMessage());
+          }
+        },
+        PREFETCH_EXECUTOR);
+  }
+
+  private void prefetchAllRelationshipsForEntity(UUID entityId, String entityType) {
+    try {
+      List<Integer> commonRelations = List.of(1, 2, 3, 4, 5, 8, 10, 11, 12, 13);
+
+      String toKey =
+          createRelationshipCacheKey(
+              entityId.toString(), entityType, FIND_TO_KEY, commonRelations.toString());
+
+      if (RelationshipCache.get(toKey) == null) {
+        List<EntityRelationshipRecord> toResults =
+            delegate.findTo(entityId, entityType, commonRelations);
+        if (!toResults.isEmpty()) {
+          Map<String, Object> cacheData = new HashMap<>();
+          cacheData.put("relationships", toResults);
+          cacheData.put("timestamp", System.currentTimeMillis());
+          cacheData.put("prefetched", true);
+          RelationshipCache.put(toKey, cacheData);
+          LOG.debug(
+              "Prefetched {} 'to' relationships for {} ({})",
+              toResults.size(),
+              entityId,
+              entityType);
+        }
+      }
+
+      for (Integer relation : List.of(1, 2, 8)) { // Most common reverse relationships
+        String fromKey =
+            createRelationshipCacheKey(
+                entityId.toString(), entityType, FIND_FROM_KEY, relation + ":*");
+
+        if (RelationshipCache.get(fromKey) == null) {
+          List<EntityRelationshipRecord> fromResults =
+              delegate.findFrom(entityId, entityType, relation);
+          if (!fromResults.isEmpty()) {
+            Map<String, Object> cacheData = new HashMap<>();
+            cacheData.put("relationships", fromResults);
+            cacheData.put("timestamp", System.currentTimeMillis());
+            cacheData.put("prefetched", true);
+            RelationshipCache.put(fromKey, cacheData);
+            LOG.debug(
+                "Prefetched {} 'from' relationships (rel:{}) for {} ({})",
+                fromResults.size(),
+                relation,
+                entityId,
+                entityType);
+          }
+        }
+      }
+
+    } catch (Exception e) {
+      LOG.debug("Prefetch failed for {} ({}): {}", entityId, entityType, e.getMessage());
+    }
   }
 }

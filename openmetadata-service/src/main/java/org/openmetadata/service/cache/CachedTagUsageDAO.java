@@ -198,8 +198,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     try {
       delegate.deleteTagLabelsByFqn(tagFQNHash);
       if (RelationshipCache.isAvailable()) {
-        invalidateAllTagCaches();
-        LOG.debug("Deleted tag {} and invalidated all tag caches", tagFQNHash);
+        // Don't clear all caches - this preserves tag usage counters
+        // Only invalidate specific tag caches that might be affected
+        RelationshipCache.evict(TAG_CACHE_PREFIX + tagFQNHash);
+        LOG.debug("Deleted tag {} and invalidated specific tag cache", tagFQNHash);
       }
     } catch (Exception e) {
       LOG.error("Error deleting tag {}: {}", tagFQNHash, e.getMessage(), e);
@@ -213,7 +215,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       int deletedCount = delegate.getTagCount(source, tagFQNHash);
       delegate.deleteTagLabels(source, tagFQNHash);
       if (RelationshipCache.isAvailable()) {
-        invalidateAllTagCaches();
+        // Don't clear all caches - this preserves tag usage counters
+        // Only invalidate specific tag caches that might be affected
+        RelationshipCache.evict(TAG_CACHE_PREFIX + tagFQNHash);
+        LOG.debug("Invalidated specific tag cache for hash: {}", tagFQNHash);
 
         // Decrement tag usage counter for deleted tags
         // Note: We need to extract the tag FQN from the hash for proper counter tracking

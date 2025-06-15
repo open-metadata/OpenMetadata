@@ -49,9 +49,22 @@ public class CachedCollectionDAO implements CollectionDAO {
     return delegate.relationshipDAO();
   }
 
-  // Use Java reflection to delegate all other DAO methods to the original implementation
-  // This approach avoids having to manually implement every DAO method and handles
-  // interface changes automatically
+  @Override
+  public TagUsageDAO tagUsageDAO() {
+    if (RelationshipCache.isAvailable()) {
+      if (cachedTagUsageDAO == null) {
+        cachedTagUsageDAO = new CachedTagUsageDAO(delegate.tagUsageDAO());
+        LOG.debug("Created CachedTagUsageDAO instance");
+      }
+      return cachedTagUsageDAO;
+    }
+
+    // Fallback to original implementation if cache is not available
+    LOG.debug("Cache not available, using original TagUsageDAO");
+    return delegate.tagUsageDAO();
+  }
+
+  // All other DAO methods are zero-cost delegation abstractions
 
   @Override
   public DatabaseDAO databaseDAO() {
@@ -156,21 +169,6 @@ public class CachedCollectionDAO implements CollectionDAO {
   @Override
   public PersonaDAO personaDAO() {
     return delegate.personaDAO();
-  }
-
-  @Override
-  public TagUsageDAO tagUsageDAO() {
-    if (RelationshipCache.isAvailable()) {
-      if (cachedTagUsageDAO == null) {
-        cachedTagUsageDAO = new CachedTagUsageDAO(delegate.tagUsageDAO());
-        LOG.debug("Created CachedTagUsageDAO instance");
-      }
-      return cachedTagUsageDAO;
-    }
-
-    // Fallback to original implementation if cache is not available
-    LOG.debug("Cache not available, using original TagUsageDAO");
-    return delegate.tagUsageDAO();
   }
 
   @Override

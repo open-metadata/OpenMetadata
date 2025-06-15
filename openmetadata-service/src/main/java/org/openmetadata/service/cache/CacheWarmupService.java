@@ -43,6 +43,9 @@ public class CacheWarmupService {
   private final ExecutorService executorService;
   private final RateLimiter rateLimiter;
 
+  // Track active warmup to avoid duplicate warmups on the same server
+  private volatile CompletableFuture<Void> activeWarmup = null;
+
   private volatile boolean warmupInProgress = false;
   private volatile long warmupStartTime;
   private volatile int entitiesProcessed = 0;
@@ -76,23 +79,35 @@ public class CacheWarmupService {
         cacheConfig.getWarmupRateLimit());
   }
 
-  public CompletableFuture<Void> startWarmup() {
+  public synchronized CompletableFuture<Void> startWarmup() {
     if (!cacheConfig.isWarmupEnabled() || !RelationshipCache.isAvailable()) {
       LOG.info("Cache warmup disabled or cache not available, skipping warmup");
       return CompletableFuture.completedFuture(null);
     }
 
-    if (warmupInProgress) {
-      LOG.warn("Cache warmup already in progress, ignoring new request");
-      return CompletableFuture.completedFuture(null);
+    // Check if there's already an active warmup on this server
+    if (activeWarmup != null && !activeWarmup.isDone()) {
+      LOG.debug("Warmup already in progress on this server, returning existing future");
+      return activeWarmup;
     }
 
+    // Create new warmup future
     LOG.info(
         "Starting cache warmup with {} threads, batch size: {}",
         cacheConfig.getWarmupThreads(),
         cacheConfig.getWarmupBatchSize());
 
-    return CompletableFuture.runAsync(this::performWarmup, executorService);
+    activeWarmup =
+        CompletableFuture.runAsync(this::performWarmup, executorService)
+            .whenComplete(
+                (result, error) -> {
+                  if (error != null) {
+                    LOG.error("Cache warmup failed", error);
+                  }
+                  activeWarmup = null; // Clear reference when done
+                });
+
+    return activeWarmup;
   }
 
   public WarmupStats getWarmupStats() {
@@ -102,6 +117,11 @@ public class CacheWarmupService {
 
   public void shutdown() {
     try {
+      // Cancel any active warmup
+      if (activeWarmup != null && !activeWarmup.isDone()) {
+        activeWarmup.cancel(true);
+      }
+
       executorService.shutdown();
       if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
         executorService.shutdownNow();
