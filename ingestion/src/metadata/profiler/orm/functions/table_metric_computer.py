@@ -24,6 +24,7 @@ from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -38,7 +39,7 @@ logger = profiler_interface_registry_logger()
 
 
 @inject
-def get_row_count_metric(metrics: Inject[Type[Metrics]] = None):
+def get_row_count_metric(metrics: Inject[Type[MetricRegistry]] = None):
     if metrics is None:
         raise DependencyNotFoundError(
             "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
@@ -378,7 +379,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[Metrics]] = None):
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
 
         if metrics is None:

@@ -13,6 +13,7 @@ OpenMetadata package initialization.
 """
 from typing import Type
 
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.source.database.base.profiler_resolver import (
     DefaultProfilerResolver,
@@ -26,5 +27,5 @@ container = DependencyContainer()
 
 # Register the source loader
 container.register(SourceLoader, DefaultSourceLoader)
-container.register(Type[Metrics], lambda: Metrics)
+container.register(Type[MetricRegistry], lambda: Metrics)
 container.register(Type[ProfilerResolver], lambda: DefaultProfilerResolver)

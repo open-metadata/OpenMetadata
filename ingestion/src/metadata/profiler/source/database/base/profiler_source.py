@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.database.base.profiler_resolver import ProfilerResolver
@@ -177,7 +177,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         profiler_config: ProfilerProcessorConfig,
-        metrics_registry: Inject[Type[Metrics]] = None,
+        metrics_registry: Inject[Type[MetricRegistry]] = None,
     ) -> Profiler:
         """
         Returns the runner for the profiler

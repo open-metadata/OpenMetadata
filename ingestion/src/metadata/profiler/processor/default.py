@@ -22,12 +22,12 @@ from metadata.generated.schema.settings.settings import Settings
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, add_props
-from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.profiler.registry import MetricRegistry
 
 
 def get_default_metrics(
-    metrics_registry: Type[Metrics],
+    metrics_registry: Type[MetricRegistry],
     table: DeclarativeMeta,
     ometa_client: Optional[OpenMetadata] = None,
     db_service: Optional[DatabaseService] = None,
@@ -73,7 +73,7 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: ProfilerInterface,
-        metrics_registry: Type[Metrics],
+        metrics_registry: Type[MetricRegistry],
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
         global_profiler_configuration: Optional[Settings] = None,

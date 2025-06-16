@@ -15,6 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
+from metadata.profiler.registry import MetricRegistry
 from more_itertools import partition
 from pydantic import field_validator
 from sqlalchemy import Table, text
@@ -69,22 +70,26 @@ class TableStats(BaseModel):
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
     """Trino system profile source"""
 
-    metrics: Inject[Type[Metrics]]
+    metrics: Inject[Type[MetricRegistry]]
 
-    metric_stats_map: Dict[Metrics, str] = {
-        metrics.NULL_RATIO: "nulls_fractions",
-        metrics.DISTINCT_COUNT: "distinct_values_count",
-        metrics.ROW_COUNT: "row_count",
-        metrics.MAX: "high_value",
-        metrics.MIN: "low_value",
-    }
+    @classmethod
+    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
+        return {
+            cls.metrics.NULL_RATIO: "nulls_fractions",
+            cls.metrics.DISTINCT_COUNT: "distinct_values_count",
+            cls.metrics.ROW_COUNT: "row_count",
+            cls.metrics.MAX: "high_value",
+            cls.metrics.MIN: "low_value",
+        }
+    
+    @classmethod
+    def get_metric_stats_by_name(cls) -> Dict[str, str]:
+        return {
+            k.name: v for k, v in cls.get_metric_stats_map().items()
+        }
 
-    metric_stats_by_name: Dict[str, str] = {
-        k.name: v for k, v in metric_stats_map.items()
-    }
-
-    def get_statistics_metrics(self) -> Set[Metrics]:
-        return set(self.metric_stats_map.keys())
+    def get_statistics_metrics(self) -> Set[MetricRegistry]:
+        return set(self.get_metric_stats_map().keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -103,7 +108,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
                 f"Column {column} not found in table {table_name}. Statistics might be stale or missing."
             )
         result = {
-            m.name(): getattr(column_stats, self.metric_stats_by_name[m.name()])
+            m.name(): getattr(column_stats, self.get_metric_stats_by_name()[m.name()])
             for m in metric
         }
         result.update(self.get_hybrid_statistics(table_stats, column_stats))
@@ -115,7 +120,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     ) -> dict:
         table_stats = self._get_cached_stats(schema, table_name)
         return {
-            m.name(): getattr(table_stats, self.metric_stats_by_name[m.name()])
+            m.name(): getattr(table_stats, self.get_metric_stats_by_name()[m.name()])
             for m in metric
         }
 

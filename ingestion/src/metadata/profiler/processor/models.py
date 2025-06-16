@@ -18,7 +18,7 @@ from typing import List, Optional, Type
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,
@@ -27,7 +27,7 @@ from metadata.utils.dependency_injector.dependency_injector import (
 
 
 @inject
-def valid_metric(value: str, metrics: Inject[Type[Metrics]] = None):
+def valid_metric(value: str, metrics: Inject[Type[MetricRegistry]] = None):
     """
     Validate that the input metrics are correctly named
     and can be found in the Registry

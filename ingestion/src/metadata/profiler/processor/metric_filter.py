@@ -33,7 +33,7 @@ from metadata.profiler.metrics.core import (
     SystemMetric,
     TMetric,
 )
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.orm.converter.converter_registry import converter_registry
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -53,7 +53,7 @@ class MetricFilter:
         global_profiler_config: Optional[ProfilerConfiguration] = None,
         table_profiler_config: Optional[TableProfilerConfig] = None,
         column_profiler_config: Optional[List[ColumnProfilerConfig]] = None,
-        metrics_registry: Inject[Type[Metrics]] = None,
+        metrics_registry: Inject[Type[MetricRegistry]] = None,
     ):
         if metrics_registry is None:
             raise DependencyNotFoundError(
