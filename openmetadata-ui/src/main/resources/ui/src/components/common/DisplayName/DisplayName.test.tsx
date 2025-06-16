@@ -42,6 +42,7 @@ const mockProps: DisplayNameProps = {
   displayName: 'Sample Display Name',
   link: '/entity/1',
   allowRename: true,
+  hasEditPermission: true,
   onEditDisplayName: mockOnEditDisplayName,
 };
 

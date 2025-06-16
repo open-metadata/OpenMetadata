@@ -42,6 +42,11 @@ export interface CreateTeam {
      */
     email?: string;
     /**
+     * External identifier for the team from an external identity provider (e.g., Azure AD group
+     * ID).
+     */
+    externalId?: string;
+    /**
      * Can any user join this team during sign up? Value of true indicates yes, and false no.
      */
     isJoinable?: boolean;
