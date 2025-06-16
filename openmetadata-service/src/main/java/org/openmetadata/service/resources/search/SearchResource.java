@@ -166,6 +166,11 @@ public class SearchResource {
           List<String> includeSourceFields,
       @Parameter(
               description =
+                  "Exclude specified fields from the document body for each hit. Use this to exclude heavy fields like 'columns' for better performance")
+          @QueryParam("exclude_source_fields")
+          List<String> excludeSourceFields,
+      @Parameter(
+              description =
                   "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
@@ -202,6 +207,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
+            .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(
@@ -320,6 +326,9 @@ public class SearchResource {
       @Parameter(description = "Get only selected fields of the document body")
           @QueryParam("include_source_fields")
           List<String> includeSourceFields,
+      @Parameter(description = "Exclude specified fields from the document body for each hit")
+          @QueryParam("exclude_source_fields")
+          List<String> excludeSourceFields,
       @Parameter(description = "Fetch results in hierarchical order")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
@@ -351,6 +360,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
+            .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(

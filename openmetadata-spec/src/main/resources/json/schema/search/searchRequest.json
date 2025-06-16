@@ -77,6 +77,13 @@
         "type": "string"
       }
     },
+    "excludeSourceFields": {
+      "description": "Exclude specified fields from the document body for each hit. Use this to exclude heavy fields like 'columns' for better performance",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "searchAfter": {
       "description": "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...",
       "existingJavaType": "java.util.List<java.lang.Object>"
