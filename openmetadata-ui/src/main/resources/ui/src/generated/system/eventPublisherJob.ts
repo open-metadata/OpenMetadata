@@ -19,6 +19,11 @@ export interface EventPublisherJob {
      */
     afterCursor?: string;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Maximum number of events sent in a batch (Default 10).
      */
     batchSize?: number;

@@ -39,5 +39,6 @@ export enum Operation {
     FilterByMentionedName = "filterByMentionedName",
     FilterByOwnerName = "filterByOwnerName",
     FilterBySource = "filterBySource",
+    FilterByUpdaterIsBot = "filterByUpdaterIsBot",
     FilterByUpdaterName = "filterByUpdaterName",
 }
