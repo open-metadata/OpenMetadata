@@ -1553,6 +1553,7 @@
     "week": "Semaine",
     "weekly-usage": "Utilisation Hebdomadaire",
     "weight": "Poids",
+    "welcome": "Bienvenue, {{name}} !",
     "welcome-to": "Bienvenue à",
     "whats-new": "Nouveautés",
     "whats-new-version": "Nouveautés ({{version}})",

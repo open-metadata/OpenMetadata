@@ -1,0 +1,135 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../styles/variables.less');
+
+.customise-landing-page {
+  margin: @margin-mlg 0;
+  padding: @padding-mlg;
+  border-radius: @border-radius-xl;
+  background: linear-gradient(
+    106.44deg,
+    @blue-29 0.76%,
+    @blue-30 47.51%,
+    @blue-27 115.4%
+  );
+}
+
+.header-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: @size-mlg;
+  width: 100%;
+}
+
+.dashboardHeader {
+  flex: 2.5;
+  min-width: 0;
+  padding: 6.25rem 4.375rem 1.25rem 4.375rem !important;
+
+  .welcome-user {
+    font-size: @size-xl;
+    font-weight: @font-semibold;
+    color: @white;
+  }
+
+  .customise-header-btn {
+    background-color: transparent;
+    border: 1px solid @grey-25;
+    border-radius: @border-radius-xs;
+  }
+
+  .customise-header-btn:hover,
+  .customise-header-btn:focus {
+    background-color: transparent;
+    border: 1px solid @grey-25;
+  }
+}
+
+.customise-search-container {
+  width: 100%;
+}
+
+.search-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid @grey-25;
+  border-radius: @border-radius-sm;
+  background: @white;
+  padding: @padding-xs @padding-sm;
+}
+
+.domain-selector {
+  flex-shrink: 0;
+  white-space: nowrap;
+
+  .domain-icon,
+  .dropdown-icon {
+    color: @grey-26;
+  }
+
+  .domain-title {
+    color: @grey-700;
+  }
+}
+
+.customise-recently-viewed-data {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 50px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: @padding-xss;
+  margin-bottom: @size-xl;
+
+  .recent-item {
+    flex-shrink: 0;
+    width: 85px;
+  }
+
+  .entity-icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 40px;
+    background-color: @primary-button-background;
+
+    .entity-icon {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  .wrap-text {
+    display: -webkit-box;
+    display: box; /* fallback for older spec, does nothing in modern browsers */
+    -webkit-line-clamp: 2;
+    line-clamp: 2; /* Standard property (not yet widely supported without prefix) */
+    -webkit-box-orient: vertical;
+    box-orient: vertical; /* old spec, harmless fallback */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
+    text-align: center;
+  }
+}
+
+.announcements {
+  flex: 1.5;
+}
+
+.overlapped-container {
+  height: 180px;
+  width: 100%;
+}
