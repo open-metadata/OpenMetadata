@@ -1,0 +1,12 @@
+{
+    "tests": [
+        {
+            "testSuiteName": "myLogicalTestSuite",
+            "testSuiteDescription": "This is a logical test suite linked to an entity",
+            "testCases": [
+                {"fqn":"sample_data.ecommerce_db.shopify.dim_address.last_name.column_values_to_match_regex"},
+                {"fqn":"sample_data.ecommerce_db.shopify.dim_address.shop_id.column_value_max_to_be_between"}
+            ]
+        }
+    ]
+}

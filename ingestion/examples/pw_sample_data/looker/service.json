@@ -1,0 +1,15 @@
+{
+  "type": "looker",
+  "serviceName": "sample_looker",
+  "serviceConnection": {
+    "config": {
+      "type": "Looker",
+      "hostPort": "https://looker.com",
+      "clientId": "admin",
+      "clientSecret": "admin"
+    }
+  },
+  "sourceConfig": {
+    "config": {}
+  }
+}

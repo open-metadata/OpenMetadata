@@ -1,0 +1,805 @@
+{
+    "testCaseResults": [
+        {
+            "name": "table_column_count_equals",
+            "results": [
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ]
+                },
+                {
+                    "result": "columnCount should not be None for tableColumnCountToEqual",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "None"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "table_column_count_between",
+            "results": [
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "9"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "9"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 7
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "9"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "columnCount should not be None for TableColumnCountToBeBetween",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "9"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "9"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ],
+                    "maxBound": 10,
+                    "minBound": 1
+                },
+                {
+                    "result": "Found 14 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "14"
+                        }
+                    ],
+                    "maxBound": 31,
+                    "minBound": 20
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ],
+                    "maxBound": 150,
+                    "minBound": 7
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "8"
+                        }
+                    ],
+                    "maxBound": 150,
+                    "minBound": 7
+                }
+            ]
+        },
+        {
+            "name": "shop_id.column_value_max_to_be_between",
+            "results": [
+                {
+                    "result": "Found max=65 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "65"
+                        }
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
+                },
+                {
+                    "result": "Found max=25 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "25"
+                        }
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
+                },
+                {
+                    "result": "Found max=56 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "56"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found max=99 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "99"
+                        }
+                    ],
+                    "maxBound": 100,
+                    "minBound": 50
+                },
+                {
+                    "result": "Found max=190 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "190"
+                        }
+                    ],
+                    "maxBound": 170,
+                    "minBound": 50
+                },
+                {
+                    "result": "Found max=66 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "66"
+                        }
+                    ],
+                    "maxBound": 100,
+                    "minBound": 10
+                },
+                {
+                    "result": "Found max=76 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "76"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found max=46 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "46"
+                        }
+                    ],
+                    "maxBound": 100,
+                    "minBound": 51
+                },
+                {
+                    "result": "Found max=100 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "100"
+                        }
+                    ],
+                    "maxBound": 100
+                },
+                {
+                    "result": "We expect `max` to be informed on the profiler for ColumnValueMaxToBeBetween max=None.",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                            "name": "max",
+                            "value": "None"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "last_name.column_values_to_match_regex",
+            "results": [
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "65"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 0 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "0"
+                        }
+                    ]
+                },
+                {
+                    "result": "Cannot find the configured column last_name for ColumnValuesToBeNotInSet",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "None"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "99"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 5 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "5"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 2 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "2"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "99"
+                        }
+                    ]
+                },
+                {
+                    "result": "Error computing ColumnValuesToMatchRegex for last_name - database error",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "None"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "99"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "likeCount",
+                            "value": "99"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "zip.column_values_to_be_between",
+            "results": [
+                {
+                    "result": "We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween but got min=None, max=None.",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "None"
+                        },
+                        {
+                            "name": "max",
+                            "value": "None"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=35005, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "35005"
+                        },
+                        {
+                            "name": "max",
+                            "value": "92808"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=90006, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "90006"
+                        },
+                        {
+                            "name": "max",
+                            "value": "92808"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=90002, max=95640 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "90002"
+                        },
+                        {
+                            "name": "max",
+                            "value": "95640"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=90004, max=99001 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "90004"
+                        },
+                        {
+                            "name": "max",
+                            "value": "99001"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "1001"
+                        },
+                        {
+                            "name": "max",
+                            "value": "2789"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=91009, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "91009"
+                        },
+                        {
+                            "name": "max",
+                            "value": "92808"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=90008, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "90008"
+                        },
+                        {
+                            "name": "max",
+                            "value": "92808"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=92000, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "92000"
+                        },
+                        {
+                            "name": "max",
+                            "value": "92808"
+                        }
+                    ]
+                },
+                {
+                    "result": "Found min=90001, max=96612 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "90001"
+                        },
+                        {
+                            "name": "max",
+                            "value": "96612"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "zip.column_values_to_be_between_with_sample_rows",
+            "results": [
+                {
+                    "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "min",
+                            "value": "1001"
+                        },
+                        {
+                            "name": "max",
+                            "value": "2789"
+                        }
+                    ],
+                    "maxBound": 96162,
+                    "minBound": 90001
+                }
+            ],
+            "failedRowsSample": {
+                "columns": [
+                    "address_id",
+                    "shop_id",
+                    "first_name",
+                    "last_name",
+                    "address1",
+                    "address2",
+                    "company",
+                    "city",
+                    "region",
+                    "zip",
+                    "country",
+                    "phone"
+                ],
+                "rows": [
+                    [
+                        "bc35100e-2da5-48bb-bfc8-667dafe66532",
+                        "70424951-bc97-4b20-9ce7-be37c4619361",
+                        "Zachary",
+                        "Brett",
+                        "9054 Maria Circle Apt. 296",
+                        "48348 Victoria Valleys Suite 144",
+                        "Robinson Inc",
+                        "Stephanieport",
+                        "048 Moore Turnpike Apt. 061",
+                        "1001",
+                        "Latvia",
+                        "(381)575-6692"
+                    ],
+                    [
+                        "facf92d7-05ea-43d2-ba2a-067d63dee60c",
+                        "a8d30187-1409-4606-9259-322a4f6caf74",
+                        "Amber",
+                        "Albert",
+                        "3170 Warren Orchard Apt. 834",
+                        "3204 Brewer Shoal Suite 324",
+                        "Davila-Snyder",
+                        "Nicoleland",
+                        "023 Paul Course",
+                        "1002",
+                        "Sweden",
+                        "438-959-1151"
+                    ],
+                    [
+                        "bab9a506-e23d-4c53-9402-d070e7704376",
+                        "e02e1fac-b650-4db8-8c9d-5fa5edf5d863",
+                        "Heidi",
+                        "Kelly",
+                        "30942 Gonzalez Stravenue",
+                        "3158 Watts Green",
+                        "Moore PLC",
+                        "West Erica",
+                        "6294 Elliott Ville",
+                        "2789",
+                        "Saint Martin",
+                        "(830)112-9566x8681"
+                    ]
+                ]
+            },
+            "inspectionQuery": "SELECT * FROM ecommerce_db.shopify.dim_address\nWHERE zip NOT BETWEEN 90001 AND 96162\nLIMIT 50;"
+        },
+        {
+            "name": "diff_with_production",
+            "results": [
+                {
+                    "result": "Found 3 different rows which is more than the threshold of 0",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "changedRows",
+                            "value": "1"
+                        },
+                        {
+                            "name": "removedRows",
+                            "value": "10"
+                        },
+                        {
+                            "name": "addedRows",
+                            "value": "2234"
+                        }
+                    ]
+                }
+            ],
+            "failedRowsSample": {
+                "validate": false,
+                "columns": [
+                    "diffType",
+                    "address_id",
+                    "shop_id",
+                    "first_name",
+                    "last_name",
+                    "address1",
+                    "address2",
+                    "company",
+                    "city",
+                    "region",
+                    "zip",
+                    "country",
+                    "phone"
+                ],
+                "rows": [
+                    [
+                        "+",
+                        "bc35100e-2da5-48bb-bfc8-667dafe66532",
+                        "70424951-bc97-4b20-9ce7-be37c4619361",
+                        "Zachary",
+                        "Brett",
+                        "9054 Maria Circle Apt. 296",
+                        "48348 Victoria Valleys Suite 144",
+                        "Robinson Inc",
+                        "Stephanieport",
+                        "048 Moore Turnpike Apt. 061",
+                        "1001",
+                        "Latvia",
+                        "(381)575-6692"
+                    ],
+                    [
+                        "+",
+                        "facf92d7-05ea-43d2-ba2a-067d63dee60c",
+                        "a8d30187-1409-4606-9259-322a4f6caf74",
+                        "Amber",
+                        "Albert",
+                        "3170 Warren Orchard Apt. 834",
+                        "3204 Brewer Shoal Suite 324",
+                        "Davila-Snyder",
+                        "Nicoleland",
+                        "023 Paul Course",
+                        "1002",
+                        "Sweden",
+                        "438-959-1151"
+                    ],
+                    [
+                        "-",
+                        "bab9a506-e23d-4c53-9402-d070e7704376",
+                        "e02e1fac-b650-4db8-8c9d-5fa5edf5d863",
+                        "Heidi",
+                        "Kelly",
+                        "30942 Gonzalez Stravenue",
+                        "3158 Watts Green",
+                        "Moore PLC",
+                        "West Erica",
+                        "6294 Elliott Ville",
+                        "2789",
+                        "Saint Martin",
+                        "(830)112-9566x8681"
+                    ]
+                ]
+            }
+        },
+        {
+            "name": "diff_columns",
+            "results": [
+                {
+                    "result": "Tables have 4 different columns:\n  Removed columns: removed_id\n  Added columns: added_column,my_other_value\n  Changed columns:\n    first_name: VARCHAR -> INT",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                            "name": "addedColumns",
+                            "value": "2"
+                        },
+                        {
+                            "name": "removedColumns",
+                            "value": "1"
+                        },
+                        {
+                            "name": "changedColumns",
+                            "value": "1"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

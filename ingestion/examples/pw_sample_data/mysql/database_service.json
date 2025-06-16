@@ -1,0 +1,20 @@
+{
+  "type": "mysql",
+  "serviceName": "pw_mysql_sample",
+  "serviceConnection": {
+    "config": {
+      "type": "Mysql",
+      "hostPort": "localhost:3306",
+      "username": "openmetadata_user",
+      "authType": {
+        "password": "openmetadata_password"
+      },
+      "databaseSchema": "pw_posts_db"
+    }
+  },
+  "sourceConfig": {
+    "config": {
+      "type": "DatabaseMetadata"
+    }
+  }
+}
