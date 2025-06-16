@@ -177,7 +177,7 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table_search_index'
+      '/api/v1/search/query?q=*&index=table_search_index*'
     );
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
