@@ -219,7 +219,9 @@ entities.forEach((EntityClass) => {
     test('Certification Add Remove', async ({ page }) => {
       await entity.certification(
         page,
-        EntityDataClass.certificationTag1.data.displayName
+        EntityDataClass.certificationTag1,
+        EntityDataClass.certificationTag2,
+        entity
       );
     });
 

@@ -630,7 +630,12 @@ export const fillRowDetails = async (
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('ArrowRight', { delay: 100 });
-  await fillTextInputDetails(page, row.certification);
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('Enter', { delay: 100 });
+
+  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  await page.getByTestId('update-certification').click();
 
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')

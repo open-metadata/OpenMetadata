@@ -17,6 +17,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 export interface CertificationProps {
   permission: boolean;
   onCertificationUpdate?: (certification?: Tag) => Promise<void>;
+  onClose?: () => void;
   currentCertificate?: string;
   popoverProps?: PopoverProps;
   children?: ReactNode;

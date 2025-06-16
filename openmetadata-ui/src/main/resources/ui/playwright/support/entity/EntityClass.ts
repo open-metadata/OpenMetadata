@@ -61,6 +61,7 @@ import {
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { TagClass } from '../tag/TagClass';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
@@ -226,8 +227,32 @@ export class EntityClass {
     await removeTier(page, this.endpoint);
   }
 
-  async certification(page: Page, certification1: string) {
+  async certification(
+    page: Page,
+    certification1: TagClass,
+    certification2: TagClass,
+    entity?: EntityClass
+  ) {
     await assignCertification(page, certification1, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification1.responseData.fullyQualifiedName,
+        entity
+      );
+    }
+    await assignCertification(page, certification2, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification2.responseData.fullyQualifiedName,
+        entity
+      );
+    }
     await removeCertification(page, this.endpoint);
   }
 

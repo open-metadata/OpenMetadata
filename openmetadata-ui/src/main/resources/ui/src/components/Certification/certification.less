@@ -11,32 +11,40 @@
  *  limitations under the License.
  */
 @import (reference) '../../styles/variables.less';
+
 .certification-value {
   min-width: 80%;
+
   .certification-tag-with-name {
     width: fit-content;
+    color: @grey-700;
   }
 }
 
 .certification-card-popover {
   width: 350px;
+
   .ant-popover-inner-content {
     border-radius: 12px;
     padding: 20px;
   }
+
   .certification-card {
     .ant-card-head {
       padding: 0px;
       width: 100%;
       border: none;
     }
+
     .ant-card-body {
       padding: 0px;
+
       .ant-radio-group {
         width: 100%;
         display: flex;
         flex-direction: column;
         gap: 10px;
+
         .ant-collapse-item {
           width: 100%;
           border: 1px solid @grey-200;
@@ -73,8 +81,13 @@
         }
       }
     }
+
     .ant-card-head-title {
       padding: 0px;
     }
+  }
+
+  .certification-icon {
+    padding: 6px;
   }
 }

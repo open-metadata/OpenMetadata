@@ -140,7 +140,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
@@ -950,6 +950,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      const certificationTag = updateCertificationTag(newCertification);
+      const updatedTableDetails = {
+        ...serviceDetails,
+        certification: certificationTag,
+      };
+
+      await saveUpdatedServiceData(updatedTableDetails);
+    },
+    [saveUpdatedServiceData, serviceDetails]
+  );
+
   const afterDomainUpdateAction = useCallback((data) => {
     const updatedData = data as ServicesType;
 
@@ -1499,6 +1512,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}

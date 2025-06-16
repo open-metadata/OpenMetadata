@@ -115,6 +115,14 @@ entities.forEach((EntityClass) => {
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
+    test('Certification Add Remove', async ({ page }) => {
+      await entity.certification(
+        page,
+        EntityDataClass.certificationTag1,
+        EntityDataClass.certificationTag2
+      );
+    });
+
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);
     });

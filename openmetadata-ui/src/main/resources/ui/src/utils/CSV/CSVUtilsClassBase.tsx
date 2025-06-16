@@ -218,12 +218,17 @@ class CSVUtilsClassBase {
             }, 1);
           };
 
+          const onClose = () => {
+            props.onCancel();
+          };
+
           return (
             <Certification
               permission
               currentCertificate={value}
               popoverProps={{ open: true }}
               onCertificationUpdate={handleChange}
+              onClose={onClose}
             />
           );
         };

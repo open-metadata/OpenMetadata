@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import React, { useMemo, useState } from 'react';
-import { ReactComponent as AssigneesIcon } from '../../assets/svg/ic-assignees.svg';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import { getTagImageSrc } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
@@ -28,17 +29,21 @@ const Certification = ({
   currentCertificate = '',
   children,
   onCertificationUpdate,
+  popoverProps,
+  onClose,
 }: CertificationProps) => {
+  const popoverRef = useRef<any>(null);
   const [isLoadingCertificationData, setIsLoadingCertificationData] =
     useState<boolean>(false);
   const [certifications, setCertifications] = useState<Array<Tag>>([]);
-  const [selectedCertification, setSelectedCertification] =
-    useState<string>('');
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
+  const [selectedCertification, setSelectedCertification] = useState<string>(
+    currentCertificate ?? ''
+  );
   const certificationCardData = useMemo(() => {
     return (
-      <Radio.Group value={selectedCertification}>
+      <Radio.Group
+        className="h-max-100 overflow-y-auto overflow-x-hidden"
+        value={selectedCertification}>
         {certifications.map((certificate) => {
           const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
           const title = getEntityName(certificate);
@@ -54,17 +59,23 @@ const Certification = ({
               }}>
               <Radio
                 className="certification-radio-top-right"
-                data-testid={`radio-btn-${title}`}
+                data-testid={`radio-btn-${fullyQualifiedName}`}
                 value={fullyQualifiedName}
               />
               <div className="certification-card-content">
-                {tagSrc && <img alt={title} src={tagSrc} />}
+                {tagSrc ? (
+                  <img alt={title} src={tagSrc} />
+                ) : (
+                  <div className="certification-icon">
+                    <CertificationIcon height={28} width={28} />
+                  </div>
+                )}
                 <div>
                   <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
                     {title}
                   </Typography.Paragraph>
                   <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                    {description.replace(/\*/g, '')}
+                    {stringToHTML(description)}
                   </Typography.Paragraph>
                 </div>
               </div>
@@ -82,7 +93,7 @@ const Certification = ({
     );
     await onCertificationUpdate?.(certification);
     setIsLoadingCertificationData(false);
-    setIsPopoverOpen(false);
+    popoverRef.current?.close();
   };
   const getCertificationData = async () => {
     setIsLoadingCertificationData(true);
@@ -91,7 +102,25 @@ const Certification = ({
         parent: 'Certification',
         limit: 50,
       });
-      setCertifications(data);
+
+      // Sort certifications with Gold, Silver, Bronze first
+      const sortedData = [...data].sort((a, b) => {
+        const order: Record<string, number> = {
+          Gold: 0,
+          Silver: 1,
+          Bronze: 2,
+        };
+
+        const aName = getEntityName(a);
+        const bName = getEntityName(b);
+
+        const aOrder = order[aName] ?? 3;
+        const bOrder = order[bName] ?? 3;
+
+        return aOrder - bOrder;
+      });
+
+      setCertifications(sortedData);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -105,9 +134,24 @@ const Certification = ({
   };
 
   const handleCloseCertification = async () => {
-    setSelectedCertification(currentCertificate);
-    setIsPopoverOpen(false);
+    popoverRef.current?.close();
+    onClose?.();
   };
+
+  const onOpenChange = (visible: boolean) => {
+    if (visible) {
+      getCertificationData();
+      setSelectedCertification(currentCertificate);
+    } else {
+      setSelectedCertification('');
+    }
+  };
+
+  useEffect(() => {
+    if (popoverProps?.open && certifications.length === 0) {
+      getCertificationData();
+    }
+  }, [popoverProps?.open]);
 
   return (
     <Popover
@@ -120,7 +164,7 @@ const Certification = ({
           title={
             <Space className="w-full justify-between">
               <div className="flex gap-2 items-center w-full">
-                <Icon className="text-lg" component={AssigneesIcon} />
+                <CertificationIcon height={18} width={18} />
                 <Typography.Text className="m-b-0 font-semibold text-sm">
                   {t('label.edit-entity', { entity: t('label.certification') })}
                 </Typography.Text>
@@ -138,10 +182,14 @@ const Certification = ({
             spinning={isLoadingCertificationData}>
             {certificationCardData}
             <div className="flex justify-end text-lg gap-2 mt-4">
-              <Button type="default" onClick={handleCloseCertification}>
+              <Button
+                data-testid="close-certification"
+                type="default"
+                onClick={handleCloseCertification}>
                 <CloseOutlined />
               </Button>
               <Button
+                data-testid="update-certification"
                 type="primary"
                 onClick={() => updateCertificationData(selectedCertification)}>
                 <CheckOutlined />
@@ -150,15 +198,13 @@ const Certification = ({
           </Spin>
         </Card>
       }
-      open={isPopoverOpen}
       overlayClassName="certification-card-popover"
       placement="bottomRight"
+      ref={popoverRef}
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) => {
-        setIsPopoverOpen(visible);
-        visible && getCertificationData();
-      }}>
+      onOpenChange={onOpenChange}
+      {...popoverProps}>
       {children}
     </Popover>
   );
