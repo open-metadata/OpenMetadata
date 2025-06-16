@@ -33,9 +33,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.source.database.base.profiler_resolver import ProfilerResolver
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 from metadata.sampler.config import (
@@ -77,9 +77,7 @@ class ProfilerSource(ProfilerSourceInterface):
         self._interface_type: str = config.source.type.lower()
         self._interface = None
 
-        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
-            self.config.source.sourceConfig.config
-        )
+        self.source_config = None
         self.global_profiler_configuration = global_profiler_configuration
 
     @property
@@ -136,6 +134,13 @@ class ProfilerSource(ProfilerSourceInterface):
             raise DependencyNotFoundError(
                 "ProfilerResolver dependency not found. Please ensure the ProfilerResolver is properly registered."
             )
+
+        # NOTE: For some reason I do not understand, if we instantiate this on the __init__ method, we break the
+        # autoclassification workflow. This should be fixed. There should not be an impact on AutoClassification.
+        # We have an issue to track this here: https://github.com/open-metadata/OpenMetadata/issues/21790
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
+            self.config.source.sourceConfig.config
+        )
 
         sampler_class, profiler_class = profiler_resolver.resolve(
             processing_engine=self.get_processing_engine(self.source_config),

@@ -33,8 +33,8 @@ from metadata.profiler.metrics.core import (
     SystemMetric,
     TMetric,
 )
-from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,

@@ -15,7 +15,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
-from metadata.profiler.registry import MetricRegistry
 from more_itertools import partition
 from pydantic import field_validator
 from sqlalchemy import Table, text
@@ -26,7 +25,7 @@ from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import (
     StoredStatisticsSource,
 )
 from metadata.profiler.metrics.core import Metric
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
     Inject,
     inject_class_attributes,
@@ -81,12 +80,10 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
             cls.metrics.MAX: "high_value",
             cls.metrics.MIN: "low_value",
         }
-    
+
     @classmethod
     def get_metric_stats_by_name(cls) -> Dict[str, str]:
-        return {
-            k.name: v for k, v in cls.get_metric_stats_map().items()
-        }
+        return {k.name: v for k, v in cls.get_metric_stats_map().items()}
 
     def get_statistics_metrics(self) -> Set[MetricRegistry]:
         return set(self.get_metric_stats_map().keys())

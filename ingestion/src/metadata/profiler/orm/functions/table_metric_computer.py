@@ -24,10 +24,10 @@ from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,

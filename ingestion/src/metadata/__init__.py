@@ -13,8 +13,8 @@ OpenMetadata package initialization.
 """
 from typing import Type
 
-from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
 from metadata.profiler.source.database.base.profiler_resolver import (
     DefaultProfilerResolver,
     ProfilerResolver,
