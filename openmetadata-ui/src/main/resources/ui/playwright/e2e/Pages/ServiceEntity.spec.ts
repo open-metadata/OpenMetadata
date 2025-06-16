@@ -12,7 +12,10 @@
  */
 import { Page, test as base } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
-import { FollowSupportedServices } from '../../constant/service';
+import {
+  CertificationSupportedServices,
+  FollowSupportedServices,
+} from '../../constant/service';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -115,13 +118,15 @@ entities.forEach((EntityClass) => {
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
-    test('Certification Add Remove', async ({ page }) => {
-      await entity.certification(
-        page,
-        EntityDataClass.certificationTag1,
-        EntityDataClass.certificationTag2
-      );
-    });
+    if (CertificationSupportedServices.includes(entity.endpoint)) {
+      test('Certification Add Remove', async ({ page }) => {
+        await entity.certification(
+          page,
+          EntityDataClass.certificationTag1,
+          EntityDataClass.certificationTag2
+        );
+      });
+    }
 
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);

@@ -15,7 +15,7 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,6 +131,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -373,7 +374,8 @@ export const DataAssetsHeader = ({
       editTierPermission:
         (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
       editCertificationPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
+        (permissions.EditAll || permissions.EditCertification) &&
+        !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -708,48 +710,58 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            <Divider className="self-center vertical-divider" type="vertical" />
-            <Certification
-              currentCertificate={
-                'certification' in dataAsset
-                  ? dataAsset.certification?.tagLabel?.tagFQN
-                  : undefined
-              }
-              permission={false}
-              onCertificationUpdate={onCertificationUpdate}>
-              <div className="d-flex align-start extra-info-container">
-                <Typography.Text
-                  className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                  data-testid="certification-label">
-                  <div className="flex gap-2">
-                    <span className="extra-info-label-heading">
-                      {t('label.certification')}
-                    </span>
+            {isUndefined(serviceCategory) && (
+              <>
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+                <Certification
+                  currentCertificate={
+                    'certification' in dataAsset
+                      ? dataAsset.certification?.tagLabel?.tagFQN
+                      : undefined
+                  }
+                  permission={false}
+                  onCertificationUpdate={onCertificationUpdate}>
+                  <div className="d-flex align-start extra-info-container">
+                    <Typography.Text
+                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                      data-testid="certification-label">
+                      <div className="flex gap-2">
+                        <span className="extra-info-label-heading">
+                          {t('label.certification')}
+                        </span>
 
-                    {editCertificationPermission && (
-                      <EditIconButton
-                        newLook
-                        data-testid="edit-certification"
-                        size="small"
-                        title={t('label.edit-entity', {
-                          entity: t('label.certification'),
-                        })}
-                      />
-                    )}
+                        {editCertificationPermission && (
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-certification"
+                            size="small"
+                            title={t('label.edit-entity', {
+                              entity: t('label.certification'),
+                            })}
+                          />
+                        )}
+                      </div>
+                      <div className="font-medium certification-value">
+                        {(dataAsset as Table).certification ? (
+                          <CertificationTag
+                            showName
+                            certification={(dataAsset as Table).certification!}
+                          />
+                        ) : (
+                          t('label.no-entity', {
+                            entity: t('label.certification'),
+                          })
+                        )}
+                      </div>
+                    </Typography.Text>
                   </div>
-                  <div className="font-medium certification-value">
-                    {(dataAsset as Table).certification ? (
-                      <CertificationTag
-                        showName
-                        certification={(dataAsset as Table).certification!}
-                      />
-                    ) : (
-                      t('label.no-entity', { entity: t('label.certification') })
-                    )}
-                  </div>
-                </Typography.Text>
-              </div>
-            </Certification>
+                </Certification>
+              </>
+            )}
+
             {extraInfo}
           </div>
         </Col>
