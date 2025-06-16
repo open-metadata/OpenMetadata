@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
-import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
@@ -160,14 +159,17 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    if (dashboardDataModel.getService() == null) {
-      dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
-    }
+  }
+
+  private void setDefaultFields(DashboardDataModel dashboardDataModel) {
+    EntityReference service = getContainer(dashboardDataModel.getId());
+    dashboardDataModel.withService(service);
   }
 
   // Individual field fetchers registered in constructor
@@ -194,22 +196,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       return;
     }
 
+    // Set default fields (service) for all data models
+    for (DashboardDataModel dataModel : dataModels) {
+      setDefaultFields(dataModel);
+    }
+
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
-
-    // Bulk fetch services if needed
-    if (fields.contains(FIELD_SERVICE)) {
-      // For dashboard data models, the service is already in the container reference
-      // Just need to set it from the container
-      for (DashboardDataModel dataModel : dataModels) {
-        if (dataModel.getService() == null) {
-          EntityReference service = getContainer(dataModel.getId());
-          if (service != null) {
-            dataModel.withService(service);
-          }
-        }
-      }
-    }
   }
 
   @Override

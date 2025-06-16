@@ -117,6 +117,109 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
+    if (testCases == null || testCases.isEmpty()) {
+      return;
+    }
+
+    // Only implement bulk loading for the most critical fields to reduce N+1 queries
+    // Focus on testDefinition and testSuite which are the main relationship fields
+
+    // Check if we're being called from search indexing context
+    // This is a conservative approach to avoid breaking existing functionality
+    String threadName = Thread.currentThread().getName();
+    boolean isSearchIndexing = threadName.startsWith("SearchIndex-Reader-");
+
+    if (isSearchIndexing) {
+      LOG.debug("Using bulk loading for {} test cases in search indexing thread", testCases.size());
+
+      // Fetch and set testDefinition in bulk if requested
+      if (fields.contains(TEST_DEFINITION)) {
+        fetchAndSetTestDefinitions(testCases);
+      }
+
+      // Fetch and set test suites in bulk if requested
+      if (fields.contains(TEST_SUITE_FIELD)) {
+        fetchAndSetTestSuites(testCases);
+      }
+    }
+
+    // For all other fields, use the parent implementation which calls setFields individually
+    // This ensures we don't break existing functionality
+    super.setFieldsInBulk(fields, testCases);
+  }
+
+  private void fetchAndSetTestDefinitions(List<TestCase> testCases) {
+    List<String> testCaseIds =
+        testCases.stream().map(TestCase::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch test definitions
+    // Test definition CONTAINS test case, so we need to find FROM test definition TO test case
+    List<CollectionDAO.EntityRelationshipObject> testDefinitionRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                testCaseIds, Relationship.CONTAINS.ordinal(), TEST_DEFINITION, TEST_CASE);
+
+    // Create a map of test case ID to test definition reference
+    Map<UUID, EntityReference> testDefinitionMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : testDefinitionRecords) {
+      UUID testCaseId = UUID.fromString(record.getToId());
+      EntityReference testDefRef =
+          Entity.getEntityReferenceById(
+              TEST_DEFINITION, UUID.fromString(record.getFromId()), Include.ALL);
+      testDefinitionMap.put(testCaseId, testDefRef);
+    }
+
+    // Set test definitions on test cases
+    for (TestCase testCase : testCases) {
+      EntityReference testDefRef = testDefinitionMap.get(testCase.getId());
+      testCase.setTestDefinition(testDefRef);
+    }
+  }
+
+  private void fetchAndSetTestSuites(List<TestCase> testCases) {
+    List<String> testCaseIds =
+        testCases.stream().map(TestCase::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch test suites
+    // Test suite CONTAINS test case, so we need to find FROM test suite TO test case
+    List<CollectionDAO.EntityRelationshipObject> testSuiteRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(testCaseIds, Relationship.CONTAINS.ordinal(), TEST_SUITE, TEST_CASE);
+
+    // Create a map of test case ID to test suite references (can have multiple)
+    Map<UUID, List<EntityReference>> testCaseToTestSuites = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : testSuiteRecords) {
+      UUID testCaseId = UUID.fromString(record.getToId());
+      EntityReference testSuiteRef =
+          Entity.getEntityReferenceById(
+              TEST_SUITE, UUID.fromString(record.getFromId()), Include.ALL);
+      testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuiteRef);
+    }
+
+    // Set test suites on test cases - find the basic/executable test suite
+    for (TestCase testCase : testCases) {
+      List<EntityReference> testSuiteRefs = testCaseToTestSuites.get(testCase.getId());
+      if (testSuiteRefs != null && !testSuiteRefs.isEmpty()) {
+        // Find the basic test suite among the references
+        for (EntityReference ref : testSuiteRefs) {
+          TestSuite testSuite = Entity.getEntity(TEST_SUITE, ref.getId(), "", Include.ALL);
+          if (Boolean.TRUE.equals(testSuite.getBasic())) {
+            testCase.setTestSuite(testSuite.getEntityReference());
+            break;
+          }
+        }
+        // If no basic test suite found, use the first one
+        if (testCase.getTestSuite() == null) {
+          testCase.setTestSuite(testSuiteRefs.get(0));
+        }
+      }
+    }
+  }
+
+  @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owners,domain,tags,columns", ALL);

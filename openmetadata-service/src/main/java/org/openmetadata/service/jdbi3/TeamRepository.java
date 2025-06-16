@@ -365,6 +365,9 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     for (Team team : joinableTeams) {
+      if (team.getParents() == null) {
+        continue;
+      }
       for (EntityReference parentRef : team.getParents()) {
         if (parentRef.getName().equals(ORGANIZATION_NAME)) {
           continue;
@@ -487,7 +490,11 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) {
-    return !nullOrEmpty(team.getChildren()) ? team.getChildren().size() : getChildren(team).size();
+    if (!nullOrEmpty(team.getChildren())) {
+      return team.getChildren().size();
+    }
+    List<EntityReference> children = getChildren(team);
+    return children != null ? children.size() : 0;
   }
 
   private List<EntityReference> getPolicies(Team team) {

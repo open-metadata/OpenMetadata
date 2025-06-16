@@ -82,6 +82,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
+  // Use virtual threads for lightweight task coordination
   private final ExecutorService jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
@@ -89,6 +90,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
+
+  // Connection pool optimization settings
+  private static final int MAX_READER_THREADS =
+      10; // Maximum reader threads to prevent connection exhaustion
+  private static final int MAX_GLOBAL_CONCURRENT_READS =
+      10; // Global limit on concurrent DB operations
+  private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
+  private static final int MAX_BATCH_SIZE = 200; // Maximum batch size to avoid memory issues
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -237,7 +246,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numProducers = jobData.getProducerThreads();
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
-    producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+    // Limit reader threads when auto-tune is enabled to prevent connection pool exhaustion
+    if (jobData.getAutoTune() && numProducers > MAX_READER_THREADS) {
+      LOG.info(
+          "Auto-tune: Limiting reader threads from {} to {} to prevent connection pool exhaustion",
+          numProducers,
+          MAX_READER_THREADS);
+      numProducers = MAX_READER_THREADS;
+    }
+
+    // Use a fixed thread pool instead of unlimited virtual threads
+    producerExecutor =
+        Executors.newFixedThreadPool(
+            numProducers,
+            r -> {
+              Thread t = new Thread(r);
+              t.setName("SearchIndex-Reader-" + t.getId());
+              return t;
+            });
+
     try {
       processEntityReindex(jobExecutionContext);
     } catch (Exception e) {
@@ -267,6 +295,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.info(
           "[SearchIndex] Progress: {}/{} batches processed ({}%) in {}s",
           processed, latchCount, Math.round(processed * 100.0 / latchCount), elapsedSeconds);
+      // Log connection pool status periodically
+      if (processed % 100 == 0) {
+        logConnectionPoolStatus("Progress check");
+      }
     }
 
     long totalTime = System.currentTimeMillis() - startTime;
@@ -280,6 +312,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobData.getEntities().size(),
         batchSize.get(),
         jobData.getProducerThreads());
+
+    // Log initial connection pool status if available
+    logConnectionPoolStatus("Before starting producers");
+
+    // Global semaphore to limit total concurrent database operations across all entity types
+    // This prevents connection pool exhaustion when processing multiple entity types
+    int globalMaxConcurrentReads =
+        Math.min(MAX_GLOBAL_CONCURRENT_READS, jobData.getProducerThreads() * 2);
+    Semaphore globalSemaphore = new Semaphore(globalMaxConcurrentReads);
+    LOG.info("[SearchIndex] Using global semaphore with {} permits", globalMaxConcurrentReads);
 
     for (String entityType : jobData.getEntities()) {
       jobExecutor.submit(
@@ -295,10 +337,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
                   totalEntityRecords,
                   loadPerThread);
 
-              Semaphore semaphore = new Semaphore(Math.max(jobData.getQueueSize(), 100));
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
-                  semaphore.acquire();
+                  globalSemaphore.acquire();
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
@@ -312,7 +353,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                               e);
                         } finally {
                           producerLatch.countDown();
-                          semaphore.release();
+                          globalSemaphore.release();
                         }
                       });
                 }
@@ -637,6 +678,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @NotNull
   private Source<?> createSource(String entityType) {
+    // For search indexing, we need all fields since different entities require different fields
+    // However, we'll rely on bulk loading optimization to reduce connection usage
     List<String> fields = List.of("*");
     Source<?> source;
 
@@ -775,20 +818,36 @@ public class SearchIndexApp extends AbstractNativeApplication {
           jobData.getPayLoadSize() / (1024 * 1024));
 
       // Apply auto-tuned parameters with safety limits
-      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
+      // Increase batch size for better efficiency with bulk loading
+      int recommendedBatchSize = clusterMetrics.getRecommendedBatchSize();
+      // Enforce minimum batch size to reduce number of database queries
+      recommendedBatchSize =
+          Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, recommendedBatchSize));
+      LOG.info(
+          "AUTO-TUNE: Setting batch size to {} (min: {}, max: {})",
+          recommendedBatchSize,
+          MIN_BATCH_SIZE,
+          MAX_BATCH_SIZE);
+      jobData.setBatchSize(recommendedBatchSize);
 
       // Limit producer threads to prevent database connection pool exhaustion
-      // With 300 connections, we should leave some for other operations
-      int maxProducerThreads = Math.min(clusterMetrics.getRecommendedProducerThreads(), 50);
+      // With 300 connections, we need to be conservative:
+      // - Reserve ~100 connections for normal operations
+      // - Use max 10 reader threads (each may use multiple connections)
+      // - Account for bulk loading operations
+      int maxProducerThreads =
+          Math.min(clusterMetrics.getRecommendedProducerThreads(), MAX_READER_THREADS);
       if (clusterMetrics.getRecommendedProducerThreads() > maxProducerThreads) {
         LOG.warn(
-            "AUTO-TUNE: Limiting producer threads from {} to {} to prevent connection pool exhaustion",
+            "AUTO-TUNE: Limiting producer threads from {} to {} to prevent connection pool exhaustion (300 max connections)",
             clusterMetrics.getRecommendedProducerThreads(),
             maxProducerThreads);
       }
       jobData.setProducerThreads(maxProducerThreads);
 
-      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
+      // Limit concurrent requests to prevent overwhelming the search cluster and database
+      int maxConcurrentRequests = Math.min(clusterMetrics.getRecommendedConcurrentRequests(), 5);
+      jobData.setMaxConcurrentRequests(maxConcurrentRequests);
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
       LOG.info(
@@ -809,5 +868,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
       String entityType, ResultList<T> entities, int currentEntityOffset) {
     public static final IndexingTask<?> POISON_PILL =
         new IndexingTask<>(null, new ResultList<>(), -1);
+  }
+
+  private void logConnectionPoolStatus(String context) {
+    try {
+      // Try to get connection pool metrics from the DAO
+      Integer dbMaxPoolSize = searchRepository.getDatabaseMaxPoolSize();
+      if (dbMaxPoolSize != null) {
+        LOG.info(
+            "[SearchIndex] Connection Pool Status ({}): Max Pool Size: {}", context, dbMaxPoolSize);
+      }
+      // Note: Actual pool metrics (active, idle connections) would require access to the underlying
+      // connection pool implementation (HikariCP or Tomcat JDBC Pool)
+    } catch (Exception e) {
+      LOG.debug("Unable to get connection pool status: {}", e.getMessage());
+    }
   }
 }

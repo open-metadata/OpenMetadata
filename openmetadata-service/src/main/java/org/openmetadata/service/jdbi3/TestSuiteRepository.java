@@ -131,6 +131,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains("summary")
             ? getTestSummary(entity.getTestCaseResultSummary())
             : entity.getSummary());
+
+    // Ensure tests is never null, default to empty list
+    if (entity.getTests() == null) {
+      entity.setTests(new ArrayList<>());
+    }
   }
 
   @Override

@@ -82,10 +82,20 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
-    Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
-    if (parent.getDisabled() != null && parent.getDisabled()) {
-      tag.setDisabled(true);
+    // Ensure classification is populated before accessing it
+    if (tag.getClassification() == null) {
+      EntityReference classificationRef = getClassification(tag);
+      if (classificationRef != null) {
+        tag.withClassification(classificationRef);
+      }
+    }
+
+    if (tag.getClassification() != null) {
+      Classification parent =
+          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
+      if (parent.getDisabled() != null && parent.getDisabled()) {
+        tag.setDisabled(true);
+      }
     }
   }
 
