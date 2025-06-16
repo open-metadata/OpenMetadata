@@ -64,7 +64,7 @@ const SignInPage = () => {
     onLoginHandler && onLoginHandler();
   };
 
-  const getSignInButton = (): JSX.Element => {
+  const signInButton = useMemo(() => {
     let ssoBrandLogo;
     let ssoBrandName;
     switch (authConfig?.provider) {
@@ -130,7 +130,7 @@ const SignInPage = () => {
         onClick={handleSignIn}
       />
     );
-  };
+  }, [authConfig?.provider, handleSignIn]);
 
   useEffect(() => {
     // If the user is already logged in or if security is disabled
@@ -168,7 +168,7 @@ const SignInPage = () => {
 
   return (
     <CarouselLayout pageTitle={t('label.sign-in')}>
-      <div className="login-form-container">
+      <div className="login-form-container" data-testid="login-form-container">
         <div
           className={classNames('login-box', {
             'sso-container': !isAuthProviderBasic,
@@ -279,7 +279,7 @@ const SignInPage = () => {
               <Typography.Text className="text-xl text-grey-muted m-t-lg">
                 {t('message.om-description')}
               </Typography.Text>
-              <div className="sso-signup">{getSignInButton()}</div>
+              <div className="sso-signup">{signInButton}</div>
             </div>
           )}
         </div>
