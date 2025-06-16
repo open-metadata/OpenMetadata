@@ -2,7 +2,8 @@
 Manifests are used to store class information
 """
 
-from typing import Optional, Type, cast
+from abc import ABC, abstractmethod
+from typing import Any, Optional, Type, cast
 
 from pydantic import model_validator
 
@@ -13,6 +14,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.dependency_injector.dependency_injector import Inject, inject
 from metadata.utils.importer import (
     TYPE_SEPARATOR,
     DynamicImportException,
@@ -23,6 +25,14 @@ from metadata.utils.importer import (
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+class SourceLoader(ABC):
+    @abstractmethod
+    def __call__(
+        self, service_type: ServiceType, source_type: str, from_: str
+    ) -> Type[Any]:
+        """Load the service spec for a given service type and source type."""
 
 
 class BaseSpec(BaseModel):
@@ -67,8 +77,13 @@ class BaseSpec(BaseModel):
         return values
 
     @classmethod
+    @inject
     def get_for_source(
-        cls, service_type: ServiceType, source_type: str, from_: str = "ingestion"
+        cls,
+        service_type: ServiceType,
+        source_type: str,
+        from_: str = "ingestion",
+        source_loader: Inject[SourceLoader] = None,
     ) -> "BaseSpec":
         """Retrieves the manifest for a given source type. If it does not exist will attempt to retrieve
         a default manifest for the service type.
@@ -81,14 +96,26 @@ class BaseSpec(BaseModel):
         Returns:
             BaseSpec: The manifest for the source type.
         """
-        return cls.model_validate(
-            import_from_module(
-                "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
-                    from_,
-                    service_type.name.lower(),
-                    get_module_dir(source_type),
-                    "service_spec",
-                )
+        if not source_loader:
+            raise ValueError("Source loader is required")
+
+        return cls.model_validate(source_loader(service_type, source_type, from_))
+
+
+class DefaultSourceLoader(SourceLoader):
+    def __call__(
+        self,
+        service_type: ServiceType,
+        source_type: str,
+        from_: str = "ingestion",
+    ) -> Type[Any]:
+        """Default implementation for loading service specifications."""
+        return import_from_module(
+            "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
+                from_,
+                service_type.name.lower(),
+                get_module_dir(source_type),
+                "service_spec",
             )
         )
 
