@@ -83,7 +83,6 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     check_ephemeral_node,
-    check_or_create_test_suite,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
     generate_entity_link,
@@ -1024,9 +1023,6 @@ class DbtSource(DbtServiceSource):
                 logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
                 entity_link_list = generate_entity_link(dbt_test)
                 for entity_link_str in entity_link_list:
-                    test_suite = check_or_create_test_suite(
-                        self.metadata, entity_link_str
-                    )
                     table_fqn = get_table_fqn(entity_link_str)
                     logger.debug(f"Table fqn found: {table_fqn}")
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
@@ -1056,7 +1052,6 @@ class DbtSource(DbtServiceSource):
                                     manifest_node.name
                                 ),
                                 entityLink=entity_link_str,
-                                testSuite=test_suite.fullyQualifiedName,
                                 parameterValues=create_test_case_parameter_values(
                                     dbt_test
                                 ),

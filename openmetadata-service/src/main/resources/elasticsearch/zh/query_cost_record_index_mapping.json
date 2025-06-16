@@ -181,7 +181,8 @@
                         }
                     },
                     "query": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "index": false
                     },
                     "queryDate": {
                         "type": "long"
@@ -410,7 +411,7 @@
                     "totalVotes": {
                         "type": "long",
                         "null_value": 0
-                    },
+                    }
                 }
             },
             "service": {

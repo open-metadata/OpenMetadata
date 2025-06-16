@@ -1,6 +1,8 @@
 ---
 title: secretsManagerProvider
 slug: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerprovider
+noindex: true
+nofollow: true
 ---
 
 # Secrets Manager Provider

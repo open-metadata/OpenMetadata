@@ -23,6 +23,10 @@
       "description": "Optional name used for display purposes. Example 'Marketing Team'.",
       "type": "string"
     },
+    "externalId": {
+      "description": "External identifier for the team from an external identity provider (e.g., Azure AD group ID).",
+      "type": "string"
+    },
     "description": {
       "description": "Optional description of the team.",
       "$ref": "../../type/basic.json#/definitions/markdown"
