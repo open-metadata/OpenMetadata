@@ -4542,17 +4542,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private Iterator<Either<T, EntityError>> serializeJsons(
       List<String> jsons, Fields fields, UriInfo uriInfo) {
-    // Process all entities in bulk
     List<Either<T, EntityError>> results = new ArrayList<>();
     List<T> entities = new ArrayList<>();
 
-    // First, deserialize all JSONs into entities
     for (String json : jsons) {
       try {
         T entity = JsonUtils.readValue(json, entityClass);
         entities.add(entity);
       } catch (Exception e) {
-        // If deserialization fails, create an error entry
         EntityError entityError =
             new EntityError()
                 .withMessage("Failed to deserialize entity: " + e.getMessage())
@@ -4561,23 +4558,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    // Process all successfully deserialized entities in bulk
     if (!entities.isEmpty()) {
       try {
-        // Use bulk operations for better performance
         setFieldsInBulk(fields, entities);
-
-        // Apply href to all entities if uriInfo is provided
         if (!nullOrEmpty(uriInfo)) {
           entities.forEach(entity -> withHref(uriInfo, entity));
         }
 
-        // Add all successfully processed entities to results
         for (T entity : entities) {
           results.add(Either.left(entity));
         }
       } catch (Exception e) {
-        // If bulk processing fails, fall back to individual processing with error handling
         for (T entity : entities) {
           try {
             setFieldsInternal(entity, fields);
@@ -4596,12 +4587,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     }
-
-    // Return an iterator over the processed results
     return results.iterator();
   }
 
-  // Bulk loading helper methods
   protected <V> void setFieldFromMap(
       boolean includeField, List<T> entities, Map<UUID, V> valueMap, BiConsumer<T, V> setter) {
     if (!includeField || entities.isEmpty()) {

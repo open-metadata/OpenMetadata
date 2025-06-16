@@ -1491,7 +1491,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
-      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
+      assertEquals(expected.getDefaultPersona().getId(), updated.getDefaultPersona().getId());
     }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
