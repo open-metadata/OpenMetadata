@@ -14,10 +14,11 @@
 import { FieldProps } from '@rjsf/utils';
 import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { isArray, isEmpty, isObject, startCase, trim } from 'lodash';
+import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
+import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
 import './workflow-array-field-template.less';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
@@ -74,30 +75,32 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       return;
     }
 
-    const values =
-      text
-        .match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
-        ?.map((val) =>
-          trim(val.replace(/^"(.*)"$/, '$1').replace(/""/g, '"'))
-        ) ?? [];
+    let processedValues: string[] = [];
 
-    if (!isEmpty(values)) {
-      props.onChange(values);
+    // Try to parse as JSON array
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        processedValues = parsed.map((item) => String(item));
+      }
+    } catch {
+      // Fallback to existing logic if not a JSON array
+      processedValues = splitCSV(text);
     }
-  }, [onPasteFromClipBoard, props.onChange]);
+
+    if (!isEmpty(processedValues)) {
+      props.onChange([...value, ...processedValues]);
+    }
+  }, [onPasteFromClipBoard, props.onChange, value]);
 
   const handleInputSplit = useCallback(
     (inputValue: string) => {
       if (isEmpty(inputValue)) {
         return;
       }
+      const processedValues = splitCSV(inputValue);
 
-      if (inputValue.startsWith('"') && inputValue.endsWith('"')) {
-        props.onChange([...value, trim(inputValue.slice(1, -1))]);
-      } else {
-        const values = inputValue.split(',').map(trim).filter(Boolean);
-        props.onChange([...value, ...values]);
-      }
+      props.onChange([...value, ...processedValues]);
     },
     [value, props.onChange]
   );
