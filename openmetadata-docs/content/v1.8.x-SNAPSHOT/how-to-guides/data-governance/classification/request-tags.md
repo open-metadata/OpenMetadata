@@ -64,3 +64,11 @@ src="/images/v1.8/how-to-guides/governance/ct3.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Auto-Classification in OpenMetadata"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
+  Learn how OpenMetadata identifies PII data and auto tags or suggests the tags.
+{%/inlineCallout%}
