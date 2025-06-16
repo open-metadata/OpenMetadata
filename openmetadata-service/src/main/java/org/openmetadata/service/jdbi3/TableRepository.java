@@ -1913,7 +1913,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     return customMetricsMap;
-
+  }
 
   public ResultList<Column> searchTableColumnsById(
       UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
