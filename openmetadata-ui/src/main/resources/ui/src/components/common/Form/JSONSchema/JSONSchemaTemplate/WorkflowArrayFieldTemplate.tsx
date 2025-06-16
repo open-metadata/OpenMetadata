@@ -89,7 +89,9 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     }
 
     if (!isEmpty(processedValues)) {
-      props.onChange([...value, ...processedValues]);
+      // Use Set to ensure unique values
+      const uniqueValues = Array.from(new Set([...value, ...processedValues]));
+      props.onChange(uniqueValues);
     }
   }, [onPasteFromClipBoard, props.onChange, value]);
 
@@ -100,7 +102,9 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       }
       const processedValues = splitCSV(inputValue);
 
-      props.onChange([...value, ...processedValues]);
+      // Use Set to ensure unique values
+      const uniqueValues = Array.from(new Set([...value, ...processedValues]));
+      props.onChange(uniqueValues);
     },
     [value, props.onChange]
   );
