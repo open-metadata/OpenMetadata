@@ -17,7 +17,7 @@ import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { getUsers } from '../../rest/userAPI';
-import { MOCK_USER_DATA } from './MockUserPageData';
+import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
 const mockParam = {
@@ -85,16 +85,24 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock('../../components/common/Table/Table', () => {
   return jest
     .fn()
-    .mockImplementation(({ columns, extraTableFilters, searchProps }) => (
-      <div>
-        {searchProps && <div data-testid="search-bar-container">searchBar</div>}
-        {extraTableFilters}
-        {columns.map((column: Record<string, string>) => (
-          <span key={column.key}>{column.title}</span>
-        ))}
-        <table>mockTable</table>
-      </div>
-    ));
+    .mockImplementation(
+      ({ columns, extraTableFilters, searchProps, dataSource, locale }) => (
+        <div>
+          {searchProps && (
+            <div data-testid="search-bar-container">searchBar</div>
+          )}
+          {extraTableFilters}
+          {columns.map((column: Record<string, string>) => (
+            <span key={column.key}>{column.title}</span>
+          ))}
+          {dataSource && dataSource.length === 0 && locale?.emptyText ? (
+            locale.emptyText
+          ) : (
+            <table>mockTable</table>
+          )}
+        </div>
+      )
+    );
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -108,6 +116,17 @@ jest.mock(
   }
 );
 
+jest.mock(
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ type }) => (
+        <div data-testid={`error-placeholder-${type}`}>ErrorPlaceHolder</div>
+      ));
+  }
+);
+
 describe('Test UserListPage component', () => {
   it('users api should called on initial load', async () => {
     const { findByTestId } = render(<UserListPageV1 />);
@@ -118,6 +137,27 @@ describe('Test UserListPage component', () => {
     expect(deletedSwitch).not.toBeChecked();
 
     expect(getUsers).toHaveBeenCalled();
+  });
+
+  it('should show ErrorPlaceholder when there are no users after initial API call', async () => {
+    (getUsers as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...MOCK_EMPTY_USER_DATA,
+      })
+    );
+
+    const { findByTestId } = render(<UserListPageV1 />);
+
+    const errorPlaceholder = await findByTestId('error-placeholder-CREATE');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+    expect(getUsers).toHaveBeenCalledWith({
+      fields: 'profile,teams,roles',
+      include: 'non-deleted',
+      isAdmin: false,
+      isBot: false,
+      limit: 25,
+    });
   });
 
   it('should call setFilters with deleted flag on clicking showDeleted switch', async () => {
