@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Input, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
@@ -24,12 +24,14 @@ import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 
 const CustomiseLandingPageHeader = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isNLPEnabled } = useSearchStore();
+  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
 
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
@@ -50,6 +52,14 @@ const CustomiseLandingPageHeader = () => {
     });
   }, []);
 
+  const handleOpenCustomiseHomeModal = () => {
+    setShowCustomiseHomeModal(true);
+  };
+
+  const handleCloseCustomiseHomeModal = () => {
+    setShowCustomiseHomeModal(false);
+  };
+
   return (
     <div className="customise-landing-page">
       <div className="header-container">
@@ -69,6 +79,7 @@ const CustomiseLandingPageHeader = () => {
                   style={{ fontSize: '16px', color: 'white' }}
                 />
               }
+              onClick={handleOpenCustomiseHomeModal}
             />
           </div>
           <div className="mb-9 customise-search-container">
@@ -139,6 +150,13 @@ const CustomiseLandingPageHeader = () => {
         <div className="announcements" />
       </div>
       <div className="overlapped-container" />
+
+      {showCustomiseHomeModal && (
+        <CustomiseHomeModal
+          open={showCustomiseHomeModal}
+          onClose={handleCloseCustomiseHomeModal}
+        />
+      )}
     </div>
   );
 };
