@@ -259,7 +259,7 @@ export const TestSuites = () => {
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner]);
+  }, [testSuitePermission, pageSize, searchValue, owner, tab]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (

@@ -74,6 +74,7 @@ test('Logical TestSuite', async ({ page }) => {
   const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
   const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
+  await page.waitForLoadState('networkidle');
   const testSuite = page.waitForResponse(
     '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*'
   );

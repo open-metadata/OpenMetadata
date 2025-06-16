@@ -84,13 +84,9 @@ jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
 
 jest.mock('./DataInsightClassBase', () => ({
   getLeftPanel: jest.fn().mockReturnValue(() => <div>LeftPanel</div>),
-  getDataInsightTab: jest.fn().mockReturnValue([
-    {
-      key: 'data-assets',
-      path: '/data-insights/data-assets',
-      component: () => <div>dataAssetsComponent</div>,
-    },
-  ]),
+  getDataInsightTabComponent: jest
+    .fn()
+    .mockReturnValue(() => <div>dataAssetsComponent</div>),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
