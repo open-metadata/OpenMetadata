@@ -405,6 +405,42 @@ export const updateDescription = async (
       ).toContainText(description);
 };
 
+export const updateDescriptionForChildren = async (
+  page: Page,
+  description: string,
+  rowId: string,
+  rowSelector: string
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-button')
+    .click();
+
+  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
+  const updateRequest = page.waitForResponse((req) =>
+    ['PATCH', 'PUT'].includes(req.request().method())
+  );
+  await page.getByTestId('save').click();
+  await updateRequest;
+
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+
+  isEmpty(description)
+    ? await expect(
+        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+      ).toContainText('No Description')
+    : await expect(
+        page
+          .locator(`[${rowSelector}="${rowId}"]`)
+          .getByTestId('viewer-container')
+          .getByRole('paragraph')
+      ).toContainText(description);
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
@@ -473,8 +509,8 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId(`tag-${tag}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -486,7 +522,7 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -557,8 +593,8 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const patchTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putTagRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -570,7 +606,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchTagRequest;
+    await putTagRequest;
 
     await expect(
       page
@@ -651,8 +687,8 @@ export const assignGlossaryTermToChildren = async ({
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -666,7 +702,7 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -742,8 +778,8 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -755,7 +791,7 @@ export const removeGlossaryTermFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchRequest;
+    await putRequest;
 
     expect(
       page
@@ -1045,6 +1081,77 @@ export const updateDisplayNameForEntity = async (
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toHaveText(displayName);
+};
+
+export const updateDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: { oldDisplayName: string; newDisplayName: string },
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(
+    displayName.oldDisplayName
+  );
+
+  await page.locator('#displayName').fill(displayName.newDisplayName);
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).toHaveText(displayName.newDisplayName);
+};
+
+export const removeDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: string,
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(displayName);
+
+  await page.locator('#displayName').fill('');
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).not.toBeVisible();
 };
 
 export const checkForEditActions = async ({
