@@ -409,6 +409,21 @@ const UserListPageV1 = () => {
     );
   }, [isAdminPage, searchValue]);
 
+  const tablePlaceholder = useMemo(() => {
+    return isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue ? (
+      errorPlaceHolder
+    ) : (
+      <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />
+    );
+  }, [
+    userList,
+    isDeleted,
+    isDataLoading,
+    searchValue,
+    errorPlaceHolder,
+    emptyPlaceHolderText,
+  ]);
+
   if (
     ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
   ) {
@@ -475,17 +490,7 @@ const UserListPageV1 = () => {
             }
             loading={isDataLoading}
             locale={{
-              emptyText:
-                isEmpty(userList) &&
-                !isDeleted &&
-                !isDataLoading &&
-                !searchValue ? (
-                  errorPlaceHolder
-                ) : (
-                  <FilterTablePlaceHolder
-                    placeholderText={emptyPlaceHolderText}
-                  />
-                ),
+              emptyText: tablePlaceholder,
             }}
             pagination={false}
             rowKey="id"
