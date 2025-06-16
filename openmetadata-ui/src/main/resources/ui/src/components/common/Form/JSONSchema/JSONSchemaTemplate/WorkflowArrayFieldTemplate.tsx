@@ -129,11 +129,12 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           onChange={(value) => props.onChange(value)}
           onFocus={handleFocus}
           onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
               e.preventDefault();
               handlePaste();
             }
-            if (e.key === 'Enter') {
+            if (!options && e.key === 'Enter') {
+              // If there are no options(mode is tags), we need to split the input value by comma
               e.preventDefault();
               const inputValue = (e.target as HTMLInputElement).value;
               if (inputValue) {
