@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
-
+@selected-color: @primary-color;
 @hover-color: @primary-1;
 @active-color: @primary-7;
 @left-sidebar-icon-size: 28px;
@@ -87,7 +87,7 @@
         border-radius: 12px;
 
         &.ant-menu-item-selected {
-          background: @primary-color;
+          background: @selected-color;
           color: @white;
 
           .ant-menu-title-content {
@@ -160,7 +160,7 @@
       }
 
       &.ant-menu-item-selected {
-        background-color: @primary-color;
+        background-color: @selected-color;
         color: @white;
 
         svg {
