@@ -32,16 +32,15 @@ import {
   servicesDisplayName,
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -58,14 +57,16 @@ import {
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
+import {
+  columnFilterIcon,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -270,10 +271,13 @@ const Services = ({ serviceName }: ServicesProps) => {
     if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
-          className="p-lg"
+          className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
+          permissionValue={t('label.create-entity', {
+            entity: `${servicesDisplayName[serviceName]}`,
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />
@@ -282,7 +286,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
     return (
       <ErrorPlaceHolder
-        className="mt-24"
+        className="mt-24 border-none"
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
@@ -302,6 +306,30 @@ const Services = ({ serviceName }: ServicesProps) => {
       value,
     }));
   }, [serviceName]);
+
+  const customPaginationTableProps = useMemo(
+    () => ({
+      showPagination,
+      currentPage,
+      isLoading,
+      isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
+      pageSize,
+      paging,
+      pagingHandler: handleServicePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      showPagination,
+      currentPage,
+      isLoading,
+      searchTerm,
+      serviceTypeFilter,
+      pageSize,
+      paging,
+      handleServicePageChange,
+      handlePageSizeChange,
+    ]
+  );
 
   const columns: ColumnsType<ServicesType> = [
     {
@@ -333,7 +361,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewerV1
+          <RichTextEditorPreviewerNew
             className="max-two-lines"
             markdown={highlightSearchText(description, searchTerm)}
           />
@@ -357,13 +385,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         </span>
       ),
     },
-    {
-      title: t('label.owner-plural'),
-      dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-      key: TABLE_COLUMNS_KEYS.OWNERS,
-      width: 200,
-      render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-    },
+    ...ownerTableObject<ServicesType>(),
   ];
 
   const serviceCardRenderer = (service: ServicesType) => {
@@ -451,7 +473,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -490,6 +512,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
@@ -497,7 +520,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             search: searchTerm,
           }}
           tableProps={{
-            bordered: true,
             columns,
             dataSource: serviceDetails,
             rowKey: 'fullyQualifiedName',
@@ -510,19 +532,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleServicePageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

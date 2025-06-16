@@ -21,7 +21,11 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -39,9 +43,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -102,7 +103,24 @@ public final class EntityUtil {
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
-
+  public static final BiPredicate<List<EntityReference>, List<EntityReference>>
+      entityReferenceListMatch =
+          (list1, list2) -> {
+            if (list1 == null || list2 == null) {
+              return list1 == list2;
+            }
+            if (list1.size() != list2.size()) {
+              return false;
+            }
+            for (int i = 0; i < list1.size(); i++) {
+              EntityReference ref1 = list1.get(i);
+              EntityReference ref2 = list2.get(i);
+              if (ref1 == null || ref2 == null || !entityReferenceMatch.test(ref1, ref2)) {
+                return false;
+              }
+            }
+            return true;
+          };
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) ->
           tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
@@ -558,6 +576,10 @@ public final class EntityUtil {
         : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
   }
 
+  public static EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    return fqn == null ? null : Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
   public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;
@@ -655,6 +677,23 @@ public final class EntityUtil {
                     CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 
+  public static Column findColumnWithChildren(List<Column> columns, String columnName) {
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnName)) {
+        return column;
+      }
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        try {
+          return findColumnWithChildren(column.getChildren(), columnName);
+        } catch (IllegalArgumentException ignored) {
+          // Continue searching in other columns
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidFieldName("column", columnName));
+  }
+
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
     fields.forEach(column -> flattenEntityField(column, flattenedFields));
@@ -711,6 +750,44 @@ public final class EntityUtil {
 
   public static String encodeEntityFqn(String fqn) {
     return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * Gets the value of a field from an entity using reflection.
+   * This method checks if the entity supports the given field and returns its value.
+   * If the field is not supported, returns null.
+   *
+   * @param entity The entity to get the field value from
+   * @param fieldName The name of the field to get (corresponds to getter method name without 'get' prefix)
+   * @return The value of the field, or null if field is not supported by the entity
+   */
+  public static Object getEntityField(EntityInterface entity, String fieldName) {
+    if (entity == null || fieldName == null || fieldName.isEmpty()) {
+      return null;
+    }
+
+    // Convert field name to getter method name (e.g., "retentionPeriod" -> "getRetentionPeriod")
+    String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+
+    try {
+      Method method = entity.getClass().getMethod(methodName);
+      return method.invoke(entity);
+    } catch (NoSuchMethodException e) {
+      // Field not supported by this entity type
+      LOG.debug(
+          "Field '{}' not supported by entity type {}",
+          fieldName,
+          entity.getClass().getSimpleName());
+      return null;
+    } catch (Exception e) {
+      // Other reflection errors
+      LOG.debug(
+          "Failed to get field '{}' from entity {}: {}",
+          fieldName,
+          entity.getClass().getSimpleName(),
+          e.getMessage());
+      return null;
+    }
   }
 
   public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {

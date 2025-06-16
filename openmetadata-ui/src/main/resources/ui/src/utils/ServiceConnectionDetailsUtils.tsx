@@ -12,8 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Space, Tooltip, Typography } from 'antd';
-import { get, isEmpty, isNull, isObject, startCase } from 'lodash';
+import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
+import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
 import React, { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
@@ -52,13 +52,27 @@ const renderInputField = (
         </Space>
       </Col>
       <Col span={16}>
-        <Input
-          readOnly
-          className="w-full border-none"
-          data-testid="input-field"
-          type={format === 'password' ? 'password' : 'text'}
-          value={value}
-        />
+        {isArray(value) ? (
+          <Select
+            allowClear={false}
+            bordered={false}
+            className="w-full border-none"
+            data-testid="input-field"
+            mode="multiple"
+            open={false}
+            removeIcon={null}
+            style={{ pointerEvents: 'none' }}
+            value={value}
+          />
+        ) : (
+          <Input
+            readOnly
+            className="w-full border-none"
+            data-testid="input-field"
+            type={format === 'password' ? 'password' : 'text'}
+            value={value}
+          />
+        )}
       </Col>
     </Row>
   </Col>
@@ -280,9 +294,9 @@ export const getKeyValues = ({
         return null;
       }
 
-      // Handle non-object values
-      if (!isObject(value)) {
-        const { description, format, title } = schemaPropertyObject[key] || {};
+      // Handle non-object and array values
+      if (!isObject(value) || isArray(value)) {
+        const { description, format, title } = schemaPropertyObject[key] ?? {};
 
         return renderInputField(key, value, description, format, title);
       }
@@ -299,7 +313,7 @@ export const getKeyValues = ({
           key as ServiceConnectionFilterPatternFields
         )
       ) {
-        const { description, title } = schemaPropertyObject[key] || {};
+        const { description, title } = schemaPropertyObject[key] ?? {};
 
         return renderFilterPattern(key, value, description, title);
       }
@@ -337,12 +351,12 @@ export const getKeyValues = ({
       // Default object handling
       return getKeyValues({
         obj: value,
-        schemaPropertyObject: schemaPropertyObject[key]?.properties || {},
+        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
         schema,
         serviceCategory,
       });
     });
   } catch {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 };

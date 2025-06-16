@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -890,6 +890,7 @@ class SampleDataSource(
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
                 sourceUrl=table.get("sourceUrl"),
+                tablePartition=table.get("tablePartition"),
             )
 
             yield Either(right=table_and_db)
@@ -1602,7 +1603,6 @@ class SampleDataSource(
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=suite.fullyQualifiedName.root,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]

@@ -13,6 +13,8 @@
 
 @import (reference) url('../../styles/variables.less');
 
+@quick-filters-container-height: 86px;
+
 .explore-page {
   .sorting-dropdown-container {
     .ant-typography {
@@ -30,10 +32,16 @@
     height: 16px;
   }
 
+  .explore-tab-label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
   .explore-left-panel {
     position: sticky;
     top: 0;
-    height: calc(100vh - 120px);
     overflow-y: auto;
     z-index: 10;
     display: flex;
@@ -55,27 +63,32 @@
     position: sticky;
     top: 0;
     overflow-y: auto;
-    z-index: 10;
   }
 
   .explore-main-container {
-    height: calc(100vh - 120px);
+    height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .explore-data-container {
-    height: calc(100vh - 200px);
+    height: calc(
+      100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
+    );
     overflow-y: auto;
+  }
+
+  .explore-main-card {
+    .ant-card-body {
+      height: 100%;
+      overflow-y: auto;
+    }
   }
 
   .quick-filters-container {
     position: sticky;
     top: 0;
     z-index: 10;
-  }
-
-  .summary-panel-container {
-    height: 100%;
   }
 
   .explore-tree {

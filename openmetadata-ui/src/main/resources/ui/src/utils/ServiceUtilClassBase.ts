@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { capitalize, get, toLower } from 'lodash';
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
@@ -120,6 +121,8 @@ import {
   SearchServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -129,6 +132,7 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
@@ -139,6 +143,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -208,6 +213,34 @@ class ServiceUtilClassBase {
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  private serviceDetails?: ServicesType;
+
+  public setEditServiceDetails(serviceDetails?: ServicesType) {
+    this.serviceDetails = serviceDetails;
+  }
+
+  public getEditServiceDetails() {
+    return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigClass },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
   }
 
   public getServiceConfigData(data: {
@@ -640,86 +673,6 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getServiceName = (serviceType: string) => {
-    switch (serviceType) {
-      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
-        return 'Custom Database';
-      case this.DatabaseServiceTypeSmallCase.AzureSQL:
-        return 'AzureSQL';
-      case this.DatabaseServiceTypeSmallCase.BigQuery:
-        return 'BigQuery';
-      case this.DatabaseServiceTypeSmallCase.BigTable:
-        return 'BigTable';
-      case this.DatabaseServiceTypeSmallCase.DeltaLake:
-        return 'DeltaLake';
-      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
-        return 'DomoDatabase';
-      case this.DatabaseServiceTypeSmallCase.DynamoDB:
-        return 'DynamoDB';
-      case this.DatabaseServiceTypeSmallCase.MariaDB:
-        return 'MariaDB';
-      case this.DatabaseServiceTypeSmallCase.MongoDB:
-        return 'MongoDB';
-      case this.DatabaseServiceTypeSmallCase.Cassandra:
-        return 'Cassandra';
-      case this.DatabaseServiceTypeSmallCase.PinotDB:
-        return 'pinotdb';
-      case this.DatabaseServiceTypeSmallCase.SapHana:
-        return 'SapHana';
-      case this.DatabaseServiceTypeSmallCase.SAS:
-        return 'SAS';
-      case this.DatabaseServiceTypeSmallCase.SingleStore:
-        return 'SingleStore';
-      case this.DatabaseServiceTypeSmallCase.SQLite:
-        return 'SQlite';
-      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
-        return 'UnityCatalog';
-      case this.MessagingServiceTypeSmallCase.CustomMessaging:
-        return 'Custom Messaging';
-      case this.DashboardServiceTypeSmallCase.DomoDashboard:
-        return 'DomoDashboard';
-      case this.DashboardServiceTypeSmallCase.PowerBI:
-        return 'PowerBI';
-      case this.DashboardServiceTypeSmallCase.QlikCloud:
-        return 'QlikCloud';
-      case this.DashboardServiceTypeSmallCase.QlikSense:
-        return 'QlikSense';
-      case this.DashboardServiceTypeSmallCase.QuickSight:
-        return 'QuickSight';
-      case this.DashboardServiceTypeSmallCase.CustomDashboard:
-        return 'Custom Dashboard';
-      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
-        return 'DatabricksPipeline';
-      case this.PipelineServiceTypeSmallCase.DBTCloud:
-        return 'DBTCloud';
-      case this.PipelineServiceTypeSmallCase.DomoPipeline:
-        return 'DomoPipeline';
-      case this.PipelineServiceTypeSmallCase.GluePipeline:
-        return 'Glue Pipeline';
-      case this.PipelineServiceTypeSmallCase.KafkaConnect:
-        return 'KafkaConnect';
-      case this.PipelineServiceTypeSmallCase.OpenLineage:
-        return 'OpenLineage';
-      case this.PipelineServiceTypeSmallCase.CustomPipeline:
-        return 'Custom Pipeline';
-      case this.MlModelServiceTypeSmallCase.SageMaker:
-        return 'SageMaker';
-      case this.MlModelServiceTypeSmallCase.CustomMlModel:
-        return 'Custom Ml Model';
-      case this.StorageServiceTypeSmallCase.CustomStorage:
-        return 'Custom Storage';
-      case this.SearchServiceTypeSmallCase.ElasticSearch:
-        return 'ElasticSearch';
-      case this.SearchServiceTypeSmallCase.CustomSearch:
-        return 'Custom Search';
-      case this.DatabaseServiceTypeSmallCase.Cockroach:
-        return 'Cockroach';
-
-      default:
-        return capitalize(serviceType);
-    }
-  };
-
   public getPipelineServiceConfig(type: PipelineServiceType) {
     return getPipelineConfig(type);
   }
@@ -762,6 +715,18 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraInfo(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: '',
+      additionalFieldContent: null,
+    };
   }
 
   public getEditConfigData(

@@ -1,12 +1,12 @@
 package org.openmetadata.service.resources.apps;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
-import static org.openmetadata.service.Entity.getSearchRepository;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -16,6 +16,8 @@ import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -220,7 +220,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                         new AccessDetails()
                             .withTimestamp(tableAccessedAt)
                             .withAccessedBy(user.getEntityReference())));
-    tableRepository.createOrUpdate(null, table);
+    tableRepository.createOrUpdate(null, table, ADMIN_USER_NAME);
 
     // Adding the ProfileData for the CostAnalysis Workflow to use it
     tableResourceTest.putTableProfileData(
@@ -317,7 +317,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    String clusterAlias = getSearchRepository().getClusterAlias();
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String endpointSuffix = "di-data-assets-*";
     String endpoint =
         !(clusterAlias == null || clusterAlias.isEmpty())
@@ -522,6 +522,87 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         String.format("eventsubscription instance for %s not found", subscriptionName));
   }
 
+  @Test
+  void test_data_retention_app_deletes_old_change_events()
+      throws IOException, InterruptedException {
+    // Create database service, database, and schema
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(
+            databaseServiceResourceTest
+                .createRequest("RetentionTestService")
+                .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    Database database =
+        databaseResourceTest.createEntity(
+            databaseResourceTest
+                .createRequest("retention_test_db")
+                .withService(databaseService.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchema schema =
+        schemaResourceTest.createEntity(
+            schemaResourceTest
+                .createRequest("retention_test_schema")
+                .withDatabase(database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a new table to work with
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    String tableName = "retention_test_table_" + System.currentTimeMillis();
+
+    Table table =
+        tableResourceTest.createEntity(
+            tableResourceTest
+                .createRequest(tableName)
+                .withDatabaseSchema(schema.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create some change events by updating the table multiple times
+    for (int i = 0; i < 5; i++) {
+      Table updatedTable = JsonUtils.deepCopy(table, Table.class);
+      updatedTable.setDescription("Updated description " + i);
+      tableResourceTest.patchEntity(
+          table.getId(), JsonUtils.pojoToJson(updatedTable), updatedTable, ADMIN_AUTH_HEADERS);
+      table = updatedTable;
+
+      // Add a small delay between updates to ensure they're recorded as separate events
+      Thread.sleep(100);
+    }
+
+    // Wait a moment for change events to be processed
+    Thread.sleep(1000);
+
+    // Trigger the Data Retention application
+    postTriggerApp("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+
+    // Wait for the app to complete
+    Thread.sleep(5000);
+
+    // Assert the app status is available after trigger
+    assertAppStatusAvailableAfterTrigger("DataRetentionApplication");
+
+    // Assert the app ran with SUCCESS status
+    assertAppRanAfterTriggerWithStatus("DataRetentionApplication", AppRunRecord.Status.SUCCESS);
+
+    // Get the latest run record to check statistics
+    AppRunRecord latestRun = getLatestAppRun("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(latestRun);
+
+    // Check whether successContext is not null
+    Assertions.assertNotNull(latestRun.getSuccessContext());
+
+    // Clean up - delete the test entities
+    tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+    schemaResourceTest.deleteEntity(schema.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseResourceTest.deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseServiceResourceTest.deleteEntity(
+        databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public void validateCreatedEntity(
       App createdEntity, CreateApp request, Map<String, String> authHeaders)
@@ -572,7 +653,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
     Response response =
-        SecurityUtil.addHeaders(target, authHeaders).post(javax.ws.rs.client.Entity.json(config));
+        SecurityUtil.addHeaders(target, authHeaders).post(jakarta.ws.rs.client.Entity.json(config));
     readResponse(response, OK.getStatusCode());
   }
 

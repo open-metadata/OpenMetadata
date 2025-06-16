@@ -15,14 +15,14 @@
 .metadata-agents-widget.ant-card {
   height: 100%;
   background-color: @white;
-  border-color: @grey-12;
+  border-color: @grey-15;
   border-radius: @border-radius-sm;
+  padding: 0px;
 
   & > .ant-card-body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 2px;
     padding: 0px;
 
     &::before,
@@ -36,33 +36,23 @@
     align-items: center;
     justify-content: center;
     padding: 10px;
-    border: 1px solid @border-color;
+    border: 1px solid @grey-15;
     border-radius: 18px;
     height: fit-content;
   }
 
   .metadata-agents-widget-table {
+    margin-bottom: 0px;
+    .table-container {
+      border: none;
+      border-radius: 0px 0px @border-radius-sm @border-radius-sm;
+    }
     .ant-table {
-      border-bottom-left-radius: @border-radius-sm;
-      border-bottom-right-radius: @border-radius-sm;
-
       table > tbody > tr:last-child > td {
         border-bottom: none;
       }
-      table > tbody > tr:last-child > td:first-child {
-        border-bottom-left-radius: @border-radius-sm;
-      }
-      table > tbody > tr:last-child > td:last-child {
-        border-bottom-right-radius: @border-radius-sm;
-      }
       tr > td:first-child.name-column {
         padding-left: 16px;
-      }
-      .ant-table-thead tr > th {
-        text-transform: none;
-      }
-      .ant-table-cell {
-        vertical-align: middle;
       }
     }
   }

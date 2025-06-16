@@ -15,18 +15,27 @@ You can find further information on the Qlik Cloud connector in the [docs](https
 ## Connection Details
 
 $$section
-### Qlik Cloud Hostport $(id="hostPort")
+### Qlik Cloud API Token $(id="token")
 
-This field refers to the base url of your Qlik Cloud Portal, will be used for generating the redirect links for dashboards and charts. 
+API token for Qlik Cloud APIs access. Refer to [this](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm) document for more details.
+
+Example: `eyJhbGciOiJFU***`
+$$
+
+
+$$section
+### Qlik Cloud Host Port $(id="hostPort")
+
+This field refers to the base url of your Qlik Cloud Portal, will be used for generating the redirect links for dashboards and charts.
 
 Example: `https://<TenantURL>.qlikcloud.com`
 $$
 
 
 $$section
-### Qlik Cloud API Token $(id="token")
+### Qlik Cloud Space Types $(id="spaceTypes")
 
-API token for Qlik Cloud APIs access. Refer to [this](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm) document for more details about
+Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform.
 
-Example: `eyJhbGciOiJFU***`
+Example: `Personal`, `Shared`, `Managed`, `Data`
 $$

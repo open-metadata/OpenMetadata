@@ -51,7 +51,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     return () => setGlossaryChildTerms([]);
   }, [props.widgetKey]);
 
-  const widgetName = startCase(props.widgetKey.replace('KnowledgePanel.', ''));
+  const widgetName = startCase(
+    props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
+  );
 
   const cardContent = useMemo(() => {
     // Find the matching widget component based on prefix matching

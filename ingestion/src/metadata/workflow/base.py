@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -219,7 +219,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess
 
-        # Any unhandled exception breaking the workflow should update the status
+            # If there's any steps that should raise a failed status,
+            # raise it here to set the pipeline status as failed
+            try:
+                self.raise_from_status_internal()
+            except WorkflowExecutionError:
+                pipeline_state = PipelineState.failed
+
+        # Any unhandled exception should blow up the execution
         except Exception as err:
             pipeline_state = PipelineState.failed
             raise err

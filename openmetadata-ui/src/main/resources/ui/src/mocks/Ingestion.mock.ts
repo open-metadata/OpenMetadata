@@ -12,13 +12,13 @@
  */
 
 import { IngestionProps } from '../components/Settings/Services/Ingestion/ingestion.interface';
+import { AirflowStatusContextType } from '../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { AuthProvider } from '../generated/entity/services/connections/serviceConnection';
 import {
   IngestionPipeline,
   PipelineState,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
 import { ServicesType } from '../interface/service.interface';
 
 export const mockIngestionData: IngestionPipeline = {
@@ -234,7 +234,7 @@ export const ingestionProps: IngestionProps = {
     isAirflowAvailable: true,
     isFetchingStatus: false,
     platform: 'airflow',
-  } as UseAirflowStatusProps,
+  } as AirflowStatusContextType,
   handleIngestionListUpdate: mockCurrentHandleIngestionListUpdate,
   handleSearchChange: mockCurrentHandleSearchChange,
   onPageChange: mockCurrentOnPageChange,
@@ -250,4 +250,5 @@ export const ingestionProps: IngestionProps = {
   },
   handleTypeFilterChange: jest.fn(),
   handleStatusFilterChange: jest.fn(),
+  refreshAgentsList: jest.fn(),
 };

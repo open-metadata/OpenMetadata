@@ -75,7 +75,7 @@ const MyDataWidgetInternal = ({
 
         setData(ownedAssets.map((hit) => hit._source).slice(0, 8));
         setTotalOwnedAssetsCount(totalOwnedAssets);
-      } catch (err) {
+      } catch {
         setData([]);
       } finally {
         setIsLoading(false);
@@ -139,6 +139,7 @@ const MyDataWidgetInternal = ({
         {isEmpty(data) ? (
           <div className="flex-center h-full">
             <ErrorPlaceHolder
+              className="border-none"
               icon={
                 <MyDataEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />
               }

@@ -216,6 +216,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -505,7 +506,9 @@ export enum PipelineServiceType {
     OpenLineage = "OpenLineage",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

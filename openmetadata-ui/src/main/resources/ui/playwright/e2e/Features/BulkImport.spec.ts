@@ -29,9 +29,13 @@ import {
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
+  createStoredProcedureRowDetails,
   createTableRowDetails,
   fillColumnDetails,
+  fillRecursiveColumnDetails,
+  fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
+  fillStoredProcedureCode,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -44,6 +48,16 @@ test.use({
 const glossaryDetails = {
   name: EntityDataClass.glossaryTerm1.data.name,
   parent: EntityDataClass.glossary1.data.name,
+};
+
+const databaseDetails1 = {
+  ...createDatabaseRowDetails(),
+  glossary: glossaryDetails,
+};
+
+const databaseDetails2 = {
+  ...createDatabaseRowDetails(),
+  glossary: glossaryDetails,
 };
 
 const databaseSchemaDetails1 = {
@@ -76,6 +90,11 @@ const columnDetails2 = {
   glossary: glossaryDetails,
 };
 
+const storedProcedureDetails = {
+  ...createStoredProcedureRowDetails(),
+  glossary: glossaryDetails,
+};
+
 test.describe('Bulk Import Export', () => {
   test.beforeAll('setup pre-test', async ({ browser }, testInfo) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -98,7 +117,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -132,22 +152,10 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and edit with two additional database',
       async () => {
-        const databaseDetails1 = {
-          ...createDatabaseRowDetails(),
-          domains: EntityDataClass.domain1.responseData,
-          glossary: glossaryDetails,
-        };
-
-        const databaseDetails2 = {
-          ...createDatabaseRowDetails(),
-          glossary: glossaryDetails,
-          domains: EntityDataClass.domain1.responseData,
-        };
-
         await dbService.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
         await page.click('[data-testid="import-button-description"]');
-        const fileInput = await page.$('[type="file"]');
+        const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + dbService.entity.name + '.csv',
         ]);
@@ -172,7 +180,7 @@ test.describe('Bulk Import Export', () => {
           '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
         );
 
-        // Click on first cell and edit
+        // Add first database details
         await fillRowDetails(
           {
             ...databaseDetails1,
@@ -180,17 +188,139 @@ test.describe('Bulk Import Export', () => {
               EntityDataClass.user1.responseData?.['displayName'],
               EntityDataClass.user2.responseData?.['displayName'],
             ],
+            domains: EntityDataClass.domain1.responseData,
           },
           page,
           customPropertyRecord
         );
 
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}`,
+          databaseDetails1.entityType,
+          page
+        );
+
+        // Add new row for new schema details
         await page.click('[data-testid="add-row-btn"]');
 
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        await fillRowDetails(
+          {
+            ...databaseSchemaDetails1,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain1.responseData,
+          },
+          page
         );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
+          page
+        );
+
+        // Add new row for new table details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // Fill table and columns details
+        await fillRowDetails(
+          {
+            ...tableDetails1,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain1.responseData,
+          },
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
+          tableDetails1.entityType,
+          page
+        );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails1,
+            fullyQualifiedName: `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
+          },
+          page
+        );
+
+        // Add New StoredProcedure Details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 16, 'ArrowLeft');
+
+        await fillRowDetails(
+          {
+            ...storedProcedureDetails,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain2.responseData,
+          },
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${storedProcedureDetails.name}`,
+          storedProcedureDetails.entityType,
+          page
+        );
+
+        await pressKeyXTimes(page, 5, 'ArrowRight');
+
+        await fillStoredProcedureCode(page);
+
+        // Add 2nd Database Details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 18, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -199,9 +329,15 @@ test.describe('Bulk Import Export', () => {
               EntityDataClass.user1.responseData?.['displayName'],
               EntityDataClass.user2.responseData?.['displayName'],
             ],
+            domains: EntityDataClass.domain2.responseData,
           },
-          page,
-          customPropertyRecord
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails2.name}`,
+          databaseDetails2.entityType,
+          page
         );
 
         await page.waitForTimeout(100);
@@ -214,14 +350,25 @@ test.describe('Bulk Import Export', () => {
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '3',
-          processed: '3',
+          passed: '7',
+          processed: '7',
           failed: '0',
         });
-        const rowStatus = ['Entity created', 'Entity created'];
+        const rowStatus = [
+          'Entity created',
+          'Entity created',
+          'Entity created',
+          'Entity updated',
+          'Entity created',
+          'Entity created',
+        ];
 
         await expect(page.locator('[data-props-id="details"]')).toHaveText(
           rowStatus
+        );
+
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
         );
 
         await page.getByRole('button', { name: 'Update' }).click();
@@ -229,6 +376,8 @@ test.describe('Bulk Import Export', () => {
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -313,11 +462,73 @@ test.describe('Bulk Import Export', () => {
           page,
           customPropertyRecord
         );
-        await page.click('[data-testid="add-row-btn"]');
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
+          page
         );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // Fill table and columns details
+        await fillRowDetails(
+          {
+            ...tableDetails1,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain1.responseData,
+          },
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
+          tableDetails1.entityType,
+          page
+        );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails1,
+            fullyQualifiedName: `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
+          },
+          page
+        );
+
+        // Add 2nd Schema Details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 16, 'ArrowLeft');
+
         await fillRowDetails(
           {
             ...databaseSchemaDetails2,
@@ -327,8 +538,13 @@ test.describe('Bulk Import Export', () => {
             ],
             domains: EntityDataClass.domain1.responseData,
           },
-          page,
-          customPropertyRecord
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails2.name}`,
+          databaseSchemaDetails2.entityType,
+          page
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
@@ -339,8 +555,8 @@ test.describe('Bulk Import Export', () => {
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '4',
-          processed: '4',
+          passed: '13',
+          processed: '13',
           failed: '0',
         });
 
@@ -350,12 +566,24 @@ test.describe('Bulk Import Export', () => {
 
         const rowStatus = [
           'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
           'Entity created',
           'Entity created',
+          'Entity updated',
         ];
 
         await expect(page.locator('[data-props-id="details"]')).toHaveText(
           rowStatus
+        );
+
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
         );
 
         await page.getByRole('button', { name: 'Update' }).click();
@@ -363,6 +591,8 @@ test.describe('Bulk Import Export', () => {
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -435,7 +665,7 @@ test.describe('Bulk Import Export', () => {
           '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
         );
 
-        // Click on first cell and edit
+        // First Table Details with one Column
         await fillRowDetails(
           {
             ...tableDetails1,
@@ -449,12 +679,42 @@ test.describe('Bulk Import Export', () => {
           customPropertyRecord
         );
 
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}`,
+          tableDetails1.entityType,
+          page
+        );
+
+        // Add new row for columns details
         await page.click('[data-testid="add-row-btn"]');
 
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // Fill table columns details
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails1,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}.${columnDetails1.name}`,
+          },
+          page
         );
+
+        // Add new row for table details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 16, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -469,21 +729,62 @@ test.describe('Bulk Import Export', () => {
           customPropertyRecord
         );
 
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}`,
+          tableDetails2.entityType,
+          page
+        );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // fill second table columns details
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails2,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+          },
+          page
+        );
+
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '3',
-          processed: '3',
+          passed: '5',
+          processed: '5',
           failed: '0',
         });
 
-        const rowStatus = ['Entity created', 'Entity created'];
+        const rowStatus = [
+          'Entity created',
+          'Entity updated',
+          'Entity created',
+          'Entity updated',
+        ];
 
         await expect(page.locator('[data-props-id="details"]')).toHaveText(
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
+
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -493,6 +794,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    test.slow(true);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -560,7 +863,7 @@ test.describe('Bulk Import Export', () => {
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.click('[type="button"] >> text="Next"', { force: true });
+        await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
           passed: '9',
@@ -583,11 +886,15 @@ test.describe('Bulk Import Export', () => {
           rowStatus
         );
 
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
         await toastNotification(page, /details updated successfully/);
       }
     );

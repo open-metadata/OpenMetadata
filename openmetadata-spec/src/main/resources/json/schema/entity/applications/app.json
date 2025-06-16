@@ -3,7 +3,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "App",
   "javaType": "org.openmetadata.schema.entity.app.App",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
   "definitions": {
@@ -15,20 +17,29 @@
         "Live",
         "Scheduled",
         "ScheduledOrManual",
-        "NoSchedule"
+        "NoSchedule",
+        "OnlyManual"
       ],
       "javaEnums": [
         {
-          "name": "Live"
+          "name": "Live",
+          "description": "An app that has other trigger mechanisms."
         },
         {
-          "name": "Scheduled"
+          "name": "Scheduled",
+          "description": "An app that has a schedule and cannot be run manually."
         },
         {
-          "name": "ScheduledOrManual"
+          "name": "ScheduledOrManual",
+          "description": "An app that has a schedule and can be run manually."
         },
         {
-          "name": "NoSchedule"
+          "name": "NoSchedule",
+          "description": "An app that has no schedule and cannot be run manually."
+        },
+        {
+          "name": "OnlyManual",
+          "description": "An app that has no schedule but can be run manually."
         }
       ]
     },
@@ -36,7 +47,14 @@
       "javaType": "org.openmetadata.schema.entity.app.ScheduleTimeline",
       "description": "This schema defines the Application ScheduleTimeline Options",
       "type": "string",
-      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom", "None"],
+      "enum": [
+        "Hourly",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Custom",
+        "None"
+      ],
       "default": "Weekly"
     },
     "appSchedule": {
@@ -51,7 +69,9 @@
           "type": "string"
         }
       },
-      "required": ["scheduleTimeline"],
+      "required": [
+        "scheduleTimeline"
+      ],
       "additionalProperties": false
     },
     "appType": {
@@ -173,7 +193,7 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
     "developer": {
@@ -267,12 +287,12 @@
     "appScreenshots": {
       "description": "Application Screenshots.",
       "type": "array",
-      "items":{
+      "items": {
         "type": "string"
       },
       "uniqueItems": true
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
@@ -283,9 +303,9 @@
     },
     "eventSubscriptions": {
       "description": "Event Subscriptions for the Application.",
-        "$ref": "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime", "appSchedule"]
+  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime"]
 }

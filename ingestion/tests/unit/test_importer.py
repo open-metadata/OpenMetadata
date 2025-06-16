@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,16 +14,12 @@ Test import utilities
 """
 from unittest import TestCase
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
     get_class_name_root,
     get_module_name,
     get_source_module_name,
     import_bulk_sink_type,
-    import_connection_fn,
     import_from_module,
     import_processor_class,
     import_sink_class,
@@ -91,22 +87,4 @@ class ImporterTest(TestCase):
         self.assertEqual(
             import_bulk_sink_type(bulk_sink_type="metadata-usage"),
             MetadataUsageBulkSink,
-        )
-
-    def test_import_get_connection(self) -> None:
-        connection = MysqlConnection(
-            username="name",
-            hostPort="hostPort",
-        )
-
-        get_connection_fn = import_connection_fn(
-            connection=connection, function_name="get_connection"
-        )
-        self.assertIsNotNone(get_connection_fn)
-
-        self.assertRaises(
-            AttributeError,
-            import_connection_fn,
-            connection=connection,
-            function_name="random",
         )

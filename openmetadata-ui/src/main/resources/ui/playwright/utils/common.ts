@@ -48,8 +48,9 @@ export const getToken = async (page: Page) => {
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
     // Default timeout is 30s making it to 1m for AUTs
-    timeout: 60000,
+    timeout: 90000,
     extraHTTPHeaders: {
+      Connection: 'keep-alive',
       Authorization: `Bearer ${token}`,
     },
   });
@@ -58,6 +59,7 @@ export const getAuthContext = async (token: string) => {
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
 };
 
 export const removeLandingBanner = async (page: Page) => {
@@ -116,9 +118,14 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
 
 export const toastNotification = async (
   page: Page,
-  message: string | RegExp
+  message: string | RegExp,
+  timeout?: number
 ) => {
-  await expect(page.getByTestId('alert-bar')).toHaveText(message);
+  await page.waitForSelector('[data-testid="alert-bar"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 
@@ -210,12 +217,85 @@ export const removeDomain = async (
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
 
+export const assignDataProduct = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  },
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
+    .click();
+
+  const searchDataProduct = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await page
+    .locator('[data-testid="data-product-selector"] input')
+    .fill(dataProduct.displayName);
+  await searchDataProduct;
+  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId(parentId)
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const removeDataProduct = async (
+  page: Page,
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  }
+) => {
+  await page
+    .getByTestId('KnowledgePanel.DataProducts')
+    .getByTestId('data-products-container')
+    .getByTestId('edit-button')
+    .click();
+
+  await page
+    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
+    .getByTestId('remove-tags')
+    .locator('svg')
+    .click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.DataProducts')
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).not.toBeVisible();
+};
+
 export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {
@@ -268,4 +348,12 @@ export const closeFirstPopupAlert = async (page: Page) => {
   if ((await toastElement.count()) > 0) {
     await page.getByTestId('alert-icon-close').first().click();
   }
+};
+
+export const reloadAndWaitForNetworkIdle = async (page: Page) => {
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

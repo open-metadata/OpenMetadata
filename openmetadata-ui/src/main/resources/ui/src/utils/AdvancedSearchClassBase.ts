@@ -25,13 +25,16 @@ import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
+  TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import {
   EntityFields,
   EntityReferenceFields,
+  EntitySourceFields,
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -43,6 +46,7 @@ import {
 } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
+import { parseBucketsData } from './SearchUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
@@ -129,31 +133,60 @@ class AdvancedSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
-  }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
-    // Wrapping the fetch function in a debounce of 300 ms
-    const debouncedFetch = debounce((search, callback) => {
+    isCaseInsensitive?: boolean;
+  }) => SelectFieldSettings['asyncFetch'] = ({
+    searchIndex,
+    entityField,
+    isCaseInsensitive = false,
+  }) => {
+    let pendingResolve:
+      | ((result: { values: any[]; hasMore: boolean }) => void)
+      | null = null;
+    const debouncedFetch = debounce((search: string) => {
+      const sourceFields = isCaseInsensitive
+        ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
+        : undefined;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
-        JSON.stringify(getCombinedQueryFilterObject())
-      ).then((response) => {
-        const buckets =
-          response.data.aggregations[`sterms#${entityField}`].buckets;
+        JSON.stringify(getCombinedQueryFilterObject()),
+        sourceFields
+      )
+        .then((response) => {
+          const buckets =
+            response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        callback({
-          values: buckets.map((bucket) => ({
-            value: bucket.key,
-            title: bucket.label ?? bucket.key,
-          })),
-          hasMore: false,
+          const bucketsData = parseBucketsData(buckets, sourceFields);
+
+          if (pendingResolve) {
+            pendingResolve({
+              values: bucketsData,
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
+        })
+        .catch(() => {
+          if (pendingResolve) {
+            pendingResolve({
+              values: [],
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
         });
-      });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        debouncedFetch(search, resolve);
+        // Resolve previous promise to prevent hanging
+        if (pendingResolve) {
+          pendingResolve({ values: [], hasMore: false });
+        }
+        pendingResolve = resolve;
+        debouncedFetch(search ?? '');
       });
     };
   };
@@ -594,6 +627,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -710,6 +744,22 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.ENTITY_TYPE,
           }),
           useAsyncSearch: true,
+        },
+      },
+      [EntityFields.SUGGESTED_DESCRIPTION]: {
+        label: t('label.suggested-description'),
+        type: 'select',
+        operators: NULL_CHECK_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      [EntityFields.TAGS_LABEL_TYPE]: {
+        label: t('label.tag-label-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: TAG_LABEL_TYPE_LIST_VALUES,
         },
       },
     };

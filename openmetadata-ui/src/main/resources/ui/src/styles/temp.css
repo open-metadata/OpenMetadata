@@ -21,6 +21,7 @@
 .react-grid-layout {
   position: relative;
   transition: height 500ms ease;
+  min-height: 100%;
 }
 
 .svg-icon:not(.hidden) {
@@ -728,9 +729,9 @@ body .list-option.rdw-option-active {
 }
 
 :root {
-  --ant-navbar-height: 64px;
+  --ant-navbar-height: 80px;
 }
 
 :root .extra-banner {
-  --ant-navbar-height: 128px;
+  --ant-navbar-height: 144px;
 }

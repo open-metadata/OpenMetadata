@@ -227,7 +227,7 @@ const KPIChart: FC<Props> = ({
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading || isKpiLoading}
@@ -319,7 +319,13 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+                <ErrorPlaceHolder
+                  className="border-none"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })}
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
               )}
             </Col>
           )}
@@ -340,8 +346,11 @@ const KPIChart: FC<Props> = ({
                 })}
               </Button>
             }
-            className="m-0"
+            className="m-0 border-none"
             permission={createKPIPermission}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
             size={SIZE.MEDIUM}
             type={
               createKPIPermission

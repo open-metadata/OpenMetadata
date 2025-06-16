@@ -127,6 +127,9 @@ function EmailConfigSettingsPage() {
         <ErrorPlaceHolder
           className="mt-24"
           heading={t('label.email-configuration-lowercase')}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.email-configuration'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
         />
       );
@@ -137,11 +140,9 @@ function EmailConfigSettingsPage() {
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
-          <>
-            <Row align="middle" gutter={[16, 16]}>
-              {configValues}
-            </Row>
-          </>
+          <Row align="middle" gutter={[16, 16]}>
+            {configValues}
+          </Row>
         )}
       </>
     );
@@ -153,7 +154,10 @@ function EmailConfigSettingsPage() {
 
   return (
     <PageLayoutV1 pageTitle={t('label.email-configuration')}>
-      <Row align="middle" className="page-container" gutter={[0, 16]}>
+      <Row
+        align="middle"
+        className="p-lg bg-white border-radius-sm"
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

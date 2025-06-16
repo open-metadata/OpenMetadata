@@ -231,7 +231,7 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      history.push({
+      history.replace({
         pathname: getClassificationTagPath(
           tagItem.fullyQualifiedName ?? '',
           tab
@@ -256,11 +256,12 @@ const TagPage = () => {
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
+        name: name?.trim(),
         displayName: displayName?.trim(),
       };
 
@@ -342,6 +343,12 @@ const TagPage = () => {
         setPreviewAsset(undefined);
       }
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })
+      );
       setAssetCount(0);
     }
   };
@@ -432,7 +439,7 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur
@@ -482,6 +489,7 @@ const TagPage = () => {
           <ResizablePanels
             className="tag-height-with-resizable-panel"
             firstPanel={{
+              wrapInCard: false,
               className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
@@ -509,6 +517,7 @@ const TagPage = () => {
             }}
             hideSecondPanel={!previewAsset}
             secondPanel={{
+              wrapInCard: false,
               children: previewAsset && (
                 <EntitySummaryPanel
                   entityDetails={previewAsset}
@@ -557,7 +566,7 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-  }, []);
+  }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
@@ -584,13 +593,13 @@ const TagPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 12]}>
         <Col span={24}>
           <Row
             className="data-classification"
             data-testid="data-classification"
             gutter={[0, 12]}>
-            <Col className="p-x-md" flex="auto">
+            <Col className="p-x-md" flex="1">
               <EntityHeader
                 badge={
                   tagItem.disabled && (
@@ -663,7 +672,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs"
+            className="tabs-new"
             items={tabItems}
             onChange={activeTabHandler}
           />

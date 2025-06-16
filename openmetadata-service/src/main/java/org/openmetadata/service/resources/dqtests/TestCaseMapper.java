@@ -21,8 +21,8 @@ public class TestCaseMapper implements EntityMapper<TestCase, CreateTestCase> {
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withUseDynamicAssertion(create.getUseDynamicAssertion())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
-        .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()))
+        .withTags(create.getTags())
         .withCreatedBy(user);
   }
 }

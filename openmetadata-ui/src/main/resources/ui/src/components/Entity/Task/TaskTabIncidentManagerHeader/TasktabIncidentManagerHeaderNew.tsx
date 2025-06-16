@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Steps, Typography } from 'antd';
+import { Col, Row, Skeleton, Steps, Typography } from 'antd';
 import { last, toLower } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,15 +27,17 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
 
 const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
   const { t } = useTranslation();
-  const { testCaseResolutionStatus } = useActivityFeedProvider();
+  const { testCaseResolutionStatus, isTestCaseResolutionLoading } =
+    useActivityFeedProvider();
   const testCaseResolutionStepper = useMemo(() => {
     const updatedData = [...testCaseResolutionStatus];
     const lastStatusType = last(
@@ -128,11 +130,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Typography.Text>
         </Col>
         <Col className="flex items-center gap-2" span={16}>
-          <ProfilePictureNew
-            avatarType="outlined"
-            name={thread.createdBy ?? ''}
-            width="24"
-          />
+          <UserPopOverCard userName={thread.createdBy ?? ''}>
+            <div className="d-flex items-center">
+              <ProfilePicture name={thread.createdBy ?? ''} width="24" />
+            </div>
+          </UserPopOverCard>
           <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>
         <Col className="flex items-center gap-2 text-grey-muted" span={8}>
@@ -144,20 +146,24 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <ProfilePictureNew
-                avatarType="outlined"
-                name={thread?.task?.assignees[0].displayName ?? ''}
-                width="24"
-              />
+              <UserPopOverCard userName={thread?.task?.assignees[0].name ?? ''}>
+                <div className="d-flex items-center">
+                  <ProfilePicture
+                    name={thread?.task?.assignees[0].name ?? ''}
+                    width="24"
+                  />
+                </div>
+              </UserPopOverCard>
               <Typography.Text className="text-grey-body">
-                {thread?.task?.assignees[0].displayName}
+                {getEntityName(thread?.task?.assignees[0])}
               </Typography.Text>
             </div>
           ) : (
-            <UserAvatarGroup
+            <OwnerLabel
               avatarSize={24}
-              className="p-t-05"
+              isCompactView={false}
               owners={thread?.task?.assignees}
+              showLabel={false}
             />
           )}
         </Col>
@@ -210,14 +216,18 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         )}
         <Col className="p-l-0" span={24}>
           <div className="task-resolution-steps-container-new">
-            <Steps
-              className="task-resolution-steps w-full"
-              current={testCaseResolutionStatus.length}
-              data-testid="task-resolution-steps"
-              items={testCaseResolutionStepper}
-              labelPlacement="vertical"
-              size="small"
-            />
+            {isTestCaseResolutionLoading ? (
+              <Skeleton active />
+            ) : (
+              <Steps
+                className="task-resolution-steps w-full"
+                current={testCaseResolutionStatus.length}
+                data-testid="task-resolution-steps"
+                items={testCaseResolutionStepper}
+                labelPlacement="vertical"
+                size="small"
+              />
+            )}
           </div>
         </Col>
       </Row>

@@ -27,7 +27,6 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
@@ -53,7 +52,6 @@ import {
   getDatabaseSchemaVersions,
 } from '../../rest/databaseAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
@@ -247,30 +245,37 @@ function DatabaseSchemaVersionPage() {
         ),
         key: EntityTabs.TABLE,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <DescriptionV1
-                description={description}
-                entityType={EntityType.DATABASE_SCHEMA}
-                isDescriptionExpanded={isEmpty(tableData)}
-                showActions={false}
-              />
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityType={EntityType.DATABASE_SCHEMA}
+                    isDescriptionExpanded={isEmpty(tableData)}
+                    showActions={false}
+                  />
+                </Col>
+                <Col className="p-t-sm" flex="auto">
+                  <SchemaTablesTab isVersionView />
+                </Col>
+              </Row>
             </Col>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <SchemaTablesTab isVersionView />
-            </Col>
+
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     displayType={DisplayType.READ_MORE}
                     entityType={EntityType.DATABASE_SCHEMA}
                     key={tagType}
@@ -321,7 +326,15 @@ function DatabaseSchemaVersionPage() {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.database-schema-version'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     return (
@@ -353,9 +366,9 @@ function DatabaseSchemaVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col span={24}>
+                <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
-                    className="entity-details-page-tabs"
+                    className="tabs-new"
                     data-testid="tabs"
                     defaultActiveKey={tab}
                     items={tabs}
@@ -419,15 +432,7 @@ function DatabaseSchemaVersionPage() {
     }
   }, [currentVersionData, pageSize]);
 
-  return (
-    <PageLayoutV1
-      className="version-page-container"
-      pageTitle={t('label.entity-version-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
-      {versionComponent}
-    </PageLayoutV1>
-  );
+  return versionComponent;
 }
 
 export default DatabaseSchemaVersionPage;

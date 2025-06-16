@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -72,7 +72,6 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     ForeignConstrains,
     Type,
 )
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
@@ -97,7 +96,6 @@ class UnitycatalogSource(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.root.config
@@ -342,22 +340,9 @@ class UnitycatalogSource(
                         schema_name=schema_name,
                     )
                 ),
-                owners=self.get_owner_ref(table_name),
+                owners=self.get_owner_ref(table.owner),
             )
             yield Either(right=table_request)
-
-            if table_type == TableType.View or table.view_definition:
-                self.context.get_global().table_views.append(
-                    TableView(
-                        table_name=table_name,
-                        schema_name=schema_name,
-                        db_name=db_name,
-                        view_definition=(
-                            f'CREATE VIEW "{db_name}"."{schema_name}"'
-                            f'."{table_name}" AS {table.view_definition}'
-                        ),
-                    )
-                )
 
             self.register_record(table_request=table_request)
         except Exception as exc:
@@ -418,6 +403,7 @@ class UnitycatalogSource(
             )
             if referred_table_fqn:
                 for parent_column in column.parent_columns:
+                    # pylint: disable=protected-access
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
@@ -434,6 +420,7 @@ class UnitycatalogSource(
 
         return table_constraints
 
+    # pylint: disable=arguments-differ
     def update_table_constraints(
         self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
@@ -539,18 +526,25 @@ class UnitycatalogSource(
     def close(self):
         """Nothing to close"""
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+    # pylint: disable=arguments-renamed
+    def get_owner_ref(
+        self, table_owner: Optional[str]
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
+        if self.source_config.includeOwners is False:
+            return None
         try:
-            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
-            owner = self.api_client.get_owner_info(full_table_name)
-            if not owner:
-                return
-            owner_ref = self.metadata.get_reference_by_email(email=owner)
+            if not table_owner or not isinstance(table_owner, str):
+                return None
+            owner_ref = self.metadata.get_reference_by_email(email=table_owner)
+            if owner_ref:
+                return owner_ref
+            table_name = table_owner.split("@")[0]
+            owner_ref = self.metadata.get_reference_by_name(name=table_name)
             return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")
-        return
+            logger.warning(f"Error processing owner {table_owner}: {exc}")
+        return None

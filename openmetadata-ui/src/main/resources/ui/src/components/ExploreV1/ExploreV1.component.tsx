@@ -17,17 +17,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Menu,
-  Row,
-  Space,
-  Switch,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -44,7 +34,7 @@ import {
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -55,8 +45,9 @@ import {
 } from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
+import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
@@ -217,6 +208,40 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
   };
 
+  const exploreLeftPanel = useMemo(() => {
+    if (tabItems.length === 0) {
+      return loading ? (
+        <Loader />
+      ) : (
+        <FilterErrorPlaceHolder
+          className="h-min-80 d-flex flex-col justify-center border-none"
+          size={SIZE.MEDIUM}
+        />
+      );
+    }
+
+    if (searchQueryParam) {
+      return (
+        <Menu
+          className="custom-menu"
+          data-testid="explore-left-panel"
+          items={tabItems}
+          mode="inline"
+          rootClassName="left-container"
+          selectedKeys={[activeTabKey]}
+          onClick={(info) => {
+            if (info && info.key !== activeTabKey) {
+              onChangeSearchIndex(info.key as ExploreSearchIndex);
+              setShowSummaryPanel(false);
+            }
+          }}
+        />
+      );
+    }
+
+    return <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />;
+  }, [searchQueryParam, tabItems]);
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -268,209 +293,184 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="explore-page bg-grey p-x-box" data-testid="explore-page">
-      {tabItems.length > 0 && (
-        <Row gutter={[20, 0]} wrap={false}>
-          <Col className="explore-left-panel" flex="300px">
-            <Card>
-              <div className="p-l-xs m-b-md">
-                <Typography.Text className="font-semibold explore-data-header">
-                  {t('label.data-asset-plural')}
-                </Typography.Text>
-              </div>
-              {searchQueryParam ? (
-                <Menu
-                  className="custom-menu"
-                  data-testid="explore-left-panel"
-                  items={tabItems}
-                  mode="inline"
-                  rootClassName="left-container"
-                  selectedKeys={[activeTabKey]}
-                  onClick={(info) => {
-                    if (info && info.key !== activeTabKey) {
-                      onChangeSearchIndex(info.key as ExploreSearchIndex);
-                      setShowSummaryPanel(false);
-                    }
-                  }}
-                />
-              ) : (
-                <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
-              )}
-            </Card>
-          </Col>
-          <Col className="explore-main-container" flex="auto">
-            <Row
-              className="quick-filters-container"
-              gutter={[20, 0]}
-              wrap={false}>
-              <Col span={24}>
-                <Card className="p-md card-padding-0 m-b-md">
-                  <Row>
-                    <Col className="searched-data-container w-full">
-                      <Row gutter={[0, 8]}>
-                        <Col>
-                          <ExploreQuickFilters
-                            aggregations={aggregations}
-                            fields={selectedQuickFilters}
-                            fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-                            index={activeTabKey}
-                            showDeleted={showDeleted}
-                            onAdvanceSearch={() => toggleModal(true)}
-                            onChangeShowDeleted={onChangeShowDeleted}
-                            onFieldValueSelect={handleQuickFiltersValueSelect}
-                          />
-                        </Col>
-                        <Col
-                          className="d-flex items-center justify-end gap-3"
-                          flex={410}>
-                          <span className="flex-center">
-                            <Switch
-                              checked={showDeleted}
-                              data-testid="show-deleted"
-                              onChange={onChangeShowDeleted}
-                            />
-                            <Typography.Text className="filters-label p-l-xs font-medium">
-                              {t('label.deleted')}
-                            </Typography.Text>
-                          </span>
-                          {(quickFilters || sqlQuery) && (
-                            <Typography.Text
-                              className="text-primary self-center cursor-pointer font-medium"
-                              data-testid="clear-filters"
-                              onClick={() => clearFilters()}>
-                              {t('label.clear-entity', {
-                                entity: '',
-                              })}
-                            </Typography.Text>
-                          )}
-
-                          <Button
-                            className="cursor-pointer"
-                            data-testid="advance-search-button"
-                            icon={<FilterOutlined />}
-                            type="text"
-                            onClick={() => toggleModal(true)}
-                          />
-                          <span className="sorting-dropdown-container">
-                            <SortingDropDown
-                              fieldList={
-                                tabsInfo[searchIndex as ExploreSearchIndex]
-                                  ?.sortingFields ?? entitySortingFields
+    <div className="explore-page bg-grey" data-testid="explore-page">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          flex: 0.2,
+          minWidth: 280,
+          title: t('label.data-asset-plural'),
+          children: <div className="p-x-sm">{exploreLeftPanel}</div>,
+        }}
+        secondPanel={{
+          className: 'content-height-with-resizable-panel',
+          flex: 0.8,
+          minWidth: 800,
+          children: (
+            <div className="explore-main-container">
+              <Row
+                className="quick-filters-container"
+                gutter={[20, 0]}
+                wrap={false}>
+                <Col span={24}>
+                  <Card className="p-md card-padding-0 m-b-box">
+                    <Row>
+                      <Col className="searched-data-container w-full">
+                        <Row gutter={[0, 8]}>
+                          <Col>
+                            <ExploreQuickFilters
+                              aggregations={aggregations}
+                              fields={selectedQuickFilters}
+                              fieldsWithNullValues={
+                                SUPPORTED_EMPTY_FILTER_FIELDS
                               }
-                              handleFieldDropDown={onChangeSortValue}
-                              sortField={sortValue}
+                              index={activeTabKey}
+                              showDeleted={showDeleted}
+                              onAdvanceSearch={() => toggleModal(true)}
+                              onChangeShowDeleted={onChangeShowDeleted}
+                              onFieldValueSelect={handleQuickFiltersValueSelect}
                             />
+                          </Col>
+                          <Col
+                            className="d-flex items-center justify-end gap-3"
+                            flex={410}>
+                            <span className="flex-center">
+                              <Switch
+                                checked={showDeleted}
+                                data-testid="show-deleted"
+                                onChange={onChangeShowDeleted}
+                              />
+                              <Typography.Text className="filters-label p-l-xs font-medium">
+                                {t('label.deleted')}
+                              </Typography.Text>
+                            </span>
+                            {(quickFilters || sqlQuery) && (
+                              <Typography.Text
+                                className="text-primary self-center cursor-pointer font-medium"
+                                data-testid="clear-filters"
+                                onClick={() => clearFilters()}>
+                                {t('label.clear-entity', {
+                                  entity: '',
+                                })}
+                              </Typography.Text>
+                            )}
+
                             <Button
-                              className="p-0"
-                              data-testid="sort-order-button"
-                              size="small"
+                              className="cursor-pointer"
+                              data-testid="advance-search-button"
+                              icon={<FilterOutlined />}
                               type="text"
-                              onClick={() =>
-                                onChangeSortOder(
-                                  isAscSortOrder
-                                    ? SORT_ORDER.DESC
-                                    : SORT_ORDER.ASC
-                                )
-                              }>
-                              {isAscSortOrder ? (
-                                <SortAscendingOutlined
-                                  style={{ fontSize: '14px' }}
-                                  {...sortProps}
-                                />
-                              ) : (
-                                <SortDescendingOutlined
-                                  style={{ fontSize: '14px' }}
-                                  {...sortProps}
-                                />
-                              )}
-                            </Button>
-                          </span>
-                        </Col>
-                        {isElasticSearchIssue ? (
-                          <Col span={24}>
-                            <IndexNotFoundBanner />
-                          </Col>
-                        ) : (
-                          <></>
-                        )}
-                        {sqlQuery && (
-                          <Col span={24}>
-                            <AppliedFilterText
-                              filterText={sqlQuery}
-                              onEdit={() => toggleModal(true)}
+                              onClick={() => toggleModal(true)}
                             />
+                            <span className="sorting-dropdown-container">
+                              <SortingDropDown
+                                fieldList={
+                                  tabsInfo[searchIndex as ExploreSearchIndex]
+                                    ?.sortingFields ?? entitySortingFields
+                                }
+                                handleFieldDropDown={onChangeSortValue}
+                                sortField={sortValue}
+                              />
+                              <Button
+                                className="p-0"
+                                data-testid="sort-order-button"
+                                size="small"
+                                type="text"
+                                onClick={() =>
+                                  onChangeSortOder(
+                                    isAscSortOrder
+                                      ? SORT_ORDER.DESC
+                                      : SORT_ORDER.ASC
+                                  )
+                                }>
+                                {isAscSortOrder ? (
+                                  <SortAscendingOutlined
+                                    style={{ fontSize: '14px' }}
+                                    {...sortProps}
+                                  />
+                                ) : (
+                                  <SortDescendingOutlined
+                                    style={{ fontSize: '14px' }}
+                                    {...sortProps}
+                                  />
+                                )}
+                              </Button>
+                            </span>
                           </Col>
-                        )}
-                      </Row>
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-            </Row>
-
-            <Row
-              className="explore-data-container"
-              gutter={[20, 0]}
-              wrap={false}>
-              <Col flex="auto">
-                <Card>
-                  <div>
-                    {!loading && !isElasticSearchIssue ? (
-                      <SearchedData
-                        isFilterSelected
-                        data={searchResults?.hits.hits ?? []}
-                        filter={parsedSearch}
-                        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                        isSummaryPanelVisible={showSummaryPanel}
-                        selectedEntityId={entityDetails?.id || ''}
-                        totalValue={searchResults?.hits.total.value ?? 0}
-                        onPaginationChange={onChangePage}
-                      />
-                    ) : (
-                      <></>
-                    )}
-                    {loading ? <Loader /> : <></>}
-                  </div>
-                </Card>
-              </Col>
-
-              {showSummaryPanel && entityDetails && !loading && (
-                <Col className="explore-right-panel" flex="400px">
-                  <EntitySummaryPanel
-                    entityDetails={{ details: entityDetails }}
-                    handleClosePanel={handleClosePanel}
-                    highlights={omit(
-                      {
-                        ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
-                        'tag.name': (
-                          selectedQuickFilters?.find(
-                            (filterOption) => filterOption.key === TAG_FQN_KEY
-                          )?.value ?? []
-                        ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
-                      },
-                      ['description', 'displayName']
-                    )}
-                  />
+                          {isElasticSearchIssue ? (
+                            <Col span={24}>
+                              <IndexNotFoundBanner />
+                            </Col>
+                          ) : (
+                            <></>
+                          )}
+                          {sqlQuery && (
+                            <Col span={24}>
+                              <AppliedFilterText
+                                filterText={sqlQuery}
+                                onEdit={() => toggleModal(true)}
+                              />
+                            </Col>
+                          )}
+                        </Row>
+                      </Col>
+                    </Row>
+                  </Card>
                 </Col>
-              )}
-            </Row>
-          </Col>
-        </Row>
-      )}
+              </Row>
 
-      {searchQueryParam && tabItems.length === 0 && !loading && (
-        <Space
-          align="center"
-          className="w-full flex-center full-height"
-          data-testid="no-search-results"
-          direction="vertical"
-          size={48}>
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        </Space>
-      )}
+              <Row
+                className="explore-data-container"
+                gutter={[20, 0]}
+                wrap={false}>
+                <Col flex="auto">
+                  <Card className="h-full explore-main-card">
+                    <div className="h-full">
+                      {!loading && !isElasticSearchIssue ? (
+                        <SearchedData
+                          isFilterSelected
+                          data={searchResults?.hits.hits ?? []}
+                          filter={parsedSearch}
+                          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                          isSummaryPanelVisible={showSummaryPanel}
+                          selectedEntityId={entityDetails?.id || ''}
+                          totalValue={searchResults?.hits.total.value ?? 0}
+                          onPaginationChange={onChangePage}
+                        />
+                      ) : (
+                        <></>
+                      )}
+                      {loading ? <Loader /> : <></>}
+                    </div>
+                  </Card>
+                </Col>
+
+                {showSummaryPanel && entityDetails && !loading && (
+                  <Col className="explore-right-panel" flex="400px">
+                    <EntitySummaryPanel
+                      entityDetails={{ details: entityDetails }}
+                      handleClosePanel={handleClosePanel}
+                      highlights={omit(
+                        {
+                          ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
+                          'tag.name': (
+                            selectedQuickFilters?.find(
+                              (filterOption) => filterOption.key === TAG_FQN_KEY
+                            )?.value ?? []
+                          ).map((tagFQN) => tagFQN.key), // finding the tags filter from SelectedQuickFilters and creating the array of selected Tags FQN
+                        },
+                        ['description', 'displayName']
+                      )}
+                    />
+                  </Col>
+                )}
+              </Row>
+            </div>
+          ),
+        }}
+      />
+
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
     </div>
   );

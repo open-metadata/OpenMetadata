@@ -101,6 +101,8 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  test.slow();
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -115,6 +117,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
+  test.slow();
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonCleanup({
     apiContext,
@@ -328,57 +332,58 @@ test('Conversation source alert', async ({ page }) => {
   });
 });
 
-test.fixme(
-  'Alert operations for a user with and without permissions',
-  async ({ page, userWithPermissionsPage, userWithoutPermissionsPage }) => {
-    test.slow();
+test('Alert operations for a user with and without permissions', async ({
+  page,
+  userWithPermissionsPage,
+  userWithoutPermissionsPage,
+}) => {
+  test.slow();
 
-    const ALERT_NAME = generateAlertName();
-    const { apiContext } = await getApiContext(page);
-    await visitNotificationAlertPage(userWithPermissionsPage);
+  const ALERT_NAME = generateAlertName();
+  const { apiContext } = await getApiContext(page);
+  await visitNotificationAlertPage(userWithPermissionsPage);
 
-    await test.step('Create and trigger alert', async () => {
-      data.alertDetails = await createAlertForRecentEventsCheck({
-        page: userWithPermissionsPage,
-        alertName: ALERT_NAME,
-        sourceName: SOURCE_NAME_5,
-        sourceDisplayName: SOURCE_DISPLAY_NAME_5,
-        user: user1,
-        table,
-      });
-
-      // Trigger alert
-      await table.deleteTable(apiContext, false);
-      await table.restore(apiContext);
+  await test.step('Create and trigger alert', async () => {
+    data.alertDetails = await createAlertForRecentEventsCheck({
+      page: userWithPermissionsPage,
+      alertName: ALERT_NAME,
+      sourceName: SOURCE_NAME_5,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_5,
+      user: user1,
+      table,
     });
 
-    await test.step('Checks for user without permission', async () => {
-      await checkAlertFlowForWithoutPermissionUser({
-        page: userWithoutPermissionsPage,
+    // Trigger alert
+    await table.deleteTable(apiContext, false);
+    await table.restore(apiContext);
+  });
+
+  await test.step('Checks for user without permission', async () => {
+    await checkAlertFlowForWithoutPermissionUser({
+      page: userWithoutPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_5,
+      table,
+    });
+  });
+
+  await test.step(
+    'Check alert details page and Recent Events tab',
+    async () => {
+      await checkAlertDetailsForWithPermissionUser({
+        page: userWithPermissionsPage,
         alertDetails: data.alertDetails,
         sourceName: SOURCE_NAME_5,
         table,
+        user: user2,
       });
-    });
+    }
+  );
 
-    await test.step(
-      'Check alert details page and Recent Events tab',
-      async () => {
-        await checkAlertDetailsForWithPermissionUser({
-          page: userWithPermissionsPage,
-          alertDetails: data.alertDetails,
-          sourceName: SOURCE_NAME_5,
-          table,
-          user: user2,
-        });
-      }
-    );
-
-    await test.step('Delete alert', async () => {
-      await deleteAlert(userWithPermissionsPage, data.alertDetails);
-    });
-  }
-);
+  await test.step('Delete alert', async () => {
+    await deleteAlert(userWithPermissionsPage, data.alertDetails);
+  });
+});
 
 test('destination should work properly', async ({ page }) => {
   await visitNotificationAlertPage(page);

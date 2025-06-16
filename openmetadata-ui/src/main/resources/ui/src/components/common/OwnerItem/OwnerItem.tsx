@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
@@ -23,63 +22,85 @@ import { OwnerAvatar } from '../OwnerAvtar/OwnerAvatar';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 interface OwnerItemProps {
   owner: EntityReference;
-  index: number;
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
+  avatarSize?: number;
+  isAssignee?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
   owner,
-  index,
   isCompactView,
   className,
   ownerDisplayName,
+  avatarSize = 32,
+  isAssignee,
 }) => {
-  const { t } = useTranslation();
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
+  const isTeam = owner?.type === OwnerType.TEAM; // Assuming 'type' indicates if the owner is a team
 
   const inheritedIcon = owner?.inherited ? (
-    <Tooltip
-      title={t('label.inherited-entity', {
-        entity: t('label.owner-plural'),
-      })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
-    </Tooltip>
+    <InheritIcon className="inherit-icon cursor-pointer" width={8} />
   ) : null;
+  if (isCompactView) {
+    return (
+      <div className={classNames('owner-avatar-container is-compact-view')}>
+        <div className="owner-avatar-icon d-flex">
+          <OwnerAvatar
+            avatarSize={avatarSize}
+            inheritedIcon={inheritedIcon}
+            isCompactView={isCompactView}
+            owner={owner}
+          />
+        </div>
+        <Link
+          className={classNames(
+            'no-underline font-medium text-xs text-primary',
+            className
+          )}
+          data-testid="owner-link"
+          to={ownerPath}>
+          <span data-testid={getEntityName(owner)}>
+            {ownerDisplayName ?? displayName}
+          </span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="d-inline-flex items-center owner-avatar-container gap-1"
-      style={{
-        marginLeft: index === 0 || isCompactView ? 0 : '-4px',
-      }}>
-      {!isCompactView ? (
-        <UserPopOverCard userName={owner.name ?? ''}>
-          <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
-          </Link>
-        </UserPopOverCard>
+    <div className={classNames('owner-avatar-container stacked-view')}>
+      {isTeam ? (
+        <Link
+          className="d-flex no-underline"
+          data-testid="owner-link"
+          to={ownerPath}>
+          <OwnerAvatar
+            avatarSize={avatarSize}
+            inheritedIcon={inheritedIcon}
+            isAssignee={isAssignee}
+            isCompactView={isCompactView}
+            owner={owner}
+          />
+        </Link>
       ) : (
-        <>
-          <div className="owner-avatar-icon d-flex">
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
-          </div>
+        <UserPopOverCard userName={owner.name ?? ''}>
           <Link
-            className={classNames(
-              'no-underline font-medium text-xs text-primary',
-              className
-            )}
+            className="d-flex no-underline"
             data-testid="owner-link"
             to={ownerPath}>
-            <span data-testid={getEntityName(owner)}>
-              {ownerDisplayName ?? displayName}
-            </span>
+            <OwnerAvatar
+              avatarSize={avatarSize}
+              inheritedIcon={inheritedIcon}
+              isAssignee={isAssignee}
+              isCompactView={isCompactView}
+              owner={owner}
+            />
           </Link>
-        </>
+        </UserPopOverCard>
       )}
-      {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
     </div>
   );
 };

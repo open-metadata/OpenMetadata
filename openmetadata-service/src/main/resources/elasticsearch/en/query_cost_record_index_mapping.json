@@ -107,6 +107,7 @@
                                 "fields": {
                                     "keyword": {
                                         "type": "keyword",
+                                        "normalizer": "lowercase_normalizer",
                                         "ignore_above": 256
                                     }
                                 }
@@ -198,7 +199,8 @@
                         }
                     },
                     "query": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "index": false
                     },
                     "queryDate": {
                         "type": "long"
@@ -323,15 +325,6 @@
                     },
                     "entityType": {
                         "type": "keyword"
-                    },
-                    "suggest": {
-                        "type": "completion"
-                    },
-                    "column_suggest": {
-                        "type": "completion"
-                    },
-                    "service_suggest": {
-                        "type": "completion"
                     },
                     "domain": {
                         "properties": {
@@ -461,6 +454,7 @@
                         "fields": {
                             "keyword": {
                                 "type": "keyword",
+                                "normalizer": "lowercase_normalizer",
                                 "ignore_above": 256
                             }
                         }

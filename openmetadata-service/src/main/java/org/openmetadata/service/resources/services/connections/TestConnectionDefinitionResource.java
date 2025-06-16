@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.services.connections;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,22 +9,22 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.type.Include;
@@ -41,10 +40,9 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/services/testConnectionDefinitions")
-@Api(
-    value = "Test Connection Definitions collection",
-    tags = "Test Connection Definitions collection")
-@Tag(name = "Test Connection Definitions")
+@Tag(
+    name = "Test Connection Definitions",
+    description = "Test Connection Definitions collection operations")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -68,7 +66,7 @@ public class TestConnectionDefinitionResource
       testConnectionDefinition.setId(UUID.randomUUID());
       testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
       testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
-      repository.createOrUpdate(null, testConnectionDefinition);
+      repository.createOrUpdate(null, testConnectionDefinition, ADMIN_USER_NAME);
     }
   }
 
@@ -109,8 +107,8 @@ public class TestConnectionDefinitionResource
                   "Limit the number test connection definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of test connection definitions before this cursor",

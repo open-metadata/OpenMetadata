@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -22,6 +23,10 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { ServicesType } from '../interface/service.interface';
 import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
 import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
@@ -29,6 +34,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
@@ -36,16 +42,34 @@ import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getGlossariesByName } from '../rest/glossaryAPI';
+import { getServiceByFQN } from '../rest/serviceAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { EntityTypeName } from './EntityUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -55,13 +79,37 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -181,7 +229,7 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return getIncidentManagerDetailPagePath(fullyQualifiedName);
+        return getTestCaseDetailPagePath(fullyQualifiedName);
 
       case EntityType.TEST_SUITE:
         return getTestSuiteDetailsPath({
@@ -270,6 +318,22 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+    }
+  }
+
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
+    switch (entityType) {
+      case EntityType.DATABASE_SERVICE:
+        return getServiceByFQN('databaseServices', fqn, { fields });
+      case EntityType.DATABASE:
+        return getDatabaseDetailsByFQN(fqn, { fields });
+      case EntityType.DATABASE_SCHEMA:
+        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
+
+      case EntityType.GLOSSARY_TERM:
+        return getGlossariesByName(fqn, { fields });
+      default:
+        return getTableDetailsByFQN(fqn, { fields });
     }
   }
 
@@ -376,38 +440,68 @@ class EntityUtilClassBase {
     _entityType: EntityType,
     _fqn: string,
     _permission: OperationPermission,
-    _deleted: boolean
+    _entityDetails:
+      | VersionData
+      | ServicesType
+      | Database
+      | DatabaseSchema
+      | APICollection
   ): ItemType[] {
-    // We are encoding here since we are getting the decoded fqn from the OSS code
-    const encodedFqn = getEncodedFqn(_fqn);
+    const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
       case EntityType.TABLE:
         return [
-          ...ExtraTableDropdownOptions(encodedFqn, _permission, _deleted),
+          ...ExtraTableDropdownOptions(_fqn, _permission, isEntityDeleted),
         ];
       case EntityType.DATABASE:
         return [
-          ...ExtraDatabaseDropdownOptions(encodedFqn, _permission, _deleted),
+          ...ExtraDatabaseDropdownOptions(_fqn, _permission, isEntityDeleted),
         ];
       case EntityType.DATABASE_SCHEMA:
         return [
           ...ExtraDatabaseSchemaDropdownOptions(
-            encodedFqn,
+            _fqn,
             _permission,
-            _deleted
+            isEntityDeleted
           ),
         ];
       case EntityType.DATABASE_SERVICE:
         return [
           ...ExtraDatabaseServiceDropdownOptions(
-            encodedFqn,
+            _fqn,
             _permission,
-            _deleted
+            isEntityDeleted
           ),
         ];
       default:
         return [];
     }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
   }
 }
 

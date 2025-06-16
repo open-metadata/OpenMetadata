@@ -10,18 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
+import classNames from 'classnames';
+import React, { useCallback, useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
-import { useParams } from 'react-router-dom';
-import { EntityTabs } from '../../../enums/entity.enum';
-import { PageType, Tab } from '../../../generated/system/ui/page';
-import { useCustomPages } from '../../../hooks/useCustomPages';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  getDefaultWidgetForTab,
-  getWidgetsFromKey,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { useGenericContext } from '../GenericProvider/GenericProvider';
+import { DynamicHeightWidget } from './DynamicHeightWidget';
+import './generic-tab.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -30,44 +29,55 @@ interface GenericTabProps {
 }
 
 export const GenericTab = ({ type }: GenericTabProps) => {
-  const { customizedPage } = useCustomPages(type);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { layout, updateWidgetHeight } = useGenericContext();
 
-  const layout = useMemo(() => {
-    if (!customizedPage) {
-      return getDefaultWidgetForTab(type, tab);
-    }
-
-    if (customizedPage) {
-      return tab
-        ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
-        : customizedPage.tabs?.[0].layout;
-    } else {
-      return getDefaultWidgetForTab(type, tab);
-    }
-  }, [customizedPage, tab, type]);
+  const handleHeightChange = useCallback(
+    (widgetId: string, newHeight: number) => {
+      // Update the layout through the onUpdate function
+      updateWidgetHeight(widgetId, newHeight);
+    },
+    [updateWidgetHeight]
+  );
 
   const widgets = useMemo(() => {
     return layout?.map((widget: WidgetConfig) => {
       return (
         <div
-          className="overflow-auto-y"
           data-grid={widget}
+          data-testid={widget.i}
           id={widget.i}
           key={widget.i}>
-          {getWidgetsFromKey(type, widget)}
+          <DynamicHeightWidget
+            key={widget.i}
+            widget={widget}
+            onHeightChange={handleHeightChange}>
+            {getWidgetsFromKey(type, widget)}
+          </DynamicHeightWidget>
         </div>
       );
     });
   }, [layout, type]);
+
+  // For default tabs we have rigid layout where we are not applying any bg to container
+  // So we need to check if left panel is present to apply bg to container
+  const leftSideWidgetPresent = useMemo(() => {
+    return layout?.some((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [layout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
     <ReactGridLayout
-      className="grid-container"
+      autoSize
+      verticalCompact
+      className={classNames('grid-container bg-grey', {
+        'custom-tab': !leftSideWidgetPresent,
+      })}
       cols={8}
+      containerPadding={[0, 0]}
       isDraggable={false}
       isResizable={false}
       margin={[16, 16]}

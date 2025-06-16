@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { API_COLLECTION_DUMMY_DATA } from '../../constants/APICollection.constants';
 import {
@@ -37,9 +36,7 @@ import {
 
 export interface APICollectionDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   apiCollection: APICollection;
   fetchAPICollectionDetails: () => Promise<void>;
   getEntityFeedCount: () => void;
@@ -63,11 +60,11 @@ class APICollectionClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
-      [DetailPageWidgetKeys.API_ENDPOINTS]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.API_ENDPOINTS]: 4,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
@@ -92,27 +89,40 @@ class APICollectionClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.API_ENDPOINT) {
       return [];
     }
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.API_ENDPOINTS] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.API_ENDPOINTS],
-        i: DetailPageWidgetKeys.API_ENDPOINTS,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.API_ENDPOINTS],
+            i: DetailPageWidgetKeys.API_ENDPOINTS,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],

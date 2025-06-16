@@ -49,6 +49,8 @@ export interface TableDataCardPropsV2 {
   openEntityInNewPage?: boolean;
   showBody?: boolean;
   showName?: boolean;
+  nameClassName?: string;
+  displayNameClassName?: string;
 }
 
 /**
@@ -70,6 +72,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       showName = true,
       checked,
       openEntityInNewPage,
+      nameClassName = '',
+      displayNameClassName = '',
     },
     ref
   ) => {
@@ -151,11 +155,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           )}
           <Col flex="auto">
             <EntityHeader
+              showOnlyDisplayName
               titleIsLink
               breadcrumb={breadcrumbs}
+              displayNameClassName={displayNameClassName}
               entityData={source}
               entityType={source.entityType as EntityType}
               icon={serviceIcon}
+              nameClassName={nameClassName}
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
               showName={showName}

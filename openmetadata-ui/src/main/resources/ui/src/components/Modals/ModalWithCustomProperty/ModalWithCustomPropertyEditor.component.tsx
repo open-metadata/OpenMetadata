@@ -15,16 +15,20 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AxiosError } from 'axios';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
 } from '../../../utils/CSV/CSV.utils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntities } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../../common/Loader/Loader';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import {
   ExtensionDataProps,
   ModalWithCustomPropertyEditorProps,
@@ -74,6 +78,12 @@ export const ModalWithCustomPropertyEditor = ({
     setIsSaveLoading(false);
   };
 
+  const onExtensionUpdate = async (
+    data: ExtentionEntities[keyof ExtentionEntities]
+  ) => {
+    setExtensionObject(data.extension);
+  };
+
   useEffect(() => {
     fetchTypeDetail();
   }, []);
@@ -111,12 +121,24 @@ export const ModalWithCustomPropertyEditor = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <CustomPropertyTable
-          hasEditAccess
-          hasPermission
-          isRenderedInRightPanel
-          entityType={entityType as keyof ExtentionEntities}
-        />
+        <GenericProvider<Table>
+          customizedPage={null}
+          data={
+            {
+              extension: extensionObject,
+            } as Table
+          }
+          isVersionView={false}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={entityType as CustomizeEntityType}
+          onUpdate={onExtensionUpdate}>
+          <CustomPropertyTable
+            hasEditAccess
+            hasPermission
+            isRenderedInRightPanel
+            entityType={entityType as keyof ExtentionEntities}
+          />
+        </GenericProvider>
       )}
     </Modal>
   );

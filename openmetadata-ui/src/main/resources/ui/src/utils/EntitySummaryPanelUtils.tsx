@@ -22,6 +22,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
+import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
 import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
@@ -34,6 +35,7 @@ import TagsSummary from '../components/Explore/EntitySummaryPanel/TagsSummary/Ta
 import MetricExpression from '../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { CustomizeEntityType } from '../constants/Customize.constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -383,7 +385,8 @@ export const getFormattedEntityData = (
 export const getEntityChildDetails = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
-  highlights?: SearchedDataProps['data'][number]['highlight']
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
 ) => {
   let childComponent;
   let heading;
@@ -393,14 +396,10 @@ export const getEntityChildDetails = (
     case EntityType.TABLE:
       heading = i18n.t('label.schema');
       childComponent = (
-        <SummaryList
-          entityType={SummaryEntityType.COLUMN}
-          formattedEntityData={getFormattedEntityData(
-            SummaryEntityType.COLUMN,
-            (entityInfo as Table).columns,
-            highlights,
-            (entityInfo as Table).tableConstraints
-          )}
+        <ColumnSummaryList
+          entityInfo={entityInfo as Table}
+          entityType={entityType}
+          highlights={highlights}
         />
       );
 
@@ -455,7 +454,9 @@ export const getEntityChildDetails = (
 
       return (
         <>
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"
@@ -464,11 +465,16 @@ export const getEntityChildDetails = (
               </Typography.Text>
             </Col>
             <Col span={24}>
-              <SummaryList formattedEntityData={formattedChartsData} />
+              <SummaryList
+                formattedEntityData={formattedChartsData}
+                loading={loading}
+              />
             </Col>
           </Row>
 
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"
@@ -516,12 +522,10 @@ export const getEntityChildDetails = (
       heading = i18n.t('label.column-plural');
       headingTestId = 'column-header';
       childComponent = (
-        <SummaryList
-          formattedEntityData={getFormattedEntityData(
-            SummaryEntityType.COLUMN,
-            (entityInfo as DashboardDataModel).columns,
-            highlights
-          )}
+        <ColumnSummaryList
+          entityInfo={entityInfo as DashboardDataModel}
+          entityType={entityType}
+          highlights={highlights}
         />
       );
 
@@ -575,7 +579,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <MetricExpression />
         </GenericProvider>
@@ -585,7 +589,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <RelatedMetrics isInSummaryPanel />
         </GenericProvider>

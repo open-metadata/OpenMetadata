@@ -202,6 +202,7 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      exclude_source_fields: req.excludeSourceFields,
     },
     paramsSerializer: {
       indexes: null,
@@ -245,17 +246,27 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
 };
 
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+  const {
+    pageNumber = 1,
+    pageSize = 10,
+    query,
+    searchIndex,
+    sortField,
+    sortOrder,
+    queryFilter,
+  } = payload;
+
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/search/nlq/query',
     {
       params: {
-        q: payload.query,
-        index: payload.searchIndex,
-        size: payload.pageSize,
-        from: payload.pageNumber,
-        sort_field: payload.sortField,
-        sort_order: payload.sortOrder,
-        query_filter: JSON.stringify(payload.queryFilter),
+        q: query,
+        index: searchIndex,
+        size: pageSize,
+        from: (pageNumber - 1) * pageSize,
+        sort_field: sortField,
+        sort_order: sortOrder,
+        query_filter: JSON.stringify(queryFilter),
       },
     }
   );

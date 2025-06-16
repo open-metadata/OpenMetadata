@@ -50,11 +50,8 @@ mock_tableau_config = {
             "config": {
                 "type": "Tableau",
                 "authType": {"username": "username", "password": "abcdefg"},
-                "env": "tableau_env",
                 "hostPort": "http://tableauHost.com",
                 "siteName": "tableauSiteName",
-                "siteUrl": "tableauSiteUrl",
-                "apiVersion": "3.19",
             }
         },
         "sourceConfig": {
@@ -83,6 +80,7 @@ MOCK_DASHBOARD = TableauDashboard(
     name="Regional",
     webpageUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790",
     description="tableau dashboard description",
+    user_views=10,
     tags=[],
     owner=TableauOwner(
         id="1234", name="Dashboard Owner", email="samplemail@sample.com"
@@ -175,14 +173,10 @@ class TableauUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
     )
-    @patch("tableau_api_lib.tableau_server_connection.TableauServerConnection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(
-        self, methodName, get_connection, tableau_server_connection, test_connection
-    ) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
         get_connection.return_value = False
-        tableau_server_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
         self.tableau = TableauSource.create(
@@ -215,7 +209,6 @@ class TableauUnitTest(TestCase):
         Validate the logic for existing or new usage
         """
         self.tableau.context.get().__dict__["dashboard"] = "dashboard_name"
-        self.tableau.client.get_workbook_view_count_by_id = lambda workbook_id: 10
 
         # Start checking dashboard without usage
         # and a view count
@@ -310,3 +303,13 @@ class TableauUnitTest(TestCase):
             self.assertIsNotNone(
                 list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))[0].left
             )
+
+    def test_check_basemodel_returns_id_as_string(self):
+        """
+        Test that the basemodel returns the id as a string
+        """
+        base_model = TableauBaseModel(id=uuid.uuid4())
+        self.assertEqual(base_model.id, str(base_model.id))
+
+        base_model = TableauBaseModel(id="1234")
+        self.assertEqual(base_model.id, "1234")

@@ -4,10 +4,12 @@ import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
+import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNames;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -28,8 +30,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       Pattern.compile(
           "\\w+\\s*:\\s*\\w+|"
               + // Field queries (field:value)
-              "\\b(?i)(?:AND|OR|NOT)\\b|"
-              + // Boolean operators
+              "\\b(?:AND|OR|NOT)\\b|"
+              + // Boolean operators (uppercase only)
               "[*?]|"
               + // Wildcards
               "[()]|"
@@ -122,29 +124,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   default AssetTypeConfiguration findAssetTypeConfig(
       String indexName, SearchSettings searchSettings) {
-    String assetType =
-        switch (indexName) {
-          case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
-          case "dashboard_search_index", Entity.DASHBOARD -> Entity.DASHBOARD;
-          case "pipeline_search_index", Entity.PIPELINE -> Entity.PIPELINE;
-          case "mlmodel_search_index", Entity.MLMODEL -> Entity.MLMODEL;
-          case "table_search_index", Entity.TABLE -> Entity.TABLE;
-          case "database_search_index", Entity.DATABASE -> Entity.DATABASE;
-          case "database_schema_search_index", Entity.DATABASE_SCHEMA -> Entity.DATABASE_SCHEMA;
-          case "container_search_index", Entity.CONTAINER -> Entity.CONTAINER;
-          case "query_search_index", Entity.QUERY -> Entity.QUERY;
-          case "stored_procedure_search_index", Entity.STORED_PROCEDURE -> Entity.STORED_PROCEDURE;
-          case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL -> Entity
-              .DASHBOARD_DATA_MODEL;
-          case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
-          case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
-          case "tag_search_index", Entity.TAG -> Entity.TAG;
-          case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
-          case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
-          case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
-          default -> "default";
-        };
-
+    String assetType = mapEntityTypesToIndexNames(indexName);
     return searchSettings.getAssetTypeConfigurations().stream()
         .filter(config -> config.getAssetType().equals(assetType))
         .findFirst()
@@ -232,5 +212,21 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
     query = query.replace("%20", " ").trim();
     return QUERY_SYNTAX_PATTERN.matcher(query).find();
+  }
+
+  default boolean isFuzzyField(String key) {
+    return Set.of(
+            "name",
+            "displayName",
+            "fullyQualifiedName",
+            "columnNamesFuzzy",
+            "fieldNamesFuzzy",
+            "response_field_namesFuzzy",
+            "request_field_namesFuzzy",
+            "classification.name",
+            "classification.displayName",
+            "glossary.name",
+            "glossary.displayName")
+        .contains(key);
   }
 }

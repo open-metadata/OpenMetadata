@@ -52,6 +52,8 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -68,8 +70,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +85,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
@@ -581,11 +582,19 @@ public class SearchRepository {
         if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Remove the parent field from the entity in search
+          String parentFieldPath = "parent";
+          Map<String, Object> params = new HashMap<>();
+          params.put("field", parentFieldPath);
+          searchClient.updateEntity(
+              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
+
           // Propagate FQN updates to all subchildren
           String originalFqn =
               FullyQualifiedName.add(
                   entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
-          searchClient.updateByFqnPrefix(indexName, originalFqn, "", FIELD_FULLY_QUALIFIED_NAME);
+          searchClient.updateByFqnPrefix(
+              indexName, originalFqn, entity.getName(), FIELD_FULLY_QUALIFIED_NAME);
         }
       }
     } else if (changeDescription != null
@@ -1151,14 +1160,13 @@ public class SearchRepository {
             .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
-  public Response searchByField(String fieldName, String fieldValue, String index)
+  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index);
+    return searchClient.searchByField(fieldName, fieldValue, index, deleted);
   }
 
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
-    return searchClient.aggregate(index, fieldName, value, query);
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return searchClient.aggregate(request);
   }
 
   public JsonObject aggregate(
@@ -1171,10 +1179,6 @@ public class SearchRepository {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
-  }
-
-  public Response suggest(SearchRequest request) throws IOException {
-    return searchClient.suggest(request);
   }
 
   public Response listDataInsightChartResult(

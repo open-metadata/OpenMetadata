@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
@@ -164,41 +163,9 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteGlossary = (id: string) => {
-  return APIClient.delete(`/glossaries/${id}?recursive=true&hardDelete=true`);
-};
-
-export const deleteGlossaryTerm = (id: string) => {
-  return APIClient.delete(
-    `/glossaryTerms/${id}?recursive=true&hardDelete=true`
-  );
-};
-
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   const response = await APIClient.get<CSVExportResponse>(
     `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
-  );
-
-  return response.data;
-};
-
-export const importGlossaryInCSVFormat = async (
-  glossaryName: string,
-  data: string,
-  dryRun = true
-) => {
-  const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
-  };
-  const response = await APIClient.put<
-    string,
-    AxiosResponse<CSVImportAsyncResponse>
-  >(
-    `/glossaries/name/${getEncodedFqn(
-      glossaryName
-    )}/importAsync?dryRun=${dryRun}`,
-    data,
-    configOptions
   );
 
   return response.data;
@@ -284,7 +251,6 @@ export const addAssetsToGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: dryRun,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -302,7 +268,6 @@ export const removeAssetsFromGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: false,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<

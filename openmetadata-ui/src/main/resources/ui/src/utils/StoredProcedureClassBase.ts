@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -37,9 +36,7 @@ import {
 
 export interface StoredProcedureDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   decodedStoredProcedureFQN: string;
   entityName: string;
   code: string;
@@ -69,11 +66,11 @@ class StoredProcedureClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
-      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 6,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
@@ -99,27 +96,42 @@ class StoredProcedureClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.CODE) {
       return [];
     }
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.STORED_PROCEDURE_CODE] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.STORED_PROCEDURE_CODE],
-        i: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[
+              DetailPageWidgetKeys.STORED_PROCEDURE_CODE
+            ],
+            i: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],

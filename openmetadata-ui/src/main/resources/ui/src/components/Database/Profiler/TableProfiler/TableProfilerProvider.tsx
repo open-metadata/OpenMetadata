@@ -35,6 +35,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -134,24 +135,29 @@ export const TableProfilerProvider = ({
         title: t('label.entity-count', {
           entity: t('label.row'),
         }),
+        key: 'row-count',
         value: profile?.rowCount ?? 0,
       },
       {
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
-        value: profile?.columnCount ?? tableProfiler?.columns.length ?? 0,
+        key: 'column-count',
+        value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
+        key: 'profile-sample-type',
         value: getProfileSampleValue(),
       },
       {
         title: t('label.size'),
+        key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
       },
       {
         title: t('label.created-date'),
+        key: 'created-date',
         value: profile?.createDateTime
           ? DateTime.fromJSDate(new Date(profile?.createDateTime))
               .toUTC()
@@ -222,6 +228,7 @@ export const TableProfilerProvider = ({
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,
+        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
       });
 
       setAllTestCases(data);

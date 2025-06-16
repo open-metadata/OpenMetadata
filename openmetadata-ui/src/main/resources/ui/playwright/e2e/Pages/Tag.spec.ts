@@ -13,6 +13,7 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { Domain } from '../../support/domain/Domain';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -27,9 +28,13 @@ import {
 import {
   addAssetsToTag,
   editTagPageDescription,
+  fillTagForm,
   LIMITED_USER_RULES,
+  NEW_TAG,
   removeAssetsFromTag,
   setupAssetsForTag,
+  submitForm,
+  validateForm,
   verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
@@ -106,6 +111,20 @@ base.afterAll('Cleanup', async ({ browser }) => {
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 
+  let domain: Domain;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    domain = new Domain();
+    await domain.create(apiContext);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.delete?.(apiContext);
+    await afterAction();
+  });
+
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
   });
@@ -118,9 +137,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Rename Tag name', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -144,9 +162,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Restyle Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -170,9 +187,8 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Edit Tag Description', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
+
     await adminPage.getByTestId('edit-description').click();
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
@@ -193,9 +209,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Delete a Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
     await tag.visitPage(adminPage);
-    await res;
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
@@ -229,6 +243,41 @@ test.describe('Tag Page with Admin Roles', () => {
       await removeAssetsFromTag(adminPage, assets, tag);
       await assetCleanup();
     });
+  });
+
+  test('Create tag with domain', async ({ adminPage }) => {
+    await classification.visitPage(adminPage);
+
+    await adminPage.reload();
+    await adminPage.click(`text=${classification.data.displayName}`);
+
+    await expect(adminPage.locator('.activeCategory')).toContainText(
+      classification.data.displayName
+    );
+
+    await adminPage.click('[data-testid="add-new-tag-button"]');
+
+    await adminPage.waitForSelector('.ant-modal-content', {
+      state: 'visible',
+    });
+
+    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+
+    await validateForm(adminPage);
+
+    await fillTagForm(adminPage, domain);
+
+    const createTagResponse = adminPage.waitForResponse('api/v1/tags');
+
+    await submitForm(adminPage);
+
+    await createTagResponse;
+
+    await adminPage.click(`[data-testid=${NEW_TAG.name}]`);
+
+    await expect(adminPage.getByTestId('domain-link')).toContainText(
+      domain.data.displayName
+    );
   });
 });
 

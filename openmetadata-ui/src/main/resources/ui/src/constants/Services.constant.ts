@@ -85,6 +85,7 @@ import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
+import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
@@ -101,7 +102,10 @@ import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -146,7 +150,7 @@ export const METABASE = metabase;
 export const AZURESQL = azuresql;
 export const CLICKHOUSE = clickhouse;
 export const DATABRICK = databrick;
-export const UNITYCATALOG = databrick;
+export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;
@@ -267,6 +271,10 @@ export const servicesDisplayName: { [key: string]: string } = {
 };
 
 export const DEF_UI_SCHEMA = {
+  supportsIncrementalMetadataExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -313,10 +321,13 @@ export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
 
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
-  connection: {
+  [ServiceNestedConnectionFields.CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  metastoreConnection: {
+  [ServiceNestedConnectionFields.METASTORE_CONNECTION]: {
+    ...DEF_UI_SCHEMA,
+  },
+  [ServiceNestedConnectionFields.DATABASE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
 };
@@ -411,19 +422,13 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
+  PipelineServiceType.Wherescape,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
+  PipelineServiceType.Ssis,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

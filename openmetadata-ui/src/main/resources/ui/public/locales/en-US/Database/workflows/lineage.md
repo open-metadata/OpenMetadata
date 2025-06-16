@@ -54,3 +54,9 @@ $$section
 
 Times to retry the workflow in case it ends with a failure.
 $$
+
+$$section
+### Raise on Error $(id="raiseOnError")
+
+Mark the workflow as failed or avoid raising exceptions.
+$$

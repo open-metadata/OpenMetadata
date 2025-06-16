@@ -16,11 +16,11 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.emptyList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -43,6 +43,8 @@ import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
@@ -58,8 +60,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -89,6 +89,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -586,14 +587,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_usingFqn_addDeleteTags(TestInfo test) throws IOException {
-    // Create glossary term1 in glossary g1
+    Glossary glossary = createGlossary(getEntityName(test), null, null);
+
+    // Create glossary term1 in glossary
     CreateGlossaryTerm create =
-        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+        createRequest(getEntityName(test), "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(null)
+            .withSynonyms(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Create glossary term11 under term1 in glossary g1
+    // Create glossary term11 under term1 in glossary
     create =
         createRequest("t1", "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withReviewers(null)
             .withSynonyms(null)
             .withParent(term1.getFullyQualifiedName());
@@ -708,17 +715,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_addDeleteStyle(TestInfo test) throws IOException {
-    // Create glossary term1 in glossary g1
+    Glossary glossary = createGlossary(getEntityName(test), null, null);
+
+    // Create glossary term1 in glossary
     CreateGlossaryTerm create =
         createRequest(getEntityName(test), "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withReviewers(null)
             .withSynonyms(null)
             .withStyle(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Create glossary term11 under term1 in glossary g1
+    // Create glossary term11 under term1 in glossary
     create =
         createRequest("t1", "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withSynonyms(null)
             .withReviewers(null)
             .withSynonyms(null)
@@ -1401,6 +1412,88 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     queryParams.put("fields", "childrenCount");
     children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     assertEquals(term1.getChildren().size(), children.get(0).getChildrenCount());
+  }
+
+  @Test
+  @Override
+  protected void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+    CreateGlossaryTerm create =
+        createRequest("post_entityAlreadyExists_409_conflict", "", "", null);
+    // Create first time using POST
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    // Second time creating the same entity using POST should fail
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                String.format(
+                    "A term with the name '%s' already exists in '%s' glossary.",
+                    create.getName(), create.getGlossary())));
+  }
+
+  @Test
+  void test_createDuplicateGlossaryTerm() throws IOException {
+    Glossary glossary = createGlossary("TestDuplicateGlossary", null, null);
+
+    GlossaryTerm term1 = createTerm(glossary, null, "TestTerm");
+    CreateGlossaryTerm createDuplicateTerm =
+        new CreateGlossaryTerm()
+            .withName("TestTerm")
+            .withDescription("check creation of duplicate terms")
+            .withGlossary(glossary.getName());
+
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createEntity(createDuplicateTerm, ADMIN_AUTH_HEADERS));
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                String.format(
+                    "A term with the name '%s' already exists in '%s' glossary.",
+                    term1.getName(), glossary.getName())));
+  }
+
+  @Test
+  void test_bulkAddAssetsToGlossaryTerm() throws IOException {
+    TagLabel glossaryTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    CreateGlossary createGlossary =
+        glossaryTest.createRequest("GlossaryWithTags").withTags(List.of(glossaryTag));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm =
+        createRequest("TermForBulkAdd").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest("BulkAddTable");
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    Map<String, Object> payload =
+        Map.of(
+            "assets",
+            List.of(new EntityReference().withId(table.getId()).withType("table")),
+            "dryRun",
+            false);
+
+    WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
+    TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    Table updatedTable = tableResourceTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        updatedTable.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(glossaryTag.getTagFQN())),
+        "Table should have inherited the tag from the parent glossary");
+
+    tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(term.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Glossary createGlossary(

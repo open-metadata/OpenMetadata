@@ -153,7 +153,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Export glossary as CSV */
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
@@ -167,15 +167,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Load CSV provided for bulk upload */
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryCsv glossaryCsv = new GlossaryCsv(glossary, user);
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
+    public static final CsvDocumentation DOCUMENTATION =
+        getCsvDocumentation(Entity.GLOSSARY, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
 
@@ -188,11 +189,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      String glossaryTermFqn =
+          nullOrEmpty(csvRecord.get(0))
+              ? FullyQualifiedName.build(glossary.getFullyQualifiedName(), csvRecord.get(1))
+              : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
       // TODO add header
       glossaryTerm
           .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
           .withName(csvRecord.get(1))
+          .withFullyQualifiedName(glossaryTermFqn)
           .withDisplayName(csvRecord.get(2))
           .withDescription(csvRecord.get(3))
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
@@ -206,7 +212,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm);
+        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 

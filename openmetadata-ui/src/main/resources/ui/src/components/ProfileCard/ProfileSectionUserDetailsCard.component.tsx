@@ -13,13 +13,14 @@
 import { Button, Modal, Popover, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/ic-edit-profile.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
 import { isMaskedEmail } from '../../utils/Users.util';
 
+import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -35,7 +36,8 @@ import { changePassword } from '../../rest/auth-API';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
-import ProfilePictureNew from '../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
 import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
 import './profile-details.less';
@@ -151,7 +153,7 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-profile')}
+            {t('label.edit-name')}
           </Typography.Text>
         </Button>
       )}
@@ -237,12 +239,15 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <ProfilePictureNew
-          avatarType="outlined"
-          data-testid="replied-user"
-          name={getEntityName(userData)}
-          width="80"
-        />
+        <UserPopOverCard userName={userData?.name}>
+          <div className="d-flex items-center">
+            <ProfilePicture
+              data-testid="replied-user"
+              name={userData?.name}
+              width="80"
+            />
+          </div>
+        </UserPopOverCard>
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">
@@ -274,7 +279,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-profile')}
+          header={t('label.edit-name')}
           placeholder={t('label.enter-entity', {
             entity: t('label.description'),
           })}
@@ -290,7 +295,11 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="m-r-xss font-medium text-xs" />
+          <Icon
+            className="m-r-xss font-medium text-md ant-icon"
+            component={DeleteIcon}
+          />
+
           {t('label.deleted')}
         </span>
       )}

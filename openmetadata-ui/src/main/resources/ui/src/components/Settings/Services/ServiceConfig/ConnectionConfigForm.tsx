@@ -17,8 +17,14 @@ import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, useEffect, useRef, useState } from 'react';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AIRFLOW_HYBRID,
+  COLLATE_SAAS,
+  COLLATE_SAAS_RUNNER,
+  RUNNER,
+} from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
@@ -27,6 +33,7 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   getConnectionSchemas,
   getFilteredSchema,
+  getUISchemaWithNestedDefaultFilterFieldsHidden,
 } from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -49,10 +56,11 @@ const ConnectionConfigForm = ({
   disableTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
+  const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -63,7 +71,7 @@ const ConnectionConfigForm = ({
       } else {
         setHostIp(undefined);
       }
-    } catch (error) {
+    } catch {
       setHostIp('[error - unknown]');
     }
   };
@@ -89,36 +97,72 @@ const ConnectionConfigForm = ({
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
-  const getConfigFields = () => {
-    const { connSch, validConfig } = getConnectionSchemas({
-      data,
-      serviceCategory,
-      serviceType,
-    });
+  const { connSch, validConfig } = useMemo(
+    () =>
+      getConnectionSchemas({
+        data,
+        serviceCategory,
+        serviceType,
+      }),
+    [data, serviceCategory, serviceType]
+  );
 
-    // Remove the filters property from the schema
-    // Since it'll have a separate form in the next step
-
-    const propertiesWithoutFilters = getFilteredSchema(
-      connSch.schema.properties
-    );
-
-    const filteredSchema = {
-      ...connSch.schema,
-      properties: propertiesWithoutFilters,
-    };
-
+  const shouldShowIPAlert = useMemo(() => {
     return (
+      !isEmpty(connSch.schema) &&
+      isAirflowAvailable &&
+      hostIp &&
+      (platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER)
+    );
+  }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
+
+  // Remove the filters property from the schema
+  // Since it'll have a separate form in the next step
+  const propertiesWithoutDefaultFilterPatternFields = useMemo(
+    () => getFilteredSchema(connSch.schema.properties),
+    [connSch.schema.properties]
+  );
+
+  const schemaWithoutDefaultFilterPatternFields = useMemo(
+    () => ({
+      ...connSch.schema,
+      properties: propertiesWithoutDefaultFilterPatternFields,
+    }),
+    [connSch.schema, propertiesWithoutDefaultFilterPatternFields]
+  );
+
+  // UI Schema to hide the nested default filter pattern fields
+  // Since some connections have reference to the other connections
+  const uiSchema = useMemo(() => {
+    return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
+  }, [connSch.uiSchema]);
+
+  useEffect(() => {
+    const current = (
+      formRef.current?.state?.formData as Record<string, unknown>
+    )?.[RUNNER];
+    if (typeof current === 'string') {
+      setIngestionRunner(current);
+    } else {
+      setIngestionRunner(undefined);
+    }
+  }, [formRef.current?.state?.formData]);
+
+  return (
+    <Fragment>
+      <AirflowMessageBanner />
       <FormBuilder
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}
         okText={okText ?? ''}
         ref={formRef}
-        schema={filteredSchema}
+        schema={schemaWithoutDefaultFilterPatternFields}
         serviceCategory={serviceCategory}
         status={status}
-        uiSchema={connSch.uiSchema}
+        uiSchema={uiSchema}
         validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
@@ -130,16 +174,14 @@ const ConnectionConfigForm = ({
             {t('message.no-config-available')}
           </div>
         )}
-        {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
+        {shouldShowIPAlert && (
           <Alert
             data-testid="ip-address"
             description={
               <Transi18next
                 i18nKey="message.airflow-host-ip-address"
                 renderElement={<strong />}
-                values={{
-                  hostIp,
-                }}
+                values={{ hostIp }}
               />
             }
             type="info"
@@ -161,13 +203,6 @@ const ConnectionConfigForm = ({
           <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
         )}
       </FormBuilder>
-    );
-  };
-
-  return (
-    <Fragment>
-      <AirflowMessageBanner />
-      {getConfigFields()}
     </Fragment>
   );
 };

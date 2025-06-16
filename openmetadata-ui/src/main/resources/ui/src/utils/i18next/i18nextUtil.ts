@@ -28,10 +28,12 @@ import ptBR from '../../locale/languages/pt-br.json';
 import ptPT from '../../locale/languages/pt-pt.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
+import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
   English = 'en-US',
+  한국어 = 'ko-KR',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
@@ -46,7 +48,7 @@ export enum SupportedLocales {
   Persian = 'pr-PR',
   Thai = 'th-TH',
   मराठी = 'mr-IN',
-  한국어 = 'ko-KR',
+  Türkçe = 'tr-TR',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -60,6 +62,7 @@ export const getInitOptions = (): InitOptions => {
     supportedLngs: Object.values(SupportedLocales),
     resources: {
       'en-US': { translation: enUS },
+      'ko-KR': { translation: koKR },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
       'ja-JP': { translation: jaJP },
@@ -74,7 +77,7 @@ export const getInitOptions = (): InitOptions => {
       'pr-PR': { translation: prPR },
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
-      'ko-KR': { translation: koKR },
+      'tr-TR': { translation: trTR },
     },
     fallbackLng: ['en-US'],
     detection: {

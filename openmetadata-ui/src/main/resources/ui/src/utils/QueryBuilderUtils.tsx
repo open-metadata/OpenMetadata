@@ -21,6 +21,7 @@ import {
   RenderSettings,
 } from 'react-awesome-query-builder';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -37,6 +38,11 @@ export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.DATABASE,
   EntityReferenceFields.DATABASE_SCHEMA,
 ];
+
+export enum JSONLOGIC_OPERATORS {
+  OR = 'or',
+  NOT = 'not',
+}
 
 export const resolveFieldType = (
   fields: Fields | undefined,
@@ -114,7 +120,14 @@ export const getSelectEqualsNotEqualsProperties = (
     },
   };
 };
-
+export const READONLY_SETTINGS = {
+  immutableGroupsMode: true,
+  immutableFieldsMode: true,
+  immutableOpsMode: true,
+  immutableValuesMode: true,
+  canRegroup: false,
+  canRemove: false,
+};
 export const getSelectAnyInProperties = (
   parentPath: Array<string>,
   termObjects: Array<EsTerm>
@@ -657,7 +670,8 @@ const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
 export const jsonLogicToElasticsearch = (
   logic: JsonLogic,
   configFields: Fields,
-  parentField?: string
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
 ): ElasticsearchQuery => {
   if (logic.and) {
     return {
@@ -679,7 +693,12 @@ export const jsonLogicToElasticsearch = (
     return {
       bool: {
         should: logic.or.map((item: JsonLogic) =>
-          jsonLogicToElasticsearch(item, configFields)
+          jsonLogicToElasticsearch(
+            item,
+            configFields,
+            undefined,
+            JSONLOGIC_OPERATORS.OR
+          )
         ),
       },
     };
@@ -688,7 +707,12 @@ export const jsonLogicToElasticsearch = (
   if (logic['!']) {
     return {
       bool: {
-        must_not: jsonLogicToElasticsearch(logic['!'], configFields),
+        must_not: jsonLogicToElasticsearch(
+          logic['!'],
+          configFields,
+          undefined,
+          JSONLOGIC_OPERATORS.NOT
+        ),
       },
     };
   }
@@ -696,6 +720,12 @@ export const jsonLogicToElasticsearch = (
   if (logic['==']) {
     const [field, value] = logic['=='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+    const isOrNotOperator = [
+      JSONLOGIC_OPERATORS.OR,
+      JSONLOGIC_OPERATORS.NOT,
+    ].includes(parentOp as JSONLOGIC_OPERATORS);
+
     const [parentKey] = field.var.split('.');
     if (
       typeof field === 'object' &&
@@ -703,7 +733,8 @@ export const jsonLogicToElasticsearch = (
       field.var.includes('.') &&
       !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
         parentKey as EntityReferenceFields
-      )
+      ) &&
+      !isOrNotOperator
     ) {
       return {
         bool: {
@@ -728,19 +759,6 @@ export const jsonLogicToElasticsearch = (
   if (logic['!=']) {
     const [field, value] = logic['!='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
-      return {
-        bool: {
-          must_not: [
-            {
-              term: {
-                [fieldVar]: value,
-              },
-            },
-          ],
-        },
-      };
-    }
 
     return {
       bool: {
@@ -793,4 +811,55 @@ export const jsonLogicToElasticsearch = (
   }
 
   throw new Error('Unsupported JSON Logic format');
+};
+
+/**
+ * Adds entity type filter to the query filter if entity type is specified
+ * @param qFilter Query filter to add entity type to
+ * @param entityType Entity type to filter by
+ * @returns Updated query filter with entity type
+ */
+export const addEntityTypeFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (entityType === EntityType.ALL) {
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    (qFilter.query?.bool?.must as QueryFieldInterface[])?.push({
+      bool: {
+        must: [
+          {
+            term: {
+              entityType: entityType,
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  return qFilter;
+};
+
+export const getEntityTypeAggregationFilter = (
+  qFilter: QueryFilterInterface,
+  entityType: string
+): QueryFilterInterface => {
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
+    const firstMustBlock = (
+      qFilter.query?.bool?.must as QueryFieldInterface[]
+    )[0];
+    if (firstMustBlock?.bool?.must) {
+      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
+        term: {
+          entityType: entityType,
+        },
+      });
+    }
+  }
+
+  return qFilter;
 };

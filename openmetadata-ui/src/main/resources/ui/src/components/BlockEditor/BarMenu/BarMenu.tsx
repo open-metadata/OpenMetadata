@@ -24,7 +24,7 @@ import ItalicIcon from '../../../assets/svg/ic-format-italic.svg';
 import LinkIcon from '../../../assets/svg/ic-format-link.svg';
 import OrderedListIcon from '../../../assets/svg/ic-format-numbered-list.svg';
 import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
-import { BarMenuProps } from '../BlockEditor.interface';
+import { BarMenuProps, FileType } from '../BlockEditor.interface';
 import './bar-menu.less';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
@@ -84,7 +84,40 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
       {
         name: 'image',
         icon: ImageIcon,
-        command: () => editor.chain().focus().setImage({ src: '' }).run(),
+        command: () => {
+          const { state } = editor.view;
+          const { selection } = state;
+
+          // Get the current position
+          const pos = selection.$anchor.pos;
+
+          // Create a new selection at the current position
+          editor.commands.setTextSelection(pos);
+
+          // Insert a new line if we're at the end of a block
+          if (
+            selection.$anchor.parentOffset ===
+            selection.$anchor.parent.content.size
+          ) {
+            editor.commands.insertContent('\n');
+          }
+
+          // Now add the image
+          editor
+            .chain()
+            .setFile({
+              url: '',
+              fileName: '',
+              fileSize: null,
+              mimeType: FileType.IMAGE,
+              type: FileType.IMAGE,
+              isImage: true,
+            })
+            .run();
+
+          // Move cursor after the image
+          editor.commands.setTextSelection(pos + 1);
+        },
         isActive: () => editor.isActive('image'),
       },
       {

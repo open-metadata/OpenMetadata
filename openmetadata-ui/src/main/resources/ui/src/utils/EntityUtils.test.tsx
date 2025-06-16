@@ -51,6 +51,7 @@ import {
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getTierTags } from './TableUtils';
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -67,6 +68,60 @@ jest.mock('./RouterUtils', () => ({
 
 jest.mock('./ServiceUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
+}));
+
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('./ExportUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    exportMethodBasedOnType: jest.fn(),
+  },
+}));
+
+jest.mock('../components/Tag/TagsV1/TagsV1.component', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  __esModule: true,
+  OwnerLabel: jest.fn(),
+}));
+
+jest.mock('../components/common/QueryCount/QueryCount.component', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('./StringsUtils', () => ({
+  bytesToSize: jest.fn(),
+  getEncodedFqn: jest.fn(),
+  stringToHTML: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('./TableUtils', () => ({
+  getDataTypeString: jest.fn(),
+  getTagsWithoutTier: jest.fn(),
+  getTierTags: jest.fn(),
+  getUsagePercentile: jest.fn().mockImplementation((value) => value + 'th'),
+}));
+
+jest.mock('./TagsUtils', () => ({
+  getTableTags: jest.fn(),
+}));
+
+jest.mock('./CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('./DataInsightUtils', () => ({
+  getDataInsightPathWithFqn: jest.fn(),
+}));
+jest.mock('./EntityLink', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation((value) => value),
 }));
 
 describe('EntityUtils unit tests', () => {
@@ -145,7 +200,10 @@ describe('EntityUtils unit tests', () => {
   describe('getEntityOverview', () => {
     it('should call getChartOverview and get ChartData if ExplorePageTabs is charts', () => {
       const result = JSON.stringify(
-        getEntityOverview(ExplorePageTabs.CHARTS, MOCK_CHART_DATA)
+        getEntityOverview(ExplorePageTabs.CHARTS, {
+          ...MOCK_CHART_DATA,
+          dataProducts: [],
+        })
       );
 
       expect(result).toContain('label.owner-plural');
@@ -167,6 +225,7 @@ describe('EntityUtils unit tests', () => {
         getEntityOverview(ExplorePageTabs.TABLES, {
           ...MOCK_TABLE,
           tags: [MOCK_TIER_DATA],
+          dataProducts: [],
         })
       );
 
@@ -180,13 +239,12 @@ describe('EntityUtils unit tests', () => {
       expect(result).toContain('label.query-plural');
       expect(result).toContain('label.column-plural');
       expect(result).toContain('label.row-plural');
-
-      expect(result).toContain('Tier4');
+      expect(getTierTags).toHaveBeenCalledWith([MOCK_TIER_DATA]);
       expect(result).toContain('Regular');
       expect(result).toContain('sample_data');
       expect(result).toContain('ecommerce_db');
       expect(result).toContain('shopify');
-      expect(result).toContain('0th label.pctile-lowercase');
+      expect(result).toContain('0th');
       expect(result).toContain('4');
       expect(result).toContain('14567');
     });

@@ -40,7 +40,7 @@ export class MlModelClass extends EntityClass {
 
   children = [
     {
-      name: 'sales',
+      name: `sales-${uuid()}`,
       dataType: 'numerical',
       description: 'Sales amount',
     },
@@ -69,6 +69,7 @@ export class MlModelClass extends EntityClass {
     this.type = 'MlModel';
     this.childrenTabId = 'features';
     this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.childrenSelectorId2 = `feature-card-${this.children[1].name}`;
     this.serviceCategory = SERVICE_TYPE.MLModels;
     this.serviceType = ServiceTypes.ML_MODEL_SERVICES;
   }

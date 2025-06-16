@@ -23,6 +23,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -38,8 +40,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
@@ -224,6 +225,7 @@ public final class Entity {
   //
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
+  public static final String DATA_CONTRACT = "dataContract";
 
   //
   // Other entities
@@ -739,5 +741,9 @@ public final class Entity {
     }
 
     return allServices;
+  }
+
+  public static UserRepository getUserRepository() {
+    return (UserRepository) Entity.getEntityRepository(Entity.USER);
   }
 }

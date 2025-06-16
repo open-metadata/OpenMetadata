@@ -196,6 +196,7 @@ const NotificationBox = ({
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
+        className="tabs-new"
         defaultActiveKey="Task"
         size="small"
         tabBarGutter={24}

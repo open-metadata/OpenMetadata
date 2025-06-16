@@ -43,6 +43,17 @@ test.describe('Container entity specific tests ', () => {
     await redirectToHomePage(page);
   });
 
+  test('Container page should show Schema and Children count', async ({
+    page,
+  }) => {
+    await container.visitEntityPage(page);
+
+    await expect(page.getByTestId('schema').getByTestId('count')).toBeVisible();
+    await expect(
+      page.getByTestId('children').getByTestId('count')
+    ).toBeVisible();
+  });
+
   test('Container page children pagination', async ({ page }) => {
     await container.visitEntityPage(page);
 
@@ -50,7 +61,9 @@ test.describe('Container entity specific tests ', () => {
 
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 2 '
+    );
 
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
@@ -60,13 +73,15 @@ test.describe('Container entity specific tests ', () => {
     await childrenResponse;
 
     await expect(page.getByTestId('next')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('2/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 2 of 2 '
+    );
 
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=25&offset=0'
     );
-    await page.getByRole('button', { name: '/ Page down' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
@@ -76,13 +91,15 @@ test.describe('Container entity specific tests ', () => {
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/1 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 1'
+    );
 
     // Back to the original page size
     const childrenResponseSizeChange2 = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=15&offset=0'
     );
-    await page.getByRole('button', { name: '/ Page down' }).click();
+    await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
 
@@ -91,6 +108,8 @@ test.describe('Container entity specific tests ', () => {
     });
 
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 2'
+    );
   });
 });

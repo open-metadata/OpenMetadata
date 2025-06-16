@@ -690,11 +690,13 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   await page.click('[data-testid="create-button"]');
-
+  await page.waitForSelector('[data-testid="custom-property-form"]', {
+    state: 'detached',
+  });
+  await page.waitForLoadState('networkidle');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
-
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })
   ).toBeVisible();

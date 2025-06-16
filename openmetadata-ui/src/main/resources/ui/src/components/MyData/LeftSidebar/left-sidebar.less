@@ -15,6 +15,7 @@
 @selected-color: #1570ef;
 @hover-color: #d1e9ff;
 @active-color: #175cd3;
+@left-sidebar-icon-size: 28px;
 
 .logo-container {
   height: 40px;
@@ -23,16 +24,49 @@
   margin: 20px 0;
 }
 
+.app-container {
+  & > .ant-layout-sider {
+    height: 100vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
 .left-sidebar-menu {
+  display: flex;
+  flex-direction: column;
+
+  .ant-menu-item,
+  .ant-menu-submenu {
+    color: @grey-600;
+  }
+
   &.ant-menu.ant-menu-vertical,
   &.ant-menu.ant-menu-inline {
     border: none;
-    padding: 0 12px;
+    padding: 0 0 0 16px;
+    overflow: hidden;
+
+    .ant-menu-submenu-vertical {
+      &.ant-menu-submenu-active {
+        border: none;
+      }
+    }
 
     .ant-menu-submenu.ant-menu-submenu-inline {
       &.ant-menu-submenu-active:not(.ant-menu-submenu-open):not(.ant-menu-submenu-selected) {
         .ant-menu-submenu-title {
           background: @hover-color;
+        }
+      }
+
+      .anticon {
+        svg {
+          fill: transparent;
         }
       }
 
@@ -47,9 +81,10 @@
       .ant-menu-submenu-title {
         display: flex;
         align-items: center;
-        padding: 16px 12px !important;
+        padding: 14px !important;
         height: auto !important;
-        margin-bottom: 12px;
+        margin-bottom: 0px;
+        margin-top: 0px;
         border-radius: 12px;
 
         &.ant-menu-item-selected {
@@ -59,6 +94,10 @@
           .ant-menu-title-content {
             line-height: 16px;
             font-weight: 500;
+          }
+
+          .anticon {
+            color: inherit;
           }
         }
 
@@ -73,12 +112,7 @@
 
         .left-panel-label {
           font-weight: 500;
-        }
-      }
-
-      .anticon {
-        svg {
-          fill: transparent;
+          color: inherit;
         }
       }
     }
@@ -86,9 +120,10 @@
     .ant-menu-item {
       display: flex;
       align-items: center;
-      padding: 16px 12px !important;
+      padding: 14px !important;
       height: auto !important;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
+      margin-top: 0px;
       border-radius: 12px;
 
       &.ant-menu-item-active:not(.ant-menu-item-selected) {
@@ -111,8 +146,8 @@
       }
 
       .left-panel-label {
-        color: @text-color;
         font-weight: 500;
+        color: inherit;
       }
 
       a {
@@ -128,6 +163,7 @@
       &.ant-menu-item-selected {
         background-color: @selected-color;
         color: @white;
+
         svg {
           fill: transparent;
         }
@@ -150,7 +186,7 @@
 
   .anticon {
     line-height: 0 !important;
-    font-size: 36px !important;
+    font-size: @left-sidebar-icon-size !important;
 
     svg {
       fill: transparent;
@@ -163,6 +199,7 @@
     border-color: #53b1fd;
     color: @white;
     border-radius: 12px;
+    overflow: hidden;
 
     .ant-menu-submenu-title {
       background-color: @active-color;
@@ -171,7 +208,7 @@
       font-size: 14px;
       border-radius: 12px 12px 0 0 !important;
       color: @white;
-      padding: 16px 12px !important;
+      padding: 14px !important;
 
       .ant-menu-title-content {
         font-weight: 500;
@@ -184,12 +221,9 @@
         }
       }
 
-      .anticon {
-        font-size: 32px !important;
-      }
-
       .ant-menu-title-content {
         line-height: 16px;
+
         .left-panel-label {
           color: @white;
           font-weight: 600;
@@ -208,12 +242,12 @@
 
       .ant-menu-item {
         margin: 0;
-        padding: 6px 16px !important;
+        padding: 10px 16px !important;
         border-radius: 0;
         width: calc(100% - 0.01px);
 
         .anticon {
-          font-size: 24px !important;
+          font-size: @left-sidebar-icon-size !important;
         }
 
         &:last-child {
@@ -226,9 +260,12 @@
   .ant-menu-submenu {
     width: 100%;
     border-radius: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 0 !important;
 
     &.ant-menu-submenu-selected:not(.ant-menu-submenu-open) {
       color: @active-color;
+
       .ant-menu-submenu-title {
         background: @active-color;
         color: @white;
@@ -244,15 +281,45 @@
   .ant-menu-submenu > .ant-menu-submenu-title {
     display: flex;
     align-items: center;
-    padding: 16px 12px !important;
+    padding: 14px !important;
     height: auto !important;
     line-height: 0 !important;
-    margin-bottom: 12px;
+    margin-bottom: 0px;
+    margin-top: 0px;
+    border-radius: 12px;
 
     .ant-menu-title-content {
       .anticon {
-        font-size: 24px !important;
+        font-size: @left-sidebar-icon-size !important;
       }
     }
+  }
+
+  .ant-menu-sub {
+    .ant-menu-item {
+      display: flex;
+      align-items: center;
+    }
+  }
+}
+
+.left-sidebar-layout {
+  height: calc(
+    100vh - @layout-header-height
+  ); // Adjust based on your header height
+
+  .menu-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .top-menu {
+    flex-grow: 1;
+  }
+
+  .bottom-menu {
+    flex-shrink: 0;
   }
 }

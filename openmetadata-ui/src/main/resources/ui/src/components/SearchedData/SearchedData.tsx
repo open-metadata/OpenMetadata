@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Pagination } from 'antd';
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
@@ -24,6 +23,7 @@ import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [
@@ -108,34 +108,32 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div data-testid="search-container">
+        <div className="h-full" data-testid="search-container">
           {totalValue > 0 ? (
             <>
               {children}
               <ResultCount />
               <div data-testid="search-results">
                 {searchResultCards}
-                <Pagination
-                  hideOnSinglePage
-                  className="text-center m-b-sm"
+                <PaginationComponent
+                  className="text-center p-b-box"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
                   }
-                  pageSizeOptions={[10, 25, 50]}
                   total={totalValue}
                   onChange={onPaginationChange}
                 />
               </div>
             </>
           ) : (
-            <>
+            <div className="flex-center h-full">
               {children}
               <ErrorPlaceHolderES
                 query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
-            </>
+            </div>
           )}
         </div>
       )}

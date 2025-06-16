@@ -97,11 +97,8 @@
       "entityType": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
-      },
-      "column_suggest": {
-        "type": "completion"
+      "upstreamLineage": {
+        "type": "object"
       },
       "version": {
         "type": "float"
@@ -286,6 +283,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -325,10 +323,10 @@
         "properties": {
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

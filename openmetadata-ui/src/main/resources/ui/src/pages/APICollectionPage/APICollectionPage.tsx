@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -64,6 +65,7 @@ import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -82,19 +84,17 @@ const APICollectionPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const history = useHistory();
-
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
   );
   const [isAPICollectionLoading, setIsAPICollectionLoading] =
     useState<boolean>(true);
-
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [apiEndpointCount, setApiEndpointCount] = useState<number>(0);
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [apiCollectionPermission, setAPICollectionPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const { filters, setFilters } = useTableFilters({
@@ -107,9 +107,9 @@ const APICollectionPage: FunctionComponent = () => {
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
         apiCollectionPermission,
-        apiCollection?.deleted ?? false
+        apiCollection
       ),
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection?.deleted]
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -144,13 +144,13 @@ const APICollectionPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.API_COLLECTION,
       decodedAPICollectionFQN,
       handleFeedCount
     );
-  };
+  }, [handleFeedCount, decodedAPICollectionFQN]);
 
   const fetchAPICollectionDetails = useCallback(async () => {
     try {
@@ -206,7 +206,7 @@ const APICollectionPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        history.replace({
           pathname: getEntityDetailsPath(
             EntityType.API_COLLECTION,
             decodedAPICollectionFQN,
@@ -302,8 +302,7 @@ const APICollectionPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.collection'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -329,8 +328,7 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -338,7 +336,7 @@ const APICollectionPage: FunctionComponent = () => {
     const updatedData = data as APICollection;
 
     setAPICollection((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -352,7 +350,11 @@ const APICollectionPage: FunctionComponent = () => {
       fetchAPICollectionDetails();
       getEntityFeedCount();
     }
-  }, [viewAPICollectionPermission]);
+  }, [
+    viewAPICollectionPermission,
+    fetchAPICollectionDetails,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
@@ -442,17 +444,33 @@ const APICollectionPage: FunctionComponent = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabs[0], activeTab, PageType.APICollection),
+    [tabs[0], activeTab]
+  );
   if (isPermissionsLoading || isLoading) {
     return <Loader />;
   }
 
   if (!viewAPICollectionPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.api-collection'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(apiCollection),
       })}>
@@ -465,7 +483,7 @@ const APICollectionPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             {isAPICollectionLoading ? (
               <Skeleton
                 active
@@ -494,17 +512,30 @@ const APICollectionPage: FunctionComponent = () => {
             )}
           </Col>
           <GenericProvider<APICollection>
+            customizedPage={customizedPage}
             data={apiCollection}
+            isTabExpanded={isTabExpanded}
             isVersionView={false}
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
-                className="entity-details-page-tabs"
+                className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={activeTabHandler}
               />
             </Col>

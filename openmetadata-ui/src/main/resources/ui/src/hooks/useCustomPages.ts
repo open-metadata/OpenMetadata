@@ -25,7 +25,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona?.fullyQualifiedName}`;
     try {
       const doc = await getDocumentByFQN(pageFQN);
       setCustomizedPage(
@@ -33,11 +33,13 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
       );
       setNavigation(doc.data?.navigation);
     } catch (error) {
-      // fail silent
+      // Need to reset Navigation to avoid showing old navigation items
+      setNavigation([]);
+      setCustomizedPage(null);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedPersona.fullyQualifiedName, pageType]);
+  }, [selectedPersona?.fullyQualifiedName, pageType]);
 
   useEffect(() => {
     if (selectedPersona?.fullyQualifiedName) {

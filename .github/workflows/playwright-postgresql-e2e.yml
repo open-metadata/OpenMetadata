@@ -45,8 +45,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -95,7 +95,7 @@ jobs:
         with:
           python-version: '3.9'
           args: "-d postgresql"
-          ingestion_dependency: "all"
+          ingestion_dependency: "playwright"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -117,6 +117,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}

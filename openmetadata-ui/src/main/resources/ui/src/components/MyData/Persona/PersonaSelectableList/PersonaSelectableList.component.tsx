@@ -15,10 +15,10 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/ic-user-profile-edit.svg';
 
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -28,6 +28,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
+import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
@@ -210,6 +211,7 @@ export const PersonaSelectableList = ({
               popupClassName="persona-custom-dropdown-class"
               ref={dropdownRef as any}
               style={{ width: '100%' }}
+              tagRender={TagRenderer}
               onChange={(selectedIds) => {
                 const selectedPersonasList = selectOptions.filter((persona) =>
                   selectedIds.includes(persona.id)
@@ -226,9 +228,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-save"
               data-testid="user-profile-persona-edit-cancel"
-              icon={
-                <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<ClosePopoverIcon height={24} />}
               size="small"
               type="primary"
               onClick={handleCloseEditTeam}
@@ -236,9 +236,7 @@ export const PersonaSelectableList = ({
             <Button
               className="persona-profile-edit-cancel"
               data-testid="user-profile-persona-edit-save"
-              icon={
-                <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
-              }
+              icon={<SavePopoverIcon height={24} />}
               loading={isSaving}
               size="small"
               type="primary"

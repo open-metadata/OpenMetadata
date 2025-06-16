@@ -20,9 +20,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/ic-user-profile-edit.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
 
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -121,7 +121,7 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
           </Typography.Text>
 
@@ -151,7 +151,7 @@ const UserProfileTeams = ({
                   <TeamsSelectableNew
                     filterJoinable
                     handleDropdownChange={handleDropdownChange}
-                    maxValueCount={4}
+                    maxValueCount={3}
                     ref={teamsSelectableRef}
                     selectedTeams={selectedTeams}
                     onSelectionChange={setSelectedTeams}
@@ -162,12 +162,7 @@ const UserProfileTeams = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="teams-edit-close-btn"
-                    icon={
-                      <ClosePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<ClosePopoverIcon height={24} />}
                     size="small"
                     style={{
                       width: '30px',
@@ -183,12 +178,7 @@ const UserProfileTeams = ({
                   <Button
                     className="profile-edit-cancel"
                     data-testid="teams-edit-save-btn"
-                    icon={
-                      <SavePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<SavePopoverIcon height={24} />}
                     loading={isLoading}
                     size="small"
                     style={{

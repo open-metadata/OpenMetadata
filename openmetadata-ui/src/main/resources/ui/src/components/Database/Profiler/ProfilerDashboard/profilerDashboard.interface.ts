@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
@@ -39,6 +40,8 @@ export interface ProfilerDetailsCardProps {
   tickFormatter?: string;
   curveType?: CurveType;
   isLoading?: boolean;
+  noDataPlaceholderText?: ReactNode;
+  children?: ReactNode;
 }
 
 export enum TableProfilerTab {

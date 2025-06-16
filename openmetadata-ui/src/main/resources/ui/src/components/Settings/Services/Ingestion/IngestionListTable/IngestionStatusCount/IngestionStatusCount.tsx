@@ -31,7 +31,7 @@ function IngestionStatusCount({
       align="middle"
       className="ingestion-status-count"
       gutter={[4, 4]}
-      justify="space-between"
+      justify="space-evenly"
       wrap={false}>
       {records.map((record) => (
         <Col key={`${record.label}-${runId}`}>

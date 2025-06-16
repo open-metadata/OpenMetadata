@@ -75,7 +75,9 @@ export const getLineageDataByFQN = async ({
     params: {
       fqn,
       type: entityType,
-      upstreamDepth,
+      // upstreamDepth depth in BE is n+1 rather than exactly n, so we need to subtract 1 to get the correct depth
+      // and we don't want to pass the negative value
+      upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth - 1,
       downstreamDepth,
       query_filter: queryFilter,
       includeDeleted: false,
@@ -94,7 +96,7 @@ export const getPlatformLineage = async ({
 }: {
   config?: LineageConfig;
   queryFilter?: string;
-  view: 'service' | 'domain';
+  view: string;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const API_PATH = `lineage/getPlatformLineage`;

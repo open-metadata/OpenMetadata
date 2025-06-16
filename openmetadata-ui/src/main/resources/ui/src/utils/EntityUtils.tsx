@@ -12,8 +12,6 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { toPng } from 'html-to-image';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -35,7 +33,6 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
-import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -52,7 +49,6 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
-import { ExportTypes } from '../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -119,9 +115,7 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import exportUtilClassBase from './ExportUtilClassBase';
 import Fqn from './Fqn';
-import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
@@ -133,7 +127,6 @@ import {
   getEntityDetailsPath,
   getGlossaryPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
@@ -144,9 +137,10 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { bytesToSize, stringToHTML } from './StringsUtils';
+import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -154,7 +148,6 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
-import { showErrorToast } from './ToastUtils';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -195,8 +188,8 @@ export const getEntityTags = (
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags((entityDetail as Table).columns || []),
-        ...(entityDetail.tags || []),
+        ...getTableTags((entityDetail as Table).columns ?? []),
+        ...(entityDetail.tags ?? []),
       ];
 
       return tableTags;
@@ -204,13 +197,13 @@ export const getEntityTags = (
     case EntityType.DASHBOARD:
     case EntityType.SEARCH_INDEX:
     case EntityType.PIPELINE:
-      return getTagsWithoutTier(entityDetail.tags || []);
+      return getTagsWithoutTier(entityDetail.tags ?? []);
 
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.DASHBOARD_DATA_MODEL: {
-      return entityDetail.tags || [];
+      return entityDetail.tags ?? [];
     }
 
     default:
@@ -1588,7 +1581,7 @@ export const getEntityLinkFromType = (
     case EntityType.APPLICATION:
       return getApplicationDetailsPath(fullyQualifiedName);
     case EntityType.TEST_CASE:
-      return getIncidentManagerDetailPagePath(fullyQualifiedName);
+      return getTestCaseDetailPagePath(fullyQualifiedName);
     case EntityType.TEST_SUITE:
       return getEntityDetailsPath(
         EntityType.TABLE,
@@ -1651,7 +1644,8 @@ export const getBreadcrumbForTable = (
             name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
-              (entity as SourceType).entityType as EntityType
+              ((entity as SourceType).entityType as EntityType) ??
+                EntityType.TABLE
             ),
           },
         ]
@@ -1938,7 +1932,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE
           ),
         },
       ];
@@ -1975,7 +1970,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE_SCHEMA
           ),
         },
       ];
@@ -1989,6 +1985,17 @@ export const getEntityBreadcrumbs = (
             getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
           ),
         },
+        ...(includeCurrent
+          ? [
+              {
+                name: entity.name,
+                url: getServiceDetailsPath(
+                  entity?.name,
+                  ServiceCategory.DATABASE_SERVICES
+                ),
+              },
+            ]
+          : []),
       ];
 
     case EntityType.DASHBOARD_SERVICE:
@@ -2497,14 +2504,14 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.ENTITY_IMPORT.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 /**
@@ -2535,64 +2542,78 @@ export const updateNodeType = (
   return node;
 };
 
-export const handleExportFile = async (
-  exportType: ExportTypes,
-  exportData: ExportData
-) => {
-  const { name: fileName, documentSelector = '', viewport } = exportData;
-  try {
-    const exportElement = document.querySelector(documentSelector);
-
-    if (!exportElement) {
-      throw new Error(
-        i18n.t('message.error-generating-export-type', {
-          exportType,
-        })
-      );
-    }
-
-    // Minimum width and height for the image
-    const minWidth = 1000;
-    const minHeight = 800;
-    const padding = 20;
-
-    const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
-    const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
-
-    await toPng(exportElement as HTMLElement, {
-      backgroundColor: '#ffffff',
-      width: imageWidth + padding * 2,
-      height: imageHeight + padding * 2,
-      style: {
-        width: imageWidth.toString(),
-        height: imageHeight.toString(),
-        margin: `${padding}px`,
-        minWidth: `${minWidth}px`,
-        minHeight: `${minHeight}px`,
-        ...(!isUndefined(viewport)
-          ? {
-              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-            }
-          : {}),
-      },
-    })
-      .then((base64Image: string) => {
-        exportUtilClassBase.exportMethodBasedOnType({
-          exportType,
-          base64Image,
-          fileName,
-          exportData,
-        });
-      })
-      .catch((error) => {
-        throw error;
-      });
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      i18n.t('message.error-generating-export-type', {
-        exportType,
-      })
-    );
-  }
+export const EntityTypeName: Record<EntityType, string> = {
+  [EntityType.API_SERVICE]: t('label.api-service'),
+  [EntityType.DATABASE_SERVICE]: t('label.database-service'),
+  [EntityType.MESSAGING_SERVICE]: t('label.messaging-service'),
+  [EntityType.PIPELINE_SERVICE]: t('label.pipeline-service'),
+  [EntityType.MLMODEL_SERVICE]: t('label.mlmodel-service'),
+  [EntityType.DASHBOARD_SERVICE]: t('label.dashboard-service'),
+  [EntityType.STORAGE_SERVICE]: t('label.storage-service'),
+  [EntityType.SEARCH_SERVICE]: t('label.search-service'),
+  [EntityType.METRIC]: t('label.metric'),
+  [EntityType.CONTAINER]: t('label.container'),
+  [EntityType.DASHBOARD_DATA_MODEL]: t('label.dashboard-data-model'),
+  [EntityType.TABLE]: t('label.table'),
+  [EntityType.GLOSSARY_TERM]: t('label.glossary-term'),
+  [EntityType.PAGE]: t('label.page'),
+  [EntityType.DATABASE_SCHEMA]: t('label.database-schema'),
+  [EntityType.CHART]: t('label.chart'),
+  [EntityType.STORED_PROCEDURE]: t('label.stored-procedure'),
+  [EntityType.DATABASE]: t('label.database'),
+  [EntityType.PIPELINE]: t('label.pipeline'),
+  [EntityType.TAG]: t('label.tag'),
+  [EntityType.DASHBOARD]: t('label.dashboard'),
+  [EntityType.API_ENDPOINT]: t('label.api-endpoint'),
+  [EntityType.TOPIC]: t('label.topic'),
+  [EntityType.DATA_PRODUCT]: t('label.data-product'),
+  [EntityType.MLMODEL]: t('label.ml-model'),
+  [EntityType.SEARCH_INDEX]: t('label.search-index'),
+  [EntityType.API_COLLECTION]: t('label.api-collection'),
+  [EntityType.TEST_SUITE]: t('label.test-suite'),
+  [EntityType.TEAM]: t('label.team'),
+  [EntityType.TEST_CASE]: t('label.test-case'),
+  [EntityType.DOMAIN]: t('label.domain'),
+  [EntityType.PERSONA]: t('label.persona'),
+  [EntityType.POLICY]: t('label.policy'),
+  [EntityType.ROLE]: t('label.role'),
+  [EntityType.APPLICATION]: t('label.application'),
+  [EntityType.CLASSIFICATION]: t('label.classification'),
+  [EntityType.GLOSSARY]: t('label.glossary'),
+  [EntityType.METADATA_SERVICE]: t('label.metadata-service'),
+  [EntityType.WEBHOOK]: t('label.webhook'),
+  [EntityType.TYPE]: t('label.type'),
+  [EntityType.USER]: t('label.user'),
+  [EntityType.BOT]: t('label.bot'),
+  [EntityType.DATA_INSIGHT_CHART]: t('label.data-insight-chart'),
+  [EntityType.KPI]: t('label.kpi'),
+  [EntityType.ALERT]: t('label.alert'),
+  [EntityType.SUBSCRIPTION]: t('label.subscription'),
+  [EntityType.SAMPLE_DATA]: t('label.sample-data'),
+  [EntityType.APP_MARKET_PLACE_DEFINITION]: t(
+    'label.app-market-place-definition'
+  ),
+  [EntityType.DOC_STORE]: t('label.doc-store'),
+  [EntityType.KNOWLEDGE_PAGE]: t('label.knowledge-page'),
+  [EntityType.knowledgePanels]: t('label.knowledge-panels'),
+  [EntityType.GOVERN]: t('label.govern'),
+  [EntityType.ALL]: t('label.all'),
+  [EntityType.CUSTOM_METRIC]: t('label.custom-metric'),
+  [EntityType.INGESTION_PIPELINE]: t('label.ingestion-pipeline'),
+  [EntityType.QUERY]: t('label.query'),
+  [EntityType.ENTITY_REPORT_DATA]: t('label.entity-report-data'),
+  [EntityType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA]: t(
+    'label.web-analytic-entity-view-report-data'
+  ),
+  [EntityType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA]: t(
+    'label.web-analytic-user-activity-report-data'
+  ),
+  [EntityType.TEST_CASE_RESOLUTION_STATUS]: t(
+    'label.test-case-resolution-status'
+  ),
+  [EntityType.TEST_CASE_RESULT]: t('label.test-case-result'),
+  [EntityType.EVENT_SUBSCRIPTION]: t('label.event-subscription'),
+  [EntityType.LINEAGE_EDGE]: t('label.lineage-edge'),
+  [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
+  [EntityType.SERVICE]: t('label.service'),
 };
