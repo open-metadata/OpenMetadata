@@ -35,13 +35,6 @@ Watch the [Webinar on Glossaries and Classifications in OpenMetadata](https://ww
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
-  bold="Auto-Classification"
-  icon="MdDiscount"
-  href="/how-to-guides/data-governance/classification/auto"%}
-  Learn how OpenMetadata identifies PII data and auto tags or suggests the tags.
- {%/inlineCallout%}
- {%inlineCallout
-  color="violet-70"
   bold="What are Tiers"
   icon="MdDiscount"
   href="/how-to-guides/data-governance/classification/tiers"%}
