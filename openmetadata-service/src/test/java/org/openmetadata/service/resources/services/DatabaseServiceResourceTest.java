@@ -60,7 +60,6 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -408,18 +407,14 @@ public class DatabaseServiceResourceTest
 
     // Create certification
     TagResourceTest tagResourceTest = new TagResourceTest();
-    Tag certificationTag =
-        tagResourceTest.createEntity(
-            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers,
+    // certification,domain, extension
     // Update terms with change in description
     String record =
         String.format(
-            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,%s,",
-            user1,
-            certificationTag.getFullyQualifiedName(),
-            escapeCsv(DOMAIN.getFullyQualifiedName()));
+            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,,%s,",
+            user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(
