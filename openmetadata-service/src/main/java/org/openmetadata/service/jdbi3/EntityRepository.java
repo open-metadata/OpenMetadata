@@ -991,7 +991,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             throw new RuntimeException(either.right().get().getMessage());
           } else {
             errors.add(either.right().get());
-            LOG.error("[List] Failed for Entity : {}", either.right().get());
+            // Only log non-"entity not found" errors at error level
+            if (!isEntityNotFoundError(either.right().get())) {
+              LOG.error("[List] Failed for Entity : {}", either.right().get());
+            } else {
+              LOG.debug("[List] Stale reference detected: {}", either.right().get().getMessage());
+            }
           }
         } else {
           entities.add(either.left().get());
@@ -4740,5 +4745,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<UUID> entityListToUUID(List<T> entities) {
     return entities.stream().map(EntityInterface::getId).toList();
+  }
+
+  private boolean isEntityNotFoundError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase();
+    return message.contains("not found")
+        || message.contains("instance for")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception");
   }
 }

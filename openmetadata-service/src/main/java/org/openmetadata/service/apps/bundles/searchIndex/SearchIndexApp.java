@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -82,7 +83,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
-  // Use virtual threads for lightweight task coordination
   private final ExecutorService jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
@@ -91,15 +91,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
 
-  // Connection pool optimization settings
-  private static final int MAX_READER_THREADS =
-      10; // Maximum reader threads to prevent connection exhaustion
-  private static final int MAX_GLOBAL_CONCURRENT_READS =
-      10; // Global limit on concurrent DB operations
+  private static final int MAX_READER_THREADS = 50;
+  private static final int MAX_GLOBAL_CONCURRENT_READS = 30;
   private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
   private static final int MAX_BATCH_SIZE = 200; // Maximum batch size to avoid memory issues
-  private static final int MAX_CONCURRENT_REQUESTS =
-      100; // Safety limit for concurrent requests to search cluster
+  private static final int MAX_CONCURRENT_REQUESTS = 100;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -252,21 +248,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
     // Limit reader threads when auto-tune is enabled to prevent connection pool exhaustion
     if (jobData.getAutoTune() && numProducers > MAX_READER_THREADS) {
       LOG.info(
-          "Auto-tune: Limiting reader threads from {} to {} to prevent connection pool exhaustion",
-          numProducers,
-          MAX_READER_THREADS);
+          "Auto-tune: Setting virtual reader threads to {} (max: {}) from requested {}",
+          MAX_READER_THREADS,
+          MAX_READER_THREADS,
+          numProducers);
       numProducers = MAX_READER_THREADS;
     }
 
-    // Use a fixed thread pool instead of unlimited virtual threads
-    producerExecutor =
-        Executors.newFixedThreadPool(
-            numProducers,
-            r -> {
-              Thread t = new Thread(r);
-              t.setName("SearchIndex-Reader-" + t.getId());
-              return t;
-            });
+    // Use virtual threads for readers - they're lightweight and perfect for I/O-bound operations
+    producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     try {
       processEntityReindex(jobExecutionContext);
@@ -606,17 +596,29 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       // Update statistics in a thread-safe manner
       synchronized (jobDataLock) {
+        // Only set error status if there are actual errors (after filtering out "entity not found"
+        // errors)
         if (!entities.getErrors().isEmpty()) {
-          jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
-          jobData.setFailure(
-              new IndexingError()
-                  .withErrorSource(IndexingError.ErrorSource.READER)
-                  .withSubmittedCount(batchSize.get())
-                  .withSuccessCount(entities.getData().size())
-                  .withFailedCount(entities.getErrors().size())
-                  .withMessage(
-                      "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                  .withFailedEntities(entities.getErrors()));
+          // Double-check that we have real errors, not just stale references
+          boolean hasRealErrors =
+              entities.getErrors().stream().anyMatch(error -> !isEntityNotFoundError(error));
+
+          if (hasRealErrors) {
+            jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+            jobData.setFailure(
+                new IndexingError()
+                    .withErrorSource(IndexingError.ErrorSource.READER)
+                    .withSubmittedCount(batchSize.get())
+                    .withSuccessCount(entities.getData().size())
+                    .withFailedCount(entities.getErrors().size())
+                    .withMessage(
+                        "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                    .withFailedEntities(entities.getErrors()));
+          } else {
+            // Log that we ignored stale references
+            LOG.debug(
+                "Ignored {} stale entity references during indexing", entities.getErrors().size());
+          }
         }
         updateStats(entityType, currentEntityStats);
 
@@ -796,6 +798,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
         - entityStats.getSuccessRecords();
   }
 
+  private boolean isEntityNotFoundError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase();
+    return message.contains("not found")
+        || message.contains("instance for")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception");
+  }
+
   private void applyAutoTuning() {
     try {
       ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -832,18 +845,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
           MAX_BATCH_SIZE);
       jobData.setBatchSize(recommendedBatchSize);
 
-      // Limit producer threads to prevent database connection pool exhaustion
-      // With 300 connections, we need to be conservative:
+      // Virtual threads allow much higher concurrency without the same resource constraints
+      // With 300 connections and virtual threads, we can be more aggressive:
       // - Reserve ~100 connections for normal operations
-      // - Use max 10 reader threads (each may use multiple connections)
+      // - Use up to 50 virtual reader threads (lightweight, don't block OS threads)
       // - Account for bulk loading operations
       int maxProducerThreads =
           Math.min(clusterMetrics.getRecommendedProducerThreads(), MAX_READER_THREADS);
       if (clusterMetrics.getRecommendedProducerThreads() > maxProducerThreads) {
-        LOG.warn(
-            "AUTO-TUNE: Limiting producer threads from {} to {} to prevent connection pool exhaustion (300 max connections)",
-            clusterMetrics.getRecommendedProducerThreads(),
-            maxProducerThreads);
+        LOG.info(
+            "AUTO-TUNE: Setting producer threads to {} (virtual threads, max: {}) from recommended {}",
+            maxProducerThreads,
+            MAX_READER_THREADS,
+            clusterMetrics.getRecommendedProducerThreads());
       }
       jobData.setProducerThreads(maxProducerThreads);
 
