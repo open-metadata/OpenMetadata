@@ -83,6 +83,14 @@ class DataInsightClassBase {
     ];
   }
 
+  public getDataInsightTabComponent(tab: DataInsightTabs) {
+    const currentTab = this.getDataInsightTab().find(
+      (tabItem) => tabItem.key === tab
+    );
+
+    return currentTab?.component;
+  }
+
   public getManageExtraOptions(): ItemType[] {
     return [];
   }

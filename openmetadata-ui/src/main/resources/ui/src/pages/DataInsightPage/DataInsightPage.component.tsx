@@ -105,15 +105,14 @@ const DataInsightPage = () => {
   }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
   const renderTabComponent = useMemo(() => {
-    const currentTab = dataInsightClassBase
-      .getDataInsightTab()
-      .find((tabItem) => tabItem.key === tab);
+    const currentTabComponent =
+      dataInsightClassBase.getDataInsightTabComponent(tab);
 
-    if (!currentTab) {
+    if (!currentTabComponent) {
       return <Navigate replace to={DataInsightTabs.DATA_ASSETS} />;
     }
 
-    const TabComponent = currentTab.component;
+    const TabComponent = currentTabComponent;
 
     return <TabComponent />;
   }, [tab]);

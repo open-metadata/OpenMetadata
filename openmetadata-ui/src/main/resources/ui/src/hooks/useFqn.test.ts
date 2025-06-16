@@ -26,8 +26,8 @@ describe('useFqn', () => {
   it('returns decoded fqn and ingestionFQN', () => {
     (useRequiredParams as jest.Mock).mockReturnValue({
       fqn: 'sample_data.db_sample.schema_sample.dim/client.',
-      ingestionFQN: 'sample_data.db_sample.schema_sample.dim%2Fclient.',
-      ruleName: 'testing%20%2F%20policy%20rule%20do%20not%20use',
+      ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
+      ruleName: 'testing / policy rule do not use',
     });
 
     const { result } = renderHook(() => useFqn());
