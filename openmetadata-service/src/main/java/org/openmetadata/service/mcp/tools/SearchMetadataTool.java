@@ -119,7 +119,7 @@ public class SearchMetadataTool implements McpTool {
         "SearchMetadataTool does not support limits enforcement.");
   }
 
-  private static Map<String, Object> cleanSearchResponse(Map<String, Object> searchResponse) {
+  public static Map<String, Object> cleanSearchResponse(Map<String, Object> searchResponse) {
     if (searchResponse == null) return Collections.emptyMap();
 
     Map<String, Object> topHits = safeGetMap(searchResponse.get("hits"));
@@ -140,6 +140,12 @@ public class SearchMetadataTool implements McpTool {
     }
 
     return Collections.emptyMap();
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
+    IGNORE_SEARCH_KEYS.forEach(object::remove);
+    return object;
   }
 
   @SuppressWarnings("unchecked")
