@@ -114,10 +114,9 @@ public class SearchResource {
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @DefaultValue("false")
           @QueryParam("deleted")
           @Deprecated(forRemoval = true)
-          boolean deleted,
+          Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
           @QueryParam("from")

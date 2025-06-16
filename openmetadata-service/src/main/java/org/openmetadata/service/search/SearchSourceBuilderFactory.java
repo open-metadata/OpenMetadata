@@ -43,6 +43,25 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
               "[+\\-~\\^]" // Special operators
           );
 
+  Set<String> FUZZY_FIELDS =
+      Set.of(
+          "name",
+          "displayName",
+          "fullyQualifiedName",
+          "columnNamesFuzzy",
+          "fieldNamesFuzzy",
+          "response_field_namesFuzzy",
+          "request_field_namesFuzzy",
+          "classification.name",
+          "classification.displayName",
+          "glossary.name",
+          "glossary.displayName");
+
+  // Keyword fields added to fuzzy because Lucene needs keyword fields for wildcard/prefix queries
+  // in query_string
+  Set<String> FUZZY_AND_NON_FUZZY_FIELDS =
+      Set.of("name.keyword", "displayName.keyword", "fullyQualifiedName.keyword");
+
   /**
    * Get the appropriate search source builder based on the index name.
    *
@@ -215,18 +234,16 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   default boolean isFuzzyField(String key) {
-    return Set.of(
-            "name",
-            "displayName",
-            "fullyQualifiedName",
-            "columnNamesFuzzy",
-            "fieldNamesFuzzy",
-            "response_field_namesFuzzy",
-            "request_field_namesFuzzy",
-            "classification.name",
-            "classification.displayName",
-            "glossary.name",
-            "glossary.displayName")
-        .contains(key);
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return FUZZY_FIELDS.contains(key);
+  }
+
+  default boolean isNonFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return !FUZZY_FIELDS.contains(key);
   }
 }
