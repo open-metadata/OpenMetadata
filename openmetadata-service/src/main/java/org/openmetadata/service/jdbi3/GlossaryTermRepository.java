@@ -442,7 +442,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Map<String, EntityReference> targetFQNFromES =
         getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     // Inclusion of soft deleted assets as well
-    targetFQNFromES.putAll(getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
+    targetFQNFromES.putAll(
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
 
     for (String fqnHash : targetFQNHashesFromDb) {
       // Update Result Processed
@@ -496,7 +497,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  protected Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size, boolean softDeleted) {
+  protected Map<String, EntityReference> getGlossaryUsageFromES(
+      String glossaryFqn, int size, boolean softDeleted) {
     try {
       String key = "_source";
       SearchRequest searchRequest =
@@ -793,7 +795,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true);
+        getGlossaryUsageFromES(
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -806,7 +809,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
-          getGlossaryUsageFromES(child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
+          getGlossaryUsageFromES(
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
