@@ -98,6 +98,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
       10; // Global limit on concurrent DB operations
   private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
   private static final int MAX_BATCH_SIZE = 200; // Maximum batch size to avoid memory issues
+  private static final int MAX_CONCURRENT_REQUESTS =
+      100; // Safety limit for concurrent requests to search cluster
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -846,7 +848,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setProducerThreads(maxProducerThreads);
 
       // Limit concurrent requests to prevent overwhelming the search cluster and database
-      int maxConcurrentRequests = Math.min(clusterMetrics.getRecommendedConcurrentRequests(), 5);
+      int recommendedConcurrentRequests = clusterMetrics.getRecommendedConcurrentRequests();
+      int maxConcurrentRequests = Math.min(recommendedConcurrentRequests, MAX_CONCURRENT_REQUESTS);
+      if (recommendedConcurrentRequests > MAX_CONCURRENT_REQUESTS) {
+        LOG.warn(
+            "AUTO-TUNE: Limiting concurrent requests from {} to {} (safety limit)",
+            recommendedConcurrentRequests,
+            MAX_CONCURRENT_REQUESTS);
+      }
       jobData.setMaxConcurrentRequests(maxConcurrentRequests);
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
