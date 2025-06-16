@@ -6,9 +6,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.USER;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.*;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
@@ -49,6 +49,13 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setFullyQualifiedName(Query query) {
     query.setFullyQualifiedName(
         FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
+  }
+
+  @Override
+  protected void entitySpecificCleanup(Query entityInterface) {
+    daoCollection
+        .queryCostRecordTimeSeriesDAO()
+        .deleteWithEntityFqnHash(entityInterface.getFullyQualifiedName());
   }
 
   @Override
@@ -166,7 +173,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldQuery.getUsedBy(),
             query.getUsers(),
             withHref(uriInfo, query));
-    update(uriInfo, oldQuery, query);
+    update(uriInfo, oldQuery, query, updatedBy);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 

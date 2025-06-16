@@ -73,7 +73,7 @@ const MyDataPage = () => {
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isEmpty(selectedPersona)) {
+      if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
 
@@ -109,7 +109,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [selectedPersona]);
+  }, [selectedPersona, customizePageClassBase.defaultLayout]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
@@ -202,9 +202,9 @@ const MyDataPage = () => {
 
   if (showWelcomeScreen) {
     return (
-      <div className="bg-white full-height">
+      <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-      </div>
+      </PageLayoutV1>
     );
   }
 
@@ -212,6 +212,7 @@ const MyDataPage = () => {
     <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
       <ReactGridLayout
         cols={4}
+        containerPadding={[0, 0]}
         isDraggable={false}
         isResizable={false}
         margin={[

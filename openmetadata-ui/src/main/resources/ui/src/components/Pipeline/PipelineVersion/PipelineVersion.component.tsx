@@ -38,6 +38,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -127,7 +128,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'description',
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -187,7 +188,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -199,7 +200,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <Table
-                    bordered
                     columns={tableColumn}
                     data-testid="schema-table"
                     dataSource={pipelineVersionTableData}
@@ -217,12 +217,14 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.PIPELINE}
                     key={tagType}
                     permission={false}
@@ -293,8 +295,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.PIPELINE}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

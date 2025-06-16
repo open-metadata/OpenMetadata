@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -38,9 +37,7 @@ import {
 export interface SearchIndexDetailPageTabProps {
   searchIndexDetails: SearchIndex;
   viewAllPermission: boolean;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   getEntityFeedCount: () => Promise<void>;
   fetchSearchIndexDetails: () => Promise<void>;
@@ -66,11 +63,11 @@ class SearchIndexClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
-      [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: 11,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: 6,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
@@ -98,27 +95,42 @@ class SearchIndexClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.FIELDS) {
       return [];
     }
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.SEARCH_INDEX_FIELDS] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.SEARCH_INDEX_FIELDS],
-        i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[
+              DetailPageWidgetKeys.SEARCH_INDEX_FIELDS
+            ],
+            i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],

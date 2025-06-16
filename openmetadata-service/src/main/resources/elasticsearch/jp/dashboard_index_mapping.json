@@ -110,8 +110,8 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "domain" : {
         "properties": {
@@ -376,6 +376,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -505,21 +506,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "chart_suggest": {
-        "type": "completion"
-      },
-      "data_model_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

@@ -24,7 +24,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domain,dataProducts,votes,extension';
+  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domain,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -208,6 +208,10 @@ jest.mock('../../hoc/LimitWrapper', () => {
 
 jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
+}));
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
 }));
 
 describe('TestDetailsPageV1 component', () => {

@@ -16,6 +16,7 @@ export enum SIZE {
   SMALL = '60',
   MEDIUM = '86',
   LARGE = '126',
+  X_LARGE = '166',
 }
 
 export enum ACTION_TYPE {

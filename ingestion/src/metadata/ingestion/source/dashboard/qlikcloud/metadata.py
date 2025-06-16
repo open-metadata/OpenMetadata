@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,7 +11,7 @@
 """QlikCloud source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -42,11 +42,15 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
-from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp
+from metadata.ingestion.source.dashboard.qlikcloud.models import (
+    QlikApp,
+    QlikSpace,
+    QlikSpaceType,
+)
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_by_chart, filter_by_project
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -81,8 +85,40 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
+        self.projects_map: Dict[str, QlikSpace] = {}
         self.collections: List[QlikApp] = []
         self.data_models: List[QlikTable] = []
+
+    def prepare(self):
+        """
+        Get all spaces/projects from QlikCloud to filter out dashboards.
+        """
+        spaces = self.client.get_projects_list()
+        for space in spaces:
+            self.projects_map[space.id] = space
+        self.projects_map[""] = QlikSpace(
+            name="Personal",
+            description="Represents personal space of QlikCloud.",
+            id="",  # dashboards under personal space have spaceId=""
+            type=QlikSpaceType.PERSONAL,
+        )
+
+        return super().prepare()
+
+    def filter_projects_by_type(self, project: QlikSpace) -> bool:
+        """
+        Filter space based on space types configured in connection config.
+        """
+        spaceTypes = self.service_connection.spaceTypes
+        if spaceTypes is None:
+            return False
+        return project.type.value not in [space_type.value for space_type in spaceTypes]
+
+    def is_personal_project(self, project: QlikSpace) -> bool:
+        """
+        Check if space is a personal space.
+        """
+        return project.type == QlikSpaceType.PERSONAL
 
     def filter_draft_dashboard(self, dashboard: QlikApp) -> bool:
         # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikApp
@@ -97,6 +133,21 @@ class QlikcloudSource(QliksenseSource):
         for dashboard in self.client.get_dashboards_list():
             if self.filter_draft_dashboard(dashboard):
                 # Skip unpublished dashboards
+                continue
+            if dashboard.space_id not in self.projects_map:
+                logger.warning(
+                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present"
+                    " in projects map"
+                )
+                continue
+            project = self.projects_map[dashboard.space_id]
+            if self.filter_projects_by_type(project):
+                # Skip dashboard based on space type filter
+                continue
+            if not self.is_personal_project(project) and filter_by_project(
+                self.service_connection.projectFilterPattern, project.name
+            ):
+                # Skip dashboard based on project filter pattern
                 continue
             # clean data models for next iteration
             self.data_models = []
@@ -127,9 +178,11 @@ class QlikcloudSource(QliksenseSource):
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.context.get().project_name,
                 charts=[
                     FullyQualifiedEntityName(
@@ -248,9 +301,11 @@ class QlikcloudSource(QliksenseSource):
                     right=CreateChartRequest(
                         name=EntityName(chart.qInfo.qId),
                         displayName=chart.qMeta.title,
-                        description=Markdown(chart.qMeta.description)
-                        if chart.qMeta.description
-                        else None,
+                        description=(
+                            Markdown(chart.qMeta.description)
+                            if chart.qMeta.description
+                            else None
+                        ),
                         chartType=ChartType.Other,
                         sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,

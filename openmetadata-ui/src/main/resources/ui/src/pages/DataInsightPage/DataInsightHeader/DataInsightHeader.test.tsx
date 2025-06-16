@@ -73,6 +73,15 @@ jest.mock('../../../constants/constants', () => ({
   ROUTES: {},
 }));
 
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn(() => <div>ManageButton</div>)
+);
+
+jest.mock('../DataInsightClassBase', () => ({
+  getManageExtraOptions: jest.fn().mockReturnValue([]),
+}));
+
 const mockProps = {
   onScrollToChart: jest.fn(),
 };

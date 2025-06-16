@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 .profiler-configuration-page-container {
   width: 70%;
-  margin: 16px auto 0;
-  padding-bottom: 16px;
+  margin: @margin-md auto 0;
+  padding: @padding-md;
+  background-color: @white;
+  border-radius: @border-radius-sm;
+
   .ant-form-item {
     margin: 0px;
   }
+
   .ant-card {
     border-radius: 10px;
   }
@@ -26,6 +30,7 @@
 
 .profiler-configuration-form-item-container {
   background-color: @grey-6;
+
   .ant-card-body {
     padding: 20px;
   }

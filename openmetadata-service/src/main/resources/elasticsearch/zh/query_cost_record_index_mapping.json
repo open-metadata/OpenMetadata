@@ -89,6 +89,7 @@
                                 "fields": {
                                     "keyword": {
                                         "type": "keyword",
+                                        "normalizer": "lowercase_normalizer",
                                         "ignore_above": 256
                                     }
                                 }
@@ -180,7 +181,8 @@
                         }
                     },
                     "query": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "index": false
                     },
                     "queryDate": {
                         "type": "long"
@@ -306,15 +308,6 @@
                     "entityType": {
                         "type": "keyword"
                     },
-                    "suggest": {
-                        "type": "completion"
-                    },
-                    "column_suggest": {
-                        "type": "completion"
-                    },
-                    "service_suggest": {
-                        "type": "completion"
-                    },
                     "domain": {
                         "properties": {
                             "id": {
@@ -418,9 +411,6 @@
                     "totalVotes": {
                         "type": "long",
                         "null_value": 0
-                    },
-                    "votes": {
-                        "type": "object"
                     }
                 }
             },
@@ -443,6 +433,7 @@
                         "fields": {
                             "keyword": {
                                 "type": "keyword",
+                                "normalizer": "lowercase_normalizer",
                                 "ignore_above": 256
                             }
                         }

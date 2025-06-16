@@ -162,9 +162,6 @@
       "entityType": {
         "type": "keyword"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
       "owners": {
         "properties": {
           "id": {
@@ -282,6 +279,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -314,8 +312,8 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "dataModelType": {
         "type": "keyword",
@@ -325,7 +323,6 @@
         "properties": {
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -442,11 +439,17 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

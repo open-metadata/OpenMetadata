@@ -34,7 +34,7 @@ import {
 } from '../../../utils/FeedUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -134,15 +134,15 @@ const CommentCard = ({
       className={classNames('d-flex justify-start relative reply-card', {
         'reply-card-border-bottom': !isLastReply,
       })}
+      data-testid="feed-reply-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <ProfilePictureNew
-          avatarType="outlined"
-          key={feed.id}
-          name={feed.updatedBy!}
-          size={32}
-        />
+        <UserPopOverCard userName={feed.updatedBy ?? ''}>
+          <div className="d-flex items-center">
+            <ProfilePicture key={feed.id} name={feed.updatedBy!} width="32" />
+          </div>
+        </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">

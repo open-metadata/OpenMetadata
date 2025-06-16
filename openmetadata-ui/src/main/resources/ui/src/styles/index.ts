@@ -37,6 +37,7 @@ import './components/drawer.less';
 import './components/entity-version-time-line.less';
 import './components/glossary.less';
 import './components/menu.less';
+import './components/pagination.less';
 import './components/profile-picture.less';
 import './components/profiler.less';
 import './components/radio.less';

@@ -100,8 +100,8 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "messageSchema": {
         "properties": {
@@ -303,6 +303,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -486,18 +487,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "field_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

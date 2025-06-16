@@ -40,9 +40,10 @@ export interface AppRunRecord {
      */
     extension?: string;
     /**
-     * Failure Context for the Application.
+     * Container for messages regarding the failure of the application. Use the 'failure' field
+     * to get the error message. Additional properties are there for backward compatibility.
      */
-    failureContext?: { [key: string]: any };
+    failureContext?: FailureContext;
     /**
      * Arbitrary metadata that will be attached to the report.
      */
@@ -68,11 +69,52 @@ export interface AppRunRecord {
     /**
      * Success Context for the Application.
      */
-    successContext?: { [key: string]: any };
+    successContext?: SuccessContext;
     /**
      * Update time of the job status.
      */
     timestamp?: number;
+}
+
+/**
+ * Container for messages regarding the failure of the application. Use the 'failure' field
+ * to get the error message. Additional properties are there for backward compatibility.
+ */
+export interface FailureContext {
+    failure?: IndexingAppError;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
+ */
+export interface IndexingAppError {
+    errorSource?:      ErrorSource;
+    failedCount?:      number;
+    failedEntities?:   EntityError[];
+    lastFailedCursor?: string;
+    message?:          string;
+    reason?:           string;
+    stackTrace?:       string;
+    submittedCount?:   number;
+    successCount?:     number;
+    [property: string]: any;
+}
+
+export enum ErrorSource {
+    Job = "Job",
+    Processor = "Processor",
+    Reader = "Reader",
+    Sink = "Sink",
+}
+
+/**
+ * Entity And Message Scehma in case of failures.
+ */
+export interface EntityError {
+    entity?:  any;
+    message?: string;
 }
 
 export interface AppScheduleClass {
@@ -88,7 +130,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",
@@ -157,4 +199,49 @@ export enum Status {
     Started = "started",
     Stopped = "stopped",
     Success = "success",
+}
+
+/**
+ * Success Context for the Application.
+ */
+export interface SuccessContext {
+    /**
+     * Stats for the application.
+     */
+    stats?: Stats;
+    [property: string]: any;
+}
+
+/**
+ * Stats for the application.
+ */
+export interface Stats {
+    /**
+     * Stats for different entities. Keys should match entity types
+     */
+    entityStats?: { [key: string]: StepStats };
+    /**
+     * Stats for the job
+     */
+    jobStats?: StepStats;
+}
+
+/**
+ * Stats for Different Steps Reader, Processor, Writer.
+ *
+ * Stats for the job
+ */
+export interface StepStats {
+    /**
+     * Count of Total Failed Records
+     */
+    failedRecords?: number;
+    /**
+     * Count of Total Successfully Records
+     */
+    successRecords?: number;
+    /**
+     * Count of Total Failed Records
+     */
+    totalRecords?: number;
 }

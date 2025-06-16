@@ -27,6 +27,7 @@ import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getConnectionTimeoutField,
   getFormattedDestinations,
+  getReadTimeoutField,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -103,6 +104,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
       heading={t('label.destination')}
       subHeading={t('message.alerts-destination-description')}>
       {getConnectionTimeoutField()}
+      {getReadTimeoutField()}
       <Form.List
         name={['destinations']}
         rules={[

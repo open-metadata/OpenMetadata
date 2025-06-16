@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -26,34 +30,54 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/tests/testCase';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../generated/tests/testCase';
+import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
+import {
+  getTestCaseByFqn,
+  getTestCaseVersionDetails,
+  getTestCaseVersionList,
+  updateTestCaseById,
+} from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  getTestCaseDetailPagePath,
+  getTestCaseVersionPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCasePageTabs } from '../IncidentManager.interface';
+import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
 
-const IncidentManagerDetailPage = () => {
+const IncidentManagerDetailPage = ({
+  isVersionPage = false,
+}: {
+  isVersionPage?: boolean;
+}) => {
   const { t } = useTranslation();
   const history = useHistory();
   const location =
     useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
-  const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS, version } =
+    useParams<{ tab: EntityTabs; version: string }>();
 
   const { fqn: testCaseFQN } = useFqn();
 
@@ -71,6 +95,10 @@ const IncidentManagerDetailPage = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [versionList, setVersionList] = useState<EntityHistory>({
+    entityType: EntityType.TEST_CASE,
+    versions: [],
+  });
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
@@ -85,7 +113,10 @@ const IncidentManagerDetailPage = () => {
     }, [testCasePermission]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
-    const tabs = testCaseClassBase.getTab(feedCount.openTaskCount);
+    const tabs = testCaseClassBase.getTab(
+      feedCount.openTaskCount,
+      isVersionPage
+    );
 
     return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
       key,
@@ -119,6 +150,10 @@ const IncidentManagerDetailPage = () => {
       testCaseClassBase.setShowSqlQueryTab(
         !isUndefined(response.inspectionQuery)
       );
+      if (isVersionPage) {
+        const versionResponse = await getTestCaseVersionList(response.id ?? '');
+        setVersionList(versionResponse);
+      }
       setTestCase(response);
     } catch (error) {
       showErrorToast(
@@ -154,10 +189,16 @@ const IncidentManagerDetailPage = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getIncidentManagerDetailPagePath(
-          testCaseFQN,
-          activeKey as IncidentManagerTabs
-        )
+        isVersionPage
+          ? getTestCaseVersionPath(
+              testCaseFQN,
+              version,
+              activeKey as TestCasePageTabs
+            )
+          : getTestCaseDetailPagePath(
+              testCaseFQN,
+              activeKey as TestCasePageTabs
+            )
       );
     }
   };
@@ -209,6 +250,46 @@ const IncidentManagerDetailPage = () => {
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
 
+  const onVersionClick = () => {
+    history.push(
+      isVersionPage
+        ? getTestCaseDetailPagePath(testCaseFQN)
+        : getTestCaseVersionPath(
+            testCaseFQN,
+            toString(testCase?.version) ?? '',
+            activeTab
+          )
+    );
+  };
+
+  // version related methods
+  const versionHandler = useCallback(
+    (newVersion = version) => {
+      history.push(
+        getTestCaseVersionPath(testCaseFQN, toString(newVersion), activeTab)
+      );
+    },
+    [testCaseFQN, activeTab]
+  );
+  const fetchCurrentVersion = async (id: string) => {
+    try {
+      const response = await getTestCaseVersionDetails(id, version);
+      setTestCase(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const displayName = useMemo(() => {
+    return isVersionPage
+      ? getEntityVersionByField(
+          testCase?.changeDescription as ChangeDescription,
+          EntityField.DISPLAYNAME,
+          testCase?.displayName
+        )
+      : testCase?.displayName;
+  }, [testCase?.changeDescription, testCase?.displayName, isVersionPage]);
+
   useEffect(() => {
     if (testCaseFQN) {
       fetchTestCasePermission();
@@ -230,12 +311,26 @@ const IncidentManagerDetailPage = () => {
     };
   }, [testCaseFQN, hasViewPermission]);
 
+  useEffect(() => {
+    if (testCase?.id && isVersionPage) {
+      fetchCurrentVersion(testCase.id);
+    }
+  }, [version, testCase?.id, isVersionPage]);
+
   if (isLoading || isPermissionLoading) {
     return <Loader />;
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.incident-manager'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isUndefined(testCase)) {
@@ -244,61 +339,98 @@ const IncidentManagerDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(testCase) || t('label.test-case'),
-      })}>
+      pageTitle={t(
+        isVersionPage
+          ? 'label.entity-version-detail-plural'
+          : 'label.entity-detail-plural',
+        {
+          entity: getEntityName(testCase) || t('label.test-case'),
+        }
+      )}>
       <Row
+        className={classNames({
+          'version-data': isVersionPage,
+        })}
         data-testid="incident-manager-details-page-container"
         gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
         </Col>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <Row gutter={16}>
             <Col span={23}>
               <EntityHeaderTitle
                 className="w-max-full-45"
-                displayName={testCase?.displayName}
+                displayName={displayName}
                 icon={<TestCaseIcon className="h-9" />}
                 name={testCase?.name ?? ''}
                 serviceName="testCase"
               />
             </Col>
+
             <Col className="d-flex justify-end" span={1}>
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={() => history.push(ROUTES.INCIDENT_MANAGER)}
-                allowSoftDelete={false}
-                canDelete={hasDeletePermission}
-                displayName={testCase.displayName}
-                editDisplayNamePermission={editDisplayNamePermission}
-                entityFQN={testCase.fullyQualifiedName}
-                entityId={testCase.id}
-                entityName={testCase.name}
-                entityType={EntityType.TEST_CASE}
-                onEditDisplayName={handleDisplayNameChange}
-              />
+              <ButtonGroup
+                className="data-asset-button-group spaced"
+                data-testid="asset-header-btn-group"
+                size="small">
+                <Tooltip title={t('label.version-plural-history')}>
+                  <Button
+                    className="version-button"
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={onVersionClick}>
+                    <Typography.Text>{testCase?.version}</Typography.Text>
+                  </Button>
+                </Tooltip>
+                {!isVersionPage && (
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={() =>
+                      history.push(ROUTES.INCIDENT_MANAGER)
+                    }
+                    allowSoftDelete={false}
+                    canDelete={hasDeletePermission}
+                    displayName={testCase.displayName}
+                    editDisplayNamePermission={editDisplayNamePermission}
+                    entityFQN={testCase.fullyQualifiedName}
+                    entityId={testCase.id}
+                    entityName={testCase.name}
+                    entityType={EntityType.TEST_CASE}
+                    onEditDisplayName={handleDisplayNameChange}
+                  />
+                )}
+              </ButtonGroup>
             </Col>
           </Row>
         </Col>
-        <Col className="p-x-lg">
+        <Col className="w-full">
           <IncidentManagerPageHeader
             fetchTaskCount={getEntityFeedCount}
+            isVersionPage={isVersionPage}
             testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
         </Col>
-        <Col span={24}>
+        <Col className="incident-manager-details-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             data-testid="tabs"
             items={tabDetails}
             onChange={handleTabChange}
           />
         </Col>
       </Row>
+      {isVersionPage && (
+        <EntityVersionTimeLine
+          currentVersion={toString(version)}
+          entityType={EntityType.TEST_CASE}
+          versionHandler={versionHandler}
+          versionList={versionList}
+          onBack={onVersionClick}
+        />
+      )}
     </PageLayoutV1>
   );
 };

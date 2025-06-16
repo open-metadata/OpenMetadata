@@ -15,6 +15,7 @@ import { EntityReference } from '../../../generated/tests/testCase';
 export interface NoOwnerFoundProps {
   isCompactView: boolean;
   placeHolder?: string;
+  showLabel?: boolean;
   owners: EntityReference[];
   hasPermission?: boolean;
   onUpdate?: (owners?: EntityReference[]) => void;

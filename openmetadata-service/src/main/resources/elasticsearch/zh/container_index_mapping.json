@@ -55,6 +55,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -103,8 +107,8 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "parent": {
         "properties": {
@@ -158,6 +162,7 @@
                 "fields": {
                   "keyword": {
                     "type": "keyword",
+                    "normalizer": "lowercase_normalizer",
                     "ignore_above": 256
                   }
                 }
@@ -374,6 +379,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -548,18 +554,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

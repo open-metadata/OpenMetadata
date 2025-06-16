@@ -71,7 +71,17 @@ export enum EntityFields {
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
   SERVICE_NAME = 'service.name.keyword',
+  SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
+  TAGS_LABEL_TYPE = 'tags.labelType',
 }
+
+export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
+  [EntityFields.SERVICE_NAME]: ['service.name'],
+  [EntityFields.DATABASE_SCHEMA_NAME]: ['databaseSchema.name'],
+  [EntityFields.DATABASE_NAME]: ['database.name'],
+  [EntityFields.COLUMN]: ['columns.name'],
+  [EntityFields.NAME_KEYWORD]: ['name'],
+};
 
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.

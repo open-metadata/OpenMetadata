@@ -91,6 +91,7 @@ export const getSearchIndexDetailsTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.SEARCH_INDEX}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={searchIndexDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
@@ -109,7 +110,13 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children: !viewSampleDataPermission ? (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         <SampleDataWithMessages
@@ -150,6 +157,7 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SEARCH_INDEX_SETTINGS,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
           sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
           title={t('label.search-index-setting-plural')}
         />
@@ -167,13 +175,11 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: searchIndexDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.SEARCH_INDEX>
-            entityType={EntityType.SEARCH_INDEX}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.SEARCH_INDEX>
+          entityType={EntityType.SEARCH_INDEX}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

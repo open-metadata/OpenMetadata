@@ -320,6 +320,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -405,6 +406,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "upstreamLineage": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

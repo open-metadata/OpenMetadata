@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -235,6 +239,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -270,8 +275,8 @@
       "entityType": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "owners": {
         "properties": {
@@ -454,9 +459,6 @@
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

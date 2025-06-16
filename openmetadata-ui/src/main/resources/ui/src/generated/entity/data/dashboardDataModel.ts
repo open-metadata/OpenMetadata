@@ -192,6 +192,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -732,6 +733,8 @@ export enum DataModelType {
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
+    MicroStrategyDataset = "MicroStrategyDataset",
+    PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",

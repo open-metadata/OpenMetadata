@@ -22,6 +22,7 @@ import {
   FIELDS,
   OPERATOR,
   runRuleGroupTests,
+  runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -233,7 +234,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       status: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
-      entityType: ['dashboard', 'mlmodel'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
@@ -287,5 +287,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         await runRuleGroupTests(page, field, operator, true, searchCriteria);
       });
     });
+  });
+
+  test('Verify search with non existing value do not result in infinite search', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await runRuleGroupTestsWithNonExistingValue(page);
   });
 });

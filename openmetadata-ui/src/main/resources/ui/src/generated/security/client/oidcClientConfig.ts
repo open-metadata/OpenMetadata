@@ -39,6 +39,10 @@ export interface OidcClientConfig {
      */
     id?: string;
     /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
      * Max Clock Skew
      */
     maxClockSkew?: string;
@@ -46,6 +50,10 @@ export interface OidcClientConfig {
      * Preferred Jws Algorithm.
      */
     preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
     /**
      * Auth0 Client Secret Key.
      */

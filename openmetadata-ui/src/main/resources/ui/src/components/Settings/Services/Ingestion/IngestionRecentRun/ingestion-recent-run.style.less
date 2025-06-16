@@ -25,46 +25,55 @@
   padding: 0 2px;
   margin: 0;
   cursor: pointer;
+  border: 1px solid;
 
   &.queued {
-    background-color: @grey-10;
-    border-color: @grey-10;
-    color: @grey-4;
+    background-color: @grey-9;
+    border-color: @grey-19;
+    color: @grey-19;
   }
 
   &.success {
     background-color: @green-9;
-    border-color: @green-9;
+    border-color: @green-10;
     color: @green-10;
   }
 
   &.failed {
     background-color: @red-9;
-    border-color: @red-9;
+    border-color: @red-10;
     color: @red-10;
   }
 
   &.running {
-    background-color: @blue-11;
-    border-color: @blue-11;
-    color: @blue-12;
+    background-color: @primary-button-background;
+    border-color: @primary-heading-color;
+    color: @primary-heading-color;
   }
 
   &.partialSuccess {
-    background-color: @green-2;
-    border-color: @green-2;
-    color: @green-11;
+    background-color: @green-15;
+    border-color: @green-14;
+    color: @green-14;
   }
 
   &.paused {
     background-color: @yellow-10;
-    border-color: @yellow-10;
+    border-color: @yellow-11;
     color: @yellow-11;
   }
 
   &.latest {
     width: fit-content;
-    padding: 14px;
-    border-radius: @border-radius-md;
+    padding: @padding-xss 10px;
+  }
+
+  &.pipeline-status {
+    border: 1px solid;
+    gap: 4px;
+
+    svg {
+      font-size: 12px;
+    }
   }
 }

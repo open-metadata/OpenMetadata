@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { App } from '../../../../../generated/entity/applications/app';
+import { AppRunRecord } from '../../../../../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
   PipelineStatus,
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-export interface IngestionRecentRunsProps {
-  ingestion?: IngestionPipeline;
+export interface IngestionRecentRunsProps<
+  T extends PipelineStatus | AppRunRecord,
+  U extends IngestionPipeline | App
+> {
+  ingestion?: U;
   classNames?: string;
-  appRuns?: PipelineStatus[];
+  appRuns?: T[];
+  isAppRunsLoading?: boolean;
   fetchStatus?: boolean;
   pipelineIdToFetchStatus?: string;
   handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;

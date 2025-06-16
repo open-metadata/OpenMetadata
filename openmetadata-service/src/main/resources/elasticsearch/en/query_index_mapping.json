@@ -97,6 +97,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -320,15 +321,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion"
-      },
-      "column_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
       },
       "domain" : {
         "properties": {

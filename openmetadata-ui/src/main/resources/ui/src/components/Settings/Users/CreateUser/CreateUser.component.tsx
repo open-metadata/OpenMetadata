@@ -50,7 +50,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
+import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -235,24 +235,6 @@ const CreateUser = ({
               fieldText: t('label.email'),
             }),
           },
-          {
-            type: 'email',
-            required: true,
-            validator: async (_, value) => {
-              if (EMAIL_REG_EX.test(value) && !forceBot) {
-                const isEmailAlreadyExists = await checkEmailInUse(value);
-                if (isEmailAlreadyExists) {
-                  return Promise.reject(
-                    t('message.entity-already-exists', {
-                      entity: value,
-                    })
-                  );
-                }
-
-                return Promise.resolve();
-              }
-            },
-          },
         ]}>
         <Input
           data-testid="email"
@@ -413,6 +395,7 @@ const CreateUser = ({
                   data-testid="roles-dropdown"
                   disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
@@ -439,19 +422,21 @@ const CreateUser = ({
         </>
       )}
 
-      <div className="m-t-xs">
-        {getField(domainsField)}
-        {selectedDomain && selectedDomain.length > 0 && (
-          <DomainLabel
-            multiple
-            domain={selectedDomain}
-            entityFqn=""
-            entityId=""
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        )}
-      </div>
+      {!isBot && (
+        <div className="m-t-xs">
+          {getField(domainsField)}
+          {selectedDomain && selectedDomain.length > 0 && (
+            <DomainLabel
+              multiple
+              domain={selectedDomain}
+              entityFqn=""
+              entityId=""
+              entityType={EntityType.USER}
+              hasPermission={false}
+            />
+          )}
+        </div>
+      )}
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}

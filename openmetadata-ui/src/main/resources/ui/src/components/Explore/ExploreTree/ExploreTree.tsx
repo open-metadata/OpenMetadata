@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tree, Typography } from 'antd';
+import { Tooltip, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
@@ -24,21 +24,26 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
-  updateCountsInTreeData,
   updateTreeData,
+  updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { useTranslation } from 'react-i18next';
+import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
@@ -48,24 +53,42 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <div className="d-flex justify-between">
-    <Typography.Text
-      className={classNames({
-        'm-l-xss': node.data?.isRoot,
-      })}
-      data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-      {node.title}
-    </Typography.Text>
-    {!isUndefined(node.count) && (
-      <span className="explore-node-count">{getCountBadge(node.count)}</span>
-    )}
-  </div>
-);
+const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
+  const tooltipText = node.tooltip ?? node.title;
+
+  return (
+    <Tooltip
+      title={
+        <Typography.Text className="text-white">
+          {tooltipText}
+          {node.type && (
+            <span className="text-grey-400">{` (${node.type})`}</span>
+          )}
+        </Typography.Text>
+      }>
+      <div className="d-flex justify-between">
+        <Typography.Text
+          className={classNames({
+            'm-l-xss': node.data?.isRoot,
+          })}
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          {node.title}
+        </Typography.Text>
+        {!isUndefined(node.count) && (
+          <span className="explore-node-count">
+            {getCountBadge(node.count)}
+          </span>
+        )}
+      </div>
+    </Tooltip>
+  );
+};
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+  const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
+
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -152,7 +175,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-
+          let type = null;
           let logo = undefined;
           if (isEntityType) {
             logo = searchClassBase.getEntityIcon(
@@ -169,6 +192,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               />
             );
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
               'service-icon w-4 h-4'
@@ -176,6 +200,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
           ) {
+            type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
               'service-icon w-4 h-4'
@@ -188,12 +213,19 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
+          const formattedEntityType =
+            entityUtilClassBase.getFormattedServiceType(bucket.key);
+
           return {
-            title: isEntityType
-              ? getPluralizeEntityName(bucket.key)
-              : bucket.key,
+            title: isEntityType ? (
+              <>{getPluralizeEntityName(bucket.key)}</>
+            ) : (
+              <>{bucket.key}</>
+            ),
+            tooltip: formattedEntityType,
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
+            type,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
             data: {
@@ -262,21 +294,14 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       });
 
       const buckets = res.aggregations['entityType'].buckets;
-      const counts: Record<string, number> = {};
+      setTreeData((origin) => {
+        const updatedData = updateTreeDataWithCounts(origin, buckets);
 
-      buckets.forEach((item) => {
-        counts[item.key] = item.doc_count;
-        if (staticKeysHavingCounts.includes(item.key)) {
-          setTreeData((origin) =>
-            updateCountsInTreeData(origin, item.key, item.doc_count)
-          );
-        }
+        return updatedData.filter(
+          (node) => node.totalCount !== undefined && node.totalCount > 0
+        );
       });
-
-      setTreeData((origin) =>
-        origin.filter((node) => node.count === undefined || node.count > 0)
-      );
-    } catch (error) {
+    } catch {
       // Do nothing
     } finally {
       setIsLoading(false);
@@ -296,6 +321,41 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (treeData.length === 0) {
+    return (
+      <ErrorPlaceHolder
+        className="h-min-80 d-flex flex-col justify-center border-none"
+        size={SIZE.MEDIUM}
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="font-medium"
+          style={{ marginBottom: '0' }}>
+          {t('message.no-data-yet')}
+        </Typography.Paragraph>
+        <Typography.Paragraph style={{ marginBottom: '0' }}>
+          {t('message.add-service-and-data-assets')}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.need-help-message"
+            renderElement={
+              <a
+                aria-label="Learn more about data discovery"
+                href={DATA_DISCOVERY_DOCS}
+                rel="noreferrer"
+                target="_blank">
+                {t('label.learn-more')}
+              </a>
+            }
+            values={{
+              doc: t('message.see-how-to-get-started'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (

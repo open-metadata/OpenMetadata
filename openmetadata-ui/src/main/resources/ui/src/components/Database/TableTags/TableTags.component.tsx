@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React from 'react';
+import { TAG_LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -32,7 +33,8 @@ const TableTags = <T extends TableUnion>({
   handleTagSelection,
   entityType,
 }: TableTagsComponentProps<T>) => {
-  const { onThreadLinkSelect } = useGenericContext();
+  const { onThreadLinkSelect, updateActiveTagDropdownKey } =
+    useGenericContext();
 
   return (
     <div
@@ -43,6 +45,7 @@ const TableTags = <T extends TableUnion>({
         data-testid="tags-wrapper">
         <TagsContainerV2
           showBottomEditButton
+          useGenericControls
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
           }}
@@ -50,11 +53,12 @@ const TableTags = <T extends TableUnion>({
           entityType={entityType}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
-          showHeader={false}
           showInlineEditButton={showInlineEditTagButton}
+          sizeCap={TAG_LIST_SIZE}
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);
+            updateActiveTagDropdownKey(null);
           }}>
           <>
             {!isReadOnly && (

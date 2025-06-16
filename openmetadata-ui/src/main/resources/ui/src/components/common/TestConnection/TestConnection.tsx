@@ -32,18 +32,16 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
-  WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -53,9 +51,9 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getServiceType,
-  getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
@@ -141,7 +139,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       setTestConnectionStep(response.steps);
       setDialogOpen(true);
-    } catch (error) {
+    } catch {
       throw t('message.test-connection-cannot-be-triggered');
     }
   };
@@ -181,7 +179,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     try {
       await deleteWorkflowById(workflowId, true);
       setCurrentWorkflow(undefined);
-    } catch (error) {
+    } catch {
       // do not throw error for this API
     }
   };
@@ -280,16 +278,13 @@ const TestConnection: FC<TestConnectionProps> = ({
     } = {};
 
     try {
-      const createWorkflowData: CreateWorkflow = {
-        name: getTestConnectionName(connectionType),
-        workflowType: WorkflowType.TestConnection,
-        request: {
-          connection: { config: updatedFormData as ConfigClass },
-          serviceType,
+      const createWorkflowData: CreateWorkflow =
+        serviceUtilClassBase.getAddWorkflowData(
           connectionType,
+          serviceType,
           serviceName,
-        },
-      };
+          updatedFormData
+        );
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
@@ -372,10 +367,15 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
+  };
+
   const handleTestConnection = () => {
     if (shouldValidateForm) {
       const isFormValid =
         onValidateFormRequiredFields && onValidateFormRequiredFields();
+      handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
       }
@@ -387,10 +387,6 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleCancelTestConnectionModal = () => {
     controller.abort();
     setDialogOpen(false);
-  };
-
-  const handleCloseErrorMessage = () => {
-    setErrorMessage(undefined);
   };
 
   useEffect(() => {

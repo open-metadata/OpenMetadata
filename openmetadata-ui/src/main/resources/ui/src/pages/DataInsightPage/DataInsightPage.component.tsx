@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Card, Col, Row } from 'antd';
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -114,21 +114,35 @@ const DataInsightPage = () => {
     }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-insight'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (noDataInsightPermission || noKPIPermission) {
     return (
       <Row align="middle" className="w-full h-full" justify="center">
         <Col span={24}>
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-insight'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </Col>
       </Row>
     );
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{
@@ -141,34 +155,35 @@ const DataInsightPage = () => {
         secondPanel={{
           children: (
             <DataInsightProvider>
-              <Row
-                className="page-container"
-                data-testid="data-insight-container"
-                gutter={[16, 16]}>
-                {isHeaderVisible && (
-                  <Col span={24}>
-                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
-                  </Col>
-                )}
-                <Col span={24}>
-                  <Switch>
-                    {dataInsightTabs.map((tab) => (
-                      <Route
-                        exact
-                        component={tab.component}
-                        key={tab.key}
-                        path={tab.path}
+              <Card className="h-full overflow-y-auto">
+                <Row data-testid="data-insight-container" gutter={[16, 16]}>
+                  {isHeaderVisible && (
+                    <Col span={24}>
+                      <DataInsightHeader
+                        onScrollToChart={handleScrollToChart}
                       />
-                    ))}
-                    <Route exact path={ROUTES.DATA_INSIGHT}>
-                      <Redirect to={getDataInsightPathWithFqn()} />
-                    </Route>
-                  </Switch>
-                </Col>
-              </Row>
+                    </Col>
+                  )}
+                  <Col span={24}>
+                    <Switch>
+                      {dataInsightTabs.map((tab) => (
+                        <Route
+                          exact
+                          component={tab.component}
+                          key={tab.key}
+                          path={tab.path}
+                        />
+                      ))}
+                      <Route exact path={ROUTES.DATA_INSIGHT}>
+                        <Redirect to={getDataInsightPathWithFqn()} />
+                      </Route>
+                    </Switch>
+                  </Col>
+                </Row>
+              </Card>
             </DataInsightProvider>
           ),
-          className: 'content-resizable-panel-container p-t-sm',
+          className: 'content-resizable-panel-container',
           minWidth: 800,
           flex: 0.87,
         }}

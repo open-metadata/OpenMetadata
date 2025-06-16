@@ -100,7 +100,7 @@ const MetricDetailsPage = () => {
         entityFqn
       );
       setMetricPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -238,7 +238,7 @@ const MetricDetailsPage = () => {
     const updatedData = data as Metric;
 
     setMetricDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -264,7 +264,15 @@ const MetricDetailsPage = () => {
     );
   }
   if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.metric'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

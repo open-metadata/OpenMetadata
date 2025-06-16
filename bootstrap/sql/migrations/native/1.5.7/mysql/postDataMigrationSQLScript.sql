@@ -14,4 +14,5 @@ SET json = JSON_MERGE_PRESERVE(
             )
         )
     )
-WHERE name = 'tableDiff';
+WHERE name = 'tableDiff'
+AND NOT JSON_CONTAINS(json->>'$.parameterDefinition', JSON_OBJECT('name', 'caseSensitiveColumns'));

@@ -44,7 +44,6 @@ export const SIDEBAR_LIST_ITEMS = {
   [SidebarItem.GLOSSARY]: [SidebarItem.GOVERNANCE, SidebarItem.GLOSSARY],
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
   [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
-  [SidebarItem.LINEAGE]: [SidebarItem.GOVERNANCE, SidebarItem.LINEAGE],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],

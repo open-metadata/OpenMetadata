@@ -14,6 +14,8 @@ import { expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -25,6 +27,9 @@ import {
   UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../support/tag/ClassificationClass';
+import { TagClass } from '../support/tag/TagClass';
+import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
@@ -36,6 +41,7 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
@@ -55,16 +61,21 @@ export const checkName = async (page: Page, name: string) => {
 
 export const selectActiveGlossary = async (
   page: Page,
-  glossaryName: string
+  glossaryName: string,
+  bWaitForResponse = true
 ) => {
   const menuItem = page.getByRole('menuitem', { name: glossaryName });
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
   if (!isSelected) {
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
-    await menuItem.click();
-    await glossaryResponse;
+    if (bWaitForResponse) {
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
+      await menuItem.click();
+      await glossaryResponse;
+    } else {
+      await menuItem.click();
+    }
   } else {
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -521,9 +532,7 @@ export const validateGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
-  await taskCountRes;
 
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
@@ -600,6 +609,24 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
+  await expect(
+    page.getByTestId('glossary-terms-table').getByTestId('loader')
+  ).toBeHidden();
+  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
+
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
@@ -669,17 +696,25 @@ export const addAssetToGlossaryTerm = async (
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
     const searchRes = page.waitForResponse('/api/v1/search/query*');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
+    const visibleName = entityDisplayName ?? entityName;
     await page
       .locator(
         '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
       )
-      .fill(entityName);
+      .fill(visibleName);
 
     await searchRes;
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   await page.click('[data-testid="save-btn"]');
@@ -759,7 +794,8 @@ export const confirmationDragAndDropGlossary = async (
   page: Page,
   dragElement: string,
   dropElement: string,
-  isHeader = false
+  isHeader = false,
+  tickCheckbox = false
 ) => {
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
@@ -771,10 +807,14 @@ export const confirmationDragAndDropGlossary = async (
     }`
   );
 
+  if (tickCheckbox) {
+    await page.getByTestId('confirm-status-checkbox').click();
+  }
+
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await page.getByRole('button', { name: 'Move' }).click();
   await patchGlossaryTermResponse;
 };
 
@@ -811,17 +851,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
-    ? '/api/v1/glossaryTerms/*'
-    : '/api/v1/glossaries/*';
+    ? '/api/v1/glossaryTerms/async/*'
+    : '/api/v1/glossaries/async/*';
   const deleteRes = page.waitForResponse(endpoint);
   await page.click('[data-testid="confirm-button"]');
   await deleteRes;
 
-  if (isGlossaryTerm) {
-    await toastNotification(page, /"Glossary Term" deleted successfully!/);
-  } else {
-    await toastNotification(page, /"Glossary" deleted successfully!/);
-  }
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
@@ -1092,11 +1128,10 @@ export const approveTagsTask = async (
   await selectActiveGlossary(page, entity.data.displayName);
   await page.waitForLoadState('networkidle');
 
-  const tagVisibility = await page.isVisible(
-    `[data-testid="tag-${value.tag}"]`
-  );
+  const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
+  await tagVisibility.scrollIntoViewIfNeeded();
 
-  expect(tagVisibility).toBe(true);
+  await expect(tagVisibility).toBeVisible();
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
@@ -1233,7 +1268,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows
@@ -1400,6 +1435,21 @@ export const updateGlossaryTermOwners = async (
   await glossaryTermResponse;
 };
 
+export const updateGlossaryReviewer = async (
+  page: Page,
+  reviewers: string[]
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: reviewers,
+    activatorBtnDataTestId: 'Add',
+    resultTestId: 'glossary-reviewer',
+    endpoint: EntityTypeEndpoint.Glossary,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
+};
+
 export const updateGlossaryTermReviewers = async (
   page: Page,
   term: GlossaryTermData,
@@ -1446,4 +1496,91 @@ export const checkGlossaryTermDetails = async (
       '[data-testid="reviewers-container"] [data-testid="owner-link"]'
     )
   ).toContainText(reviewer.responseData.displayName);
+};
+
+export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
+  // Create all necessary resources
+  const dataConsumerUser = new UserClass();
+  const id = uuid();
+  const glossary1 = new Glossary();
+  const glossaryTerm1 = new GlossaryTerm(glossary1);
+  await glossary1.create(apiContext);
+  await glossaryTerm1.create(apiContext);
+
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+
+  await dataConsumerUser.create(apiContext);
+  await classification.create(apiContext);
+  await tag.create(apiContext);
+
+  // Setup permissions
+  const dataConsumerPolicy = new PolicyClass();
+  const dataConsumerRole = new RolesClass();
+
+  // Create domain access policy
+  const matchTagRule = [
+    {
+      name: 'Hidden from Non Admins',
+      description: '',
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'deny',
+      condition: `matchAllTags('${tag.responseData.fullyQualifiedName}')`,
+    },
+  ];
+
+  await dataConsumerPolicy.create(apiContext, matchTagRule);
+  await dataConsumerRole.create(apiContext, [
+    dataConsumerPolicy.responseData.name,
+  ]);
+
+  // Create team for the user
+  const dataConsumerTeam = new TeamClass({
+    name: `PW_data_consumer_team-${id}`,
+    displayName: `PW Data Consumer Team ${id}`,
+    description: 'playwright data consumer team description',
+    teamType: 'Group',
+    users: [dataConsumerUser.responseData.id ?? ''],
+    defaultRoles: [dataConsumerRole.responseData.id ?? ''],
+  });
+
+  await dataConsumerTeam.create(apiContext);
+
+  // Set domain ownership
+  await glossary1.patch(apiContext, [
+    {
+      op: 'add',
+      path: '/tags/0',
+      value: {
+        tagFQN: tag.responseData.fullyQualifiedName,
+        source: 'Classification',
+      },
+    },
+  ]);
+
+  // Return cleanup function and all created resources
+  const cleanup = async (apiContext1: APIRequestContext) => {
+    await glossaryTerm1.delete(apiContext);
+    await glossary1.delete(apiContext);
+    await dataConsumerUser.delete(apiContext1);
+    await dataConsumerTeam.delete(apiContext1);
+    await dataConsumerPolicy.delete(apiContext1);
+    await dataConsumerRole.delete(apiContext1);
+  };
+
+  return {
+    dataConsumerUser,
+    glossary1,
+    glossaryTerm1,
+    dataConsumerTeam,
+    dataConsumerPolicy,
+    dataConsumerRole,
+    cleanup,
+  };
 };

@@ -254,7 +254,7 @@ export const TestCases = () => {
       });
 
       setTierOptions(options);
-    } catch (error) {
+    } catch {
       setTierOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -286,7 +286,7 @@ export const TestCases = () => {
         });
 
       setTagOptions(options);
-    } catch (error) {
+    } catch {
       setTagOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -324,7 +324,7 @@ export const TestCases = () => {
         };
       });
       setTableOptions(options);
-    } catch (error) {
+    } catch {
       setTableOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -362,7 +362,7 @@ export const TestCases = () => {
         };
       });
       setServiceOptions(options);
-    } catch (error) {
+    } catch {
       setServiceOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -470,11 +470,19 @@ export const TestCases = () => {
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
+    <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}

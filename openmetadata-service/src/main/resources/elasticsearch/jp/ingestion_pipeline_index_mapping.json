@@ -193,6 +193,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 36
               }
             }
@@ -311,9 +312,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "service_suggest": {
-        "type": "completion"
       },
       "totalVotes": {
         "type": "long",

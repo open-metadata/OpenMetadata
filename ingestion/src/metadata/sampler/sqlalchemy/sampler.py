@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 import hashlib
-import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
@@ -100,12 +99,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
         selectable = self.set_tablesample(self.raw_dataset.__table__)
+        client = self.get_client()
 
         entity = selectable if column is None else selectable.c.get(column.key)
         if label is not None:
-            query = self.client.query(entity, label)
+            query = client.query(entity, label)
         else:
-            query = self.client.query(entity)
+            query = client.query(entity)
 
         if self.partition_details:
             query = self.get_partitioned_query(query)
@@ -124,17 +124,20 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
+        client = self.get_client()
         if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             rnd = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             ).cte(f"{self.get_sampler_table_name()}_rnd")
-            session_query = self.client.query(rnd)
+            session_query = client.query(rnd)
             return session_query.where(
                 rnd.c.random <= self.sample_config.profileSample
             ).cte(f"{self.get_sampler_table_name()}_sample")
 
-        table_query = self.client.query(self.raw_dataset)
+        table_query = client.query(self.raw_dataset)
+        if self.partition_details:
+            table_query = self.get_partitioned_query(table_query)
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
@@ -196,23 +199,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
-        try:
+        with self.get_client() as client:
             sqa_sample = (
-                self.client.query(*sqa_columns)
+                client.query(*sqa_columns)
                 .select_from(ds)
                 .limit(self.sample_limit)
-                .all()
-            )
-        except Exception:
-            logger.debug(
-                "Cannot fetch sample data with random sampling. Falling back to 100 rows."
-            )
-            logger.debug(traceback.format_exc())
-            sqa_columns = list(inspect(self.raw_dataset).c)
-            sqa_sample = (
-                self.client.query(*sqa_columns)
-                .select_from(self.raw_dataset)
-                .limit(100)
                 .all()
             )
 
@@ -226,7 +217,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        rnd = self.client.execute(f"{self.sample_query}")
+        with self.get_client() as client:
+            rnd = client.execute(f"{self.sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
@@ -243,9 +235,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         stmt = text(f"{self.sample_query}")
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
-
-        return self.client.query(stmt.subquery()).cte(
-            f"{self.get_sampler_table_name()}_user_sampled"
+        return (
+            self.get_client()
+            .query(stmt.subquery())
+            .cte(f"{self.get_sampler_table_name()}_user_sampled")
         )
 
     def _partitioned_table(self) -> Query:
@@ -263,8 +256,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         if query is not None:
             return query.filter(partition_filter)
-        return self.client.query(self.raw_dataset).filter(partition_filter)
+        return self.get_client().query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
         return list(inspect(self.raw_dataset).c)
+
+    def close(self):
+        """Close the connection"""
+        self.get_client().close()
+        self.connection.pool.dispose()

@@ -41,6 +41,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -66,6 +70,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -106,6 +114,31 @@
           },
           "href": {
             "type": "text"
+          }
+        }
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
@@ -295,9 +328,6 @@
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

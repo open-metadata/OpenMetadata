@@ -1,15 +1,15 @@
 package org.openmetadata.service.migration.utils.v140;
 
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.json.JSONArray;
@@ -57,15 +57,17 @@ public class MigrationUtil {
         JSONObject jsonObj = new JSONObject(eventSubscription);
         // Read array detination if exist and check subscription type if Generic then change to
         // Webhook
-        JSONArray destination = jsonObj.getJSONArray("destinations");
-        if (destination != null && !destination.isEmpty()) {
-          for (Object value : destination) {
-            JSONObject destinationObj = (JSONObject) value;
-            if (destinationObj.getString("type").equals("Generic")) {
-              destinationObj.put("type", "Webhook");
-              collectionDAO
-                  .eventSubscriptionDAO()
-                  .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+        if (jsonObj.keySet().contains("destinations")) {
+          JSONArray destination = jsonObj.getJSONArray("destinations");
+          if (destination != null && !destination.isEmpty()) {
+            for (Object value : destination) {
+              JSONObject destinationObj = (JSONObject) value;
+              if (destinationObj.getString("type").equals("Generic")) {
+                destinationObj.put("type", "Webhook");
+                collectionDAO
+                    .eventSubscriptionDAO()
+                    .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+              }
             }
           }
         }

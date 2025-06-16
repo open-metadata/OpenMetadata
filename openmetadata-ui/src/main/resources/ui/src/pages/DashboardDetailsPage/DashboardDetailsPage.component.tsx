@@ -79,7 +79,7 @@ const DashboardDetailsPage = () => {
         entityFqn
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -243,7 +243,7 @@ const DashboardDetailsPage = () => {
     const updatedData = data as Dashboard;
 
     setDashboardDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -269,7 +269,15 @@ const DashboardDetailsPage = () => {
     );
   }
   if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.dashboard-detail-plural-lowercase'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

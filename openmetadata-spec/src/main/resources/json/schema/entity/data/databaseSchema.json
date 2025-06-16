@@ -121,6 +121,10 @@
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "certification": {
       "$ref": "../../type/assetCertification.json"
     },

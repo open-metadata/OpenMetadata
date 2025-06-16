@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -167,6 +167,7 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.settings.settings import Settings
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -264,6 +265,7 @@ ROUTES = {
     TestSuite.__name__: "/dataQuality/testSuites",
     CreateTestSuiteRequest.__name__: "/dataQuality/testSuites",
     TestCase.__name__: "/dataQuality/testCases",
+    TestCaseResult.__name__: "/dataQuality/testCases/testCaseResults",
     CreateTestCaseRequest.__name__: "/dataQuality/testCases",
     # Analytics
     WebAnalyticEventData.__name__: "/analytics/web/events/collect",

@@ -88,6 +88,7 @@ export const getPipelineDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.PIPELINE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchPipeline}
@@ -133,13 +134,11 @@ export const getPipelineDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: pipelineDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.PIPELINE>
-            entityType={EntityType.PIPELINE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.PIPELINE>
+          entityType={EntityType.PIPELINE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

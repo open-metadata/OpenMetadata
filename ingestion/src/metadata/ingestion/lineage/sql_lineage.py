@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,6 +54,7 @@ from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
+CUTOFF_NODES = 20
 
 
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
@@ -880,8 +881,9 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
 
     # Find all simple paths from each root to each leaf
     for root in root_nodes:
+        logger.debug(f"Processing root node {root}")
         for leaf in leaf_nodes:
-            paths.extend(nx.all_simple_paths(subtree, root, leaf))
+            paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
     return paths
 
 
@@ -903,6 +905,9 @@ def get_lineage_by_graph(
     if graph is None:
         return
 
+    logger.info(
+        f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+    )
     # Get all weakly connected components
     components = list(nx.weakly_connected_components(graph))
 

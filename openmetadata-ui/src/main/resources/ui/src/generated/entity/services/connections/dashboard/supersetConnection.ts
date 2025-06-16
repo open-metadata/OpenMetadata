@@ -50,9 +50,11 @@ export interface SupersetConnection {
  *
  * Regex to only fetch entities that matches the pattern.
  *
- * Regex to only include/exclude tables that matches the pattern.
- *
  * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
  *
@@ -125,7 +127,7 @@ export interface SupersetConnectionClass {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternObject;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the source service.
      *
@@ -141,7 +143,7 @@ export interface SupersetConnectionClass {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -174,6 +176,10 @@ export interface SupersetConnectionClass {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -271,33 +277,6 @@ export interface AzureCredentials {
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- */
-export interface DatabaseFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * Authentication provider for the Superset service. For basic user/password authentication,
  * the default value `db` can be used. This parameter is used internally to connect to
  * Superset's REST API.
@@ -383,15 +362,6 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**

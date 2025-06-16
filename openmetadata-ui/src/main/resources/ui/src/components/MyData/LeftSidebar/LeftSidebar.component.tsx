@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
-import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -25,23 +24,25 @@ import {
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
-
 const { Sider } = Layout;
 
 const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+  const {
+    preferences: { isSidebarCollapsed },
+  } = useCurrentUserPreferences();
 
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -82,17 +83,6 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
-  const handleMouseOver = useCallback(() => {
-    if (!isSidebarCollapsed) {
-      return;
-    }
-    setIsSidebarCollapsed(false);
-  }, [isSidebarCollapsed]);
-
-  const handleMouseOut = useCallback(() => {
-    setIsSidebarCollapsed(true);
-  }, []);
-
   const menuItems = useMemo(() => {
     return [
       ...sideBarItems.map((item) => {
@@ -109,32 +99,25 @@ const LeftSidebar = () => {
           }),
         };
       }),
-      {
-        type: 'divider',
-      },
-      ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setIsSidebarCollapsed(true);
     setOpenKeys([]);
   }, []);
 
   return (
     <Sider
       collapsible
-      className={classNames('left-sidebar-col left-sidebar-container', {
+      className={classNames({
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
       })}
       collapsed={isSidebarCollapsed}
-      collapsedWidth={84}
+      collapsedWidth={72}
       data-testid="left-sidebar"
       trigger={null}
-      width={228}
-      onMouseEnter={handleMouseOver}
-      onMouseLeave={handleMouseOut}>
+      width={228}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
@@ -148,17 +131,40 @@ const LeftSidebar = () => {
         </Link>
       </div>
 
-      <Menu
-        inlineIndent={16}
-        items={menuItems as MenuItemType[]}
-        mode="inline"
-        openKeys={openKeys}
-        rootClassName="left-sidebar-menu"
-        selectedKeys={selectedKeys}
-        subMenuCloseDelay={1}
-        onClick={handleMenuClick}
-        onOpenChange={setOpenKeys}
-      />
+      <div className="left-sidebar-layout">
+        <div className="menu-container">
+          <div className="top-menu">
+            <Menu
+              inlineIndent={16}
+              items={menuItems}
+              mode="inline"
+              openKeys={openKeys}
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+              onClick={handleMenuClick}
+              onOpenChange={setOpenKeys}
+            />
+          </div>
+
+          <div className="bottom-menu">
+            <Menu
+              inlineIndent={16}
+              items={[
+                {
+                  type: 'divider',
+                  style: {
+                    margin: '8px 0',
+                  },
+                },
+                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+              ]}
+              mode="inline"
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+            />
+          </div>
+        </div>
+      </div>
 
       {showConfirmLogoutModal && (
         <Modal

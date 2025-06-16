@@ -22,31 +22,21 @@ import {
   ReactFlowInstance,
 } from 'reactflow';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
-import {
-  EdgeDetails,
-  EntityLineageResponse,
-} from '../../components/Lineage/Lineage.interface';
+import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { EntityReference } from '../../generated/entity/type';
 import { LineageLayer } from '../../generated/settings/settings';
 
 export interface LineageProviderProps {
   children: ReactNode;
 }
 
-export type UpstreamDownstreamData = {
-  downstreamEdges: EdgeDetails[];
-  upstreamEdges: EdgeDetails[];
-  downstreamNodes: EntityReference[];
-  upstreamNodes: EntityReference[];
-};
-
 export enum LineagePlatformView {
   None = 'None',
   Service = 'Service',
   Domain = 'Domain',
+  DataProduct = 'DataProduct',
 }
 
 export interface LineageContextType {
@@ -66,7 +56,6 @@ export interface LineageContextType {
   isEditMode: boolean;
   entityLineage: EntityLineageResponse;
   selectedNode: SourceType;
-  upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   activeLayer: LineageLayer[];
   platformView: LineagePlatformView;
@@ -109,4 +98,5 @@ export interface LineageContextType {
   ) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
+  dqHighlightedEdges?: Set<string>;
 }

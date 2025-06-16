@@ -76,7 +76,6 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     DatasourceField,
     TableAndQuery,
     TableauDashboard,
-    TableauTag,
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -128,15 +127,8 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def prepare(self):
-        """
-        Prepare the source before ingestion
-        we will fetch the custom sql tables from the tableau server
-        """
-        self.client.cache_custom_sql_tables()
-
-    def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        return self.client.get_workbooks()
+    def get_dashboards_list(self) -> Iterable[TableauDashboard]:
+        yield from self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -145,18 +137,7 @@ class TableauSource(DashboardServiceSource):
         """
         Get Dashboard Details including the dashboard charts and datamodels
         """
-
-        # Get the tableau views/sheets
-        dashboard.charts = self.client.get_workbook_charts(dashboard_id=dashboard.id)
-
-        # Get the tableau data sources
-        dashboard.dataModels = self.client.get_datasources(dashboard_id=dashboard.id)
-
-        # Get custom SQL queries
-        dashboard.custom_sql_queries = self.client.get_custom_sql_table_queries(
-            dashboard_id=dashboard.id
-        )
-
+        dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
     def get_owner_ref(
@@ -200,16 +181,14 @@ class TableauSource(DashboardServiceSource):
         Method to yield tags related to specific dashboards
         """
         if self.source_config.includeTags:
-            tags: Set[TableauTag] = set()
+            tags: Set = set()
             for container in [[dashboard_details], dashboard_details.charts or []]:
                 for elem in container:
                     tags.update(elem.tags)
-
-            _tags = {tag.label for tag in tags}
             # retrieve tags from data models
             _data_models_tags = self._get_data_models_tags(dashboard_details.dataModels)
 
-            _all_tags = _tags.union(_data_models_tags)
+            _all_tags = tags.union(_data_models_tags)
 
             yield from get_ometa_tag_and_classification(
                 tags=[tag for tag in _all_tags],
@@ -219,9 +198,7 @@ class TableauSource(DashboardServiceSource):
                 include_tags=self.source_config.includeTags,
             )
 
-    def _get_datamodel_sql_query(
-        self, data_model: DataSource, dashboard_details: TableauDashboard
-    ) -> Optional[str]:
+    def _get_datamodel_sql_query(self, data_model: DataSource) -> Optional[str]:
         """
         Method to fetch the custom sql query from the tableau datamodels
         """
@@ -231,8 +208,8 @@ class TableauSource(DashboardServiceSource):
                 for referenced_query in table.referencedByQueries or []:
                     sql_queries.add(referenced_query.query)
             if not sql_queries:
-                if dashboard_details and dashboard_details.custom_sql_queries:
-                    sql_queries.update(dashboard_details.custom_sql_queries)
+                if query := self.client.get_custom_sql_table_queries(data_model.id):
+                    sql_queries.update(query)
             return "\n\n".join(sql_queries) or None
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -274,9 +251,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                sql=self._get_datamodel_sql_query(
-                    data_model=data_model, dashboard_details=dashboard_details
-                ),
+                sql=self._get_datamodel_sql_query(data_model=data_model),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
@@ -359,7 +334,7 @@ class TableauSource(DashboardServiceSource):
                 ],
                 tags=get_tag_labels(
                     metadata=self.metadata,
-                    tags=[tag.label for tag in dashboard_details.tags],
+                    tags=list(dashboard_details.tags),
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
@@ -394,7 +369,7 @@ class TableauSource(DashboardServiceSource):
                     columns.append(child_column.fullyQualifiedName.root)
         return columns
 
-    def _get_column_lineage(  # pylint: disable=arguments-differ
+    def _get_column_lineage(
         self,
         upstream_table: UpstreamTable,
         table_entity: Table,
@@ -617,6 +592,62 @@ class TableauSource(DashboardServiceSource):
                         db_service_name=db_service_name,
                         upstream_data_model_entity=upstream_data_model_entity,
                     )
+
+                    # Process custom SQL queries if available
+                    custom_sql_queries = self.client.get_custom_sql_table_queries(
+                        datasource_id=upstream_data_model.id
+                    )
+                    if custom_sql_queries:
+                        for query in custom_sql_queries or []:
+                            db_service_entity = None
+                            if db_service_name:
+                                db_service_entity = self.metadata.get_by_name(
+                                    entity=DatabaseService, fqn=db_service_name
+                                )
+                            lineage_parser = LineageParser(
+                                query,
+                                ConnectionTypeDialectMapper.dialect_of(
+                                    db_service_entity.serviceType.value
+                                )
+                                if db_service_entity
+                                else Dialect.ANSI,
+                            )
+                            for source_table in lineage_parser.source_tables or []:
+                                database_schema_table = fqn.split_table_name(
+                                    str(source_table)
+                                )
+                                database_name = database_schema_table.get("database")
+                                if db_service_entity:
+                                    if isinstance(
+                                        db_service_entity.connection.config,
+                                        BigQueryConnection,
+                                    ):
+                                        database_name = None
+                                    database_name = get_database_name_for_lineage(
+                                        db_service_entity, database_name
+                                    )
+                                schema_name = self.check_database_schema_name(
+                                    database_schema_table.get("database_schema")
+                                )
+                                table_name = database_schema_table.get("table")
+                                fqn_search_string = build_es_fqn_search_string(
+                                    database_name=database_name,
+                                    schema_name=schema_name,
+                                    service_name=db_service_name or "*",
+                                    table_name=table_name,
+                                )
+                                from_entities = self.metadata.search_in_any_service(
+                                    entity_type=Table,
+                                    fqn_search_string=fqn_search_string,
+                                    fetch_multiple_entities=True,
+                                )
+                                for table_entity in from_entities:
+                                    yield self._get_add_lineage_request(
+                                        to_entity=upstream_data_model_entity,
+                                        from_entity=table_entity,
+                                        sql=query,
+                                    )
+
             except Exception as err:
                 yield Either(
                     left=StackTraceError(
@@ -666,64 +697,6 @@ class TableauSource(DashboardServiceSource):
                             upstream_data_model_entity=data_model_entity,
                         )
 
-                # Process custom SQL queries if available
-                if dashboard_details.custom_sql_queries:
-                    for query in dashboard_details.custom_sql_queries:
-                        try:
-                            db_service_entity = None
-                            if db_service_name:
-                                db_service_entity = self.metadata.get_by_name(
-                                    entity=DatabaseService, fqn=db_service_name
-                                )
-                            lineage_parser = LineageParser(
-                                query,
-                                ConnectionTypeDialectMapper.dialect_of(
-                                    db_service_entity.serviceType.value
-                                )
-                                if db_service_entity
-                                else Dialect.ANSI,
-                            )
-                            for source_table in lineage_parser.source_tables or []:
-                                database_schema_table = fqn.split_table_name(
-                                    str(source_table)
-                                )
-                                database_name = database_schema_table.get("database")
-                                if db_service_entity:
-                                    if isinstance(
-                                        db_service_entity.connection.config,
-                                        BigQueryConnection,
-                                    ):
-                                        database_name = None
-                                    database_name = get_database_name_for_lineage(
-                                        db_service_entity, database_name
-                                    )
-                                schema_name = self.check_database_schema_name(
-                                    database_schema_table.get("database_schema")
-                                )
-                                table_name = database_schema_table.get("table")
-                                fqn_search_string = build_es_fqn_search_string(
-                                    database_name=database_name,
-                                    schema_name=schema_name,
-                                    service_name=db_service_name or "*",
-                                    table_name=table_name,
-                                )
-                                from_entities = self.metadata.search_in_any_service(
-                                    entity_type=Table,
-                                    fqn_search_string=fqn_search_string,
-                                    fetch_multiple_entities=True,
-                                )
-                                for table_entity in from_entities:
-                                    yield self._get_add_lineage_request(
-                                        to_entity=data_model_entity,
-                                        from_entity=table_entity,
-                                        sql=query,
-                                    )
-                        except Exception as err:
-                            logger.debug(traceback.format_exc())
-                            logger.error(
-                                f"Error processing custom SQL query lineage: {err}"
-                            )
-
             except Exception as err:
                 yield Either(
                     left=StackTraceError(
@@ -748,8 +721,8 @@ class TableauSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 site_url = (
-                    f"/site/{self.service_connection.siteUrl}/"
-                    if self.service_connection.siteUrl
+                    f"/site/{self.service_connection.siteName}/"
+                    if self.service_connection.siteName
                     else ""
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
@@ -768,7 +741,7 @@ class TableauSource(DashboardServiceSource):
                     sourceUrl=SourceUrl(chart_url),
                     tags=get_tag_labels(
                         metadata=self.metadata,
-                        tags=[tag.label for tag in chart.tags],
+                        tags=list(chart.tags),
                         classification_name=TABLEAU_TAG_CATEGORY,
                         include_tags=self.source_config.includeTags,
                     ),
@@ -895,6 +868,7 @@ class TableauSource(DashboardServiceSource):
                         [
                             TableAndQuery(table=table, query=custom_sql_table.query)
                             for table in from_entities
+                            if table is not None
                         ]
                     )
 
@@ -1006,7 +980,7 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
-    def yield_dashboard_usage(  # pylint: disable=W0221
+    def yield_dashboard_usage(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[DashboardUsage]]:
         """
@@ -1026,9 +1000,11 @@ class TableauSource(DashboardServiceSource):
                 fields=["usageSummary"],
             )
 
-            current_views = self.client.get_workbook_view_count_by_id(
-                workbook_id=dashboard_details.id
-            )
+            if not dashboard:
+                logger.debug(f"Dashboard {dashboard_fqn} not found, skipping usage")
+                return
+
+            current_views = dashboard_details.user_views
 
             if not current_views:
                 logger.debug(f"No usage to report for {dashboard_details.name}")

@@ -71,7 +71,7 @@ const PersonaPageLayout = () => {
 
       setPersona(data);
       handlePagingChange(paging);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -91,8 +91,12 @@ const PersonaPageLayout = () => {
       <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
           buttonId="add-persona-button"
+          className="border-none"
           heading={t('label.persona')}
           permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.persona'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
         />
@@ -136,7 +140,7 @@ const PersonaPageLayout = () => {
   }
 
   return (
-    <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+    <Row className="user-listing p-b-md" gutter={[16, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>

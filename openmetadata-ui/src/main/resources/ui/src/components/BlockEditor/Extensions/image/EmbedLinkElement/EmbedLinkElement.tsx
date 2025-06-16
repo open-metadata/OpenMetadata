@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { ImagePopoverContentProps } from '../ImageComponent.interface';
 
 const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
@@ -21,8 +22,12 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
   onUploadingChange,
   src,
   deleteNode,
+  fileType,
 }) => {
   const { t } = useTranslation();
+  const isAssetsUrl = useMemo(() => {
+    return src?.includes(UPLOADED_ASSETS_URL);
+  }, [src]);
 
   const handleEmbedImage: FormProps['onFinish'] = (values) => {
     onPopupVisibleChange(false);
@@ -53,13 +58,19 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
             <Input
               autoFocus
               data-testid="embed-input"
-              placeholder={t('label.paste-the-image-link') + ' ...'}
+              placeholder={
+                t('label.paste-the-file-type-link', {
+                  fileType: t(`label.${fileType}`),
+                }) + ' ...'
+              }
             />
           </Form.Item>
         </Col>
-        <Col className="om-image-node-embed-link-btn-col" span={24}>
+        <Col className="om-image-node-embed-link-btn-col gap-3" span={24}>
           <Space className="om-image-node-action">
             <Button
+              danger
+              type="text"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -68,9 +79,15 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
               {t('label.delete')}
             </Button>
           </Space>
-          <Button htmlType="submit" type="primary">
-            {t('label.embed-image')}
+
+          <Button type="link" onClick={() => onPopupVisibleChange(false)}>
+            {t('label.close')}
           </Button>
+          {isAssetsUrl ? null : (
+            <Button htmlType="submit" type="primary">
+              {t('label.embed-file-type', { fileType })}
+            </Button>
+          )}
         </Col>
       </Row>
     </Form>

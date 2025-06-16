@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Card,
   Col,
@@ -297,7 +296,7 @@ const AppearanceConfigSettingsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
-      <Row align="middle" className="page-container" gutter={[0, 16]}>
+      <Row align="middle" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -364,17 +363,7 @@ const AppearanceConfigSettingsPage = () => {
               <Card
                 className="white-label-config-card"
                 title={
-                  <div className="d-flex items-center">
-                    <Typography.Text>{t('label.custom-theme')}</Typography.Text>
-
-                    <Badge
-                      className="custom-theme-beta-tag"
-                      count={t('label.beta')}
-                      data-testid="custom-theme-beta-tag"
-                      offset={[10, 0]}
-                      size="small"
-                    />
-                  </div>
+                  <Typography.Text>{t('label.custom-theme')}</Typography.Text>
                 }>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {

@@ -23,6 +23,8 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.ws.rs.core.UriInfo;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,8 +33,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.validation.ConstraintViolationException;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -159,7 +159,7 @@ public class TypeRepository extends EntityRepository<Type> {
     type.setCustomProperties(updatedProperties);
     type.setUpdatedBy(updatedBy);
     type.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, type);
+    return createOrUpdate(uriInfo, type, updatedBy);
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
@@ -264,6 +264,14 @@ public class TypeRepository extends EntityRepository<Type> {
     Set<String> uniqueColumns = new HashSet<>(columns);
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
+    }
+    if (columns.size() < tableConfig.getMinColumns()
+        || columns.size() > tableConfig.getMaxColumns()) {
+      throw new IllegalArgumentException(
+          "Custom Property table has invalid value columns size must be between "
+              + tableConfig.getMinColumns()
+              + " and "
+              + tableConfig.getMaxColumns());
     }
 
     try {
@@ -435,30 +443,30 @@ public class TypeRepository extends EntityRepository<Type> {
       String fieldName = getCustomField(origProperty, "customPropertyConfig");
       if (previous == null || !previous.getVersion().equals(updated.getVersion())) {
         validatePropertyConfigUpdate(entity, origProperty, updatedProperty);
-      }
-      if (recordChange(
-          fieldName,
-          origProperty.getCustomPropertyConfig(),
-          updatedProperty.getCustomPropertyConfig())) {
-        String customPropertyFQN =
-            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-        EntityReference propertyType =
-            updatedProperty.getPropertyType(); // Don't store entity reference
-        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
-        updatedProperty.withPropertyType(propertyType); // Restore entity reference
-        daoCollection
-            .fieldRelationshipDAO()
-            .upsert(
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                Entity.TYPE,
-                Entity.TYPE,
-                Relationship.HAS.ordinal(),
-                "customProperty",
-                customPropertyJson);
-        postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
+        if (recordChange(
+            fieldName,
+            origProperty.getCustomPropertyConfig(),
+            updatedProperty.getCustomPropertyConfig())) {
+          String customPropertyFQN =
+              getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+          EntityReference propertyType =
+              updatedProperty.getPropertyType(); // Don't store entity reference
+          String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+          updatedProperty.withPropertyType(propertyType); // Restore entity reference
+          daoCollection
+              .fieldRelationshipDAO()
+              .upsert(
+                  customPropertyFQN,
+                  updatedProperty.getPropertyType().getName(),
+                  customPropertyFQN,
+                  updatedProperty.getPropertyType().getName(),
+                  Entity.TYPE,
+                  Entity.TYPE,
+                  Relationship.HAS.ordinal(),
+                  "customProperty",
+                  customPropertyJson);
+          postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
+        }
       }
     }
 
@@ -497,7 +505,7 @@ public class TypeRepository extends EntityRepository<Type> {
         HashSet<String> addedKeys = new HashSet<>(updatedKeys);
         addedKeys.removeAll(origKeys);
 
-        if (!removedKeys.isEmpty() && addedKeys.isEmpty()) {
+        if (!removedKeys.isEmpty()) {
           List<String> removedEnumKeys = new ArrayList<>(removedKeys);
 
           try {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import React, {
@@ -54,11 +54,9 @@ const AppSchedule = ({
   const { config } = useLimitStore();
 
   const showRunNowButton = useMemo(() => {
-    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
-      return true;
-    }
-
-    return false;
+    return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
+      appData?.scheduleType
+    );
   }, [appData]);
 
   const { pipelineSchedules } =
@@ -244,9 +242,9 @@ const AppSchedule = ({
           </Col>
         )}
 
-        <Divider />
-
-        <Col span={24}>{appRunHistory}</Col>
+        <Col className="mt-4" span={24}>
+          {appRunHistory}
+        </Col>
       </Row>
       <Modal
         destroyOnClose

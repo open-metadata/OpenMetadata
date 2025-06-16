@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -33,6 +33,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -42,12 +43,12 @@ export const DomainLabelV2 = <
     domain?: EntityReference | EntityReference[];
     id: string;
     fullyQualifiedName: string;
+    deleted?: boolean;
   }
 >({
-  hasPermission,
   ...props
 }: Partial<DomainLabelProps>) => {
-  const { data, type: entityType } = useGenericContext<T>();
+  const { data, type: entityType, permissions } = useGenericContext<T>();
   const { id: entityId, fullyQualifiedName: entityFqn, domain } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
@@ -141,7 +142,6 @@ export const DomainLabelV2 = <
       return (
         <Typography.Text
           className={classNames(
-            'domain-link',
             { 'font-medium text-xs': !props.showDomainHeading },
             props.textClassName
           )}
@@ -151,6 +151,10 @@ export const DomainLabelV2 = <
       );
     }
   }, [activeDomain]);
+
+  const hasPermission = useMemo(() => {
+    return permissions?.EditAll && !data?.deleted;
+  }, [permissions?.EditAll, data?.deleted]);
 
   const selectableList = useMemo(() => {
     return (
@@ -168,28 +172,32 @@ export const DomainLabelV2 = <
   const label = useMemo(() => {
     if (props.showDomainHeading) {
       return (
-        <>
-          <div className="d-flex items-center m-b-xs">
-            <Typography.Text className="right-panel-label m-r-xss">
-              {t('label.domain')}
-            </Typography.Text>
-            {selectableList}
-          </div>
-
+        <ExpandableCard
+          cardProps={{
+            title: (
+              <div className="d-flex items-center gap-1">
+                <Typography.Text className="text-sm font-medium">
+                  {t('label.domain')}
+                </Typography.Text>
+                {selectableList}
+              </div>
+            ),
+          }}
+          isExpandDisabled={!Array.isArray(domainLink)}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>
-        </>
+        </ExpandableCard>
       );
     }
 
     return (
-      <div
+      <Card
         className="d-flex items-center gap-1 flex-wrap"
         data-testid="header-domain-container">
         {domainLink}
         {selectableList}
-      </div>
+      </Card>
     );
   }, [activeDomain, hasPermission, selectableList]);
 

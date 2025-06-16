@@ -6,39 +6,66 @@ collate: true
 
 # Governance Workflows - Table Certification Workflow (Default)
 
-The **Table Certification Workflow** is a periodic batch workflow designed to automatically manage the certification process for tables within Collate.
-It is triggered periodically based on the configured scheduled, it fetches the assets based on the filters and it certifies tables based on their attributes.
+Collate introduces a Data Governance Automation Framework that enables customizable certification workflows to classify data assets—such as tables and dashboards—into Bronze, Silver, or Gold categories. This helps ensure that users can easily identify well-managed and trusted data assets.
+
+## Overview
+
+Without standardized certification, data teams may face challenges in identifying correct, actively-used assets with complete and up-to-date documentation. The **Table Certification Workflow** addresses this issue by enforcing validation rules and assigning visual certification badges.
+
+## Certification Classification
+
+Navigate to the **Classification** tab in the UI to view the predefined certification levels:
+
+- **Gold**: Highest level of trust and documentation completeness.
+- **Silver**: Moderate level with essential documentation and ownership.
+- **Bronze**: Basic level indicating partial metadata completeness.
+- **Uncertified**: Assets that do not meet any predefined criteria.
+
+## Workflow Features
+
+### Customizable Validation Rules
+
+Each certification level (**Gold**, **Silver**, **Bronze**) is determined based on customizable criteria such as:
+
+- Ownership assignment  
+- Presence of description  
+- Tag classification (e.g., Tier)  
+- Custom properties
 
 {% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification.png" alt="table-certification" /%}
 
-## Workflow Elements
+## Trigger Options
 
-- **Owners and Description are not Null nor Empty**
-This task checks where the table has an owner and a description
+Certification workflows can be triggered:
 
-If either attribute is missing or empty, the workflow moves to **Don't set certification**.
-Otherwise, the workflow moves to **Entity is Tier 1 or Tier 2**.
+- **On a scheduled basis** (e.g., daily, weekly)
+- **On-demand** via the user interface
 
-- **Entity is Tier 1 or Tier 2**
-This task checks if the table is categorized under *Tier 1* or *Tier 2*.
+{% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification1.png" alt="table-certification-trigger" /%}
 
-If the table is either *Tier 1* or *Tier 2*, the workflow moves to **Entity is Tier 1**.
-Otherwise, the workflow moves to **Set Bronze Certification**.
+## Certification Indicators
 
-- **Entity is Tier 1**
-This task checks if the table is specifically *Tier 1*.
+Once the workflow is executed:
 
-If the table is *Tier 1*, the workflow moves to **Set Gold Certification**.
-Otherwise, the workflow moves to **Set Silver Certification**.
+- Certified assets are marked with a **badge** next to their name, indicating their certification level.
+- This **visual cue** helps users quickly assess the quality and reliability of the asset.
 
-- **Set No Certification**
-Sets the table certification to *None*.
+{% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification2.png" alt="table-certification-indicators" /%}
 
-- **Set Bronze Certification**
-Sets the table certification to *Bronze*.
+## Examples
 
-- **Set Silver Certification**
-Sets the table certification to *Silver*.
+| Asset Description                               | Certification Level |
+|------------------------------------------------|---------------------|
+| Has description, owner, and Tier 1 tag         | Gold                |
+| Has description, owner, and Tier 2 tag         | Silver              |
+| Has description and owner but no Tier tag      | Bronze              |
+| Lacks description, owner, and tier             | Uncertified         |
 
-- **Set Gold Certification**
-Sets the table certification to *Gold*.
+{% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification3.png" alt="table-certification-asset-description" /%}
+
+## Benefits
+
+- Helps enforce governance best practices  
+- Makes it easy to distinguish between trusted and unmanaged data assets  
+- Encourages data curation and improves metadata quality  
+- Supports both proactive and reactive data certification strategies

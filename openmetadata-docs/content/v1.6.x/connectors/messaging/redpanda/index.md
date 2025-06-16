@@ -18,6 +18,7 @@ Configure and schedule Redpanda metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/messaging/redpanda/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/redpanda/yaml"} /%}
 
@@ -66,5 +67,3 @@ To ingest the topic schema `Schema Registry URL` must be passed
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

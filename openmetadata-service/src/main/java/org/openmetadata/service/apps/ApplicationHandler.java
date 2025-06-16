@@ -6,13 +6,13 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import io.dropwizard.configuration.ConfigurationException;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -115,7 +115,7 @@ public class ApplicationHandler {
   public void installApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).install();
+      runAppInit(app, daoCollection, searchRepository).install(installedBy);
       installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException

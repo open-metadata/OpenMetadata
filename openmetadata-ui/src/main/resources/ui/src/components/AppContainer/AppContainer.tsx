@@ -21,11 +21,10 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Appbar from '../AppBar/Appbar';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
 
 const { Content } = Layout;
@@ -33,9 +32,9 @@ const { Content } = Layout;
 const AppContainer = () => {
   const { currentUser, setAppPreferences, appPreferences } =
     useApplicationStore();
-  const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
+  const { isAuthenticated } = useApplicationStore();
 
   const { setConfig, bannerDetails } = useLimitStore();
 
@@ -56,22 +55,11 @@ const AppContainer = () => {
     }
   }, []);
 
-  const appendReserveRightSidebarClass = useCallback(() => {
-    const element = document.getElementsByTagName('body');
-    element[0].classList.add('reserve-right-sidebar');
-  }, []);
-
   useEffect(() => {
     if (currentUser?.id) {
       fetchAppConfigurations();
     }
   }, [currentUser?.id]);
-
-  useEffect(() => {
-    if (applicationsClassBase.isFloatingButtonPresent(applications)) {
-      appendReserveRightSidebarClass();
-    }
-  }, [applications]);
 
   return (
     <Layout>
@@ -86,7 +74,10 @@ const AppContainer = () => {
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
-          <Appbar />
+          {applicationRoutesClass.isProtectedRoute(location.pathname) &&
+          isAuthenticated ? (
+            <NavBar />
+          ) : null}
 
           {/* Render main content */}
           <Content>

@@ -35,7 +35,7 @@ export interface CreateSearchService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -61,7 +61,7 @@ export interface SearchConnection {
 /**
  * ElasticSearch Connection.
  *
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
@@ -91,40 +91,13 @@ export interface ConfigClass {
     /**
      * ElasticSearch Type
      *
-     * Service Type
+     * OpenSearch Type
      *
      * Custom search service type
      */
     type?:              SearchServiceType;
+    verifySSL?:         VerifySSL;
     connectionOptions?: { [key: string]: string };
-    /**
-     * Keep Alive Timeout in Seconds
-     */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * OpenSearch Password for Login
-     */
-    password?: string;
-    /**
-     * Http/Https connection scheme
-     */
-    scheme?: string;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?: number;
-    /**
-     * Truststore Password
-     */
-    truststorePassword?: string;
-    /**
-     * Truststore Path
-     */
-    truststorePath?: string;
-    /**
-     * OpenSearch Username for Login
-     */
-    username?: string;
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
@@ -137,6 +110,8 @@ export interface ConfigClass {
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
+ *
+ * AWS credentials configs.
  */
 export interface AuthConfigurationType {
     /**
@@ -155,6 +130,46 @@ export interface AuthConfigurationType {
      * Elastic Search API Key ID for API Authentication
      */
     apiKeyId?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -227,7 +242,7 @@ export interface SSLCertificates {
  *
  * ElasticSearch service type
  *
- * Service Type
+ * OpenSearch Type
  *
  * OpenSearch service type
  *
@@ -239,6 +254,15 @@ export enum SearchServiceType {
     CustomSearch = "CustomSearch",
     ElasticSearch = "ElasticSearch",
     OpenSearch = "OpenSearch",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**
@@ -350,6 +374,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

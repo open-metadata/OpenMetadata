@@ -27,7 +27,7 @@ import {
 } from 'lodash';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
@@ -39,20 +39,23 @@ import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
   Column,
   ColumnProfile,
+  Table as TableType,
 } from '../../../../../generated/entity/data/table';
 import {
   TestCase,
   TestCaseStatus,
 } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import { usePaging } from '../../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+} from '../../../../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
-import {
-  getEntityName,
-  searchInColumns,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
 import {
   getAddCustomMetricPath,
@@ -64,7 +67,7 @@ import {
 } from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
 import Table from '../../../../common/Table/Table';
@@ -98,16 +101,36 @@ const ColumnProfileTable = () => {
     onDateRangeChange,
     testCaseSummary,
   } = useTableProfiler();
+
   const testCaseCounts = useMemo(
     () => testCaseSummary?.columnTestSummary ?? [],
     [testCaseSummary]
   );
   const isLoading = isTestsLoading || isProfilerDataLoading;
-  const columns = tableProfiler?.columns ?? [];
   const [searchText, setSearchText] = useState<string>('');
-  const [data, setData] = useState<ModifiedColumn[]>(columns);
+  const [data, setData] = useState<ModifiedColumn[]>([]);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [columnTestCases, setColumnTestCases] = useState<TestCase[]>([]);
+  const [isColumnsLoading, setIsColumnsLoading] = useState(false);
+  const {
+    currentPage,
+    paging,
+    pageSize,
+    showPagination,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+
+  const columnCount = useMemo(() => {
+    return tableProfiler?.profile?.columnCount ?? paging.total;
+  }, [overallSummary]);
+
+  // SingleColumnProfile needs tableDetailsWithColumns to be passed as props
+  const tableDetailsWithColumns = useMemo(
+    () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
+    [tableProfiler, data]
+  );
 
   const { activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
@@ -225,6 +248,7 @@ const ColumnProfileTable = () => {
         title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
+        width: 100,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
@@ -250,6 +274,7 @@ const ColumnProfileTable = () => {
         title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
+        width: 150,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
@@ -264,14 +289,14 @@ const ColumnProfileTable = () => {
         },
       },
     ];
-  }, [columns, testCaseCounts]);
+  }, [testCaseCounts]);
 
   const selectedColumn = useMemo(() => {
     return find(
-      columns,
+      data,
       (column: Column) => column.fullyQualifiedName === activeColumnFqn
     );
-  }, [columns, activeColumnFqn]);
+  }, [data, activeColumnFqn]);
 
   const addButtonContent = [
     {
@@ -348,12 +373,7 @@ const ColumnProfileTable = () => {
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
-    if (searchText) {
-      const searchCols = searchInColumns(columns, searchText);
-      setData(searchCols);
-    } else {
-      setData(columns);
-    }
+    handlePageChange(1);
   };
 
   const fetchColumnTestCase = async (activeColumnFqn: string) => {
@@ -366,16 +386,65 @@ const ColumnProfileTable = () => {
       });
 
       setColumnTestCases(data);
-    } catch (error) {
+    } catch {
       setColumnTestCases([]);
     } finally {
       setIsTestCaseLoading(false);
     }
   };
 
+  const fetchTableColumnWithProfiler = useCallback(
+    async (page: number, searchText: string) => {
+      const tableFQN = tableProfiler?.fullyQualifiedName;
+
+      if (!tableFQN) {
+        return;
+      }
+
+      setIsColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchText
+          ? await searchTableColumnsByFQN(tableFQN, {
+              q: searchText,
+              limit: pageSize,
+              offset: offset,
+              fields: TabSpecificField.PROFILE,
+            })
+          : await getTableColumnsByFQN(tableFQN, {
+              limit: pageSize,
+              offset: offset,
+              fields: TabSpecificField.PROFILE,
+            });
+
+        setData(response.data || []);
+        handlePagingChange(response.paging);
+      } catch {
+        setData([]);
+        handlePagingChange({
+          offset: 1,
+          total: 0,
+        });
+      } finally {
+        setIsColumnsLoading(false);
+      }
+    },
+    [tableProfiler?.fullyQualifiedName, pageSize, searchText]
+  );
+
+  const handleColumnProfilePageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+    },
+    [paging, fetchTableColumnWithProfiler, searchText]
+  );
+
   useEffect(() => {
-    setData(columns);
-  }, [columns]);
+    if (tableProfiler?.fullyQualifiedName) {
+      fetchTableColumnWithProfiler(currentPage, searchText);
+    }
+  }, [tableProfiler?.fullyQualifiedName, currentPage, searchText, pageSize]);
 
   useEffect(() => {
     if (activeColumnFqn) {
@@ -384,6 +453,28 @@ const ColumnProfileTable = () => {
       setColumnTestCases([]);
     }
   }, [activeColumnFqn]);
+
+  const pagingProps = useMemo(() => {
+    return {
+      currentPage: currentPage,
+      pageSize: pageSize,
+      showPagination: showPagination,
+      paging: paging,
+      isLoading: isColumnsLoading,
+      isNumberBased: !isEmpty(searchText),
+      pagingHandler: handleColumnProfilePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    };
+  }, [currentPage, pageSize, showPagination, searchText, isColumnsLoading]);
+
+  const searchProps = useMemo(() => {
+    return {
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      typingInterval: 500,
+      onSearch: handleSearchAction,
+    };
+  }, [searchText, handleSearchAction]);
 
   return (
     <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
@@ -407,7 +498,7 @@ const ColumnProfileTable = () => {
                   {!isEmpty(activeColumnFqn) && (
                     <ColumnPickerMenu
                       activeColumnFqn={activeColumnFqn}
-                      columns={columns}
+                      columns={data}
                       handleChange={updateActiveColumnFqn}
                     />
                   )}
@@ -477,7 +568,11 @@ const ColumnProfileTable = () => {
                     showProgressBar={false}
                     title={summery.title}
                     total={0}
-                    value={summery.value}
+                    value={
+                      summery.key === 'column-count'
+                        ? columnCount
+                        : summery.value
+                    }
                   />
                 </Col>
               ))}
@@ -500,27 +595,19 @@ const ColumnProfileTable = () => {
       </Col>
       {isEmpty(activeColumnFqn) ? (
         <Col span={24}>
-          <div className="w-max-400">
-            <Searchbar
-              placeholder={t('message.find-in-table')}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchAction}
-            />
-          </div>
-
           <Table
-            bordered
             columns={tableColumn}
+            customPaginationProps={pagingProps}
             dataSource={data}
             expandable={getTableExpandableConfig<Column>()}
-            loading={isLoading}
+            loading={isColumnsLoading || isLoading}
             locale={{
               emptyText: <FilterTablePlaceHolder />,
             }}
             pagination={false}
             rowKey="name"
             scroll={{ x: true }}
+            searchProps={searchProps}
             size="small"
           />
         </Col>
@@ -529,6 +616,7 @@ const ColumnProfileTable = () => {
           <SingleColumnProfile
             activeColumnFqn={activeColumnFqn}
             dateRangeObject={dateRangeObject}
+            tableDetails={tableDetailsWithColumns}
           />
         </Col>
       )}

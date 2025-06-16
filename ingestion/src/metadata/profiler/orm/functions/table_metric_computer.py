@@ -1,9 +1,9 @@
 #  pylint: disable=protected-access,attribute-defined-outside-init
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -336,12 +336,16 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
+        schema = (
+            self.schema_name.startswith(
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}."
+            )
+            and self.schema_name
+            or f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}"
+        )
         query = self._build_query(
             columns,
-            self._build_table(
-                "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
-            ),
+            self._build_table("__TABLES__", schema),
             where_clause,
         )
         res = self.runner._session.execute(query).first()

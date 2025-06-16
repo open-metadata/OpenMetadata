@@ -17,7 +17,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
-import './voting-component.less';
 import { VotingProps } from './voting.interface';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {

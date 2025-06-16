@@ -19,7 +19,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -64,7 +64,7 @@ export const UnAuthenticatedAppRouter = () => {
     }
   }, [authConfig?.provider]);
 
-  if (isProtectedRoute(location.pathname)) {
+  if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
     return <Redirect to={ROUTES.SIGNIN} />;
   }
 

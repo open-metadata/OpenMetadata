@@ -37,7 +37,7 @@ import { getVersionPath } from '../../../utils/RouterUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -132,7 +132,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         key: 'description',
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -179,7 +179,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -191,7 +191,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <Table
-                    bordered
                     columns={tableColumn}
                     data-testid="schema-table"
                     dataSource={currentVersionData?.charts}
@@ -208,12 +207,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
+                  newLook
                   activeDomain={domain}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
                     permission={false}
@@ -277,8 +278,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.DASHBOARD}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tabs-new"
                   data-testid="tabs"
                   defaultActiveKey={tab}
                   items={tabItems}

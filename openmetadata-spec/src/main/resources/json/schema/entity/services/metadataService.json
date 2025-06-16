@@ -151,11 +151,15 @@
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }

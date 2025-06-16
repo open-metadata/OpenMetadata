@@ -56,8 +56,6 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await mysqlService.fillIngestionDetails(page);
 
-  await page.click('#root\\/enableAutoClassification');
-
   await page.click('[data-testid="submit-btn"]');
 
   // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior

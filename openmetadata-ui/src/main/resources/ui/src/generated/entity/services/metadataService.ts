@@ -37,6 +37,10 @@ export interface MetadataService {
      */
     domain?: EntityReference;
     /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -55,7 +59,7 @@ export interface MetadataService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this database service.
      */
@@ -186,7 +190,7 @@ export interface Connection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternClass;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -215,12 +219,12 @@ export interface Connection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?:        DatabaseFilterPatternClass;
+    schemaFilterPattern?:        FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: DatabaseFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -514,7 +518,7 @@ export interface AlationDatabaseConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -535,7 +539,7 @@ export interface AlationDatabaseConnection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
-    tableFilterPattern?: DatabaseFilterPatternClass;
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -559,6 +563,10 @@ export interface AlationDatabaseConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -673,7 +681,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -755,15 +762,6 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
@@ -806,26 +804,6 @@ export enum SSLMode {
     Require = "require",
     VerifyCA = "verify-ca",
     VerifyFull = "verify-full",
-}
-
-/**
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface DatabaseFilterPatternClass {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
 }
 
 /**
@@ -954,14 +932,14 @@ export enum VerifySSL {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * The ingestion agent responsible for executing the ingestion pipeline.
- *
- * Owners of this database service.
+ * Followers of this entity.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
@@ -1009,9 +987,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1067,6 +1047,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

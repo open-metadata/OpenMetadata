@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,9 +20,9 @@ class MysqlLineageSource(MysqlQueryParserSource, LineageSource):
     sql_stmt = MYSQL_SQL_STATEMENT
     filters = """
         AND (
-            lower(argument) LIKE '%%create%%table%%select%%'
-            OR lower(argument) LIKE '%%insert%%into%%select%%'
-            OR lower(argument) LIKE '%%update%%'
-            OR lower(argument) LIKE '%%merge%%'
+            lower({sql_column}) LIKE '%%create%%table%%select%%'
+            OR lower({sql_column}) LIKE '%%insert%%into%%select%%'
+            OR lower({sql_column}) LIKE '%%update%%'
+            OR lower({sql_column}) LIKE '%%merge%%'
         )
     """

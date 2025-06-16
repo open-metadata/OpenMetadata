@@ -190,6 +190,31 @@
           }
         }
       },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -235,6 +260,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

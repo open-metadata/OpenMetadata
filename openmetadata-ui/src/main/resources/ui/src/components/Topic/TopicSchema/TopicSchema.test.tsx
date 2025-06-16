@@ -42,6 +42,25 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  handleUpdateTableColumnSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+}));
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
@@ -101,6 +120,10 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
     ))
 );
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 const mockOnUpdate = jest.fn();
 const mockTopicDetails = {
   columns: [],
@@ -128,6 +151,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       EditAll: true,
     },
     onUpdate: mockOnUpdate,
+    type: 'topic',
   })),
 }));
 

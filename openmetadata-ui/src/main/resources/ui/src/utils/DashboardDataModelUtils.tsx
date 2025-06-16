@@ -75,6 +75,7 @@ export const getDashboardDataModelDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD_DATA_MODEL}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDataModel}
@@ -98,12 +99,13 @@ export const getDashboardDataModelDetailPageTabs = ({
             children: (
               <Card>
                 <SchemaEditor
-                  editorClass="custom-code-mirror-theme full-screen-editor-height"
+                  editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
                   mode={{ name: CSMode.SQL }}
                   options={{
                     styleActiveLine: false,
                     readOnly: true,
                   }}
+                  refreshEditor={activeTab === EntityTabs.SQL}
                   value={dataModelData?.sql}
                 />
               </Card>
@@ -143,17 +145,15 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="p-md">
-          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={
-              dataModelPermissions.EditAll ||
-              dataModelPermissions.EditCustomFields
-            }
-            hasPermission={dataModelPermissions.ViewAll}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
+          hasEditAccess={
+            dataModelPermissions.EditAll ||
+            dataModelPermissions.EditCustomFields
+          }
+          hasPermission={dataModelPermissions.ViewAll}
+          isVersionView={false}
+        />
       ),
     },
   ];

@@ -22,6 +22,9 @@ export type ExploreTreeNode = {
   icon?: JSX.Element | SvgComponent;
   data?: TreeNodeData;
   count?: number;
+  totalCount?: number;
+  type?: string | null;
+  tooltip?: string;
 };
 
 export type ExploreTreeProps = {
