@@ -240,10 +240,10 @@ export const DatabaseSchemaTable = ({
         width: 250,
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            allowRename={allowEditDisplayNamePermission}
             displayName={stringToHTML(
               highlightSearchText(record.displayName, searchValue)
             )}
+            hasEditPermission={allowEditDisplayNamePermission}
             id={record.id ?? ''}
             key={record.id}
             link={

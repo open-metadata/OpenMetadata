@@ -21,6 +21,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
+import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
 import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
@@ -394,14 +395,10 @@ export const getEntityChildDetails = (
     case EntityType.TABLE:
       heading = t('label.schema');
       childComponent = (
-        <SummaryList
-          entityType={SummaryEntityType.COLUMN}
-          formattedEntityData={getFormattedEntityData(
-            SummaryEntityType.COLUMN,
-            (entityInfo as Table).columns,
-            highlights,
-            (entityInfo as Table).tableConstraints
-          )}
+        <ColumnSummaryList
+          entityInfo={entityInfo as Table}
+          entityType={entityType}
+          highlights={highlights}
         />
       );
 
@@ -524,12 +521,10 @@ export const getEntityChildDetails = (
       heading = t('label.column-plural');
       headingTestId = 'column-header';
       childComponent = (
-        <SummaryList
-          formattedEntityData={getFormattedEntityData(
-            SummaryEntityType.COLUMN,
-            (entityInfo as DashboardDataModel).columns,
-            highlights
-          )}
+        <ColumnSummaryList
+          entityInfo={entityInfo as DashboardDataModel}
+          entityType={entityType}
+          highlights={highlights}
         />
       );
 

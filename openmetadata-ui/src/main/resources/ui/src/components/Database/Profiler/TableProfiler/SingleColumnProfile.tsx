@@ -65,7 +65,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const customMetrics = useMemo(
     () =>
       getColumnCustomMetric(
-        tableDetails ?? tableCustomMetric,
+        tableDetails?.customMetrics ? tableDetails : tableCustomMetric,
         activeColumnFqn
       ) ?? [],
     [tableCustomMetric, activeColumnFqn, tableDetails]
