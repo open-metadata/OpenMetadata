@@ -24,6 +24,7 @@ import {
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  splitCSV,
 } from './CSV.utils';
 
 describe('CSVUtils', () => {
@@ -172,6 +173,81 @@ describe('CSVUtils', () => {
       );
 
       expect(convertedCSVEntities).toStrictEqual(`dateCp:undefined`);
+    });
+  });
+
+  describe('splitCSV', () => {
+    it('should split simple CSV string correctly', () => {
+      const input = 'value1,value2,value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('should handle quoted values with commas', () => {
+      const input = 'value1,"value,2",value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value,2', 'value3']);
+    });
+
+    it('should handle escaped quotes within quoted values', () => {
+      const input = 'value1,"value "quoted" here",value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value "quoted" here', 'value3']);
+    });
+
+    it('should handle empty values', () => {
+      const input = 'value1,,value3';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', '', 'value3']);
+    });
+
+    it('should handle values with spaces', () => {
+      const input = ' value1 , value2 , value3 ';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value1', 'value2', 'value3']);
+    });
+
+    it('should handle empty string input', () => {
+      const input = '';
+      const result = splitCSV(input);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle complex quoted values with multiple commas', () => {
+      const input = '"value,1,2,3","another,value","last,value"';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['value,1,2,3', 'another,value', 'last,value']);
+    });
+
+    it('should convert numbers to strings', () => {
+      const input = '1,2,3,4,5';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['1', '2', '3', '4', '5']);
+
+      // Verify each value is a string
+      result.forEach((value) => {
+        expect(typeof value).toBe('string');
+      });
+    });
+
+    it('should handle mixed number and string values', () => {
+      const input = '1,hello,3,world,5';
+      const result = splitCSV(input);
+
+      expect(result).toEqual(['1', 'hello', '3', 'world', '5']);
+
+      // Verify each value is a string
+      result.forEach((value) => {
+        expect(typeof value).toBe('string');
+      });
     });
   });
 });

@@ -155,7 +155,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
           <Button
             className="workflow-array-field-copy-button remove-button-default-styling"
-            icon={<CopyLeft />}
+            icon={<CopyLeft height={20} />}
             size="small"
             type="text"
             onClick={(e) => {
