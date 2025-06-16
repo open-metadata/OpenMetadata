@@ -267,7 +267,7 @@ test(
     ).toContainText(DATA_QUALITY_TABLE.term);
 
     const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/*/tableProfile/latest`
+      `/api/v1/tables/*/tableProfile/latest?includeColumnProfile=false`
     );
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
