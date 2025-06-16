@@ -97,11 +97,8 @@
       "entityType": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
-      },
-      "column_suggest": {
-        "type": "completion"
+      "upstreamLineage": {
+        "type": "object"
       },
       "version": {
         "type": "float"

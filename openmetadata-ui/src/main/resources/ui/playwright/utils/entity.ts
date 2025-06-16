@@ -19,18 +19,23 @@ import {
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
+import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { EntityClass } from '../support/entity/EntityClass';
 import {
   clickOutside,
   descriptionBox,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from './common';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
 } from './dateTime';
+import { searchAndClickOnOption } from './explore';
+import { sidebarClick } from './sidebar';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -38,10 +43,10 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.waitForLoadState('networkidle');
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
@@ -366,10 +371,47 @@ export const updateDescription = async (
       ).toContainText(description);
 };
 
+export const updateDescriptionForChildren = async (
+  page: Page,
+  description: string,
+  rowId: string,
+  rowSelector: string
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-button')
+    .click();
+
+  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
+  const updateRequest = page.waitForResponse((req) =>
+    ['PATCH', 'PUT'].includes(req.request().method())
+  );
+  await page.getByTestId('save').click();
+  await updateRequest;
+
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+
+  isEmpty(description)
+    ? await expect(
+        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+      ).toContainText('No Description')
+    : await expect(
+        page
+          .locator(`[${rowSelector}="${rowId}"]`)
+          .getByTestId('viewer-container')
+          .getByRole('paragraph')
+      ).toContainText(description);
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
+  tagFqn?: string,
   parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
@@ -383,7 +425,7 @@ export const assignTag = async (
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
+  await page.getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`).click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -400,7 +442,7 @@ export const assignTag = async (
     page
       .getByTestId(parentId)
       .getByTestId('tags-container')
-      .getByTestId(`tag-${tag}`)
+      .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
   ).toBeVisible();
 };
 
@@ -433,8 +475,8 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId(`tag-${tag}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -446,7 +488,7 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -517,8 +559,8 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const patchTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putTagRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -530,7 +572,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchTagRequest;
+    await putTagRequest;
 
     await expect(
       page
@@ -611,8 +653,8 @@ export const assignGlossaryTermToChildren = async ({
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
-  const patchRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PATCH'
+  const putRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PUT'
   );
 
   await page.waitForSelector(
@@ -626,7 +668,7 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
-  await patchRequest;
+  await putRequest;
 
   await expect(
     page
@@ -702,8 +744,8 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const putRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PUT'
     );
 
     await page.waitForSelector(
@@ -715,7 +757,7 @@ export const removeGlossaryTermFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await patchRequest;
+    await putRequest;
 
     expect(
       page
@@ -854,6 +896,9 @@ export const createAnnouncement = async (
   await announcementForm(page, { ...data, startDate, endDate });
   await page.reload();
   await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.getByTestId('announcement-card').isVisible();
 
   await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
@@ -1002,6 +1047,77 @@ export const updateDisplayNameForEntity = async (
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toHaveText(displayName);
+};
+
+export const updateDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: { oldDisplayName: string; newDisplayName: string },
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(
+    displayName.oldDisplayName
+  );
+
+  await page.locator('#displayName').fill(displayName.newDisplayName);
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).toHaveText(displayName.newDisplayName);
+};
+
+export const removeDisplayNameForEntityChildren = async (
+  page: Page,
+  displayName: string,
+  rowId: string,
+  rowSelector = 'data-row-key'
+) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('edit-displayName-button')
+    .click();
+
+  const nameInputIsDisabled = await page.locator('#name').isEnabled();
+
+  expect(nameInputIsDisabled).toBe(false);
+
+  await expect(page.locator('#displayName')).toBeVisible();
+
+  expect(await page.locator('#displayName').inputValue()).toBe(displayName);
+
+  await page.locator('#displayName').fill('');
+
+  const updateRequest = page.waitForResponse((req) =>
+    ['PUT', 'PATCH'].includes(req.request().method())
+  );
+  await page.click('[data-testid="save-button"]');
+  await updateRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('column-display-name')
+  ).not.toBeVisible();
 };
 
 export const checkForEditActions = async ({
@@ -1271,8 +1387,29 @@ export const softDeleteEntity = async (
   );
 
   await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  // Retry mechanism for checking deleted badge
+  let deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  let attempts = 0;
+  const maxAttempts = 5;
 
-  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+  while (attempts < maxAttempts) {
+    const isVisible = await deletedBadge.isVisible();
+    if (isVisible) {
+      break;
+    }
+
+    attempts++;
+    if (attempts < maxAttempts) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      deletedBadge = page.locator('[data-testid="deleted-badge"]');
+    }
+  }
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1302,7 +1439,8 @@ export const softDeleteEntity = async (
 
   await restoreEntity(page);
   await page.reload();
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await deletedEntityCommonChecks({
     page,
     endPoint,
@@ -1315,6 +1453,7 @@ export const hardDeleteEntity = async (
   entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
+  await clickOutside(page);
   await page.click('[data-testid="manage-button"]');
   await page.waitForSelector('[data-testid="delete-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -1335,11 +1474,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-  await page.waitForLoadState('networkidle');
-  await toastNotification(
-    page,
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
     /(deleted successfully!|Delete operation initiated)/,
-    BIG_ENTITY_DELETE_TIMEOUT
+    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
   );
 };
 
@@ -1416,4 +1554,64 @@ export const getFirstRowColumnLink = (page: Page) => {
     .getByTestId('databaseSchema-tables')
     .locator('[data-testid="column-name"] a')
     .first();
+};
+
+export const generateEntityChildren = (entityName: string, count = 25) => {
+  return Array.from({ length: count }, (_, i) => {
+    const id = uuid();
+
+    return {
+      name: `pw-${entityName}-${i + 1}-${id}`,
+      displayName: `pw-${entityName}-${i + 1}-${id}`,
+    };
+  });
+};
+
+export const checkExploreSearchFilter = async (
+  page: Page,
+  filterLabel: string,
+  filterKey: string,
+  filterValue: string,
+  entity?: EntityClass
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  await searchAndClickOnOption(
+    page,
+    {
+      label: filterLabel,
+      key: filterKey,
+      value: filterValue,
+    },
+    true
+  );
+
+  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
+
+  // Escape double quotes before encoding
+  const escapedValue = rawFilterValue.replace(/"/g, '\\"');
+
+  const filterValueForSearchURL =
+    filterKey === 'tier.tagFQN'
+      ? filterValue
+      : /["%]/.test(filterValue ?? '')
+      ? encodeURIComponent(escapedValue)
+      : rawFilterValue;
+
+  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
+
+  const queryRes = page.waitForResponse(querySearchURL);
+  await page.click('[data-testid="update-btn"]');
+  await queryRes;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${entity?.entityResponseData?.fullyQualifiedName}`
+    )
+  ).toBeVisible();
+
+  await page.click('[data-testid="clear-filters"]');
+
+  await entity?.visitEntityPage(page);
 };

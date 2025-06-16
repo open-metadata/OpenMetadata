@@ -115,8 +115,8 @@
       "sourceUrl": {
         "type": "text"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "dataProducts": {
         "properties": {
@@ -508,9 +508,6 @@
       "entityType": {
         "type": "keyword"
       },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
@@ -520,6 +517,15 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

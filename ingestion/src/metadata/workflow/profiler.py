@@ -76,7 +76,10 @@ class ProfilerWorkflow(IngestionWorkflow):
             conn = get_ssl_connection(service_config)
 
             test_connection_fn = get_test_connection_fn(service_config)
-            result = test_connection_fn(self.metadata, conn, service_config)
+            try:
+                result = test_connection_fn(self.metadata)
+            except TypeError:
+                result = test_connection_fn(self.metadata, conn, service_config)
             raise_test_connection_exception(result)
 
         return main(self)

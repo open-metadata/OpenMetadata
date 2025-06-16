@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +25,8 @@ import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -36,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -519,11 +519,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
         .withEntityLink(TABLE4_LINK.getLinkString())
-        .withTestSuite(testSuite4.getFullyQualifiedName())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
         .withEntityLink(TABLE6_LINK.getLinkString())
-        .withTestSuite(testSuite6.getFullyQualifiedName())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);

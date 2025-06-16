@@ -5,14 +5,14 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 import com.github.fge.jsonpatch.JsonPatchException;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Set;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonPatch;
-import javax.json.JsonReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

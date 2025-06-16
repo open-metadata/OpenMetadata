@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -576,6 +580,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "upstreamLineage": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

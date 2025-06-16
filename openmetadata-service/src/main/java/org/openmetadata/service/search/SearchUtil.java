@@ -1,43 +1,10 @@
 package org.openmetadata.service.search;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchUtil {
-
-  private static final List<String> IGNORE_SEARCH_KEYS =
-      List.of(
-          "id",
-          "version",
-          "updatedAt",
-          "updatedBy",
-          "usageSummary",
-          "followers",
-          "deleted",
-          "votes",
-          "lifeCycle",
-          "sourceHash",
-          "processedLineage",
-          "totalVotes",
-          "fqnParts",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "upstreamLineage",
-          "entityRelationship",
-          "changeSummary",
-          "fqnHash");
-
   /**
    * Check if the index is a data asset index
    * @param indexName name of the index to check
@@ -140,105 +107,10 @@ public class SearchUtil {
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
-      default -> "default";
+      case "team_search_index", Entity.TEAM -> Entity.TEAM;
+      case "user_Search_index", Entity.USER -> Entity.USER;
+      case "dataAsset" -> "dataAsset";
+      default -> "dataAsset";
     };
-  }
-
-  public static List<Object> searchMetadata(Map<String, Object> params) {
-    try {
-      LOG.info("Executing searchMetadata with params: {}", params);
-      String query = params.containsKey("query") ? (String) params.get("query") : "*";
-      int limit = 10;
-      if (params.containsKey("limit")) {
-        Object limitObj = params.get("limit");
-        if (limitObj instanceof Number) {
-          limit = ((Number) limitObj).intValue();
-        } else if (limitObj instanceof String) {
-          limit = Integer.parseInt((String) limitObj);
-        }
-      }
-
-      boolean includeDeleted = false;
-      if (params.containsKey("include_deleted")) {
-        Object deletedObj = params.get("include_deleted");
-        if (deletedObj instanceof Boolean) {
-          includeDeleted = (Boolean) deletedObj;
-        } else if (deletedObj instanceof String) {
-          includeDeleted = "true".equals(deletedObj);
-        }
-      }
-
-      String entityType =
-          params.containsKey("entity_type") ? (String) params.get("entity_type") : null;
-      String index =
-          (entityType != null && !entityType.isEmpty())
-              ? mapEntityTypesToIndexNames(entityType)
-              : Entity.TABLE;
-
-      LOG.info(
-          "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
-          query,
-          index,
-          limit,
-          includeDeleted);
-
-      SearchRequest searchRequest =
-          new SearchRequest()
-              .withQuery(query)
-              .withIndex(index)
-              .withSize(limit)
-              .withFrom(0)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-
-      javax.ws.rs.core.Response response = Entity.getSearchRepository().search(searchRequest, null);
-
-      Map<String, Object> searchResponse;
-      if (response.getEntity() instanceof String responseStr) {
-        LOG.info("Search returned string response");
-        JsonNode jsonNode = JsonUtils.readTree(responseStr);
-        searchResponse = JsonUtils.convertValue(jsonNode, Map.class);
-      } else {
-        LOG.info("Search returned object response: {}", response.getEntity().getClass().getName());
-        searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
-      }
-      return cleanSearchResponse(searchResponse);
-    } catch (Exception e) {
-      LOG.error("Error in searchMetadata", e);
-      return Collections.emptyList();
-    }
-  }
-
-  public static List<Object> cleanSearchResponse(Map<String, Object> searchResponse) {
-    if (searchResponse == null) return Collections.emptyList();
-
-    Map<String, Object> topHits = safeGetMap(searchResponse.get("hits"));
-    if (topHits == null) return Collections.emptyList();
-
-    List<Object> hits = safeGetList(topHits.get("hits"));
-    if (hits == null) return Collections.emptyList();
-
-    return hits.stream()
-        .map(SearchUtil::safeGetMap)
-        .filter(Objects::nonNull)
-        .map(
-            hit -> {
-              Map<String, Object> source = safeGetMap(hit.get("_source"));
-              if (source == null) return null;
-              IGNORE_SEARCH_KEYS.forEach(source::remove);
-              return source;
-            })
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> safeGetMap(Object obj) {
-    return (obj instanceof Map) ? (Map<String, Object>) obj : null;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static List<Object> safeGetList(Object obj) {
-    return (obj instanceof List) ? (List<Object>) obj : null;
   }
 }

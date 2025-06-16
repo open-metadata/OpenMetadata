@@ -150,6 +150,10 @@ export interface DatabaseConnection {
  */
 export interface ConfigClass {
     /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -542,6 +546,10 @@ export interface ConfigClass {
      */
     token?: string;
     /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -590,6 +598,10 @@ export interface ConfigClass {
      * SSL Configuration details.
      */
     sslConfig?: Config;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1641,6 +1653,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**

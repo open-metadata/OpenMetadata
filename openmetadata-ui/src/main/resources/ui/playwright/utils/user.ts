@@ -578,6 +578,11 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+  await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
@@ -590,6 +595,8 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
+
+  await page.waitForLoadState('networkidle');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();

@@ -46,6 +46,10 @@ export interface User {
      */
     email: string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * List of entities followed by the user.
      */
     follows?: EntityReference[];
@@ -107,6 +111,10 @@ export interface User {
      * Roles that the user has been assigned.
      */
     roles?: EntityReference[];
+    /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
     /**
      * Teams that the user belongs to.
      */
@@ -570,6 +578,10 @@ export interface Webhook {
      * HTTP operation to send the webhook request. Supports POST or PUT.
      */
     httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
     /**
      * List of receivers to send mail to
      */

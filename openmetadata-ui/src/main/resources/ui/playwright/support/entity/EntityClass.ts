@@ -34,12 +34,14 @@ import {
   assignTag,
   assignTagToChildren,
   assignTier,
+  checkExploreSearchFilter,
   createAnnouncement,
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeDisplayNameForEntityChildren,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -50,7 +52,9 @@ import {
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDescriptionForChildren,
   updateDisplayNameForEntity,
+  updateDisplayNameForEntityChildren,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
@@ -66,6 +70,7 @@ export class EntityClass {
   serviceType?: ServiceTypes;
   childrenTabId?: string;
   childrenSelectorId?: string;
+  childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
 
@@ -201,9 +206,24 @@ export class EntityClass {
     }
   }
 
-  async tier(page: Page, tier1: string, tier2: string) {
+  async tier(
+    page: Page,
+    tier1: string,
+    tier2: string,
+    tier2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTier(page, tier1, this.endpoint);
     await assignTier(page, tier2, this.endpoint);
+    if (entity && tier2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tier',
+        'tier.tagFQN',
+        tier2Fqn,
+        entity
+      );
+    }
     await removeTier(page, this.endpoint);
   }
 
@@ -215,10 +235,60 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
-  async tag(page: Page, tag1: string, tag2: string) {
+  async descriptionUpdateChildren(
+    page: Page,
+    rowId: string,
+    rowSelector: string
+  ) {
+    const description =
+      // eslint-disable-next-line max-len
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
+
+    // Add description
+    await updateDescriptionForChildren(
+      page,
+      description,
+
+      rowId,
+      rowSelector
+    );
+
+    // Update description
+    await updateDescriptionForChildren(
+      page,
+      description + ' updated',
+
+      rowId,
+      rowSelector
+    );
+
+    // Remove description
+    await updateDescriptionForChildren(page, '', rowId, rowSelector);
+  }
+
+  async tag(
+    page: Page,
+    tag1: string,
+    tag2: string,
+    tag2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit');
-    await removeTag(page, [tag2]);
+    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    if (entity && tag2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        tag2Fqn,
+        entity
+      );
+    }
+    if (tag2Fqn) {
+      await removeTag(page, [tag2Fqn]);
+    } else {
+      await removeTag(page, [tag2]);
+    }
     await removeTag(page, [tag1]);
 
     await page
@@ -272,9 +342,19 @@ export class EntityClass {
   async glossaryTerm(
     page: Page,
     glossaryTerm1: GlossaryTerm['responseData'],
-    glossaryTerm2: GlossaryTerm['responseData']
+    glossaryTerm2: GlossaryTerm['responseData'],
+    entity?: EntityClass
   ) {
     await assignGlossaryTerm(page, glossaryTerm1);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        glossaryTerm1.fullyQualifiedName,
+        entity
+      );
+    }
     await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
@@ -363,6 +443,46 @@ export class EntityClass {
       page,
       `Cypress ${entityName} updated`,
       this.endpoint
+    );
+  }
+
+  async displayNameChildren({
+    page,
+    columnName,
+    rowSelector,
+  }: {
+    page: Page;
+    columnName: string;
+    rowSelector: string;
+  }) {
+    // Add display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: '',
+        newDisplayName: `Playwright ${columnName} updated`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Update display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: `Playwright ${columnName} updated`,
+        newDisplayName: `Playwright ${columnName} updated again`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Remove display name
+    await removeDisplayNameForEntityChildren(
+      page,
+      `Playwright ${columnName} updated again`,
+      this.childrenSelectorId ?? '',
+      rowSelector
     );
   }
 

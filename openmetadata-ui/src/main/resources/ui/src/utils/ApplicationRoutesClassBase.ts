@@ -13,10 +13,36 @@
 
 import { FC } from 'react';
 import AuthenticatedAppRouter from '../components/AppRouter/AuthenticatedAppRouter';
+import { UnAuthenticatedAppRouter } from '../components/AppRouter/UnAuthenticatedAppRouter';
+import { ROUTES } from '../constants/constants';
 
 class ApplicationRoutesClassBase {
   public getRouteElements(): FC {
     return AuthenticatedAppRouter;
+  }
+
+  public getUnAuthenticatedRouteElements(): FC {
+    return UnAuthenticatedAppRouter;
+  }
+
+  public isProtectedRoute(pathname: string): boolean {
+    return (
+      [
+        ROUTES.SIGNUP,
+        ROUTES.SIGNIN,
+        ROUTES.FORGOT_PASSWORD,
+        ROUTES.CALLBACK,
+        ROUTES.SILENT_CALLBACK,
+        ROUTES.SAML_CALLBACK,
+        ROUTES.REGISTER,
+        ROUTES.RESET_PASSWORD,
+        ROUTES.ACCOUNT_ACTIVATION,
+        ROUTES.HOME,
+        ROUTES.AUTH_CALLBACK,
+        ROUTES.NOT_FOUND,
+        ROUTES.LOGOUT,
+      ].indexOf(pathname) === -1
+    );
   }
 }
 

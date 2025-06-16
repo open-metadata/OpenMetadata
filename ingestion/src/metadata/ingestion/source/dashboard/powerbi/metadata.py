@@ -54,7 +54,6 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -79,6 +78,8 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -649,7 +650,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
 
                     for table in dataset.tables or []:
-                        yield self._get_table_and_datamodel_lineage(
+                        yield from self._get_table_and_datamodel_lineage(
                             db_service_name=db_service_name,
                             table=table,
                             datamodel_entity=datamodel_entity,
@@ -706,6 +707,12 @@ class PowerbiSource(DashboardServiceSource):
                 if dataset and dataset.expressions:
                     # find keyword from dataset expressions
                     for dexpression in dataset.expressions:
+                        if not dexpression.expression:
+                            logger.debug(
+                                f"No expression value found inside dataset"
+                                f"({dataset.name}) expressions' name={dexpression.name}"
+                            )
+                            continue
                         if dexpression.name == match.group(2):
                             pattern = r'DefaultValue="([^"]+)"'
                             kw_match = re.search(pattern, dexpression.expression)
@@ -784,7 +791,9 @@ class PowerbiSource(DashboardServiceSource):
             if not isinstance(table.source, list):
                 return {}
             source_expression = table.source[0].expression
-
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return {}
             # parse snowflake source
             table_info = self._parse_snowflake_source(
                 source_expression, datamodel_entity
@@ -806,7 +815,7 @@ class PowerbiSource(DashboardServiceSource):
         db_service_name: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
-    ) -> Optional[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
@@ -827,13 +836,13 @@ class PowerbiSource(DashboardServiceSource):
                 column_lineage = self._get_column_lineage(
                     table_entity, datamodel_entity, columns_list
                 )
-                return self._get_add_lineage_request(
+                yield self._get_add_lineage_request(
                     to_entity=datamodel_entity,
                     from_entity=table_entity,
                     column_lineage=column_lineage,
                 )
         except Exception as exc:  # pylint: disable=broad-except
-            return Either(
+            yield Either(
                 left=StackTraceError(
                     name="DataModel Lineage for pbit files",
                     error=(
@@ -843,7 +852,6 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-        return None
 
     def create_table_datamodel_lineage_from_files(
         self,
@@ -872,7 +880,7 @@ class PowerbiSource(DashboardServiceSource):
 
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
-                    yield self._get_table_and_datamodel_lineage(
+                    yield from self._get_table_and_datamodel_lineage(
                         db_service_name=db_service_name,
                         table=table,
                         datamodel_entity=datamodel_entity,
@@ -919,22 +927,17 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
-    def yield_dashboard_lineage(
-        self, dashboard_details: Group
-    ) -> Iterable[Either[OMetaLineageRequest]]:
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled.
-
-        We will look for the data in all the services
-        we have informed.
+        Returns:
+            Lineage request between Data Models and Dashboards
         """
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
+        """
+            We're implementing this differently inside `yield_dashboard_lineage_details`
+            since we have report and dashboard both as dashboard.
+        """
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
@@ -1009,42 +1012,49 @@ class PowerbiSource(DashboardServiceSource):
                 elif isinstance(dashboard_details, PowerBIDashboard):
                     access_right = owner.dashboardUserAccessRight
 
-                if owner.userType != "Member" or (
-                    isinstance(
-                        dashboard_details, (Dataflow, PowerBIReport, PowerBIDashboard)
-                    )
-                    and access_right != "Owner"
-                ):
+                if owner.userType != "Member":
                     logger.warning(
-                        f"User is not a member and has no access to the {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                        f"User is not a member of {dashboard_details.id}:"
+                        f" ({owner.displayName}, {owner.email})"
                     )
                     continue
-                if owner.email:
-                    try:
-                        owner_email = EmailStr._validate(owner.email)
-                    except PydanticCustomError:
-                        logger.warning(f"Invalid email for owner: {owner.email}")
-                        owner_email = None
-                    if owner_email:
+                if access_right and any(
+                    keyword in access_right.lower()
+                    for keyword in OWNER_ACCESS_RIGHTS_KEYWORDS
+                ):
+                    if owner.email:
                         try:
-                            owner_ref = self.metadata.get_reference_by_email(
-                                owner_email.lower()
+                            owner_email = EmailStr._validate(owner.email)
+                        except PydanticCustomError:
+                            logger.warning(f"Invalid email for owner: {owner.email}")
+                            owner_email = None
+                        if owner_email:
+                            try:
+                                owner_ref = self.metadata.get_reference_by_email(
+                                    owner_email.lower()
+                                )
+                            except Exception as err:
+                                logger.warning(
+                                    f"Could not process owner data with email"
+                                    f" {owner.email} in {dashboard_details.id}: {err}"
+                                )
+                    elif owner.displayName:
+                        try:
+                            owner_ref = self.metadata.get_reference_by_name(
+                                name=owner.displayName
                             )
                         except Exception as err:
                             logger.warning(
-                                f"Could not fetch owner data with email {owner.email} in {dashboard_details.id}: {err}"
+                                f"Could not process owner data with name"
+                                f" {owner.displayName} in {dashboard_details.id}: {err}"
                             )
-                elif owner.displayName:
-                    try:
-                        owner_ref = self.metadata.get_reference_by_name(
-                            name=owner.displayName
-                        )
-                    except Exception as err:
-                        logger.warning(
-                            f"Could not process owner data with name {owner.displayName} in {dashboard_details.id}: {err}"
-                        )
-                if owner_ref:
-                    owner_ref_list.append(owner_ref.root[0])
+                    if owner_ref:
+                        owner_ref_list.append(owner_ref.root[0])
+                else:
+                    logger.warning(
+                        f"User does not have owner, admin or write access to"
+                        f" {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                    )
             # check for last modified, configuredBy user
             current_active_user = None
             if isinstance(dashboard_details, Dataset):

@@ -543,6 +543,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
               data-testid="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
+              refreshEditor={visible}
               value={state?.sqlQuery ?? ''}
               onChange={handleCodeMirrorChange}
             />
@@ -588,7 +589,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         {`${t('label.include')}:`}
                       </p>
                       <Button
-                        className="include-columns-add-button"
+                        className="include-columns-add-button flex-center"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -873,7 +874,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               {`${t('label.value')}:`}
                             </p>
                             <Button
-                              className="include-columns-add-button"
+                              className="include-columns-add-button flex-center"
                               icon={<PlusOutlined />}
                               size="small"
                               type="primary"
