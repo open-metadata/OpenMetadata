@@ -9,7 +9,11 @@ import static org.quartz.DateBuilder.MILLISECONDS_IN_DAY;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -26,6 +30,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 
+@Slf4j
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
@@ -52,6 +57,101 @@ public class KpiRepository extends EntityRepository<Kpi> {
         fields.contains(KPI_RESULT_FIELD)
             ? getKpiResult(kpi.getFullyQualifiedName())
             : kpi.getKpiResult());
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Kpi> kpis) {
+    if (kpis == null || kpis.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains("dataInsightChart")) {
+      fetchAndSetDataInsightCharts(kpis);
+    }
+
+    if (fields.contains(KPI_RESULT_FIELD)) {
+      fetchAndSetKpiResults(kpis);
+    }
+
+    // Call parent implementation for other fields
+    super.setFieldsInBulk(fields, kpis);
+  }
+
+  private void fetchAndSetDataInsightCharts(List<Kpi> kpis) {
+    List<String> kpiIds = kpis.stream().map(Kpi::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch data insight chart relationships
+    List<CollectionDAO.EntityRelationshipObject> chartRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(kpiIds, Relationship.USES.ordinal(), KPI, DATA_INSIGHT_CUSTOM_CHART);
+
+    // Create a map of KPI ID to chart reference
+    Map<UUID, EntityReference> kpiToChartMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : chartRecords) {
+      UUID kpiId = UUID.fromString(record.getFromId());
+      EntityReference chartRef =
+          Entity.getEntityReferenceById(
+              DATA_INSIGHT_CUSTOM_CHART, UUID.fromString(record.getToId()), Include.ALL);
+      kpiToChartMap.put(kpiId, chartRef);
+    }
+
+    // Set charts on KPIs
+    for (Kpi kpi : kpis) {
+      EntityReference chartRef = kpiToChartMap.get(kpi.getId());
+      kpi.setDataInsightChart(chartRef);
+    }
+  }
+
+  private void fetchAndSetKpiResults(List<Kpi> kpis) {
+    // For KPI results, we need to fetch the latest data for each KPI
+    // Since this involves search queries, we'll process them individually but in a more efficient
+    // way
+    long end = System.currentTimeMillis();
+    long start = end - MILLISECONDS_IN_DAY;
+
+    // Group KPIs by their data insight chart to potentially batch queries
+    Map<UUID, List<Kpi>> chartToKpisMap = new HashMap<>();
+    for (Kpi kpi : kpis) {
+      if (kpi.getDataInsightChart() != null) {
+        chartToKpisMap
+            .computeIfAbsent(kpi.getDataInsightChart().getId(), k -> new ArrayList<>())
+            .add(kpi);
+      }
+    }
+
+    // Process each chart group
+    for (Map.Entry<UUID, List<Kpi>> entry : chartToKpisMap.entrySet()) {
+      try {
+        DataInsightCustomChart chart =
+            getEntity(DATA_INSIGHT_CUSTOM_CHART, entry.getKey(), null, Include.NON_DELETED);
+        DataInsightCustomChartResultList resultList =
+            searchRepository.getSearchClient().buildDIChart(chart, start, end);
+
+        if (resultList != null && !resultList.getResults().isEmpty()) {
+          DataInsightCustomChartResult result = resultList.getResults().get(0);
+
+          // Apply the result to all KPIs using this chart
+          for (Kpi kpi : entry.getValue()) {
+            KpiTarget target =
+                new KpiTarget()
+                    .withValue(result.getCount().toString())
+                    .withTargetMet(result.getCount() >= kpi.getTargetValue());
+            List<KpiTarget> targetList = new ArrayList<>();
+            targetList.add(target);
+            KpiResult kpiResult =
+                new KpiResult()
+                    .withKpiFqn(kpi.getFullyQualifiedName())
+                    .withTimestamp(end)
+                    .withTargetResult(targetList);
+            kpi.withKpiResult(kpiResult);
+          }
+        }
+      } catch (IOException e) {
+        // Log error but continue processing other KPIs
+        LOG.warn("Failed to fetch KPI results for chart {}: {}", entry.getKey(), e.getMessage());
+      }
+    }
   }
 
   @Override

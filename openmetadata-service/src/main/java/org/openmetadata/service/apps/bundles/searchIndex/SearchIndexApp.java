@@ -91,11 +91,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
 
-  private static final int MAX_READER_THREADS = 50;
-  private static final int MAX_GLOBAL_CONCURRENT_READS = 30;
+  // Connection pool optimization settings - these are safety limits, not hard caps
+  private static final int DEFAULT_MAX_READER_THREADS = 50; // Default max for auto-tuning
+  private static final int SAFETY_MAX_READER_THREADS = 200; // Absolute safety limit
+  private static final int MAX_GLOBAL_CONCURRENT_READS = 50; // Increased for virtual threads
   private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
   private static final int MAX_BATCH_SIZE = 200; // Maximum batch size to avoid memory issues
-  private static final int MAX_CONCURRENT_REQUESTS = 100;
+  private static final int MAX_CONCURRENT_REQUESTS = 100; // Safety limit for search cluster
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -132,10 +134,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
       reCreateIndexes(jobData.getEntities());
       performReindex(jobExecutionContext);
 
-      // Set job completion status if no errors occurred
+      // Set job completion status
       synchronized (jobDataLock) {
+        // Job can be RUNNING or ACTIVE_ERROR (if some records failed)
+        // Only set to COMPLETED if still RUNNING, otherwise keep the error status
         if (jobData.getStatus() == EventPublisherJob.Status.RUNNING) {
           jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+          sendUpdates(jobExecutionContext, true);
+        } else if (jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR) {
+          // Job completed but had some errors - keep ACTIVE_ERROR status
+          LOG.info("Reindexing completed with some errors. Status: ACTIVE_ERROR");
           sendUpdates(jobExecutionContext, true);
         }
       }
@@ -145,7 +153,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } catch (Exception ex) {
       handleJobFailure(ex);
     } finally {
-      sendUpdates(jobExecutionContext);
+      // Always send final status update
+      sendUpdates(jobExecutionContext, true);
     }
   }
 
@@ -245,15 +254,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    // Limit reader threads when auto-tune is enabled to prevent connection pool exhaustion
-    if (jobData.getAutoTune() && numProducers > MAX_READER_THREADS) {
-      LOG.info(
-          "Auto-tune: Setting virtual reader threads to {} (max: {}) from requested {}",
-          MAX_READER_THREADS,
-          MAX_READER_THREADS,
-          numProducers);
-      numProducers = MAX_READER_THREADS;
-    }
+    // Use the configured number of producer threads directly
+    // Virtual threads are lightweight, so we can respect the user's configuration
+    // The auto-tuning already adjusts these values based on available resources
+    LOG.info(
+        "Creating virtual thread executor with {} producer threads (configured: {})",
+        numProducers,
+        jobData.getProducerThreads());
 
     // Use virtual threads for readers - they're lightweight and perfect for I/O-bound operations
     producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -309,11 +316,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     logConnectionPoolStatus("Before starting producers");
 
     // Global semaphore to limit total concurrent database operations across all entity types
-    // This prevents connection pool exhaustion when processing multiple entity types
+    // With virtual threads, we can be more generous but still need some limit for safety
+    // Use the configured producer threads as the base, with a multiplier for virtual threads
+    int configuredProducers = jobData.getProducerThreads();
     int globalMaxConcurrentReads =
-        Math.min(MAX_GLOBAL_CONCURRENT_READS, jobData.getProducerThreads() * 2);
+        Math.max(
+            configuredProducers, Math.min(MAX_GLOBAL_CONCURRENT_READS, configuredProducers * 2));
     Semaphore globalSemaphore = new Semaphore(globalMaxConcurrentReads);
-    LOG.info("[SearchIndex] Using global semaphore with {} permits", globalMaxConcurrentReads);
+    LOG.info(
+        "[SearchIndex] Using global semaphore with {} permits (configured producers: {})",
+        globalMaxConcurrentReads,
+        configuredProducers);
 
     for (String entityType : jobData.getEntities()) {
       jobExecutor.submit(
@@ -551,13 +564,42 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void stop() {
     LOG.info("Stopping reindexing job.");
     stopped = true;
-    jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
-    sendUpdates(jobExecutionContext, true); // Force update for stop
+
+    // Set status to STOP_IN_PROGRESS and notify UI
+    synchronized (jobDataLock) {
+      jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
+      if (jobExecutionContext != null) {
+        sendUpdates(jobExecutionContext, true); // Force update for stop
+      }
+    }
+
+    // Shutdown executors
     shutdownExecutor(jobExecutor, "JobExecutor", 60, TimeUnit.SECONDS);
     shutdownExecutor(producerExecutor, "ProducerExecutor", 60, TimeUnit.SECONDS);
-    LOG.info("Stopped reindexing job.");
-    jobData.setStatus(EventPublisherJob.Status.STOPPED);
-    sendUpdates(jobExecutionContext, true); // Force update for stopped
+
+    // Set final status based on whether there were errors
+    synchronized (jobDataLock) {
+      // Only set to FAILED if there was a catastrophic failure (not just some failed records)
+      // ACTIVE_ERROR means some records failed but the job is still running
+      // We should only mark as FAILED if the entire job failed to execute
+      if (jobData.getFailure() != null
+          && jobData.getFailure().getErrorSource() == IndexingError.ErrorSource.JOB) {
+        LOG.info("Stopped reindexing job with job-level failure - setting status to FAILED.");
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+      } else if (jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR) {
+        // Job had some errors but was still running - user stopped it
+        LOG.info("Stopped reindexing job that had some record errors - setting status to STOPPED.");
+        jobData.setStatus(EventPublisherJob.Status.STOPPED);
+      } else {
+        LOG.info("Stopped reindexing job cleanly - setting status to STOPPED.");
+        jobData.setStatus(EventPublisherJob.Status.STOPPED);
+      }
+
+      // Send final update to UI
+      if (jobExecutionContext != null) {
+        sendUpdates(jobExecutionContext, true); // Force update for final status
+      }
+    }
   }
 
   @Override
@@ -846,18 +888,23 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setBatchSize(recommendedBatchSize);
 
       // Virtual threads allow much higher concurrency without the same resource constraints
-      // With 300 connections and virtual threads, we can be more aggressive:
-      // - Reserve ~100 connections for normal operations
-      // - Use up to 50 virtual reader threads (lightweight, don't block OS threads)
-      // - Account for bulk loading operations
+      // Auto-tune respects the original configuration but applies safety limits
+      int originalProducerThreads = jobData.getProducerThreads();
+      int recommendedProducerThreads = clusterMetrics.getRecommendedProducerThreads();
+
+      // Use the higher of original config or recommended, but cap at safety limit
       int maxProducerThreads =
-          Math.min(clusterMetrics.getRecommendedProducerThreads(), MAX_READER_THREADS);
-      if (clusterMetrics.getRecommendedProducerThreads() > maxProducerThreads) {
+          Math.min(
+              Math.max(originalProducerThreads, recommendedProducerThreads),
+              SAFETY_MAX_READER_THREADS);
+
+      if (maxProducerThreads != originalProducerThreads) {
         LOG.info(
-            "AUTO-TUNE: Setting producer threads to {} (virtual threads, max: {}) from recommended {}",
+            "AUTO-TUNE: Adjusting producer threads from {} to {} (recommended: {}, safety limit: {})",
+            originalProducerThreads,
             maxProducerThreads,
-            MAX_READER_THREADS,
-            clusterMetrics.getRecommendedProducerThreads());
+            recommendedProducerThreads,
+            SAFETY_MAX_READER_THREADS);
       }
       jobData.setProducerThreads(maxProducerThreads);
 

@@ -196,8 +196,8 @@ public class SearchClusterMetrics {
 
     if (totalEntities > 1000000) {
       recommendedBatchSize = Math.max(500, recommendedBatchSize);
-      recommendedProducerThreads =
-          Math.min(50, recommendedProducerThreads); // Increased from 10 to 50
+      // For large datasets with virtual threads, don't artificially limit threads
+      // The calling code will apply safety limits if needed
     }
 
     return SearchClusterMetrics.builder()

@@ -158,11 +158,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testCases.stream().map(TestCase::getId).map(UUID::toString).distinct().toList();
 
     // Bulk fetch test definitions
-    // Test definition CONTAINS test case, so we need to find relationships TO test cases
+    // Test definition CONTAINS test case, so we need to find relationships FROM test definition TO
+    // test cases
     List<CollectionDAO.EntityRelationshipObject> testDefinitionRecords =
         daoCollection
             .relationshipDAO()
-            .findToBatch(testCaseIds, Relationship.CONTAINS.ordinal(), TEST_DEFINITION, TEST_CASE);
+            .findFromBatch(
+                testCaseIds, Relationship.CONTAINS.ordinal(), TEST_DEFINITION, TEST_CASE);
 
     // Create a map of test case ID to test definition reference
     Map<UUID, EntityReference> testDefinitionMap = new HashMap<>();
