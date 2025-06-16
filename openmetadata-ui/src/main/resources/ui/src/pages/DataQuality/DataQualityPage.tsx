@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs, Typography } from 'antd';
+import { Button, Card, Col, Row, Tabs, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -32,6 +34,8 @@ const DataQualityPage = () => {
     useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { testSuite: testSuitePermission } = permissions;
   const menuItems = useMemo(() => {
     const data = DataQualityClassBase.getDataQualityTab();
 
@@ -58,45 +62,67 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div>
-      <Card className="h-full overflow-y-auto">
-        <DataQualityProvider>
-          <Row data-testid="data-insight-container" gutter={[0, 16]}>
-            <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>
-              <Typography.Title
-                className="m-b-md"
-                data-testid="page-title"
-                level={5}>
-                {t('label.data-quality')}
-              </Typography.Title>
-              <Typography.Paragraph
-                className="text-grey-muted"
-                data-testid="page-sub-title">
-                {t('message.page-sub-header-for-data-quality')}
-              </Typography.Paragraph>
-            </Col>
-            {isEmpty(extraDropdownContent) ? null : (
-              <Col className="d-flex justify-end" span={1}>
-                <ManageButton
-                  entityName={EntityType.TEST_CASE}
-                  entityType={EntityType.TEST_CASE}
-                  extraDropdownContent={extraDropdownContent}
-                />
+    <DataQualityProvider>
+      <Row data-testid="data-insight-container" gutter={[0, 16]}>
+        <Col span={24}>
+          <Card>
+            <Row>
+              <Col span={isEmpty(extraDropdownContent) ? 16 : 23}>
+                <Typography.Title
+                  className="m-b-md"
+                  data-testid="page-title"
+                  level={5}>
+                  {t('label.data-quality')}
+                </Typography.Title>
+                <Typography.Paragraph
+                  className="text-grey-muted m-b-0"
+                  data-testid="page-sub-title">
+                  {t('message.page-sub-header-for-data-quality')}
+                </Typography.Paragraph>
               </Col>
-            )}
-            <Col span={24}>
-              <Tabs
-                activeKey={activeTab}
-                className="tabs-new"
-                data-testid="tabs"
-                items={menuItems}
-                onChange={handleTabChange}
-              />
-            </Col>
-          </Row>
-        </DataQualityProvider>
-      </Card>
-    </div>
+              <Col className="d-flex justify-end" span={8}>
+                {activeTab === DataQualityPageTabs.TEST_SUITES &&
+                  testSuitePermission?.Create && (
+                    <Link
+                      data-testid="add-test-suite-btn"
+                      to={ROUTES.ADD_TEST_SUITES}>
+                      <Button type="primary">
+                        {t('label.add-entity', {
+                          entity: t('label.bundle-suite-plural'),
+                        })}
+                      </Button>
+                    </Link>
+                  )}
+                {activeTab === DataQualityPageTabs.TEST_CASES &&
+                  testSuitePermission?.Create && (
+                    <Button data-testid="add-test-case-btn" type="primary">
+                      {t('label.add-entity', {
+                        entity: t('label.test-case'),
+                      })}
+                    </Button>
+                  )}
+                {isEmpty(extraDropdownContent) ? null : (
+                  <ManageButton
+                    entityName={EntityType.TEST_CASE}
+                    entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
+                  />
+                )}
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab}
+            className="tabs-new data-quality-page-tabs"
+            data-testid="tabs"
+            items={menuItems}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+    </DataQualityProvider>
   );
 };
 
