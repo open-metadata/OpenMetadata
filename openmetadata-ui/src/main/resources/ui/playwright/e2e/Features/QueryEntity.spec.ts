@@ -66,7 +66,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index'
+      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);

@@ -43,7 +43,7 @@ test.describe('Service Listing', () => {
     await page.getByTestId('filter-icon').click();
 
     const searchBigQueryResponse = page.waitForResponse(
-      `/api/v1/search/query?q=**%20AND%20(serviceType:BigQuery)&from=0&size=15&index=database_service_search_index`
+      `/api/v1/search/query?q=**%20AND%20(serviceType:BigQuery)&from=0&size=15&index=database_service_search_index*`
     );
     await page.getByLabel('Big Query').check();
     await searchBigQueryResponse;
