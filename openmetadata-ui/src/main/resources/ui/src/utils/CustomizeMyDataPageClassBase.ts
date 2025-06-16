@@ -52,15 +52,15 @@ class CustomizeMyDataPageClassBase {
   landingPageMaxGridSize = 4;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 6,
-    announcements: 3,
-    following: 3,
-    recentlyViewed: 3,
-    myData: 3,
-    kpi: 3,
-    totalAssets: 3,
-    DataAssets: 3,
-    curatedAssets: 3,
+    activityFeed: 4,
+    announcements: 4,
+    following: 4,
+    recentlyViewed: 4,
+    myData: 4,
+    kpi: 4,
+    totalAssets: 4,
+    DataAssets: 4,
+    curatedAssets: 4,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {

@@ -13,50 +13,23 @@
 import Icon from '@ant-design/icons';
 import { Button, Input, Typography } from 'antd';
 import { get } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
-import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { Page } from '../../../../generated/system/ui/page';
-import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
-import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
-import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
 
-const CustomiseLandingPageHeader = ({
-  addedWidgetsList,
-  handleAddWidget,
-  hideCustomiseButton = false,
-  overlappedContainer = false,
-  backgroundColor,
-  onBackgroundColorUpdate,
-  placeholderWidgetKey,
-}: CustomiseLandingPageHeaderProps) => {
+const CustomiseLandingPageHeader = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isNLPEnabled } = useSearchStore();
-  const { document } = useCustomizeStore();
-  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
-
-  const defaultBackgroundColor = useMemo(
-    () =>
-      document?.data?.pages?.find(
-        (item: Page) => item.pageType === PageType.LandingPage
-      )?.homePageBannerBackgroundColor,
-    [document]
-  );
-
-  const bgColor =
-    backgroundColor ?? defaultBackgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
@@ -77,16 +50,8 @@ const CustomiseLandingPageHeader = ({
     });
   }, []);
 
-  const handleOpenCustomiseHomeModal = () => {
-    setShowCustomiseHomeModal(true);
-  };
-
-  const handleCloseCustomiseHomeModal = () => {
-    setShowCustomiseHomeModal(false);
-  };
-
   return (
-    <div className="customise-landing-page" style={{ background: bgColor }}>
+    <div className="customise-landing-page">
       <div className="header-container">
         <div className="dashboardHeader">
           <div className="d-flex items-center gap-4 mb-5">
@@ -95,19 +60,16 @@ const CustomiseLandingPageHeader = ({
                 name: currentUser?.displayName ?? currentUser?.name,
               })}
             </Typography.Text>
-            {!hideCustomiseButton && (
-              <Button
-                className="customise-header-btn"
-                data-testid="customise-header-btn"
-                icon={
-                  <Icon
-                    component={FilterIcon}
-                    style={{ fontSize: '16px', color: 'white' }}
-                  />
-                }
-                onClick={handleOpenCustomiseHomeModal}
-              />
-            )}
+            <Button
+              className="customise-header-btn"
+              data-testid="customise-header-btn"
+              icon={
+                <Icon
+                  component={FilterIcon}
+                  style={{ fontSize: '16px', color: 'white' }}
+                />
+              }
+            />
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
@@ -176,19 +138,7 @@ const CustomiseLandingPageHeader = ({
         </div>
         <div className="announcements" />
       </div>
-      {overlappedContainer && <div className="overlapped-container" />}
-
-      {!hideCustomiseButton && showCustomiseHomeModal && (
-        <CustomiseHomeModal
-          addedWidgetsList={addedWidgetsList}
-          currentBackgroundColor={bgColor}
-          handleAddWidget={handleAddWidget}
-          open={showCustomiseHomeModal}
-          placeholderWidgetKey={placeholderWidgetKey}
-          onBackgroundColorUpdate={onBackgroundColorUpdate}
-          onClose={handleCloseCustomiseHomeModal}
-        />
-      )}
+      <div className="overlapped-container" />
     </div>
   );
 };
