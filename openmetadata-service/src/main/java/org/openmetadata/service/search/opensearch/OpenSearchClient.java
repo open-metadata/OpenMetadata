@@ -493,7 +493,7 @@ public class OpenSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (Boolean.TRUE.equals(request.getTrackTotalHits())) {
       searchSourceBuilder.trackTotalHits(true);
@@ -2661,6 +2661,48 @@ public class OpenSearchClient implements SearchClient {
     } catch (Exception e) {
       LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
       throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
     }
   }
 }
