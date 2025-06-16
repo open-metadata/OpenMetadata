@@ -190,19 +190,17 @@ const ConnectionConfigForm = ({
             type="info"
           />
         )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onTestConnection={onTestConnection}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
+        {!isEmpty(connSch.schema) && isAirflowAvailable && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onTestConnection={onTestConnection}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
         {!isUndefined(inlineAlertDetails) && (
           <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
         )}
