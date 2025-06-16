@@ -23,7 +23,7 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
 ```yaml
   authenticationConfiguration:
     clientType: ${AUTHENTICATION_CLIENT_TYPE:-confidential}
-    publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
+    publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://{your-collate-domain}/api/v1/system/config/jwks]}
     oidcConfiguration:
       id: ${OIDC_CLIENT_ID:-""}
       type: ${OIDC_TYPE:-""} # google, azure etc.
@@ -34,8 +34,8 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
       preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
       responseType: ${OIDC_RESPONSE_TYPE:-"code"}
       disablePkce: ${OIDC_DISABLE_PKCE:-true}
-      callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
-      serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
+      callbackUrl: ${OIDC_CALLBACK:-"https://{your-collate-domain}/callback"}
+      serverUrl: ${OIDC_SERVER_URL:-"https://{your-collate-domain}"}
       clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
       tenant: ${OIDC_TENANT:-""}
       maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
@@ -44,7 +44,7 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
 # Configuration Parameters
 
 ## Public Key Url (publicKeyUrls): 
-This needs to be updated as per different SSO providers. The default value is `http://localhost:8585/api/v1/system/config/jwks`. This is the URL where the public keys are stored. The public keys are used to verify the signature of the JWT token.
+This needs to be updated as per different SSO providers. The default value is `https://{your-collate-domain}/api/v1/system/config/jwks`. This is the URL where the public keys are stored. The public keys are used to verify the signature of the JWT token.
 
 {%important%}
 
@@ -56,7 +56,7 @@ This needs to be updated as per different SSO providers. The default value is `h
 
 **Azure**: https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys
 
-Also if you have enabled [JWT Tokens](/deployment/security/enable-jwt-tokens) then http://localhost:8585/api/v1/system/config/jwks also needs to be there in the list with proper server url.
+Also if you have enabled [JWT Tokens](/deployment/security/enable-jwt-tokens) then https://{your-collate-domain}/api/v1/system/config/jwks also needs to be there in the list with proper server url.
 
 {%important%}
 
@@ -112,17 +112,17 @@ Define the response type for the authentication request. Default is code and nee
 Set ${OIDC_DISABLE_PKCE:-true} to true if you want to disable Proof Key for Code Exchange (PKCE). If you want to send CodeVerifier and CodeChallenge in the request, set it to false.
 
 ## Callback URL (callbackUrl): 
-Provide the callback URL where the OIDC provider redirects after authentication. Update ${OIDC_CALLBACK:-"http://localhost:8585/callback"} with your actual callback URL.
+Provide the callback URL where the OIDC provider redirects after authentication. Update ${OIDC_CALLBACK:-"https://{your-collate-domain}/callback"} with your actual callback URL.
 
 {%important%}
 
-The only initial part of the URL should be changed, the rest of the URL should be the same as the default one. The default URL is `http://localhost:8585/callback`.
+The only initial part of the URL should be changed, the rest of the URL should be the same as the default one. The default URL is `https://{your-collate-domain}/callback`.
 Also, this should match what you have configured in your OIDC provider.
 
 {%important%}
 
 ## Server URL (serverUrl): 
-Specify the URL of your OM Server. Default is http://localhost:8585.
+Specify the URL of your OM Server. Default is https://{your-collate-domain}.
 
 ## Client Authentication Method (clientAuthenticationMethod): 
 Define the method used for client authentication. Default is client_secret_post.
