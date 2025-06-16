@@ -23,18 +23,6 @@ jest.mock('../../../../hooks/useSearchStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
 jest.mock('../../../../utils/CommonUtils');
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: any) => {
-      if (key === 'label.welcome') {
-        return `Welcome ${options?.name || 'User'}`;
-      }
-
-      return key;
-    },
-  }),
-}));
-
 // Create typed mocks
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
@@ -79,7 +67,7 @@ describe('CustomiseLandingPageHeader', () => {
   it('should render the component', () => {
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByText('Welcome Test User')).toBeInTheDocument();
+    expect(screen.getByText('label.welcome')).toBeInTheDocument();
     expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
     expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
   });
@@ -91,7 +79,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByText('Welcome testuser')).toBeInTheDocument();
+    expect(screen.getByText('label.welcome')).toBeInTheDocument();
   });
 
   it('should render the customise header button', () => {

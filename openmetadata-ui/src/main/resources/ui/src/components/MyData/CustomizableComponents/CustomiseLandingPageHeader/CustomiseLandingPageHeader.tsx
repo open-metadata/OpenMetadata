@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Input, Row, Typography } from 'antd';
+import { Button, Input, Typography } from 'antd';
 import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,9 +51,9 @@ const CustomiseLandingPageHeader = () => {
   }, []);
 
   return (
-    <Row className="customise-landing-page">
-      <Row gutter={[24, 24]}>
-        <Col className="dashboardHeader" span={18}>
+    <div className="customise-landing-page">
+      <div className="header-container">
+        <div className="dashboardHeader">
           <div className="d-flex items-center gap-4 mb-5">
             <Typography.Text className="welcome-user">
               {t('label.welcome', {
@@ -71,73 +71,75 @@ const CustomiseLandingPageHeader = () => {
               }
             />
           </div>
-          <Row className="d-flex items-center gap-4 mb-8">
-            <div className="flex-center customise-search-container">
-              {!isNLPEnabled && (
-                <Button
-                  className="p-0 w-6 h-6"
-                  icon={
-                    <Icon
-                      component={IconSuggestionsBlue}
-                      style={{ fontSize: '20px' }}
-                    />
-                  }
+          <div className="mb-9 customise-search-container">
+            <div className="d-flex items-center gap-4 mb-9">
+              <div className="flex-center search-input">
+                {!isNLPEnabled && (
+                  <Button
+                    className="p-0 w-6 h-6"
+                    icon={
+                      <Icon
+                        component={IconSuggestionsBlue}
+                        style={{ fontSize: '20px' }}
+                      />
+                    }
+                    type="text"
+                  />
+                )}
+                <Input
+                  autoComplete="off"
+                  bordered={false}
+                  className="rounded-4 appbar-search"
+                  data-testid="customise-searchbox"
+                  id="customise-searchbox"
+                  placeholder={t('label.search-for-type', {
+                    type: 'Tables, Database, Schema...',
+                  })}
                   type="text"
                 />
-              )}
-              <Input
-                autoComplete="off"
-                bordered={false}
-                className="rounded-4 appbar-search"
-                data-testid="customise-searchbox"
-                id="customise-searchbox"
-                placeholder={t('label.search-for-type', {
-                  type: 'Tables, Database, Schema...',
-                })}
-                type="text"
-              />
+              </div>
+              <div
+                className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white domain-selector"
+                data-testid="domain-selector">
+                <DomainIcon
+                  className="domain-icon"
+                  data-testid="domain-icon"
+                  height={22}
+                  width={22}
+                />
+                <Typography.Text className="text-sm font-medium domain-title">
+                  {t('label.all-domain-plural')}
+                </Typography.Text>
+                <DropdownIcon
+                  className="dropdown-icon"
+                  data-testid="dropdown-icon"
+                  height={14}
+                  width={14}
+                />
+              </div>
             </div>
-            <div
-              className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white"
-              data-testid="domain-selector">
-              <DomainIcon
-                className="domain-icon"
-                data-testid="domain-icon"
-                height={22}
-                width={22}
-              />
-              <Typography.Text className="text-sm font-medium domain-title">
-                {t('label.all-domain-plural')}
-              </Typography.Text>
-              <DropdownIcon
-                className="dropdown-icon"
-                data-testid="dropdown-icon"
-                height={14}
-                width={14}
-              />
-            </div>
-          </Row>
-          {recentlyViewData.length > 0 && (
-            <div className="customise-recently-viewed-data">
-              {recentlyViewData.map((data) => (
-                <div
-                  className="recent-item d-flex flex-col items-center gap-3"
-                  key={data.name}>
-                  <div className="d-flex items-center justify-center entity-icon-container">
-                    {data.icon}
+            {recentlyViewData.length > 0 && (
+              <div className="customise-recently-viewed-data">
+                {recentlyViewData.map((data) => (
+                  <div
+                    className="recent-item d-flex flex-col items-center gap-3"
+                    key={data.name}>
+                    <div className="d-flex items-center justify-center entity-icon-container">
+                      {data.icon}
+                    </div>
+                    <Typography.Text className="text-sm font-medium text-white wrap-text">
+                      {data.name}
+                    </Typography.Text>
                   </div>
-                  <Typography.Text className="text-sm font-medium text-white wrap-text">
-                    {data.name}
-                  </Typography.Text>
-                </div>
-              ))}
-            </div>
-          )}
-        </Col>
-        <Col span={6} />
-      </Row>
-      <Row className="overlapped-background" />
-    </Row>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="announcements" />
+      </div>
+      <div className="overlapped-container" />
+    </div>
   );
 };
 
