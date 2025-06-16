@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getDecodedFqn } from '../utils/StringsUtils';
 import { useRequiredParams } from '../utils/useRequiredParams';
 
 type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
@@ -23,8 +22,8 @@ export const useFqn = (): Fqn => {
   const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
 
   return {
-    fqn: fqn ? fqn : '',
-    ingestionFQN: ingestionFQN ? getDecodedFqn(ingestionFQN) : '',
-    ruleName: ruleName ? getDecodedFqn(ruleName) : '',
+    fqn: fqn ?? '',
+    ingestionFQN: ingestionFQN ?? '',
+    ruleName: ruleName ?? '',
   };
 };

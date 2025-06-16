@@ -135,9 +135,9 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       // Select Custom Property Field when we want filter
       await page
         .locator(
-          '.group--children .rule--field .ant-select-selector .ant-select-selection-search'
+          '.group--children .rule--field .ant-select-selector .ant-select-selection-search .ant-select-selection-search-input'
         )
-        .click();
+        .fill(propertyName);
       await page.getByTitle(propertyName).click();
 
       // type custom property value based, on which the filter should be made on dashboard

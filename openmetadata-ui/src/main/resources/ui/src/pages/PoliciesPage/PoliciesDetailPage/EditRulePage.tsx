@@ -52,7 +52,7 @@ const EditRulePage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn, ruleName } = useFqn();
-  const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
 
@@ -82,7 +82,7 @@ const EditRulePage = () => {
   );
 
   const fetchPolicy = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const data = await getPolicyByName(
         fqn,
@@ -99,7 +99,7 @@ const EditRulePage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

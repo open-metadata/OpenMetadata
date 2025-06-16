@@ -296,8 +296,10 @@ describe('Test EntityTable Component', () => {
       paging: { total: 0 },
     });
 
-    render(<SchemaTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const entityTable = await screen.findByTestId('entity-table');
