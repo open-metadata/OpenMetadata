@@ -86,7 +86,8 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
-    def run(  # pylint: disable=unused-argument
+    # pylint: disable=unused-argument,W0221
+    def run(
         self,
         checkpoint_result: CheckpointResult,
         action_context: Union[ActionContext, None],
