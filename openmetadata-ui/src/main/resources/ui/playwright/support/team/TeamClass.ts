@@ -24,6 +24,7 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   users?: string[];
   defaultRoles?: string[];
+  policies?: string[];
 };
 
 export class TeamClass {
@@ -38,6 +39,7 @@ export class TeamClass {
       description: 'playwright team description',
       teamType: 'Group',
       users: [],
+      policies: [],
     };
   }
 
