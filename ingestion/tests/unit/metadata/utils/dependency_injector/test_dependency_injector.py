@@ -1,4 +1,4 @@
-from typing import ClassVar, Optional
+from typing import Optional
 
 import pytest
 
@@ -154,7 +154,7 @@ class TestInjectClassAttributes:
 
         @inject_class_attributes
         class UserService:
-            db: ClassVar[Inject[Database]]
+            db: Inject[Database]
 
             @classmethod
             def get_user(cls, user_id: int) -> str:
@@ -175,8 +175,8 @@ class TestInjectClassAttributes:
 
         @inject_class_attributes
         class UserService:
-            db: ClassVar[Inject[Database]]
-            cache: ClassVar[Inject[Cache]]
+            db: Inject[Database]
+            cache: Inject[Cache]
 
             @classmethod
             def get_user(cls, user_id: int) -> str:
@@ -197,18 +197,17 @@ class TestInjectClassAttributes:
         container = DependencyContainer()
         container.clear()  # Ensure no dependencies are registered
 
-        @inject_class_attributes
-        class UserService:
-            db: ClassVar[Inject[Database]]
-
-            @classmethod
-            def get_user(cls, user_id: int) -> str:
-                if cls.db is None:
-                    raise DependencyNotFoundError("Database dependency not found")
-                return cls.db.query(f"SELECT * FROM users WHERE id = {user_id}")
-
         with pytest.raises(DependencyNotFoundError):
-            UserService.get_user(user_id=1)
+
+            @inject_class_attributes
+            class UserService:
+                db: Inject[Database]
+
+                @classmethod
+                def get_user(cls, user_id: int) -> str:
+                    if cls.db is None:
+                        raise DependencyNotFoundError("Database dependency not found")
+                    return cls.db.query(f"SELECT * FROM users WHERE id = {user_id}")
 
     def test_inject_class_attributes_shared_dependencies(self):
         container = DependencyContainer()
@@ -217,8 +216,8 @@ class TestInjectClassAttributes:
 
         @inject_class_attributes
         class UserService:
-            db: ClassVar[Inject[Database]]
-            counter: ClassVar[int] = 0
+            db: Inject[Database]
+            counter: int = 0
 
             @classmethod
             def increment_counter(cls) -> int:
