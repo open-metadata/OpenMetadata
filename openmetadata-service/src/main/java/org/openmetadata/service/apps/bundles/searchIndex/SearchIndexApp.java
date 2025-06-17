@@ -20,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -82,13 +81,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
-  private final ExecutorService jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
+  private ExecutorService jobExecutor;
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
   private JobExecutionContext jobExecutionContext;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
+
+  // Maximum concurrent tasks to prevent exhausting DB connections
+  private static final int MAX_CONCURRENT_TASKS = 50;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -115,6 +117,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
       this.jobExecutionContext = jobExecutionContext;
+
+      // Initialize bounded executors
+      this.jobExecutor =
+          Executors.newFixedThreadPool(MAX_CONCURRENT_TASKS, Thread.ofVirtual().factory());
+
       initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -237,7 +244,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numProducers = jobData.getProducerThreads();
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
-    producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
+    // Use bounded executor for producer threads
+    producerExecutor =
+        Executors.newFixedThreadPool(
+            Math.min(numProducers, MAX_CONCURRENT_TASKS), Thread.ofVirtual().factory());
+
     try {
       processEntityReindex(jobExecutionContext);
     } catch (Exception e) {
@@ -266,10 +278,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
-              Semaphore semaphore = new Semaphore(Math.max(jobData.getQueueSize(), 100));
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
-                  semaphore.acquire();
                   LOG.debug(
                       "Submitting virtual thread producer task for batch {}/{}",
                       i + 1,
@@ -291,7 +301,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
                               "Virtual thread completed batch, remaining: {}",
                               producerLatch.getCount() - 1);
                           producerLatch.countDown();
-                          semaphore.release();
                         }
                       });
                 }

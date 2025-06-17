@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
@@ -108,15 +109,36 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               true,
               Entity.getFields(entityType, fields),
               null);
+
+      // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
+      // point to deleted entities and should not be counted as failures
+      List<EntityError> realErrors = new ArrayList<>();
       if (!result.getErrors().isEmpty()) {
-        lastFailedCursor = this.cursor.get();
+        for (EntityError error : result.getErrors()) {
+          // Skip entities with missing relationships - these will be garbage collected separately
+          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
+
+        if (!realErrors.isEmpty()) {
+          lastFailedCursor = this.cursor.get();
+        }
+
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
           this.isDone.set(true);
         } else {
           this.cursor.set(result.getPaging().getAfter());
         }
-        updateStats(result.getData().size(), result.getErrors().size());
+
+        // Update stats with only real errors, not missing relationship errors
+        updateStats(result.getData().size(), realErrors.size());
+
+        // Update the result to only include real errors
+        result.setErrors(realErrors);
         return result;
       }
 
@@ -174,6 +196,20 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               true,
               Entity.getFields(entityType, fields),
               null);
+
+      // Filter out EntityNotFoundExceptions from errors - same as in read() method
+      if (!result.getErrors().isEmpty()) {
+        List<EntityError> realErrors = new ArrayList<>();
+        for (EntityError error : result.getErrors()) {
+          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
+        result.setErrors(realErrors);
+      }
+
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
