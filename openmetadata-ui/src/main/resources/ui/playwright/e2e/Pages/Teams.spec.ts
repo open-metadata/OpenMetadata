@@ -445,10 +445,6 @@ test.describe('Teams Page', () => {
       page.getByTestId('profile-teams-edit-popover')
     ).not.toBeVisible();
 
-    await expect(page.getByTestId('user-profile-teams')).toContainText(
-      publicTeam.displayName
-    );
-
     await page
       .getByTestId('user-profile-teams')
       .getByText(publicTeam.displayName)
