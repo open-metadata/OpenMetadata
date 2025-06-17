@@ -11,10 +11,10 @@
         }
       },
       "analyzer": {
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
             "kuromoji_baseform",
             "kuromoji_part_of_speech",
             "kuromoji_number",
@@ -157,7 +157,6 @@
       "entityType": {
         "type": "keyword"
       },
-
       "databaseSchema": {
         "properties": {
           "id": {
@@ -362,7 +361,7 @@
       "followers": {
         "type": "keyword"
       },
-      "votes" : {
+      "votes": {
         "properties": {
           "upVotes": {
             "type": "long"
@@ -527,7 +526,7 @@
       "lifeCycle": {
         "type": "object"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

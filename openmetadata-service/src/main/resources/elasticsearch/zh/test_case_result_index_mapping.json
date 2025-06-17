@@ -48,7 +48,7 @@
         "type": "date"
       },
       "@timestamp": {
-          "type": "date"
+        "type": "date"
       },
       "testResultValue": {
         "properties": {

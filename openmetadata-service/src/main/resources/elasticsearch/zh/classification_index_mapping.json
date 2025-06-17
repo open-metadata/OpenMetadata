@@ -109,7 +109,7 @@
       "deleted": {
         "type": "boolean"
       },
-      "disabled" : {
+      "disabled": {
         "type": "text"
       },
       "totalVotes": {

@@ -265,7 +265,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -407,7 +407,7 @@
           }
         }
       },
-      "testCaseResult":  {
+      "testCaseResult": {
         "properties": {
           "result": {
             "type": "text"

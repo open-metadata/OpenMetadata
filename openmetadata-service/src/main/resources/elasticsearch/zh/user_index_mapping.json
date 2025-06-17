@@ -10,8 +10,7 @@
           ]
         }
       },
-      "analyzer": {
-      },
+      "analyzer": {},
       "filter": {
         "om_stemmer": {
           "type": "stemmer",
@@ -77,7 +76,7 @@
       "isAdmin": {
         "type": "text"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

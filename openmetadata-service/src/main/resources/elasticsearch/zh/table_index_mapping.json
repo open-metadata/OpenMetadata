@@ -107,7 +107,7 @@
         "type": "object"
       },
       "entityRelationship": {
-        "type" : "object"
+        "type": "object"
       },
       "tableType": {
         "type": "keyword"
@@ -372,7 +372,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -614,7 +614,6 @@
       "descriptionStatus": {
         "type": "keyword"
       },
-
       "columnDescriptionStatus": {
         "type": "keyword"
       },
