@@ -1,0 +1,12 @@
+name: TypeScript Type Generation
+
+on:
+  pull_request:
+    paths:
+      - 'openmetadata-spec/src/main/resources/json/schema/**'
+
+jobs:
+  generate-types:
+    runs-on: ubuntu-latest
+    # Placeholder for future workflow steps
+    steps: []
