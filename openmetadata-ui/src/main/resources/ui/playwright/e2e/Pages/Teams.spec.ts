@@ -449,10 +449,6 @@ test.describe('Teams Page', () => {
       publicTeam.displayName
     );
 
-    await expect(page.getByTestId('user-profile-teams')).toContainText(
-      publicTeam.displayName
-    );
-
     await page
       .getByTestId('user-profile-teams')
       .getByText(publicTeam.displayName)
