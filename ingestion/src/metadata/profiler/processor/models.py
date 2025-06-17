@@ -13,20 +13,30 @@
 Models to map profiler definitions
 JSON workflows to the profiler
 """
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 
 
-def valid_metric(value: str):
+@inject
+def valid_metric(value: str, metrics: Inject[Type[MetricRegistry]] = None):
     """
     Validate that the input metrics are correctly named
     and can be found in the Registry
     """
-    if not Metrics.get(value.upper()):
+    if metrics is None:
+        raise DependencyNotFoundError(
+            "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+        )
+    if not metrics.get(value.upper()):
         raise ValueError(
             f"Metric name {value} is not a proper metric name from the Registry"
         )

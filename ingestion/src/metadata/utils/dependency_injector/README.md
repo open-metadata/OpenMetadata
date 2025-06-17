@@ -152,3 +152,38 @@ The dependency container is thread-safe and uses a reentrant lock (RLock) to sup
 3. Circular dependencies are not supported
 4. Dependencies are always treated as optional and can be overridden 
 5. Dependencies can't be passed as *arg. Must be passed as *kwargs
+
+### Class-Level Dependency Injection
+
+For cases where you want to share dependencies across all instances of a class, you can use the `@inject_class_attributes` decorator:
+
+```python
+from typing import ClassVar
+
+@inject_class_attributes
+class UserService:
+    db: ClassVar[Inject[Database]]
+    cache: ClassVar[Inject[Cache]]
+
+    @classmethod
+    def get_user(cls, user_id: int) -> dict:
+        cache_key = f"user:{user_id}"
+        cached = cls.cache.get(cache_key)
+        if cached:
+            return cached
+        return cls.db.query(f"SELECT * FROM users WHERE id = {user_id}")
+
+# The dependencies are shared across all instances and accessed via class methods
+user = UserService.get_user(user_id=1)
+```
+
+The `@inject_class_attributes` decorator will:
+1. Look for class attributes annotated with `ClassVar[Inject[Type]]`
+2. Automatically inject the dependencies at the class level
+3. Make the dependencies available to all instances and class methods
+4. Raise `DependencyNotFoundError` if a required dependency is not registered
+
+This is particularly useful for:
+- Utility classes that don't need instance-specific state
+- Services that should share the same dependencies across all instances
+- Performance optimization when the same dependencies are used by multiple instances

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
 
 from pydantic import ValidationError
 from sqlalchemy import Column
@@ -94,7 +94,7 @@ class Profiler(Generic[TMetric]):
         :param profile_sample: % of rows to use for sampling column metrics
         """
         self.global_profiler_configuration: Optional[ProfilerConfiguration] = (
-            global_profiler_configuration.config_value
+            cast(ProfilerConfiguration, global_profiler_configuration.config_value)
             if global_profiler_configuration
             else None
         )
