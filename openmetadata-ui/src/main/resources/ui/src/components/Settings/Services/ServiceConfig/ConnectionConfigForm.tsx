@@ -108,6 +108,11 @@ const ConnectionConfigForm = ({
     [data, serviceCategory, serviceType]
   );
 
+  useEffect(() => {
+    if (!isAirflowAvailable || isEmpty(connSch.schema)) {
+      setHasTestedConnection(true);
+    }
+  }, [isAirflowAvailable, connSch]);
   const shouldShowIPAlert = useMemo(() => {
     return (
       !isEmpty(connSch.schema) &&
