@@ -743,7 +743,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
       LOG.info(
-          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent RequesPagints: {}, Payload Size: {} MB",
+          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
