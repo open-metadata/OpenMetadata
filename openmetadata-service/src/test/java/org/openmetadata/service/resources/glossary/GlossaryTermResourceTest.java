@@ -70,11 +70,16 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -90,6 +95,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -97,6 +103,8 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.tags.ClassificationResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -1455,6 +1463,99 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 String.format(
                     "A term with the name '%s' already exists in '%s' glossary.",
                     term1.getName(), glossary.getName())));
+  }
+
+  @Test
+  void test_validateGlossaryTermTagsWithSoftDeletedAssets(TestInfo test) throws IOException {
+
+    // Create a mutually exclusive classification and tag
+    ClassificationResourceTest classificationTest = new ClassificationResourceTest();
+    CreateClassification createClassification =
+        classificationTest.createRequest("mutuallyExclusive").withMutuallyExclusive(true);
+    Classification classification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    CreateTag createTag =
+        tagResourceTest.createRequest("mutual1").withClassification(classification.getName());
+    Tag tag1 = tagResourceTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+    createTag =
+        tagResourceTest.createRequest("mutual2").withClassification(classification.getName());
+    Tag tag2 = tagResourceTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest("GlossaryWithSoftDeletedAssets")
+            .withTags(List.of(EntityUtil.toTagLabel(tag1)));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary term with the mutually exclusive tag
+    CreateGlossaryTerm createTerm =
+        createRequest("term1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withTags(List.of(EntityUtil.toTagLabel(tag1)));
+    GlossaryTerm term = createAndCheckEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Create two tables and add them as assets to the glossary term
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable1 = tableResourceTest.createRequest(test, 1);
+    createTable1.setName("table1");
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = tableResourceTest.createRequest(test, 1);
+    createTable2.setName("table2");
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Add the tables to the glossary term
+    Map<String, Object> payload =
+        Map.of(
+            "assets",
+            List.of(
+                new EntityReference().withId(table1.getId()).withType("table"),
+                new EntityReference().withId(table2.getId()).withType("table")),
+            "dryRun",
+            false);
+
+    WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
+    TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    // Soft delete one of the tables
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+
+    // Try to validate adding another tag from the same mutually exclusive classification
+    ValidateGlossaryTagsRequest validateRequest =
+        new ValidateGlossaryTagsRequest()
+            .withGlossaryTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tag2.getFullyQualifiedName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION)
+                        .withLabelType(TagLabel.LabelType.MANUAL)));
+
+    // Validate the request using TestUtils.put to get the response entity
+    target = getResource(term.getId()).path("/tags/validate");
+    BulkOperationResult result =
+        TestUtils.put(target, validateRequest, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+    assertNotNull(result.getFailedRequest());
+    assertFalse(result.getFailedRequest().isEmpty());
+
+    // Extract FQNs from failed requests
+    Set<String> failedFqns = new HashSet<>();
+    for (BulkResponse failedReq : result.getFailedRequest()) {
+      Object requestObj = failedReq.getRequest();
+      if (requestObj instanceof Map<?, ?> requestMap) {
+        String fqn = (String) requestMap.get("fullyQualifiedName");
+        System.out.println("Failed FQN: " + fqn);
+        failedFqns.add(fqn);
+      }
+    }
+    // Assert both table FQNs are present
+    assertTrue(
+        failedFqns.contains(table1.getFullyQualifiedName()),
+        "Failed requests should contain soft-deleted table FQN");
+    assertTrue(
+        failedFqns.contains(table2.getFullyQualifiedName()),
+        "Failed requests should contain non-deleted table FQN");
   }
 
   @Test

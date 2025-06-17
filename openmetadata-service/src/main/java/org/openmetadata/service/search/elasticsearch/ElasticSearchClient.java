@@ -3,12 +3,8 @@ package org.openmetadata.service.search.elasticsearch;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
@@ -365,6 +361,7 @@ public class ElasticSearchClient implements SearchClient {
   public Response doSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
@@ -396,60 +393,26 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(DATA_PRODUCT)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+    if (!nullOrEmpty(request.getDeleted())) {
+      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.existsQuery("deleted"))
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("deleted")));
+        searchSourceBuilder.query(boolQueryBuilder);
+      } else {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+      }
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
@@ -474,7 +437,7 @@ public class ElasticSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (request.getTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);

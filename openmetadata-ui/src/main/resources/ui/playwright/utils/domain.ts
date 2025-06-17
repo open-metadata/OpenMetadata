@@ -136,7 +136,7 @@ export const selectSubDomain = async (
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   const res = page.waitForResponse(
-    '/api/v1/search/query?*&index=data_product_search_index'
+    '/api/v1/search/query?*&index=data_product_search_index*'
   );
   await page.getByTestId(subDomain.name).click();
   await res;
@@ -147,7 +147,7 @@ export const selectDataProductFromTab = async (
   dataProduct: DataProduct['data']
 ) => {
   const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
+    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index*'
   );
   await page
     .locator('.domain-details-page-tabs')
