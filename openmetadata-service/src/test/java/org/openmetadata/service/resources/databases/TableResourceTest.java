@@ -45,6 +45,7 @@ import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -87,6 +88,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -157,6 +162,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
@@ -4276,6 +4282,67 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> updateColumnByFQN(columnFQN, updateColumn, null),
         UNAUTHORIZED,
         "Not authorized; User's Email is not present");
+  }
+
+  @Test
+  void test_simulateLongDeletionWithSimultaneousIngestion(TestInfo test) throws Exception {
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    DatabaseServiceResourceTest dbServiceResourceTest = new DatabaseServiceResourceTest();
+
+    // Setup service -> database -> schema
+    DatabaseService service =
+        dbServiceResourceTest.createAndCheckEntity(
+            dbServiceResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    Database database =
+        databaseResourceTest.createAndCheckEntity(
+            databaseResourceTest.createRequest(test).withService(service.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchema schema =
+        databaseSchemaResourceTest.createAndCheckEntity(
+            databaseSchemaResourceTest
+                .createRequest(test)
+                .withDatabase(database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create initial table
+    CreateTable create = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Submit deletion
+    Future<?> deletionFuture =
+        executor.submit(
+            () -> {
+              DatabaseServiceRepository databaseServiceRepository =
+                  (DatabaseServiceRepository) Entity.getEntityRepository(DATABASE_SERVICE);
+              databaseServiceRepository.deleteInternalSimultaneousIngestion(
+                  "admin", service.getId(), true, true);
+            });
+
+    Future<?> getBrokenTableFutire =
+        executor.submit(
+            () -> {
+              try {
+                CreateTable createTableWithBrokenRelation =
+                    createRequest(test)
+                        .withDatabaseSchema(schema.getFullyQualifiedName())
+                        .withName("BrokenRelationshipTable");
+                Table tableWithBrokenRelation =
+                    createAndCheckEntity(createTableWithBrokenRelation, ADMIN_AUTH_HEADERS);
+                Thread.sleep(15000);
+                Table getCallForBrokenRelation =
+                    getEntity(tableWithBrokenRelation.getId(), "*", ADMIN_AUTH_HEADERS);
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            });
+    deletionFuture.get();
+    getBrokenTableFutire.get();
+    executor.shutdown();
+    executor.awaitTermination(10, TimeUnit.SECONDS);
   }
 
   private Column updateColumnByFQN(

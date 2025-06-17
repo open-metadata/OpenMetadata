@@ -1464,6 +1464,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
+  /**
+   * This method is used to delete an entity with simultaneous ingestion.
+   * It is used in the case of simultaneous ingestion where the entity is being deleted
+   * while it is being ingested.
+   */
+  @Transaction
+  @VisibleForTesting
+  private DeleteResponse<T> deleteWithSimultaneousIngesttion(
+      String deletedBy, T original, boolean recursive, boolean hardDelete) {
+    checkSystemEntityDeletion(original);
+    preDelete(original, deletedBy);
+    setFieldsInternal(original, putFields);
+    deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+
+    EventType changeType;
+    T updated = get(null, original.getId(), putFields, ALL, false);
+    if (supportsSoftDelete && !hardDelete) {
+      updated.setUpdatedBy(deletedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      updated.setDeleted(true);
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
+      updater.update();
+      changeType = ENTITY_SOFT_DELETED;
+    } else {
+      cleanupWithSleepToSimulateIngestion(updated);
+      changeType = ENTITY_DELETED;
+    }
+    LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
+    return new DeleteResponse<>(updated, changeType);
+  }
+
   @Transaction
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
@@ -1478,6 +1509,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate entity
     T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
+  }
+
+  /**
+   * This method is used to delete an entity with simultaneous ingestion.
+   * It is used in the case of simultaneous ingestion where the entity is being deleted
+   * while it is being ingested.
+   */
+  @Transaction
+  @VisibleForTesting
+  public final DeleteResponse<T> deleteInternalSimultaneousIngestion(
+      String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
+    // Validate entity
+    T entity = find(id, ALL);
+    return deleteWithSimultaneousIngesttion(updatedBy, entity, recursive, hardDelete);
   }
 
   @Transaction
@@ -1568,6 +1613,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+  }
+
+  @VisibleForTesting
+  private void cleanupWithSleepToSimulateIngestion(T entityInterface) {
+    cleanup(entityInterface);
+    try {
+      Thread.sleep(10000); // Simulate delete delay
+    } catch (Exception ex) {
+      LOG.error("Error while simulating delete delay", ex);
+    }
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
