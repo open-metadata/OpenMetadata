@@ -277,8 +277,8 @@ class NifiSource(PipelineServiceSource):
 
         for connection in connections_list:
             try:
-                source = connection.get("component").get("source", {})
-                destination = connection.get("component").get("destination", {})
+                source = connection.get("component", {}).get("source", {})
+                destination = connection.get("component", {}).get("destination", {})
                 if (
                     source.get("type") == "OUTPUT_PORT"
                     and destination.get("type") == "INPUT_PORT"
