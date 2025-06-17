@@ -20,6 +20,22 @@
   display: flex;
   align-items: center;
 
+  &.signup-page {
+    .login-box {
+      padding: @size-md @size-2xl;
+      .header-text {
+        margin-top: @size-md;
+      }
+
+      .login-form {
+        margin-top: @size-md;
+      }
+      .ant-form-item {
+        margin-bottom: @size-md;
+      }
+    }
+  }
+
   .login-box {
     background-color: @white;
     border-radius: @border-radius-lg;

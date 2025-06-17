@@ -12,6 +12,7 @@
  */
 import { Col, Grid, Layout, Row } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
+import classNames from 'classnames';
 import React, { ReactNode } from 'react';
 import LoginCarousel from '../../../pages/LoginPage/LoginCarousel';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
@@ -20,9 +21,11 @@ import './carousel-layout.less';
 export const CarouselLayout = ({
   pageTitle,
   children,
+  carouselClassName,
 }: {
   pageTitle: string;
   children: ReactNode;
+  carouselClassName?: string;
 }) => {
   const { xl } = Grid.useBreakpoint();
 
@@ -36,7 +39,11 @@ export const CarouselLayout = ({
           </Col>
           {xl && (
             <Col span={14}>
-              <div className="form-carousel-container">
+              <div
+                className={classNames(
+                  'form-carousel-container',
+                  carouselClassName
+                )}>
                 <LoginCarousel />
               </div>
             </Col>

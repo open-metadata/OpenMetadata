@@ -74,8 +74,12 @@ const BasicSignUp = () => {
   };
 
   return (
-    <CarouselLayout pageTitle={t('label.sign-up')}>
-      <div className="login-form-container" data-testid="signin-page">
+    <CarouselLayout
+      carouselClassName="signup-page"
+      pageTitle={t('label.sign-up')}>
+      <div
+        className="login-form-container signup-page"
+        data-testid="signin-page">
         <div className="login-box">
           <BrandImage isMonoGram height="auto" width={50} />
           <Typography.Title className="header-text" level={3}>
