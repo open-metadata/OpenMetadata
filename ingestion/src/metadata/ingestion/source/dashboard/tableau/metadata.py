@@ -980,6 +980,19 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
+    def get_project_names(self, dashboard_details: Any) -> Optional[List[str]]:
+        """
+        Get the project / workspace / folder / collection names of the dashboard
+        """
+        try:
+            return self.client.get_project_parents_by_id(dashboard_details.project.id)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching project names for {dashboard_details.id}: {exc}"
+            )
+        return None
+
     def yield_dashboard_usage(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[DashboardUsage]]:

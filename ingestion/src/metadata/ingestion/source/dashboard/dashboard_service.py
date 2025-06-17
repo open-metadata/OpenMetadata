@@ -566,15 +566,40 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.context.get().project_name = (  # pylint: disable=E1128
                     self.get_project_name(dashboard_details=dashboard_details)
                 )
-                if filter_by_project(
+
+                # Get both single project name and list of project names
+                project_name = self.context.get().project_name
+                project_names = (
+                    self.get_project_names(dashboard_details=dashboard_details) or []
+                )
+
+                # Filter based on list of project names if they exist
+                if project_names:
+                    should_filter = True
+                    for name in project_names:
+                        if not filter_by_project(
+                            self.source_config.projectFilterPattern,
+                            name,
+                        ):
+                            should_filter = False
+                            break
+
+                    if should_filter:
+                        self.status.filter(
+                            ", ".join(project_names),
+                            "Project / Workspace Filtered Out",
+                        )
+                        continue
+                elif project_name and filter_by_project(
                     self.source_config.projectFilterPattern,
-                    self.context.get().project_name,
+                    project_name,
                 ):
                     self.status.filter(
-                        self.context.get().project_name,
+                        project_name,
                         "Project / Workspace Filtered Out",
                     )
                     continue
+
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -617,7 +642,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get the project / workspace / folder / collection name of the dashboard
         """
         logger.debug(
-            f"Projects are not supported for {self.service_connection.type.name}"
+            f"Project name is not supported for {self.service_connection.type.name}"
+        )
+        return None
+
+    def get_project_names(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[List[str]]:
+        """
+        Get the project / workspace / folder / collection names of the dashboard
+        """
+        logger.debug(
+            f"Project names are not supported for {self.service_connection.type.name}"
         )
         return None
 
