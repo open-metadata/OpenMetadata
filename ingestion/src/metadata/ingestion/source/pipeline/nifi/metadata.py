@@ -299,7 +299,9 @@ class NifiSource(PipelineServiceSource):
                 )
         return connections
 
-    def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
+    def yield_pipeline_bulk_lineage_details(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Process the pipeline bulk lineage details
         """
