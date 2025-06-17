@@ -346,6 +346,12 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
@@ -456,10 +462,6 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      */
     token?: string;
-    /**
-     * Sigma API version.
-     */
-    apiVersion?: string;
 }
 
 /**
@@ -1203,6 +1205,7 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
