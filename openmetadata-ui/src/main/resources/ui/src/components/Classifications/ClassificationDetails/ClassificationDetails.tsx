@@ -427,9 +427,7 @@ const ClassificationDetails = forwardRef(
           <Row className="m-t-md" gutter={16}>
             <Col span={18}>
               <Card className="classification-details-card">
-                <div
-                  className="m-b-sm m-t-xs"
-                  data-testid="description-container">
+                <div className="m-b-sm" data-testid="description-container">
                   <DescriptionV1
                     wrapInCard
                     className={classNames({
@@ -475,6 +473,7 @@ const ClassificationDetails = forwardRef(
                     record.disabled ? 'opacity-60' : ''
                   }
                   rowKey="id"
+                  scroll={{ x: true }}
                   size="small"
                 />
               </Card>

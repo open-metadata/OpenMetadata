@@ -100,6 +100,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
+    width: 300,
     render: (text: string) => (
       <>
         <div className="cursor-pointer d-flex">

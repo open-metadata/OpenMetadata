@@ -110,6 +110,7 @@
     }
   },
   "required": [
+    "id",
     "name",
     "description"
   ],

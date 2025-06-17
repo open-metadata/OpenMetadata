@@ -128,8 +128,8 @@ const TagsContainerV2 = ({
     selectedTagsInternal,
     isHoriZontalLayout,
     initialOptions,
-  } = useMemo(
-    () => ({
+  } = useMemo(() => {
+    return {
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
       selectedTagsInternal: tags?.[tagType]?.map(({ tagFQN }) => tagFQN),
@@ -139,9 +139,8 @@ const TagsContainerV2 = ({
         data,
       })) as SelectOption[],
       isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
-    }),
-    [tagType, permission, tags?.[tagType], tags, layoutType]
-  );
+    };
+  }, [tagType, permission, tags?.[tagType], tags, layoutType]);
 
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {

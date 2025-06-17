@@ -68,7 +68,7 @@ export interface Tag {
     /**
      * Unique identifier of this entity instance.
      */
-    id?: string;
+    id: string;
     /**
      * Change that lead to this version of the entity.
      */
