@@ -89,7 +89,7 @@ const ForgotPassword = () => {
             <Typography.Title level={3}>
               {t('label.forgot-your-password')}
             </Typography.Title>
-            <Typography.Text className="text-lg text-grey-muted">
+            <Typography.Text className="text-md text-grey-muted">
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>

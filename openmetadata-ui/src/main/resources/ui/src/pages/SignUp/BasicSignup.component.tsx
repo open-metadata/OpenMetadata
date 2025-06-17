@@ -82,7 +82,7 @@ const BasicSignUp = () => {
         data-testid="signin-page">
         <div className="login-box">
           <BrandImage isMonoGram height="auto" width={50} />
-          <Typography.Title className="header-text" level={3}>
+          <Typography.Title className="header-text display-xs" level={3}>
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
 
@@ -193,8 +193,10 @@ const BasicSignUp = () => {
                 </Form.Item>
 
                 <Button
-                  className="w-full p-y-lg d-flex flex-center login-btn"
+                  block
+                  className="login-btn"
                   htmlType="submit"
+                  size="large"
                   type="primary">
                   {t('label.create-entity', {
                     entity: t('label.account'),

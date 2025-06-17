@@ -40,7 +40,7 @@ const LoginCarousel = () => {
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="carousal-description text-sm p-x-lg"
+              className="carousal-description text-md p-x-lg"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
