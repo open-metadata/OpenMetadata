@@ -447,7 +447,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)
       throws IOException {
     if (CommonUtil.nullOrEmpty(fields)) {
-        fields = EntityUtil.Fields.EMPTY_FIELDS;
+      fields = EntityUtil.Fields.EMPTY_FIELDS;
     }
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
