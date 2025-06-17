@@ -1,0 +1,14 @@
+{
+	"type": "rest",
+	"serviceName": "pw_sample_api_service", 
+	"serviceConnection": {
+		"config": {
+			"type": "Rest",
+			"openAPISchemaURL": "https://petstore3.swagger.io/",
+    		"token":"mock_token"
+		}
+	},
+	"sourceConfig": {
+   		"config": {}
+  	}
+}
