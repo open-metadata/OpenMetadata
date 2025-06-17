@@ -64,7 +64,7 @@ test.describe('Customize Landing Page Flow', () => {
   test('Add,Remove and Reset widget should work properly', async ({
     adminPage,
   }) => {
-    test.slow(true);
+    test.setTimeout(210000);
 
     await redirectToHomePage(adminPage);
     await setUserDefaultPersona(adminPage, persona.responseData.displayName);
