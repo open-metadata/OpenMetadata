@@ -299,9 +299,7 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
-            base_url = self.config.serviceConnection.root.config.proxyURL
-            if not base_url:
-                base_url = self.config.serviceConnection.root.config.hostPort
+            base_url = self.get_base_url()
             dashboard_url = (
                 f"{clean_uri(str(base_url))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
@@ -730,9 +728,7 @@ class TableauSource(DashboardServiceSource):
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
-                base_url = self.config.serviceConnection.root.config.proxyURL
-                if not base_url:
-                    base_url = self.config.serviceConnection.root.config.hostPort
+                base_url = self.get_base_url()
                 chart_url = (
                     f"{clean_uri(str(base_url))}"
                     f"#{site_url}"
@@ -1066,3 +1062,11 @@ class TableauSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_base_url(self) -> str:
+        """
+        Get the proxy url for the tableau server
+        """
+        if self.config.serviceConnection.root.config.proxyURL:
+            return str(self.config.serviceConnection.root.config.proxyURL)
+        return str(self.config.serviceConnection.root.config.hostPort)
