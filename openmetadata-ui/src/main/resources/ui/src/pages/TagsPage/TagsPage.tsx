@@ -141,7 +141,11 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: [TabSpecificField.TERM_COUNT, TabSpecificField.OWNERS],
+        fields: [
+          TabSpecificField.TERM_COUNT,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAIN,
+        ],
         limit: 1000,
       });
       setClassifications(response.data);
@@ -173,6 +177,7 @@ const TagsPage = () => {
             TabSpecificField.OWNERS,
             TabSpecificField.USAGE_COUNT,
             TabSpecificField.TERM_COUNT,
+            TabSpecificField.DOMAIN,
           ],
         });
         if (currentClassification) {

@@ -63,6 +63,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
@@ -479,7 +480,10 @@ const ClassificationDetails = forwardRef(
               </Card>
             </Col>
             <Col span={6}>
-              <OwnerLabelV2 dataTestId="classification-owner-name" />
+              <div className="d-flex flex-column gap-5">
+                <DomainLabelV2 showDomainHeading />
+                <OwnerLabelV2 dataTestId="classification-owner-name" />
+              </div>
             </Col>
           </Row>
         </GenericProvider>
