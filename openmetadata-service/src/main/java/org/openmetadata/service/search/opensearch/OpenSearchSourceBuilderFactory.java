@@ -54,7 +54,7 @@ public class OpenSearchSourceBuilderFactory
 
     Map<String, Float> nonFuzzyFields =
         fields.entrySet().stream()
-            .filter(entry -> !isFuzzyField(entry.getKey()))
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     QueryStringQueryBuilder fuzzyQueryBuilder =
@@ -173,7 +173,7 @@ public class OpenSearchSourceBuilderFactory
               .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
       nonFuzzyFields =
           assetConfig.getSearchFields().stream()
-              .filter(fieldBoost -> !isFuzzyField(fieldBoost.getField()))
+              .filter(fieldBoost -> isNonFuzzyField(fieldBoost.getField()))
               .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
     } else {
       Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
@@ -183,7 +183,7 @@ public class OpenSearchSourceBuilderFactory
               .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       nonFuzzyFields =
           defaultFields.entrySet().stream()
-              .filter(entry -> !isFuzzyField(entry.getKey()))
+              .filter(entry -> isNonFuzzyField(entry.getKey()))
               .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
