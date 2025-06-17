@@ -34,7 +34,10 @@ export interface DashboardDetailsProps {
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;
   versionHandler: () => void;
-  onDashboardUpdate: (updatedDashboard: Dashboard) => Promise<void>;
+  onDashboardUpdate: (
+    updatedDashboard: Dashboard,
+    key?: keyof Dashboard
+  ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 }

@@ -34,7 +34,11 @@ import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Column } from '../generated/entity/data/table';
+import {
+  AssetCertification,
+  Column,
+  TagSource,
+} from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
@@ -306,10 +310,46 @@ export const createTierTag = (tag: Tag) => {
   };
 };
 
+export const createCertificationTag = (tag: Tag) => {
+  return {
+    tagLabel: {
+      displayName: tag.displayName,
+      name: tag.name,
+      href: tag.href,
+      description: tag.description,
+      tagFQN: tag.fullyQualifiedName,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    },
+  };
+};
 export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
   return newTier
     ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
     : getTagsWithoutTier(oldTags);
+};
+
+export const updateCertificationTag = (
+  newCertification?: Tag
+): AssetCertification | undefined => {
+  if (!newCertification) {
+    return undefined;
+  }
+
+  return {
+    tagLabel: {
+      tagFQN: newCertification.fullyQualifiedName || '',
+      name: newCertification.name,
+      displayName: newCertification.displayName,
+      description: newCertification.description || '',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      style: newCertification.style,
+    },
+    appliedDate: Date.now(),
+    expiryDate: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days from now
+  };
 };
 
 export const createTagObject = (tags: EntityTags[]) => {
