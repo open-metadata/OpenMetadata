@@ -463,8 +463,8 @@ const TagPage = () => {
               </Col>
               <Col span={6}>
                 <div className="d-flex flex-column gap-5">
-                  <OwnerLabelV2 dataTestId="tag-owner-name" />
                   <DomainLabelV2 showDomainHeading />
+                  <OwnerLabelV2 dataTestId="tag-owner-name" />
                 </div>
               </Col>
             </Row>
@@ -620,7 +620,7 @@ const TagPage = () => {
             {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  {!isCertificationClassification && (
+                  {!isCertificationClassification && !tagItem.disabled && (
                     <Button
                       data-testid="data-classification-add-button"
                       type="primary"
