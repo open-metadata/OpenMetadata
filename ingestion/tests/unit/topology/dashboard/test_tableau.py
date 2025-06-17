@@ -313,3 +313,11 @@ class TableauUnitTest(TestCase):
 
         base_model = TableauBaseModel(id="1234")
         self.assertEqual(base_model.id, "1234")
+
+    def test_generate_dashboard_url(self):
+        """
+        Test that the dashboard url is generated correctly with proxyURL
+        """
+        self.tableau.config.serviceConnection.root.config.proxyURL = "http://mockTableauServer.com"
+        result = list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+        self.assertEqual(result[0].right.sourceUrl.root, "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views")
