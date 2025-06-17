@@ -19,6 +19,8 @@ import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
+import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
+import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
@@ -27,11 +29,25 @@ import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 
-const CustomiseLandingPageHeader = () => {
+const CustomiseLandingPageHeader = ({
+  hideCustomiseButton = false,
+  overlappedContainer = false,
+  backgroundColor,
+}: {
+  hideCustomiseButton?: boolean;
+  overlappedContainer?: boolean;
+  backgroundColor?: string;
+}) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { preferences } = useCurrentUserPreferences();
   const { isNLPEnabled } = useSearchStore();
-  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
+  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(true);
+
+  const bgColor =
+    backgroundColor ||
+    preferences.homePageBannerBackgroundColor ||
+    DEFAULT_HEADER_BG_COLOR;
 
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
@@ -61,7 +77,7 @@ const CustomiseLandingPageHeader = () => {
   };
 
   return (
-    <div className="customise-landing-page">
+    <div className="customise-landing-page" style={{ background: bgColor }}>
       <div className="header-container">
         <div className="dashboardHeader">
           <div className="d-flex items-center gap-4 mb-5">
@@ -70,17 +86,19 @@ const CustomiseLandingPageHeader = () => {
                 name: currentUser?.displayName ?? currentUser?.name,
               })}
             </Typography.Text>
-            <Button
-              className="customise-header-btn"
-              data-testid="customise-header-btn"
-              icon={
-                <Icon
-                  component={FilterIcon}
-                  style={{ fontSize: '16px', color: 'white' }}
-                />
-              }
-              onClick={handleOpenCustomiseHomeModal}
-            />
+            {!hideCustomiseButton && (
+              <Button
+                className="customise-header-btn"
+                data-testid="customise-header-btn"
+                icon={
+                  <Icon
+                    component={FilterIcon}
+                    style={{ fontSize: '16px', color: 'white' }}
+                  />
+                }
+                onClick={handleOpenCustomiseHomeModal}
+              />
+            )}
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
@@ -149,9 +167,9 @@ const CustomiseLandingPageHeader = () => {
         </div>
         <div className="announcements" />
       </div>
-      <div className="overlapped-container" />
+      {overlappedContainer && <div className="overlapped-container" />}
 
-      {showCustomiseHomeModal && (
+      {!hideCustomiseButton && showCustomiseHomeModal && (
         <CustomiseHomeModal
           open={showCustomiseHomeModal}
           onClose={handleCloseCustomiseHomeModal}

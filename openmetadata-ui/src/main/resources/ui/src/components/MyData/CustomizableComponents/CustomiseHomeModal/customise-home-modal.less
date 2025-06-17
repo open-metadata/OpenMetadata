@@ -10,10 +10,129 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../../styles/variables.less');
+
 .customise-home-modal {
+  position: relative;
+
+  .ant-modal-body {
+    padding: 0;
+  }
+
+  .ant-modal-content {
+    border-radius: 12px;
+
+    .ant-modal-close-icon {
+      color: @white;
+      font-size: 24px;
+    }
+  }
+
   .customise-home-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 20px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(91.17deg, #3a86ff 0%, #0057e2 100%);
+
+    .add-icon {
+      font-size: 32px;
+    }
+
+    .customise-home-modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: @white;
+    }
+
+    .close-icon-container {
+      margin-left: auto;
+
+      .close-icon {
+        color: @white;
+        font-size: 14px;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .customise-home-modal-body {
+    display: flex;
+
+    .sidebar {
+      flex: 0.75;
+      padding: 20px;
+      position: sticky;
+      top: 80px; // modal header height
+      align-self: flex-start;
+
+      .sidebar-option {
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 10px 16px;
+        border-radius: 8px;
+
+        &.active {
+          background-color: #eff8ff;
+          color: #175cd3;
+        }
+      }
+    }
+
+    .customise-home-modal-divider {
+      color: #e9eaeb;
+      height: auto;
+      align-self: stretch;
+    }
+
+    .content {
+      flex: 3.25;
+      padding: 24px;
+    }
+  }
+
+  .customise-home-modal-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e9eaeb;
+    border-radius: 0 0 12px 12px;
+    background-color: @white;
+
+    button {
+      padding: 1px 28px;
+      border-radius: 8px;
+    }
+
+    .ant-btn.ant-btn-default:not(:hover) {
+      border-color: #d5d7da;
+    }
+
+    .cancel-btn {
+      background-color: @white;
+      color: #414651;
+      border: 1px solid #d5d7da;
+      font-weight: 500;
+      font-size: 18px;
+      box-shadow: 0px 1px 2px 0px #0a0d120d;
+    }
+
+    .apply-btn {
+      background-color: #1570ef;
+      color: @white;
+      border: 1px solid #1570ef;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0px 1px 2px 0px #0a0d120d;
+    }
   }
 }

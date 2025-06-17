@@ -217,7 +217,7 @@ function CustomizeMyData({
           onSave={handleSave}
         />
         <div className="grid-wrapper">
-          <CustomiseLandingPageHeader />
+          <CustomiseLandingPageHeader overlappedContainer />
           <ReactGridLayout
             className="grid-container"
             cols={3}
