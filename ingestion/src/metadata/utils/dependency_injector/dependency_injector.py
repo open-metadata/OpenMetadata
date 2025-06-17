@@ -132,6 +132,15 @@ class DependencyContainer:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
+    def get_key(self, dependency_type: Type[Any]) -> str:
+        """
+        Get the key for a dependency.
+        """
+        if get_origin(dependency_type) is type:
+            inner_type = get_args(dependency_type)[0]
+            return f"Type[{inner_type.__name__}]"
+        return dependency_type.__name__
+
     def register(
         self, dependency_type: Type[Any], dependency: Callable[[], Any]
     ) -> None:
@@ -145,10 +154,11 @@ class DependencyContainer:
         Example:
             ```python
             container.register(Database, lambda: Database("postgresql://localhost:5432"))
+            container.register(Type[Metrics], lambda: Metrics)  # For registering types themselves
             ```
         """
         with self._lock:
-            self._dependencies[dependency_type.__name__] = dependency
+            self._dependencies[self.get_key(dependency_type)] = dependency
 
     def override(
         self, dependency_type: Type[Any], dependency: Callable[[], Any]
@@ -169,7 +179,7 @@ class DependencyContainer:
             ```
         """
         with self._lock:
-            self._overrides[dependency_type.__name__] = dependency
+            self._overrides[self.get_key(dependency_type)] = dependency
 
     def remove_override(self, dependency_type: Type[T]) -> None:
         """
@@ -184,7 +194,7 @@ class DependencyContainer:
             ```
         """
         with self._lock:
-            self._overrides.pop(dependency_type.__name__, None)
+            self._overrides.pop(self.get_key(dependency_type), None)
 
     def get(self, dependency_type: Type[Any]) -> Optional[Any]:
         """
@@ -206,10 +216,9 @@ class DependencyContainer:
             ```
         """
         with self._lock:
-            type_name = dependency_type.__name__
-            factory = self._overrides.get(type_name) or self._dependencies.get(
-                type_name
-            )
+            factory = self._overrides.get(
+                self.get_key(dependency_type)
+            ) or self._dependencies.get(self.get_key(dependency_type))
             if factory is None:
                 return None
             return factory()
@@ -243,8 +252,10 @@ class DependencyContainer:
                 print("Database dependency is registered")
             ```"""
         with self._lock:
-            type_name = dependency_type.__name__
-            return type_name in self._overrides or type_name in self._dependencies
+            return (
+                self.get_key(dependency_type) in self._overrides
+                or self.get_key(dependency_type) in self._dependencies
+            )
 
 
 def inject(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -341,3 +352,52 @@ def extract_inject_arg(tp: Any) -> Any:
         f"Type {tp} is not Inject or Optional[Inject]. "
         f"Use Annotated[YourType, 'Inject'] to mark a parameter for injection."
     )
+
+
+def inject_class_attributes(cls: Type[Any]) -> Type[Any]:
+    """
+    Decorator to inject dependencies into class-level (static) attributes based on type hints.
+
+    This decorator automatically injects dependencies into class attributes
+    based on their type hints. The dependencies are shared across all instances
+    of the class.
+
+    Args:
+        cls: The class to inject dependencies into
+
+    Returns:
+        A class with dependencies injected into its class-level attributes
+
+    Example:
+        ```python
+        @inject_class_attributes
+        class UserService:
+            db: ClassVar[Inject[Database]]
+            cache: ClassVar[Inject[Cache]]
+
+            @classmethod
+            def get_user(cls, user_id: int) -> dict:
+                return cls.db.query(f"SELECT * FROM users WHERE id = {user_id}")
+        ```
+    """
+    container = DependencyContainer()
+    type_hints = get_type_hints(cls, include_extras=True)
+
+    # Inject dependencies into class attributes
+    for attr_name, attr_type in type_hints.items():
+        # Skip if attribute is already set
+        if hasattr(cls, attr_name):
+            continue
+
+        # Check if it's an Inject type
+        if is_inject_type(attr_type):
+            dependency_type = extract_inject_arg(attr_type)
+            dependency = container.get(dependency_type)
+            if dependency is None:
+                raise DependencyNotFoundError(
+                    f"Dependency of type {dependency_type} not found in container. "
+                    f"Make sure to register it using container.register({dependency_type.__name__}, ...)"
+                )
+            setattr(cls, attr_name, dependency)
+
+    return cls
