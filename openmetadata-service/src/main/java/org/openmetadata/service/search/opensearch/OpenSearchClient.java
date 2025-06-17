@@ -3,14 +3,10 @@ package org.openmetadata.service.search.opensearch;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
@@ -383,6 +379,7 @@ public class OpenSearchClient implements SearchClient {
   public Response doSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     OpenSearchSourceBuilderFactory searchBuilderFactory =
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
@@ -415,59 +412,26 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      BoolQueryBuilder deletedOptions =
-          QueryBuilders.boolQuery()
-              .should(
-                  QueryBuilders.boolQuery()
-                      .must(QueryBuilders.existsQuery("deleted"))
-                      .must(QueryBuilders.termQuery("deleted", request.getDeleted())))
-              .should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("deleted")));
-      BoolQueryBuilder combined =
-          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(deletedOptions);
+    if (!nullOrEmpty(request.getDeleted())) {
+      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
-      searchSourceBuilder.query(combined);
-    } else if (request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(DATA_PRODUCT)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.existsQuery("deleted"))
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("deleted")));
+        searchSourceBuilder.query(boolQueryBuilder);
+      } else {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+      }
     }
 
     if (!nullOrEmpty(request.getSortFieldParam())
@@ -493,7 +457,7 @@ public class OpenSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (Boolean.TRUE.equals(request.getTrackTotalHits())) {
       searchSourceBuilder.trackTotalHits(true);
@@ -2661,6 +2625,48 @@ public class OpenSearchClient implements SearchClient {
     } catch (Exception e) {
       LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
       throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      os.org.opensearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
     }
   }
 }

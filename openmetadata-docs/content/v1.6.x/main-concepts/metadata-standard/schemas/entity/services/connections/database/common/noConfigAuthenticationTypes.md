@@ -1,6 +1,8 @@
 ---
 title: noConfigAuthenticationTypes
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/noconfigauthenticationtypes
+noindex: true
+nofollow: true
 ---
 
 # No Config Authentication Types

@@ -216,6 +216,15 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    test('Certification Add Remove', async ({ page }) => {
+      await entity.certification(
+        page,
+        EntityDataClass.certificationTag1,
+        EntityDataClass.certificationTag2,
+        entity
+      );
+    });
+
     if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
       test(`${entityName} page should show the project name`, async ({
         page,
@@ -335,6 +344,32 @@ entities.forEach((EntityClass) => {
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
         });
+      });
+
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page: page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector
+        );
       });
     }
 

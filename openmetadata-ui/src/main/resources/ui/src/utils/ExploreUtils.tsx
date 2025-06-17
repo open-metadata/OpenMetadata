@@ -440,7 +440,9 @@ export const parseSearchParams = (search: string) => {
       ? Number.parseInt(parsedSearch.size)
       : PAGE_SIZE;
 
-  const showDeleted = parsedSearch.showDeleted === 'true';
+  // We are not setting showDeleted as 'false' since we don't want it to conflict with
+  // the `Deleted` field value in the advanced search quick filters when the value there is true.
+  const showDeleted = parsedSearch.showDeleted === 'true' ? true : undefined;
 
   return {
     parsedSearch,
@@ -526,7 +528,7 @@ export const fetchEntityData = async ({
   updatedQuickFilters: QueryFilterInterface | undefined;
   queryFilter: unknown;
   searchIndex: ExploreSearchIndex;
-  showDeleted: boolean;
+  showDeleted?: boolean;
   sortValue: string;
   sortOrder: string;
   page: number;
@@ -606,6 +608,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
+          excludeSourceFields: ['columns'],
         };
 
         try {
@@ -637,6 +640,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
+        excludeSourceFields: ['columns'],
       };
 
       try {
