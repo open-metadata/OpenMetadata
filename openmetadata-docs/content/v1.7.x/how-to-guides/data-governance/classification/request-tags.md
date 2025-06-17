@@ -69,6 +69,6 @@ caption="Conversation: Reply, React, Edit or Delete"
   color="violet-70"
   bold="Auto-Classification in OpenMetadata"
   icon="MdArrowForward"
-  href="/how-to-guides/data-governance/classification/auto"%}
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
   Learn how OpenMetadata identifies PII data and auto tags or suggests the tags.
 {%/inlineCallout%}

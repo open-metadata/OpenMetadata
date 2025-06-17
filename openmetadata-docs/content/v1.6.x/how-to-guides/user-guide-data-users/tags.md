@@ -66,8 +66,6 @@ alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
 
-You can read more about [Auto PII Tagging](/how-to-guides/data-governance/classification/auto/auto-pii-tagging) here.
-
 {%inlineCallout
   color="violet-70"
   bold="How to Request for Tags"

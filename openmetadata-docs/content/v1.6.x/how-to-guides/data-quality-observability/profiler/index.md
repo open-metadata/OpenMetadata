@@ -32,12 +32,6 @@ Watch the video to understand OpenMetadata’s native Data Profiler and Data Qua
     Learn about the supported profiler metrics.
  {%/inlineCallout%}
  {%inlineCallout
-    icon="MdViewCompact"
-    bold="Sample Data"
-    href="/how-to-guides/data-quality-observability/profiler/external-sample-data"%}
-    Learn about the external storage for sample data.
- {%/inlineCallout%}
- {%inlineCallout
     icon="MdOutlineSchema"
     bold="External Workflow"
     href="/how-to-guides/data-quality-observability/profiler/external-workflow"%}
