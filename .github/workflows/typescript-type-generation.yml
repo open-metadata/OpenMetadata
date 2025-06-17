@@ -8,4 +8,5 @@ on:
 jobs:
   generate-types:
     runs-on: ubuntu-latest
+    # Placeholder for future workflow steps
     steps: []
