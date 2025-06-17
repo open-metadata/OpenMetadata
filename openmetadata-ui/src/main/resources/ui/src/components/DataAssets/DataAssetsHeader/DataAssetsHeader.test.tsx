@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -318,7 +319,7 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
-  it('should always render certification', () => {
+  it('should render certification only when serviceCategory is undefined', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {
         tagFQN: 'Certification.Bronze',
@@ -337,7 +338,13 @@ describe('DataAssetsHeader component', () => {
       expiryDate: 1735406645688,
     };
 
-    // First test with certification
+    // Mock useParams to return undefined serviceCategory
+    const useParamsMock = useParams as jest.Mock;
+    useParamsMock.mockReturnValue({
+      serviceCategory: undefined,
+    });
+
+    // Test with certification when serviceCategory is undefined
     const { unmount } = render(
       <DataAssetsHeader
         {...mockProps}
@@ -357,12 +364,53 @@ describe('DataAssetsHeader component', () => {
     // Clean up the first render before rendering again
     unmount();
 
-    // Second test without certification
+    // Test without certification when serviceCategory is undefined
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(screen.getByTestId('certification-label')).toContainHTML(
       'label.no-entity'
     );
+
+    // Reset the mock to original value
+    useParamsMock.mockReturnValue({
+      serviceCategory: ServiceCategory.DATABASE_SERVICES,
+    });
+  });
+
+  it('should not render certification when serviceCategory has a value', () => {
+    const mockCertification: AssetCertification = {
+      tagLabel: {
+        tagFQN: 'Certification.Bronze',
+        name: 'Bronze',
+        displayName: 'Bronze_Medal',
+        description: 'Bronze certified Data Asset test',
+        style: {
+          color: '#C08329',
+          iconURL: 'BronzeCertification.svg',
+        },
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      appliedDate: 1732814645688,
+      expiryDate: 1735406645688,
+    };
+
+    // serviceCategory is already set to DATABASE_SERVICES by default mock
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          certification: mockCertification,
+        }}
+      />
+    );
+
+    // Certification should not be rendered when serviceCategory has a value
+    expect(screen.queryByText('label.certification')).not.toBeInTheDocument();
+    expect(screen.queryByText('CertificationTag')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('certification-label')).not.toBeInTheDocument();
   });
 
   it('should trigger the AutoPilot application when the button is clicked', () => {

@@ -427,6 +427,7 @@ export const createDatabaseRowDetails = () => {
     entityType: 'Database',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -442,6 +443,7 @@ export const createDatabaseSchemaRowDetails = () => {
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
     entityType: 'Database Schema',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -457,6 +459,7 @@ export const createTableRowDetails = () => {
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
     entityType: 'Table',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -488,6 +491,7 @@ export const createStoredProcedureRowDetails = () => {
     entityType: 'Stored Procedure',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xyz.com',
+    certification: 'Certification.Gold',
   };
 };
 
@@ -558,6 +562,7 @@ export const fillRowDetails = async (
       parent: string;
     };
     tier: string;
+    certification: string;
     retentionPeriod?: string;
     sourceUrl?: string;
     domains: {
@@ -621,6 +626,16 @@ export const fillRowDetails = async (
     .press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('Enter', { delay: 100 });
+
+  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  await page.getByTestId('update-certification').click();
 
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -887,7 +902,7 @@ export const fillRecursiveColumnDetails = async (
     .press('ArrowRight', { delay: 100 });
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await pressKeyXTimes(page, 6, 'ArrowRight');
+  await pressKeyXTimes(page, 7, 'ArrowRight');
 
   await fillEntityTypeDetails(page, row.entityType);
 
