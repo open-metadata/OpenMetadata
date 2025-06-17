@@ -334,11 +334,11 @@ class UnitycatalogSource(
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.external_location_map[(db_name, schema_name, table_name)] = (
-                table.storage_location
-            )
+            self.external_location_map[
+                (db_name, schema_name, table_name)
+            ] = table.storage_location
         try:
-            columns = list(self.get_columns(table.columns))
+            columns = list(self.get_columns(table_name, table.columns))
             (
                 primary_constraints,
                 foreign_constraints,
@@ -501,11 +501,12 @@ class UnitycatalogSource(
                 f"Unable to add description to complex datatypes for column [{column.name}]: {exc}"
             )
 
-    def get_columns(self, column_data: List[ColumnInfo]) -> Iterable[Column]:
+    def get_columns(
+        self, table_name: str, column_data: List[ColumnInfo]
+    ) -> Iterable[Column]:
         """
         process table regular columns info
         """
-
         for column in column_data:
             parsed_string = {}
             if column.type_text:
@@ -525,8 +526,7 @@ class UnitycatalogSource(
             if column.comment:
                 parsed_string["description"] = Markdown(column.comment)
             parsed_string["tags"] = self.get_column_tag_labels(
-                table_name=self.context.get().table_data.name,
-                column={"name": column.name},
+                table_name=table_name, column={"name": column.name}
             )
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
