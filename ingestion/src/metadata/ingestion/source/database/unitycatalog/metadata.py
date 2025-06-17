@@ -65,19 +65,32 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
-from metadata.ingestion.source.database.unitycatalog.connection import get_connection
+from metadata.ingestion.source.database.unitycatalog.connection import (
+    get_connection,
+    get_sqlalchemy_connection,
+)
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
     ForeignConstrains,
     Type,
 )
+from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_GET_CATALOGS_TAGS,
+    UNITY_CATALOG_GET_SCHEMA_TAGS,
+    UNITY_CATALOG_GET_TABLE_COLUMNS_TAGS,
+    UNITY_CATALOG_GET_TABLE_TAGS,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
+
+UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
+UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
 
 
 class UnitycatalogSource(
@@ -179,10 +192,14 @@ class UnitycatalogSource(
         From topology.
         Prepare a database request and pass it to the sink
         """
+        catalog = self.client.catalogs.get(database_name)
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
                 service=self.context.get().database_service,
+                owners=self.get_owner_ref(catalog.owner),
+                description=catalog.comment,
+                tags=self.get_database_tag_labels(database_name),
             )
         )
 
@@ -227,6 +244,9 @@ class UnitycatalogSource(
         From topology.
         Prepare a database schema request and pass it to the sink
         """
+        schema = self.client.schemas.get(
+            full_name=f"{self.context.get().database}.{schema_name}"
+        )
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=EntityName(schema_name),
@@ -238,6 +258,9 @@ class UnitycatalogSource(
                         database_name=self.context.get().database,
                     )
                 ),
+                description=schema.comment,
+                owners=self.get_owner_ref(schema.owner),
+                tags=self.get_schema_tag_labels(schema_name),
             )
         )
 
@@ -311,9 +334,9 @@ class UnitycatalogSource(
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.external_location_map[
-                (db_name, schema_name, table_name)
-            ] = table.storage_location
+            self.external_location_map[(db_name, schema_name, table_name)] = (
+                table.storage_location
+            )
         try:
             columns = list(self.get_columns(table.columns))
             (
@@ -341,6 +364,7 @@ class UnitycatalogSource(
                     )
                 ),
                 owners=self.get_owner_ref(table.owner),
+                tags=self.get_tag_labels(table_name),
             )
             yield Either(right=table_request)
 
@@ -500,6 +524,10 @@ class UnitycatalogSource(
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             if column.comment:
                 parsed_string["description"] = Markdown(column.comment)
+            parsed_string["tags"] = self.get_column_tag_labels(
+                table_name=self.context.get().table_data.name,
+                column={"name": column.name},
+            )
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
@@ -507,10 +535,149 @@ class UnitycatalogSource(
             )
             yield parsed_column
 
+    def yield_database_tag(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Get Unity Catalog database/catalog tags using SQL query
+        """
+        try:
+            query = UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=database_name)
+
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                tags = connection.execute(query)
+
+            for tag in tags:
+                tag_name = tag.tag_name
+                tag_value = tag.tag_value
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, database_name
+                        )
+                    ),
+                    tags=[tag_value],
+                    classification_name=tag_name,
+                    tag_description=UNITY_CATALOG_TAG,
+                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting tags for catalog {database_name}: {exc}")
+
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """No tags being processed"""
+        """
+        Get Unity Catalog schema tags using SQL query
+        """
+        try:
+            query = UNITY_CATALOG_GET_SCHEMA_TAGS.format(
+                database=self.context.get().database, schema=schema_name
+            )
+
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                tags = connection.execute(query)
+
+            for tag in tags:
+                tag_name = tag.tag_name
+                tag_value = tag.tag_value
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service,
+                            self.context.get().database,
+                            schema_name,
+                        )
+                    ),
+                    tags=[tag_value],
+                    classification_name=tag_name,
+                    tag_description=UNITY_CATALOG_TAG,
+                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
+
+    def yield_table_tags(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Get Unity Catalog table tags using SQL query
+        """
+        try:
+            table_name = table_name_and_type[0]
+            query = UNITY_CATALOG_GET_TABLE_TAGS.format(
+                database=self.context.get().database,
+                schema=self.context.get().database_schema,
+                table=table_name,
+            )
+
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                table_tags = connection.execute(query)
+                column_tags = connection.execute(
+                    UNITY_CATALOG_GET_TABLE_COLUMNS_TAGS.format(
+                        database=self.context.get().database,
+                        schema=self.context.get().database_schema,
+                        table=table_name,
+                    )
+                )
+
+            # yield the table tags
+            for tag in table_tags:
+                tag_name = tag.tag_name
+                tag_value = tag.tag_value
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service,
+                            self.context.get().database,
+                            self.context.get().database_schema,
+                            table_name,
+                        )
+                    ),
+                    tags=[tag_value],
+                    classification_name=tag_name,
+                    tag_description=UNITY_CATALOG_TAG,
+                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
+                )
+
+            # yield the column tags
+            for tag in column_tags:
+                tag_name = tag.tag_name
+                tag_value = tag.tag_value
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service,
+                            self.context.get().database,
+                            self.context.get().database_schema,
+                            table_name,
+                            tag.column_name,
+                        )
+                    ),
+                    tags=[tag_value],
+                    classification_name=tag_name,
+                    tag_description=UNITY_CATALOG_TAG,
+                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting tags for table {table_name}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
@@ -527,24 +694,22 @@ class UnitycatalogSource(
         """Nothing to close"""
 
     # pylint: disable=arguments-renamed
-    def get_owner_ref(
-        self, table_owner: Optional[str]
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
         if self.source_config.includeOwners is False:
             return None
         try:
-            if not table_owner or not isinstance(table_owner, str):
+            if not owner or not isinstance(owner, str):
                 return None
-            owner_ref = self.metadata.get_reference_by_email(email=table_owner)
+            owner_ref = self.metadata.get_reference_by_email(email=owner)
             if owner_ref:
                 return owner_ref
-            table_name = table_owner.split("@")[0]
-            owner_ref = self.metadata.get_reference_by_name(name=table_name)
+            owner_name = owner.split("@")[0]
+            owner_ref = self.metadata.get_reference_by_name(name=owner_name)
             return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner {table_owner}: {exc}")
+            logger.warning(f"Error processing owner {owner}: {exc}")
         return None
