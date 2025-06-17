@@ -266,7 +266,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       const initialData = initialOptions?.find(
         (item) => item.value === value
       )?.data;
-
       const data = (options as SelectOption[]).find(
         (option) => option.value === value
       );

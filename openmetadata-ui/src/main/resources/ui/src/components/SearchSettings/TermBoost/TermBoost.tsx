@@ -14,15 +14,14 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { PagingResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
+import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
-import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './term-boost.less';
 
 interface TermBoostProps {
@@ -60,72 +59,86 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
   }, [termBoost, isNewBoost]);
 
   const fetchTags = async (
-    searchText: string,
-    page: number
-  ): Promise<PagingResponse<SelectOption[]>> => {
+    searchText: string
+    // page: number
+  ) => {
     try {
-      const response = await tagClassBase.getTags(searchText, page, true);
+      const response = await tagClassBase.getTags(searchText, 1, true);
 
-      const formattedOptions = response.data
-        .filter((item) => item.data.fullyQualifiedName)
-        .map((item) => {
-          const fqn = item.data.fullyQualifiedName!;
-          let field = 'tags.tagFQN';
+      const formattedOptions = response.data.map((item) => {
+        const fqn = item.data.fullyQualifiedName;
+        let field = 'tags.tagFQN'; // default field
 
-          if (fqn.startsWith('Certification.')) {
-            field = 'certification.tagFQN';
-          } else if (fqn.startsWith('Tier.')) {
-            field = 'tier.tagFQN';
-          }
+        // Determine field based on FQN pattern
+        if (fqn?.startsWith('Certification.')) {
+          field = 'certification.tagFQN';
+        } else if (fqn?.startsWith('Tier.')) {
+          field = 'tier.tagFQN';
+        }
 
-          return {
-            label: (
-              <div className="d-flex flex-column">
-                <Typography.Text
-                  className="text-sm"
-                  data-testid="tag-option-label">
-                  {item.data.displayName ?? item.data.name}
-                </Typography.Text>
-                <Typography.Text
-                  className="text-grey-muted text-sm"
-                  data-testid="tag-option-fully-qualified-name">
-                  {fqn}
-                </Typography.Text>
-              </div>
-            ),
-            value: fqn,
-            field: field,
-          };
-        });
+        return {
+          label: (
+            <div className="d-flex flex-column">
+              <Typography.Text
+                className="text-sm"
+                data-testid="tag-option-label">
+                {item.data.displayName ?? item.data.name}
+              </Typography.Text>
+              <Typography.Text
+                className="text-grey-muted text-sm"
+                data-testid="tag-option-fully-qualified-name">
+                {fqn}
+              </Typography.Text>
+            </div>
+          ),
+          value: fqn,
+          field: field,
+        };
+      });
+
+      return formattedOptions;
 
       // Return PagingResponse structure for infinite scroll support
-      return {
-        data: formattedOptions,
-        paging: response.paging,
-      };
+      // return {
+      //   data: formattedOptions,
+      //   paging: response.paging,
+      // };
     } catch (error) {
       showErrorToast(error as AxiosError);
 
+      return [];
+
       // Return empty PagingResponse structure on error
-      return {
-        data: [],
-        paging: { total: 0 },
-      };
+      // return {
+      //   data: [],
+      //   paging: { total: 0 },
+      // };
     }
   };
 
-  const handleTagChange = (option: any) => {
-    // For single selection, option will be a single SelectOption object
-    if (option && option.value) {
-      const updatedData = {
-        ...termBoostData,
-        field: option.field || 'tags.tagFQN',
-        value: option.value,
-      };
+  // const handleTagChange = (option: any) => {
+  //   // For single selection, option will be a single SelectOption object
+  //   if (option && option.value) {
+  //     const updatedData = {
+  //       ...termBoostData,
+  //       field: option.field || 'tags.tagFQN',
+  //       value: option.value,
+  //     };
 
-      setTermBoostData(updatedData);
-      onTermBoostChange(updatedData);
-    }
+  //     setTermBoostData(updatedData);
+  //     onTermBoostChange(updatedData);
+  //   }
+  // };
+
+  const handleTagChange = (value: string, option: any) => {
+    const updatedData = {
+      ...termBoostData,
+      field: option.field,
+      value: value,
+    };
+
+    setTermBoostData(updatedData);
+    onTermBoostChange(updatedData);
   };
 
   const handleBoostChange = (value: number) => {
@@ -139,13 +152,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     <div className={classNames('term-boost', className)}>
       <Row className="p-box d-flex flex-column">
         <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
-          <AsyncSelectList
+          <AsyncSelect
             showSearch
+            api={fetchTags}
             className="w-full custom-select"
             data-testid="term-boost-select"
             defaultValue={termBoostData.value || undefined}
             disabled={!!termBoost.value}
-            fetchOptions={fetchTags}
+            filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
             suffixIcon={<DownOutlined className="text-grey-muted" />}

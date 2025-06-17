@@ -24,7 +24,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { debounce, isEmpty, isString, isUndefined } from 'lodash';
+import { debounce, isEmpty, isUndefined } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -81,7 +81,7 @@ function TeamAndUserSelectItem({
                 <Typography.Text
                   ellipsis
                   className="dropdown-option-label"
-                  title={isString(label) ? label : value}>
+                  title={label}>
                   {label}
                 </Typography.Text>
               </Col>

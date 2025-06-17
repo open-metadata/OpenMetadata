@@ -19,7 +19,7 @@ const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
 const devServerTarget =
-  process.env.DEV_SERVER_TARGET ?? 'https://sandbox-beta.open-metadata.org/';
+  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
