@@ -863,6 +863,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // More fields that should be empty for columns
     addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // certification (empty for columns)
     addField(recordList, ""); // retentionPeriod (empty for columns)
     addField(recordList, ""); // sourceUrl (empty for columns)
     addField(recordList, ""); // domain (empty for columns)
