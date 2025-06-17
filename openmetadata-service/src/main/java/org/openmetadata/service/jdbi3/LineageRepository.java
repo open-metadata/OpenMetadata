@@ -417,7 +417,8 @@ public class LineageRepository {
       lineageData.setPipeline(null);
     } else {
       Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
-          getPipelineOrStoredProcedure(pipelineRef, List.of("changeDescription"));
+          getPipelineOrStoredProcedure(
+              pipelineRef, List.of("changeDescription", "incrementalChangeDescription"));
       lineageData.setPipelineEntityType(pipelineOrStoredProcedure.getLeft());
       lineageData.setPipeline(pipelineOrStoredProcedure.getRight());
     }
