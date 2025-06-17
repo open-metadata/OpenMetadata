@@ -75,7 +75,7 @@ const ForgotPassword = () => {
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
-        style={{ maxWidth: '430px' }}>
+        style={{ maxWidth: '512px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
             <BrandImage
@@ -131,9 +131,9 @@ const ForgotPassword = () => {
             <Col className="m-t-md" span={24}>
               <Button
                 block
-                className="p-y-lg d-flex flex-center"
                 htmlType="submit"
                 loading={loading}
+                size="large"
                 type="primary">
                 {t('label.submit')}
               </Button>
