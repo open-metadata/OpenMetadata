@@ -206,6 +206,31 @@ class CSVUtilsClassBase {
             </TierCard>
           );
         };
+
+      case 'certification':
+        return ({ value, ...props }) => {
+          const handleChange = async (tag?: Tag) => {
+            props.onChange(tag?.fullyQualifiedName);
+
+            setTimeout(() => {
+              props.onComplete(tag?.fullyQualifiedName);
+            }, 1);
+          };
+
+          const onClose = () => {
+            props.onCancel();
+          };
+
+          return (
+            <Certification
+              permission
+              currentCertificate={value}
+              popoverProps={{ open: true }}
+              onCertificationUpdate={handleChange}
+              onClose={onClose}
+            />
+          );
+        };
       case 'domain':
         return ({ value, ...props }) => {
           const handleChange = async (domain?: EntityReference) => {

@@ -65,7 +65,7 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -514,6 +514,22 @@ function SearchIndexDetailsPage() {
     setIsTabExpanded(!isTabExpanded);
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (searchIndexDetails) {
+        const certificationTag: SearchIndex['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...searchIndexDetails,
+          certification: certificationTag,
+        };
+
+        await onSearchIndexUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [onSearchIndexUpdate, searchIndexDetails]
+  );
+
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
     [tabs[0], activeTab]
@@ -557,6 +573,7 @@ function SearchIndexDetailsPage() {
             entityType={EntityType.SEARCH_INDEX}
             openTaskCount={feedCount.openTaskCount}
             permissions={searchIndexPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowSearchIndex}
             onOwnerUpdate={handleUpdateOwner}

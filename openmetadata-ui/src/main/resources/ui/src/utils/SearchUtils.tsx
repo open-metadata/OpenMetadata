@@ -72,11 +72,8 @@ export const getSearchAPIQueryParams = (
     from: start,
     size,
     index: searchIndex,
+    deleted: onlyDeleted,
   };
-
-  if (onlyDeleted) {
-    params.deleted = onlyDeleted;
-  }
 
   if (!isEmpty(sortField)) {
     params.sort_field = sortField;

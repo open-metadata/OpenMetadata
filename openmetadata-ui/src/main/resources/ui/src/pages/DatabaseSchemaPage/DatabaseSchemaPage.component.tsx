@@ -84,7 +84,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -588,6 +588,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [USERId, databaseSchemaId]);
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (databaseSchema) {
+        const certificationTag: DatabaseSchema['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...databaseSchema,
+          certification: certificationTag,
+        };
+
+        await handleUpdateDatabaseSchema(updatedTableDetails as DatabaseSchema);
+      }
+    },
+    [handleUpdateDatabaseSchema, databaseSchema]
+  );
+
   const handleFollowClick = useCallback(async () => {
     isFollowing ? await unFollowSchema() : await followSchema();
   }, [isFollowing, unFollowSchema, followSchema]);
@@ -641,6 +657,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityType={EntityType.DATABASE_SCHEMA}
                 extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
+                onCertificationUpdate={onCertificationUpdate}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onFollowClick={handleFollowClick}
                 onOwnerUpdate={handleUpdateOwner}

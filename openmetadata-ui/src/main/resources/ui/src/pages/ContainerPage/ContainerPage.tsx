@@ -74,7 +74,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -446,6 +446,27 @@ const ContainerPage = () => {
     }
   };
 
+  const onContainerUpdateCertification = async (
+    updatedContainer: Container,
+    key?: keyof Container
+  ) => {
+    try {
+      const response = await handleUpdateContainerData(updatedContainer);
+      setContainerData((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -522,6 +543,24 @@ const ContainerPage = () => {
     [tabs[0], tab]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (containerData) {
+        const certificationTag: Container['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...containerData,
+          certification: certificationTag,
+        };
+
+        await onContainerUpdateCertification(
+          updatedTableDetails,
+          'certification'
+        );
+      }
+    },
+    [containerData, handleContainerUpdate]
+  );
   // Rendering
   if (isLoading || loading) {
     return <Loader />;
@@ -567,6 +606,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             openTaskCount={feedCount.openTaskCount}
             permissions={containerPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}

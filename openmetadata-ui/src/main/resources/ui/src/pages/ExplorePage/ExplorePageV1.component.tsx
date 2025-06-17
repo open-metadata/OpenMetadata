@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { get, isEmpty, isNil, isString } from 'lodash';
+import { get, isEmpty, isNil, isString, omit } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -211,8 +211,22 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
+    // Removed existing showDeleted from the parsedSearch object
+    const filteredParsedSearch = omit(parsedSearch, 'showDeleted');
+
+    // Set the default search object with page as 1
+    const defaultSearchObject = {
+      ...filteredParsedSearch,
+      page: 1,
+    };
+
+    // If showDeleted is true, add it to the search object
+    const searchObject = showDeleted
+      ? { ...defaultSearchObject, showDeleted: true }
+      : defaultSearchObject;
+
     navigate({
-      search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
+      search: Qs.stringify(searchObject),
     });
   };
 
