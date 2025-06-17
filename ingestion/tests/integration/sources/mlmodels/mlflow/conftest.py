@@ -26,6 +26,8 @@ The following steps are taken:
 import io
 from dataclasses import dataclass
 from typing import Optional
+import time
+import pymysql
 
 import pytest
 from testcontainers.core.container import DockerContainer
@@ -92,6 +94,24 @@ def mlflow_environment():
             config.mysql_configs.with_exposed_port(mysql_container)
             config.minio_configs.with_exposed_port(minio_container)
             config.mlflow_configs.with_exposed_port(mlflow_container)
+            
+            # Wait for MySQL to be ready
+            port = config.mysql_configs.exposed_port or 3306
+            for _ in range(30):
+                try:
+                    conn = pymysql.connect(
+                        host="localhost",
+                        port=int(port),
+                        user="mlflow",
+                        password="password",
+                    )
+                    conn.close()
+                    break
+                except Exception:
+                    time.sleep(2)
+            else:
+                raise RuntimeError("MySQL did not become ready in time.")
+
 
             yield config
 
@@ -103,7 +123,7 @@ def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography mlflow boto3 pymysql
+        RUN pip install cryptography "mlflow==2.22.1" boto3 pymysql
         """
     )
 
