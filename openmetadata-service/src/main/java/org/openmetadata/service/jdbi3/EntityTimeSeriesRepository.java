@@ -370,6 +370,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     List<T> entityList = new ArrayList<>();
     long total;
 
+    if (CommonUtil.nullOrEmpty(fields)) {
+      fields = EntityUtil.Fields.EMPTY_FIELDS;
+    }
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
@@ -398,6 +401,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
+    if (CommonUtil.nullOrEmpty(fields)) {
+      fields = EntityUtil.Fields.EMPTY_FIELDS;
+    }
+    EntityUtil.Fields finalFields = fields; // Final copy for lambda usage
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
@@ -424,10 +431,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                     Map<String, Object> source = extractAndFilterSource(hit);
                     T entity =
                         setFieldsInternal(
-                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                            JsonUtils.readOrConvertValue(source, entityClass), finalFields);
                     if (entity != null) {
                       setInheritedFields(entity);
-                      clearFieldsInternal(entity, fields);
+                      clearFieldsInternal(entity, finalFields);
                       entityList.add(entity);
                     }
                   }
@@ -439,6 +446,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)
       throws IOException {
+    if (CommonUtil.nullOrEmpty(fields)) {
+        fields = EntityUtil.Fields.EMPTY_FIELDS;
+    }
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
