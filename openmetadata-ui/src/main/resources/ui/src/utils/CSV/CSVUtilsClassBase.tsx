@@ -15,6 +15,7 @@ import { Form } from 'antd';
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { toString } from 'lodash';
 import { ReactNode } from 'react';
+import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
