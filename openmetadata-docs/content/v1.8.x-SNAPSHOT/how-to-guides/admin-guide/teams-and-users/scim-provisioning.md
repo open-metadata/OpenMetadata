@@ -111,7 +111,7 @@ To get the secret token:
 
 > **Note**: Once configured, groups will be automatically provisioned when they match your rules or when manually pushed. You don't need to click "Push Groups" repeatedly for automatic provisioning.
 
-### 2B.5 Start Provisioning
+### 2B.6 Start Provisioning
 
 1. Go to **Provisioning** → **To App**
 2. The provisioning will start automatically once users/groups are assigned
