@@ -21,7 +21,8 @@
     position: absolute;
     right: 36px;
     top: 0;
-    height: 32px;
+    min-height: 32px;
+    height: 100%;
     border-left: 1px solid @grey-22;
     margin-top: @size-xxs;
   }
@@ -44,6 +45,10 @@
 }
 .select-container {
   position: relative;
+  overflow: hidden;
+  .ant-select-selection-overflow {
+    padding-right: @size-md;
+  }
 }
 .custom-tooltip {
   .ant-tooltip-inner {
