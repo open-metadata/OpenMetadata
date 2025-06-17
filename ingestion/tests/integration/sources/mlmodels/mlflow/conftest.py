@@ -24,11 +24,11 @@ The following steps are taken:
 6. Needed configurations are yielded back to the test.
 """
 import io
+import time
 from dataclasses import dataclass
 from typing import Optional
-import time
-import pymysql
 
+import pymysql
 import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
@@ -94,7 +94,7 @@ def mlflow_environment():
             config.mysql_configs.with_exposed_port(mysql_container)
             config.minio_configs.with_exposed_port(minio_container)
             config.mlflow_configs.with_exposed_port(mlflow_container)
-            
+
             # Wait for MySQL to be ready
             port = config.mysql_configs.exposed_port or 3306
             for _ in range(30):
@@ -111,7 +111,6 @@ def mlflow_environment():
                     time.sleep(2)
             else:
                 raise RuntimeError("MySQL did not become ready in time.")
-
 
             yield config
 
