@@ -11,7 +11,7 @@
       "name": "DataConsumerPolicy-EditRule",
       "description" : "Allow some of the edit operations on a resource for everyone.",
       "resources" : ["all"],
-      "operations": ["ViewAll", "EditDescription", "EditTags", "EditGlossaryTerms", "EditTier"],
+      "operations": ["ViewAll", "EditDescription", "EditTags", "EditGlossaryTerms", "EditTier", "EditCertification"],
       "effect": "allow"
     }
   ]

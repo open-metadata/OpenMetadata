@@ -42,6 +42,7 @@
         "EditGlossaryTerms",
         "EditTeams",
         "EditTier",
+        "EditCertification",
         "EditTests",
         "EditUsage",
         "EditUsers",

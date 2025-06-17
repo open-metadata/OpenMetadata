@@ -198,6 +198,24 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const onPipelineUpdate = async (
+    updatedPipeline: Pipeline,
+    key?: keyof Pipeline
+  ) => {
+    try {
+      const response = await saveUpdatedPipelineData(updatedPipeline);
+      setPipelineDetails((previous) => {
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
@@ -332,6 +350,7 @@ const PipelineDetailsPage = () => {
       updatePipelineDetailsState={updatePipelineDetailsState}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onPipelineUpdate={onPipelineUpdate}
       onUpdateVote={updateVote}
     />
   );

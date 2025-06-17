@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isObject, isString, startCase, uniqueId } from 'lodash';
+import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -286,7 +286,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   </Typography.Text>
                 </Link>
 
-                {(source as Table)?.certification && (
+                {!isEmpty(
+                  (source as Table)?.certification?.tagLabel?.tagFQN
+                ) && (
                   <div className="p-l-sm">
                     <CertificationTag
                       certification={

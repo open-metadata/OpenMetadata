@@ -62,6 +62,16 @@
       ]
     },
     {
+      "name": "certification",
+      "required": false,
+      "description": "Certification tag from the Certification classification. Only one certification level can be applied.",
+      "examples": [
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ]
+    },
+    {
       "name": "domain",
       "required": false,
       "description": "Domain to which the database schema belongs to",

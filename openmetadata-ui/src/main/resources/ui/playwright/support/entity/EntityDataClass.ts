@@ -56,6 +56,12 @@ export class EntityDataClass {
   static readonly team2 = new TeamClass();
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
   static readonly tierTag2 = new TagClass({ classification: 'Tier' });
+  static readonly certificationTag1 = new TagClass({
+    classification: 'Certification',
+  });
+  static readonly certificationTag2 = new TagClass({
+    classification: 'Certification',
+  });
   static readonly classification1 = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -120,6 +126,8 @@ export class EntityDataClass {
             this.team2.create(apiContext),
             this.tierTag1.create(apiContext),
             this.tierTag2.create(apiContext),
+            this.certificationTag1.create(apiContext),
+            this.certificationTag2.create(apiContext),
             this.classification1.create(apiContext),
           ]
         : [];
@@ -234,6 +242,8 @@ export class EntityDataClass {
             this.team2.delete(apiContext),
             this.tierTag1.delete(apiContext),
             this.tierTag2.delete(apiContext),
+            this.certificationTag1.delete(apiContext),
+            this.certificationTag2.delete(apiContext),
             this.classification1.delete(apiContext),
             this.tag1.delete(apiContext),
             this.dataProduct1.delete(apiContext),

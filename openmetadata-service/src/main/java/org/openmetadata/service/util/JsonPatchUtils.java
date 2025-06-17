@@ -137,6 +137,8 @@ public class JsonPatchUtils {
     String tagFQN = tag.getTagFQN();
     if (isTierClassification(tagFQN)) {
       return MetadataOperation.EDIT_TIER;
+    } else if (isCertificationClassification(tagFQN)) {
+      return MetadataOperation.EDIT_CERTIFICATION;
     } else if ("Classification".equalsIgnoreCase(source)) {
       return MetadataOperation.EDIT_TAGS;
     } else if ("Glossary".equalsIgnoreCase(source)) {
@@ -148,6 +150,10 @@ public class JsonPatchUtils {
 
   private static boolean isTierClassification(String tagFQN) {
     return tagFQN != null && tagFQN.startsWith("Tier.");
+  }
+
+  private static boolean isCertificationClassification(String tagFQN) {
+    return tagFQN != null && tagFQN.startsWith("Certification.");
   }
 
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
