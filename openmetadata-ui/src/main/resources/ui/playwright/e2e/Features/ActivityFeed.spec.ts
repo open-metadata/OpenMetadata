@@ -855,6 +855,8 @@ base.describe('Activity feed with Data Consumer User', () => {
       // create tag task
       await createTagTask(page1, value, false);
 
+      await page1.waitForLoadState('networkidle');
+
       // Should only see the close, add and comment button
       expect(
         page1.locator('[data-testid="comments-input-field"]')
