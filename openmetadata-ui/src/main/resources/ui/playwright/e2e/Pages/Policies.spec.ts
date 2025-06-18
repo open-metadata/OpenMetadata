@@ -37,7 +37,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
-import { getLocatorWithPagination } from '../../utils/roles';
+import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -102,9 +102,7 @@ test.describe('Policy page should work properly', () => {
             hasText: policy,
           });
 
-          await getLocatorWithPagination(page, policyElement, false);
-
-          await expect(policyElement).toBeVisible();
+          await getElementWithPagination(page, policyElement, false);
         }
       }
     );
@@ -374,7 +372,7 @@ test.describe('Policy page should work properly', () => {
 
     await page.reload();
 
-    await getLocatorWithPagination(page, policyLocator);
+    await getElementWithPagination(page, policyLocator);
 
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();

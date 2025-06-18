@@ -21,7 +21,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  getLocatorWithPagination,
+  getElementWithPagination,
   removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
@@ -112,7 +112,7 @@ test('Roles page should work properly', async ({ page }) => {
 
     const roleLocator = page.getByRole('cell', { name: roleName, exact: true });
 
-    await getLocatorWithPagination(page, roleLocator, false);
+    await getElementWithPagination(page, roleLocator, false);
 
     await page
       .locator(`[data-row-key="${roleName}"] [data-testid="plus-more-count"]`)
@@ -152,7 +152,7 @@ test('Roles page should work properly', async ({ page }) => {
 
     const roleLocator = page.getByRole('link', { name: roleName });
 
-    await getLocatorWithPagination(page, roleLocator);
+    await getElementWithPagination(page, roleLocator);
 
     await page.locator('[data-testid="edit-description"]').click();
 
@@ -185,7 +185,7 @@ test('Roles page should work properly', async ({ page }) => {
 
     const roleLocator = page.getByRole('link', { name: roleName });
 
-    await getLocatorWithPagination(page, roleLocator);
+    await getElementWithPagination(page, roleLocator);
 
     // Asserting navigation
     await page.locator('[data-testid="add-policy"]').click();
@@ -212,7 +212,7 @@ test('Roles page should work properly', async ({ page }) => {
 
     const roleLocator = page.getByRole('link', { name: roleName });
 
-    await getLocatorWithPagination(page, roleLocator);
+    await getElementWithPagination(page, roleLocator);
 
     // Asserting navigation
     await removePolicyFromRole(
@@ -232,7 +232,7 @@ test('Roles page should work properly', async ({ page }) => {
 
     const roleLocator = page.getByRole('link', { name: roleName });
 
-    await getLocatorWithPagination(page, roleLocator);
+    await getElementWithPagination(page, roleLocator);
 
     // Removing second policy from the role
     await removePolicyFromRole(
@@ -270,7 +270,7 @@ test('Roles page should work properly', async ({ page }) => {
       `[data-testid="delete-action-${updatedRoleName}"]`
     );
 
-    await getLocatorWithPagination(page, roleLocator);
+    await getElementWithPagination(page, roleLocator);
 
     await page
       .locator('[data-testid="confirmation-text-input"]')
@@ -301,7 +301,7 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await settingClick(page, GlobalSettingOptions.ROLES);
 
-  await getLocatorWithPagination(page, roleLocator);
+  await getElementWithPagination(page, roleLocator);
 
   await page.getByTestId('manage-button').click();
   await page.getByTestId('delete-button').click();

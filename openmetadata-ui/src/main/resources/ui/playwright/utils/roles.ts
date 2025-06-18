@@ -30,7 +30,7 @@ export const removePolicyFromRole = async (
 };
 
 // TODO: Remove this function once we have a better way to get locator using SearchBar
-export const getLocatorWithPagination = async (
+export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
   click = true
