@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -143,6 +144,8 @@ public class ColumnRepository {
 
     tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
+    // Include Derived Tags in response
+    column.setTags(addDerivedTags(column.getTags()));
     return column;
   }
 
@@ -208,6 +211,8 @@ public class ColumnRepository {
 
     dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
+    // Include Derived Tags in response
+    column.setTags(addDerivedTags(column.getTags()));
     return column;
   }
 
