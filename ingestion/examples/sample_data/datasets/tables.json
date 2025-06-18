@@ -32491,6 +32491,218 @@
       },
       "sourceUrl": "http://localhost:8080/test_long_description_table",
       "tags": []
+    },
+    {
+      "name": "ssot_utilization_detail",
+      "description": "A detail of each agent's time throughout the day. Individual events in each system are collapsed by aux_code, aux_channel, worktype_name, and reporting_date.",
+      "version": 0.5,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "reporting_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "The date the event began.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "agent_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "The unique identifier for the agent from customer_success.remitly_employee.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "agent_email",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "The agent email.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "usageSummary": {
+        "dailyStats": {
+          "count": 0,
+          "percentileRank": 0
+        },
+        "weeklyStats": {
+          "count": 0,
+          "percentileRank": 0
+        },
+        "monthlyStats": {
+          "count": 0,
+          "percentileRank": 0
+        },
+        "date": "2021-12-01"
+      },
+      "followers": []
+    },
+    {
+      "name": "itm_utilization_detail_login_events",
+      "description": "An intermediate table used to create ssot_utilization_detail. This table cleans up the \"CS Platform: login\" event dimensions to be congruent with downstream analytics.",
+      "version": 0.3,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "reporting_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Event date",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "agent_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Agent identifier",
+          "tags": [],
+          "ordinalPosition": 2
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "usageSummary": {
+        "dailyStats": {
+          "count": 10,
+          "percentileRank": 30
+        },
+        "weeklyStats": {
+          "count": 50,
+          "percentileRank": 40
+        },
+        "monthlyStats": {
+          "count": 200,
+          "percentileRank": 50
+        },
+        "date": "2021-12-01"
+      },
+      "followers": []
+    },
+    {
+      "name": "customer_metrics_daily",
+      "description": "Daily customer metrics aggregated from various sources including ssot_utilization_detail and other operational tables.",
+      "version": 0.2,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "metric_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date of the metric",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_count",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Total number of customers",
+          "tags": [],
+          "ordinalPosition": 2
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "usageSummary": {
+        "dailyStats": {
+          "count": 100,
+          "percentileRank": 70
+        },
+        "weeklyStats": {
+          "count": 500,
+          "percentileRank": 80
+        },
+        "monthlyStats": {
+          "count": 2000,
+          "percentileRank": 90
+        },
+        "date": "2021-12-01"
+      },
+      "followers": []
+    },
+    {
+      "name": "agent_performance_summary",
+      "description": "Summary of agent performance metrics derived from multiple tables including ssot_utilization_detail for comprehensive reporting.",
+      "version": 0.4,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "agent_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Agent identifier",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "performance_score",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal",
+          "description": "Overall performance score",
+          "tags": [],
+          "ordinalPosition": 2
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "usageSummary": {
+        "dailyStats": {
+          "count": 50,
+          "percentileRank": 60
+        },
+        "weeklyStats": {
+          "count": 250,
+          "percentileRank": 65
+        },
+        "monthlyStats": {
+          "count": 1000,
+          "percentileRank": 70
+        },
+        "date": "2021-12-01"
+      },
+      "followers": []
     }
   ]
 }

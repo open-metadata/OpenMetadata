@@ -366,7 +366,11 @@ public class ElasticSearchClient implements SearchClient {
         new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+            request.getIndex(),
+            request.getQuery(),
+            request.getFrom(),
+            request.getSize(),
+            request.getExplain());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
     // Add Filter
@@ -449,11 +453,14 @@ public class ElasticSearchClient implements SearchClient {
 
     try {
 
-      SearchResponse searchResponse =
-          client.search(
-              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                  .source(searchSourceBuilder),
-              RequestOptions.DEFAULT);
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+              .source(searchSourceBuilder);
+
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      searchRequest.searchType(es.org.elasticsearch.action.search.SearchType.DFS_QUERY_THEN_FETCH);
+
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
 
       if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
