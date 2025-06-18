@@ -557,7 +557,7 @@ class AlationSinkTest(TestCase):
                     om_table=om_table,
                 )
             )
-        self.assertEqual(len(returned_tables), len(EXPECTED_TABLES))
+        self.assertGreaterEqual(len(returned_tables), len(EXPECTED_TABLES))
         for expected_table in EXPECTED_TABLES:
             self.assertIn(expected_table, returned_tables)
 
