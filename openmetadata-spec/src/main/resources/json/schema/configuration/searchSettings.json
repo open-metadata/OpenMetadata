@@ -52,6 +52,10 @@
             "$ref": "#/definitions/fieldValueBoost"
           },
           "description": "Optional list of numeric field-based boosts applied globally."
+        },
+        "exactMatchPriority": {
+          "$ref": "#/definitions/exactMatchPriority",
+          "description": "Global configuration for prioritizing exact matches over partial matches."
         }
       },
       "additionalProperties": false
@@ -190,33 +194,59 @@
         },
         "highlightFields": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Which fields to highlight for this asset."
         },
         "aggregations": {
           "type": "array",
-          "items": { "$ref": "#/definitions/aggregation" },
+          "items": {
+            "$ref": "#/definitions/aggregation"
+          },
           "description": "List of additional aggregations for this asset type."
         },
         "termBoosts": {
           "type": "array",
-          "items": { "$ref": "#/definitions/termBoost" },
+          "items": {
+            "$ref": "#/definitions/termBoost"
+          },
           "description": "List of field=value term-boost rules that apply only to this asset."
         },
         "fieldValueBoosts": {
           "type": "array",
-          "items": { "$ref": "#/definitions/fieldValueBoost" },
+          "items": {
+            "$ref": "#/definitions/fieldValueBoost"
+          },
           "description": "List of numeric field-based boosts that apply only to this asset."
         },
         "scoreMode": {
           "type": "string",
-          "enum": ["multiply", "sum", "avg", "first", "max", "min"],
+          "enum": [
+            "multiply",
+            "sum",
+            "avg",
+            "first",
+            "max",
+            "min"
+          ],
           "description": "How to combine function scores if multiple boosts are applied."
         },
         "boostMode": {
           "type": "string",
-          "enum": ["multiply", "replace", "sum", "avg", "max", "min"],
+          "enum": [
+            "multiply",
+            "replace",
+            "sum",
+            "avg",
+            "max",
+            "min"
+          ],
           "description": "How the function score is combined with the main query score."
+        },
+        "exactMatchPriority": {
+          "$ref": "#/definitions/exactMatchPriority",
+          "description": "Configuration for prioritizing exact matches over partial matches."
         },
         "additionalSettings": {
           "type": "object",
@@ -224,7 +254,9 @@
           "description": "Catch-all for any advanced or asset-specific search settings."
         }
       },
-      "required": ["assetType"],
+      "required": [
+        "assetType"
+      ],
       "additionalProperties": false
     },
     "fieldBoost": {
@@ -240,7 +272,9 @@
           "default": 1.0
         }
       },
-      "required": ["field"],
+      "required": [
+        "field"
+      ],
       "additionalProperties": false
     },
     "termBoost": {
@@ -259,7 +293,11 @@
           "description": "Numeric boost factor to apply if a document has field==value."
         }
       },
-      "required": ["field", "value", "boost"],
+      "required": [
+        "field",
+        "value",
+        "boost"
+      ],
       "additionalProperties": false
     },
     "fieldValueBoost": {
@@ -319,7 +357,10 @@
           "additionalProperties": false
         }
       },
-      "required": ["field", "factor"],
+      "required": [
+        "field",
+        "factor"
+      ],
       "additionalProperties": false
     },
     "aggregation": {
@@ -354,7 +395,11 @@
           "description": "The field on which this aggregation is performed."
         }
       },
-      "required": ["name", "type", "field"],
+      "required": [
+        "name",
+        "type",
+        "field"
+      ],
       "additionalProperties": false
     },
     "allowedSearchFields": {
@@ -374,16 +419,22 @@
                 "description": "Field name that can be used in searchFields"
               },
               "description": {
-                "type": "string", 
+                "type": "string",
                 "description": "Detailed explanation of what this field represents and how it affects search behavior"
               }
             },
-            "required": ["name", "description"],
+            "required": [
+              "name",
+              "description"
+            ],
             "additionalProperties": false
           }
         }
       },
-      "required": ["entityType", "fields"],
+      "required": [
+        "entityType",
+        "fields"
+      ],
       "additionalProperties": false
     },
     "allowedFieldValueBoostFields": {
@@ -403,16 +454,22 @@
                 "description": "Field name that can be used in fieldValueBoosts"
               },
               "description": {
-                "type": "string", 
+                "type": "string",
                 "description": "Detailed explanation of what this numeric field represents and how it can be used for boosting relevance"
               }
             },
-            "required": ["name", "description"],
+            "required": [
+              "name",
+              "description"
+            ],
             "additionalProperties": false
           }
         }
       },
-      "required": ["entityType", "fields"],
+      "required": [
+        "entityType",
+        "fields"
+      ],
       "additionalProperties": false
     },
     "promptSection": {
@@ -433,7 +490,10 @@
           "default": 100
         }
       },
-      "required": ["section", "content"]
+      "required": [
+        "section",
+        "content"
+      ]
     },
     "titleSection": {
       "type": "object",
@@ -456,7 +516,6 @@
         }
       }
     },
-
     "fieldInterpretation": {
       "type": "object",
       "javaType": "org.openmetadata.schema.api.search.FieldInterpretation",
@@ -470,9 +529,11 @@
           "description": "How to interpret and query this field pattern"
         }
       },
-      "required": ["pattern", "explanation"]
+      "required": [
+        "pattern",
+        "explanation"
+      ]
     },
-
     "guidelineSection": {
       "type": "object",
       "javaType": "org.openmetadata.schema.api.search.GuidelineSection",
@@ -489,9 +550,11 @@
           }
         }
       },
-      "required": ["title", "guidelines"]
+      "required": [
+        "title",
+        "guidelines"
+      ]
     },
-
     "queryExample": {
       "type": "object",
       "javaType": "org.openmetadata.schema.api.search.QueryExample",
@@ -516,8 +579,58 @@
           "description": "Entity types this example applies to (empty array = all types)"
         }
       },
-      "required": ["query", "esQuery"]
+      "required": [
+        "query",
+        "esQuery"
+      ]
+    },
+    "exactMatchField": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.ExactMatchField",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Field name for exact match (must be a keyword field)"
+        },
+        "boost": {
+          "type": "number",
+          "description": "Boost value for exact match on this field",
+          "default": 1000
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "additionalProperties": false
+    },
+    "exactMatchPriority": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.ExactMatchPriority",
+      "description": "Configuration for prioritizing exact matches in search results",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to enable exact match priority for this asset type",
+          "default": false
+        },
+        "exactMatchFields": {
+          "type": "array",
+          "description": "Fields to check for exact matches. If not specified, defaults to name.keyword, displayName.keyword, and fullyQualifiedName.keyword",
+          "items": {
+            "$ref": "#/definitions/exactMatchField"
+          }
+        },
+        "exactMatchBoostMode": {
+          "type": "string",
+          "enum": [
+            "constant_score",
+            "multiplicative"
+          ],
+          "description": "How to apply the exact match boost. 'constant_score' uses constant score queries to avoid BM25 interference, 'multiplicative' multiplies the existing score",
+          "default": "constant_score"
+        }
+      },
+      "additionalProperties": false
     }
-  },
-  "additionalProperties": false
+  }
 }

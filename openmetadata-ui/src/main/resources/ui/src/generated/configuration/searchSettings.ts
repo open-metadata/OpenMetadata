@@ -32,6 +32,7 @@ export interface SearchSettings {
      * Configuration for Natural Language Query capabilities
      */
     nlqConfiguration?: NlqConfiguration;
+    [property: string]: any;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -93,6 +94,10 @@ export interface AssetTypeConfiguration {
      * How the function score is combined with the main query score.
      */
     boostMode?: BoostMode;
+    /**
+     * Configuration for prioritizing exact matches over partial matches.
+     */
+    exactMatchPriority?: ExactMatchPriority;
     /**
      * List of numeric field-based boosts that apply only to this asset.
      */
@@ -160,6 +165,50 @@ export enum BoostMode {
     Multiply = "multiply",
     Replace = "replace",
     Sum = "sum",
+}
+
+/**
+ * Configuration for prioritizing exact matches over partial matches.
+ *
+ * Configuration for prioritizing exact matches in search results
+ *
+ * Global configuration for prioritizing exact matches over partial matches.
+ */
+export interface ExactMatchPriority {
+    /**
+     * Whether to enable exact match priority for this asset type
+     */
+    enabled?: boolean;
+    /**
+     * How to apply the exact match boost. 'constant_score' uses constant score queries to avoid
+     * BM25 interference, 'multiplicative' multiplies the existing score
+     */
+    exactMatchBoostMode?: ExactMatchBoostMode;
+    /**
+     * Fields to check for exact matches. If not specified, defaults to name.keyword,
+     * displayName.keyword, and fullyQualifiedName.keyword
+     */
+    exactMatchFields?: ExactMatchField[];
+}
+
+/**
+ * How to apply the exact match boost. 'constant_score' uses constant score queries to avoid
+ * BM25 interference, 'multiplicative' multiplies the existing score
+ */
+export enum ExactMatchBoostMode {
+    ConstantScore = "constant_score",
+    Multiplicative = "multiplicative",
+}
+
+export interface ExactMatchField {
+    /**
+     * Boost value for exact match on this field
+     */
+    boost?: number;
+    /**
+     * Field name for exact match (must be a keyword field)
+     */
+    field: string;
 }
 
 export interface FieldValueBoost {
@@ -263,6 +312,10 @@ export interface GlobalSettings {
      * Flag to enable or disable RBAC Search Configuration globally.
      */
     enableAccessControl?: boolean;
+    /**
+     * Global configuration for prioritizing exact matches over partial matches.
+     */
+    exactMatchPriority?: ExactMatchPriority;
     /**
      * Optional list of numeric field-based boosts applied globally.
      */

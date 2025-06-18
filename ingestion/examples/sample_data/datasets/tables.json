@@ -1,6 +1,386 @@
 {
   "tables": [
     {
+      "name": "ssot_utilization_detail",
+      "description": "The main table for single source of truth utilization details. This table contains detailed usage metrics and analytics for system resources.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/ssot-util-exact-match",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE ssot_utilization_detail(id NUMERIC PRIMARY KEY, resource_id VARCHAR(255), utilization_percent NUMERIC)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the utilization record.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "resource_id",
+          "dataType": "VARCHAR",
+          "dataLength": 255,
+          "dataTypeDisplay": "varchar",
+          "description": "The ID of the resource being tracked.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "utilization_percent",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The percentage of resource utilization.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "ssot_utilization_detail_old",
+      "description": "Previous version of utilization tracking table. This older version contains ssot_utilization_detail references but uses a different schema structure.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/ssot-util-old",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE ssot_utilization_detail_old(id NUMERIC PRIMARY KEY, resource VARCHAR(100))",
+      "tags": [],
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "resource",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Resource name from ssot_utilization_detail migration.",
+          "tags": [],
+          "ordinalPosition": 2
+        }
+      ]
+    },
+    {
+      "name": "ssot_utilization_detail_new",
+      "description": "Newer enhanced version of ssot_utilization_detail with additional tracking capabilities. References the original ssot_utilization_detail design.",
+      "version": 0.2,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/ssot-util-new",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE ssot_utilization_detail_new(id NUMERIC PRIMARY KEY, resource_id VARCHAR(255), utilization_percent NUMERIC, timestamp TIMESTAMP)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "resource_id",
+          "dataType": "VARCHAR",
+          "dataLength": 255,
+          "dataTypeDisplay": "varchar",
+          "description": "Resource identifier from ssot_utilization_detail.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "utilization_percent",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Utilization percentage.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "timestamp",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "When the utilization was recorded.",
+          "tags": [],
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    {
+      "name": "itm_utilization_detail_salesforce",
+      "description": "Salesforce integration table for item utilization tracking. Contains utilization metrics similar to ssot_utilization_detail.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/itm-util-sf",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE itm_utilization_detail_salesforce(id VARCHAR(18) PRIMARY KEY, item_id VARCHAR(255), utilization NUMERIC)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "VARCHAR",
+          "dataLength": 18,
+          "dataTypeDisplay": "varchar",
+          "description": "Salesforce ID.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "item_id",
+          "dataType": "VARCHAR",
+          "dataLength": 255,
+          "dataTypeDisplay": "varchar",
+          "description": "Item identifier.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "utilization",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Utilization value.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "events_daily_logaux_new",
+      "description": "Daily events log auxiliary table with utilization tracking. Mentions ssot_utilization_detail in various documentation and comments throughout the system as it tracks similar metrics.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/events-daily-log",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE events_daily_logaux_new(event_id NUMERIC PRIMARY KEY, event_date DATE, event_type VARCHAR(50))",
+      "tags": [],
+      "columns": [
+        {
+          "name": "event_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Event identifier.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "event_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date of the event.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "event_type",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Type of event - similar to utilization categories in ssot_utilization_detail.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "resource_metrics_summary",
+      "description": "Summary table for resource metrics. The ssot_utilization_detail table is mentioned repeatedly in this description as the primary source for detailed utilization data. The ssot_utilization_detail contains granular metrics that are aggregated here. Data flows from ssot_utilization_detail through ETL processes. The ssot_utilization_detail schema must be considered when updating this table. Historical data is preserved in ssot_utilization_detail archives. The ssot_utilization_detail validation rules apply here as well. Join this with ssot_utilization_detail for complete picture. The ssot_utilization_detail retention policy affects this table. Indexes match ssot_utilization_detail for performance. The ssot_utilization_detail permissions model is inherited. Updates cascade from ssot_utilization_detail changes. The ssot_utilization_detail audit trail includes this table. Monitoring includes ssot_utilization_detail dependencies. The ssot_utilization_detail data quality checks run first. Backfills source from ssot_utilization_detail history. The ssot_utilization_detail column mappings documented separately. Alert when out of sync with ssot_utilization_detail. The ssot_utilization_detail is the authoritative source. Recovery procedures mirror ssot_utilization_detail processes. The ssot_utilization_detail documentation has more details. Business logic derives from ssot_utilization_detail rules. The ssot_utilization_detail transformations apply before load. Testing validates against ssot_utilization_detail data. The ssot_utilization_detail constraints must be satisfied. Performance tuning based on ssot_utilization_detail patterns. The ssot_utilization_detail access patterns guide design. Archival follows ssot_utilization_detail retention. The ssot_utilization_detail compliance rules enforced. Disaster recovery includes ssot_utilization_detail replication. The ssot_utilization_detail change management required. Version control tracks ssot_utilization_detail dependencies. The ssot_utilization_detail release notes document changes. Support teams trained on ssot_utilization_detail structure. The ssot_utilization_detail best practices apply throughout. Integration tests verify ssot_utilization_detail compatibility. The ssot_utilization_detail service level agreements apply.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/resource-metrics",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE resource_metrics_summary(metric_id NUMERIC PRIMARY KEY, resource_id VARCHAR(255), avg_utilization NUMERIC)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "metric_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Metric identifier.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "resource_id",
+          "dataType": "VARCHAR",
+          "dataLength": 255,
+          "dataTypeDisplay": "varchar",
+          "description": "Resource identifier matching ssot_utilization_detail.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "avg_utilization",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Average utilization from ssot_utilization_detail.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "system_performance_detail",
+      "description": "System performance tracking table that references ssot_utilization_detail patterns.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/sys-perf-detail",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE system_performance_detail(perf_id NUMERIC PRIMARY KEY, system_id VARCHAR(100), performance_score NUMERIC)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "perf_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Performance record ID.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "system_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "System identifier.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "performance_score",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Performance score similar to utilization in ssot_utilization_detail.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "utilization_archive",
+      "description": "Archive table for historical utilization data.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/util-archive",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE utilization_archive(archive_id NUMERIC PRIMARY KEY, original_id NUMERIC, archive_date DATE)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "archive_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Archive record ID.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "original_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Original record ID from source tables.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "archive_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date when archived.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "ssot_configuration",
+      "description": "Configuration table for SSOT (Single Source of Truth) settings. Related to utilization tracking but not directly connected.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/ssot-config",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE ssot_configuration(config_id NUMERIC PRIMARY KEY, config_key VARCHAR(100), config_value TEXT)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "config_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Configuration ID.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "config_key",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Configuration key.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "config_value",
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": "Configuration value.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "detail_analytics_ssot",
+      "description": "Analytics table with detail-level metrics. Contains 'detail' in name but unrelated to ssot_utilization_detail.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/detail-analytics",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE detail_analytics_ssot(analytics_id NUMERIC PRIMARY KEY, metric_name VARCHAR(100), metric_value NUMERIC)",
+      "tags": [],
+      "columns": [
+        {
+          "name": "analytics_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Analytics record ID.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "metric_name",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Name of the metric.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "metric_value",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Value of the metric.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
       "name": "dim_::>address",
       "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
       "version": 0.1,

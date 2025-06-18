@@ -1,0 +1,1 @@
+delete from openmetadata_settings where configType='searchSettings';

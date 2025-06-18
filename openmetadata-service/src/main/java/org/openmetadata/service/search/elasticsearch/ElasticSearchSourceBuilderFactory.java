@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.ExactMatchField;
+import org.openmetadata.schema.api.search.ExactMatchPriority;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -224,34 +226,101 @@ public class ElasticSearchSourceBuilderFactory
 
       baseQuery.must(combinedQuery);
     } else {
-      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+      ExactMatchPriority exactMatchPriority = getExactMatchPriority(assetConfig, searchSettings);
 
-      if (!fuzzyFields.isEmpty()) {
-        MultiMatchQueryBuilder fuzzyQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .type(MOST_FIELDS)
-                .fuzziness(Fuzziness.AUTO)
-                .maxExpansions(10)
-                .prefixLength(1)
-                .operator(Operator.AND)
-                .tieBreaker(0.3f);
-        fuzzyFields.forEach(fuzzyQueryBuilder::field);
-        combinedQuery.should(fuzzyQueryBuilder);
+      if (exactMatchPriority != null && Boolean.TRUE.equals(exactMatchPriority.getEnabled())) {
+        BoolQueryBuilder exactMatchQuery = QueryBuilders.boolQuery();
+
+        if (exactMatchPriority.getExactMatchBoostMode()
+            == ExactMatchPriority.ExactMatchBoostMode.CONSTANT_SCORE) {
+          if (exactMatchPriority.getExactMatchFields() != null
+              && !exactMatchPriority.getExactMatchFields().isEmpty()) {
+            for (ExactMatchField field : exactMatchPriority.getExactMatchFields()) {
+              exactMatchQuery.should(
+                  QueryBuilders.constantScoreQuery(QueryBuilders.termQuery(field.getField(), query))
+                      .boost(field.getBoost().floatValue()));
+            }
+          } else {
+            exactMatchQuery.should(
+                QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("name.keyword", query))
+                    .boost(1000f));
+            exactMatchQuery.should(
+                QueryBuilders.constantScoreQuery(
+                        QueryBuilders.termQuery("displayName.keyword", query))
+                    .boost(1000f));
+            exactMatchQuery.should(
+                QueryBuilders.constantScoreQuery(
+                        QueryBuilders.termQuery("fullyQualifiedName.keyword", query))
+                    .boost(900f));
+          }
+        } else {
+          if (exactMatchPriority.getExactMatchFields() != null
+              && !exactMatchPriority.getExactMatchFields().isEmpty()) {
+            for (ExactMatchField field : exactMatchPriority.getExactMatchFields()) {
+              exactMatchQuery.should(
+                  QueryBuilders.termQuery(field.getField(), query)
+                      .boost(field.getBoost().floatValue()));
+            }
+          }
+        }
+
+        // Add regular fuzzy and non-fuzzy queries
+        if (!fuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder fuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .fuzziness(Fuzziness.AUTO)
+                  .maxExpansions(10)
+                  .prefixLength(1)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f);
+          fuzzyFields.forEach(fuzzyQueryBuilder::field);
+          exactMatchQuery.should(fuzzyQueryBuilder);
+        }
+
+        if (!nonFuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f)
+                  .fuzziness(Fuzziness.ZERO);
+          nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+          exactMatchQuery.should(nonFuzzyQueryBuilder);
+        }
+
+        baseQuery.must(exactMatchQuery);
+      } else {
+        // Original behavior without exact match priority
+        BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+
+        if (!fuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder fuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .fuzziness(Fuzziness.AUTO)
+                  .maxExpansions(10)
+                  .prefixLength(1)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f);
+          fuzzyFields.forEach(fuzzyQueryBuilder::field);
+          combinedQuery.should(fuzzyQueryBuilder);
+        }
+
+        if (!nonFuzzyFields.isEmpty()) {
+          MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+              QueryBuilders.multiMatchQuery(query)
+                  .type(MOST_FIELDS)
+                  .operator(Operator.AND)
+                  .tieBreaker(0.3f)
+                  .fuzziness(Fuzziness.ZERO);
+          nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+          combinedQuery.should(nonFuzzyQueryBuilder);
+        }
+
+        combinedQuery.minimumShouldMatch(1);
+        baseQuery.must(combinedQuery);
       }
-
-      if (!nonFuzzyFields.isEmpty()) {
-        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-            QueryBuilders.multiMatchQuery(query)
-                .type(MOST_FIELDS)
-                .operator(Operator.AND)
-                .tieBreaker(0.3f)
-                .fuzziness(Fuzziness.ZERO);
-        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
-        combinedQuery.should(nonFuzzyQueryBuilder);
-      }
-
-      combinedQuery.minimumShouldMatch(1);
-      baseQuery.must(combinedQuery);
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
