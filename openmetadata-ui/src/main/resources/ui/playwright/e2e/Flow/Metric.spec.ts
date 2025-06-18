@@ -15,7 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addMetric,
   removeGranularity,
@@ -113,7 +113,9 @@ test.describe('Metric Entity Special Test Cases', () => {
 
 test.describe('Listing page and add Metric flow should work', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
 
     await Promise.all([metric4.create(apiContext), metric5.create(apiContext)]);
 
@@ -125,7 +127,8 @@ test.describe('Listing page and add Metric flow should work', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
 
     await Promise.all([metric4.delete(apiContext), metric5.delete(apiContext)]);
 

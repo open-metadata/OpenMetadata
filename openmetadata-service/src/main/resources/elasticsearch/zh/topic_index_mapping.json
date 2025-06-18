@@ -100,7 +100,7 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

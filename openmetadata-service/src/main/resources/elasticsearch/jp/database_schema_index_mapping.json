@@ -21,10 +21,10 @@
             "om_stemmer"
           ]
         },
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
             "kuromoji_baseform",
             "kuromoji_part_of_speech",
             "kuromoji_number",
@@ -164,7 +164,7 @@
       "entityType": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -309,7 +309,6 @@
             "type": "text"
           }
         }
-
       },
       "serviceType": {
         "type": "keyword",
@@ -462,7 +461,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {

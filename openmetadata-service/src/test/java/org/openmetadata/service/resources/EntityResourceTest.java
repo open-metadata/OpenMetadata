@@ -291,6 +291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER1_REF;
   public static User USER2;
   public static EntityReference USER2_REF;
+  public static User USER3; // User with no roles for permission testing
+  public static EntityReference USER3_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
   public static EntityReference DEFAULT_BOT_ROLE_REF;
