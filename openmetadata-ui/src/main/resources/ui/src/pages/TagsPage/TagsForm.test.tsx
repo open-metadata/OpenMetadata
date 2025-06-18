@@ -24,6 +24,7 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
 
 jest.mock('../../utils/CommonUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
+  getCountBadge: jest.fn().mockReturnValue(''),
 }));
 
 const mockCancel = jest.fn();

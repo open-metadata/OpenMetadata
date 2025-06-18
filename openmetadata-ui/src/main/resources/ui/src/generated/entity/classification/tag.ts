@@ -68,7 +68,7 @@ export interface Tag {
     /**
      * Unique identifier of this entity instance.
      */
-    id?: string;
+    id: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -86,6 +86,10 @@ export interface Tag {
      * Name of the tag.
      */
     name: string;
+    /**
+     * Owners of this glossary term.
+     */
+    owners?: EntityReference[];
     /**
      * Reference to the parent tag. When null, the term is at the root of the Classification.
      */

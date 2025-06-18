@@ -65,7 +65,12 @@ import {
   patchStoredProceduresDetails,
 } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
-import { getTagByFqn, patchTag } from '../../rest/tagAPI';
+import {
+  getClassificationByName,
+  getTagByFqn,
+  patchClassification,
+  patchTag,
+} from '../../rest/tagAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
@@ -102,6 +107,8 @@ export const getAPIfromSource = (
       return patchGlossaries;
     case EntityType.TAG:
       return patchTag;
+    case EntityType.CLASSIFICATION:
+      return patchClassification;
     case EntityType.DATABASE_SCHEMA:
       return patchDatabaseSchemaDetails;
     case EntityType.DATABASE:
@@ -161,6 +168,8 @@ export const getEntityAPIfromSource = (
       return getGlossaryTermByFQN;
     case EntityType.GLOSSARY:
       return getGlossariesByName;
+    case EntityType.CLASSIFICATION:
+      return getClassificationByName;
     case EntityType.TAG:
       return getTagByFqn;
     case EntityType.DATABASE_SCHEMA:

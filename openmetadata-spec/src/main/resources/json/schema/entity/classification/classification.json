@@ -86,6 +86,6 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["name", "description"],
+  "required": ["id", "name", "description"],
   "additionalProperties": false
 }

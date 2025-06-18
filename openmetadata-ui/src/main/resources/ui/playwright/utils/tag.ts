@@ -486,7 +486,10 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
   await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-  await adminPage.click('[data-testid="add-domain"]');
+
+  await adminPage.click(
+    '[data-testid="modal-container"] [data-testid="add-domain"]'
+  );
   await adminPage
     .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
     .click();
