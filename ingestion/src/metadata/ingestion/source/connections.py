@@ -17,7 +17,6 @@ import traceback
 from typing import Any, Callable, Optional, Type
 
 from pydantic import BaseModel
-from sqlalchemy.engine import Engine
 
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
@@ -123,20 +122,6 @@ def get_connection(connection: BaseModel) -> Any:
     a service connection pydantic model
     """
     return get_connection_fn(connection)(connection)
-
-
-def kill_active_connections(engine: Engine):
-    """
-    Method to kill the active connections
-    as well as idle connections in the engine
-    """
-    try:
-        active_conn = engine.pool.checkedout() + engine.pool.checkedin()
-        if active_conn:
-            engine.dispose()
-    except Exception as exc:
-        logger.warning(f"Error Killing the active connections {exc}")
-        logger.debug(traceback.format_exc())
 
 
 def test_connection_common(metadata: OpenMetadata, connection_obj, service_connection):
