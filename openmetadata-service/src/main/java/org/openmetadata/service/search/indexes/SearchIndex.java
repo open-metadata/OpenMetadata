@@ -94,6 +94,9 @@ public interface SearchIndex {
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
+    map.put(
+        "displayName",
+        entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domain", getEntityWithDisplayName(entity.getDomain()));
