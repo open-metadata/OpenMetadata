@@ -72,11 +72,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils import fqn
-from metadata.utils.filters import (
-    filter_by_dashboard,
-    filter_by_project,
-    filter_by_project_names,
-)
+from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -576,21 +572,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 project_names = (
                     self.get_project_names(dashboard_details=dashboard_details) or []
                 )
-
-                # Filter based on list of project names if they exist
                 if project_names:
-                    # Check if any project path matches the filter pattern exactly
-                    if filter_by_project_names(
-                        self.source_config.projectFilterPattern,
-                        project_names,
-                    ):
-                        # Project names were filtered out
-                        self.status.filter(
-                            ", ".join(project_names),
-                            "Project / Workspace Filtered Out",
-                        )
-                        continue
-                elif project_name and filter_by_project(
+                    project_name = project_names
+
+                if filter_by_project(
                     self.source_config.projectFilterPattern,
                     project_name,
                 ):
@@ -648,7 +633,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_names(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[List[str]]:
+    ) -> Optional[str]:
         """
         Get the project / workspace / folder / collection names of the dashboard
         """

@@ -993,7 +993,7 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
-    def get_project_names(self, dashboard_details: Any) -> Optional[List[str]]:
+    def get_project_names(self, dashboard_details: Any) -> Optional[str]:
         """
         Get the project / workspace / folder / collection names of the dashboard
         """

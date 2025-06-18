@@ -163,7 +163,7 @@ class TableauClient:
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")
 
-    def get_project_parents_by_id(self, project_id: str) -> List[str]:
+    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:
         """
         Get the parents of a project by id
         """
@@ -192,10 +192,12 @@ class TableauClient:
                     project.parent_id if hasattr(project, "parent_id") else None
                 )
 
-            return parent_projects
+            if parent_projects:
+                parent_projects = ".".join(reversed(parent_projects))
+                return parent_projects
         except Exception as e:
             logger.debug(f"Failed to get project parents by id: {str(e)}")
-            return []
+        return None
 
     def get_workbooks(self) -> Iterable[TableauDashboard]:
         """

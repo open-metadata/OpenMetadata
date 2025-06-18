@@ -267,58 +267,6 @@ def filter_by_project(
     return _filter(project_filter_pattern, project_name)
 
 
-def filter_by_project_names(
-    project_filter_pattern: Optional[FilterPattern], project_names: list[str]
-) -> bool:
-    """
-    Return True if any of the projects need to be filtered, False otherwise.
-    For includes pattern, ALL projects in the pattern must exist in project_names.
-    For excludes pattern, if ANY project matches it will be filtered.
-
-    Include takes precedence over exclude.
-
-    :param project_filter_pattern: Model defining project filtering logic
-    :param project_names: List of project names to check
-    :return: True for filtering, False otherwise
-    """
-    if not project_filter_pattern:
-        # No filter pattern, nothing to filter
-        return False
-
-    if project_filter_pattern and not project_names:
-        # Filter pattern is present but no names so we'll filter it out
-        return True
-
-    validate_regex(project_filter_pattern.includes)
-    validate_regex(project_filter_pattern.excludes)
-
-    if project_filter_pattern.includes and project_filter_pattern.excludes:
-        # Check if all includes have a matching project AND no excludes match any project
-        return not all(
-            any(re.match(include, name, re.IGNORECASE) for name in project_names)
-            for include in project_filter_pattern.includes
-        ) or any(
-            any(re.match(exclude, name, re.IGNORECASE) for name in project_names)
-            for exclude in project_filter_pattern.excludes
-        )
-
-    if project_filter_pattern.includes:
-        # Check if all includes have a matching project name
-        return not all(
-            any(re.match(include, name, re.IGNORECASE) for name in project_names)
-            for include in project_filter_pattern.includes
-        )
-
-    if project_filter_pattern.excludes:
-        # Check if any exclude matches any name
-        return any(
-            any(re.match(exclude, name, re.IGNORECASE) for name in project_names)
-            for exclude in project_filter_pattern.excludes
-        )
-
-    return False
-
-
 def filter_by_search_index(
     search_index_filter_pattern: Optional[FilterPattern], search_index_name: str
 ) -> bool:
