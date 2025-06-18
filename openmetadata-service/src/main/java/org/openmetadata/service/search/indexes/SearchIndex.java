@@ -129,27 +129,26 @@ public interface SearchIndex {
 
   default Set<String> getFQNParts(String fqn) {
     Set<String> fqnParts = new HashSet<>();
-    fqnParts.add(fqn);
-    String parent = FullyQualifiedName.getParentFQN(fqn);
-    while (parent != null) {
-      fqnParts.add(parent);
-      parent = FullyQualifiedName.getParentFQN(parent);
-    }
-    return fqnParts;
-  }
+    String[] parts = fqn.split("\\.");
 
-  // Add suggest inputs to fqnParts to support partial/wildcard search on names.
-  // In some case of basic Test suite name is not part of the fullyQualifiedName, so it must be
-  // added separately.
-  default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
-    Set<String> fqnParts = new HashSet<>();
-    fqnParts.add(fqn);
-    String parent = FullyQualifiedName.getParentFQN(fqn);
-    while (parent != null) {
-      fqnParts.add(parent);
-      parent = FullyQualifiedName.getParentFQN(parent);
+    int n = parts.length;
+
+    // 1. Full top-down hierarchy: service.database.schema.table -> service
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < n; i++) {
+      if (i > 0) sb.append(".");
+      sb.append(parts[i]);
+      fqnParts.add(sb.toString());
     }
-    fqnParts.addAll(fqnSplits);
+    Collections.addAll(fqnParts, parts);
+    for (int i = 1; i < n; i++) {
+      StringBuilder btm = new StringBuilder(parts[i]);
+      for (int j = i + 1; j < n; j++) {
+        btm.append(".").append(parts[j]);
+        fqnParts.add(btm.toString());
+      }
+    }
+
     return fqnParts;
   }
 
