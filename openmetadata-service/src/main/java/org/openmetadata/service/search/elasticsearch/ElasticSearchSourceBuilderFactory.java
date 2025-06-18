@@ -163,12 +163,6 @@ public class ElasticSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size) {
-    return buildDataAssetSearchBuilder(indexName, query, from, size, false);
-  }
-
-  @Override
-  public SearchSourceBuilder buildDataAssetSearchBuilder(
-      String indexName, String query, int from, int size, boolean explain) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
     Map<String, Float> fuzzyFields;
     Map<String, Float> nonFuzzyFields;
@@ -318,7 +312,7 @@ public class ElasticSearchSourceBuilderFactory
     }
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
-    searchSourceBuilder.explain(explain);
+    searchSourceBuilder.explain(true);
     return searchSourceBuilder;
   }
 
