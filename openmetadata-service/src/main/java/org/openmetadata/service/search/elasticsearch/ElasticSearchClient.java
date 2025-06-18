@@ -366,11 +366,7 @@ public class ElasticSearchClient implements SearchClient {
         new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(),
-            request.getQuery(),
-            request.getFrom(),
-            request.getSize(),
-            request.getExplain());
+            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
     // Add Filter
