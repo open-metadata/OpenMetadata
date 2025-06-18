@@ -279,16 +279,9 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-name')}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
           updateUserDetails={updateUserDetails}
           userData={userData}
-          value={userData.description as string}
-          visible={Boolean(editProfile)}
-          onCancel={() => setEditProfile(false)}
-          onSave={handleModalClose}
+          onCancel={handleModalClose}
         />
       )}
       {userData.deleted && (
