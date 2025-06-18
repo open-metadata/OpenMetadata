@@ -41,9 +41,6 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -55,7 +52,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
@@ -391,11 +388,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             yield pipeline_detail
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""
