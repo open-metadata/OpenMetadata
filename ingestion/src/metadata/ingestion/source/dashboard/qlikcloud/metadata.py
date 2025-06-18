@@ -134,6 +134,12 @@ class QlikcloudSource(QliksenseSource):
             if self.filter_draft_dashboard(dashboard):
                 # Skip unpublished dashboards
                 continue
+            if dashboard.space_id not in self.projects_map:
+                logger.warning(
+                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present"
+                    " in projects map"
+                )
+                continue
             project = self.projects_map[dashboard.space_id]
             if self.filter_projects_by_type(project):
                 # Skip dashboard based on space type filter

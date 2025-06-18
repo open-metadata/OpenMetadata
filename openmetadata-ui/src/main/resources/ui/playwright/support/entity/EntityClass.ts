@@ -29,6 +29,7 @@ import {
 import {
   addMultiOwner,
   addOwner,
+  assignCertification,
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
@@ -41,6 +42,8 @@ import {
   downVote,
   followEntity,
   hardDeleteEntity,
+  removeCertification,
+  removeDisplayNameForEntityChildren,
   removeGlossaryTerm,
   removeGlossaryTermFromChildren,
   removeOwner,
@@ -51,7 +54,9 @@ import {
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
+  updateDescriptionForChildren,
   updateDisplayNameForEntity,
+  updateDisplayNameForEntityChildren,
   updateOwner,
   upVote,
   validateFollowedEntityToWidget,
@@ -59,6 +64,7 @@ import {
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { TagClass } from '../tag/TagClass';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
@@ -203,19 +209,54 @@ export class EntityClass {
     }
   }
 
-  async tier(page: Page, tier1: string, tier2: string, entity?: EntityClass) {
+  async tier(
+    page: Page,
+    tier1: string,
+    tier2: string,
+    tier2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTier(page, tier1, this.endpoint);
-    if (entity) {
+    await assignTier(page, tier2, this.endpoint);
+    if (entity && tier2Fqn) {
       await checkExploreSearchFilter(
         page,
         'Tier',
         'tier.tagFQN',
-        `Tier.${tier1}`,
+        tier2Fqn,
         entity
       );
     }
-    await assignTier(page, tier2, this.endpoint);
     await removeTier(page, this.endpoint);
+  }
+
+  async certification(
+    page: Page,
+    certification1: TagClass,
+    certification2: TagClass,
+    entity?: EntityClass
+  ) {
+    await assignCertification(page, certification1, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification1.responseData.fullyQualifiedName,
+        entity
+      );
+    }
+    await assignCertification(page, certification2, this.endpoint);
+    if (entity) {
+      await checkExploreSearchFilter(
+        page,
+        'Certification',
+        'certification.tagLabel.tagFQN',
+        certification2.responseData.fullyQualifiedName,
+        entity
+      );
+    }
+    await removeCertification(page, this.endpoint);
   }
 
   async descriptionUpdate(page: Page) {
@@ -226,13 +267,60 @@ export class EntityClass {
     await updateDescription(page, description);
   }
 
-  async tag(page: Page, tag1: string, tag2: string, entity?: EntityClass) {
+  async descriptionUpdateChildren(
+    page: Page,
+    rowId: string,
+    rowSelector: string
+  ) {
+    const description =
+      // eslint-disable-next-line max-len
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
+
+    // Add description
+    await updateDescriptionForChildren(
+      page,
+      description,
+
+      rowId,
+      rowSelector
+    );
+
+    // Update description
+    await updateDescriptionForChildren(
+      page,
+      description + ' updated',
+
+      rowId,
+      rowSelector
+    );
+
+    // Remove description
+    await updateDescriptionForChildren(page, '', rowId, rowSelector);
+  }
+
+  async tag(
+    page: Page,
+    tag1: string,
+    tag2: string,
+    tag2Fqn?: string,
+    entity?: EntityClass
+  ) {
     await assignTag(page, tag1);
-    if (entity) {
-      await checkExploreSearchFilter(page, 'Tag', 'tags.tagFQN', tag1, entity);
+    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    if (entity && tag2Fqn) {
+      await checkExploreSearchFilter(
+        page,
+        'Tag',
+        'tags.tagFQN',
+        tag2Fqn,
+        entity
+      );
     }
-    await assignTag(page, tag2, 'Edit');
-    await removeTag(page, [tag2]);
+    if (tag2Fqn) {
+      await removeTag(page, [tag2Fqn]);
+    } else {
+      await removeTag(page, [tag2]);
+    }
     await removeTag(page, [tag1]);
 
     await page
@@ -387,6 +475,46 @@ export class EntityClass {
       page,
       `Cypress ${entityName} updated`,
       this.endpoint
+    );
+  }
+
+  async displayNameChildren({
+    page,
+    columnName,
+    rowSelector,
+  }: {
+    page: Page;
+    columnName: string;
+    rowSelector: string;
+  }) {
+    // Add display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: '',
+        newDisplayName: `Playwright ${columnName} updated`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Update display name
+    await updateDisplayNameForEntityChildren(
+      page,
+      {
+        oldDisplayName: `Playwright ${columnName} updated`,
+        newDisplayName: `Playwright ${columnName} updated again`,
+      },
+      this.childrenSelectorId ?? '',
+      rowSelector
+    );
+
+    // Remove display name
+    await removeDisplayNameForEntityChildren(
+      page,
+      `Playwright ${columnName} updated again`,
+      this.childrenSelectorId ?? '',
+      rowSelector
     );
   }
 

@@ -116,7 +116,9 @@ class ContextManager:
             result: dict[str, Any] = {}
             for context_enum in ContextsEnum:
                 context_obj = getattr(instance, context_enum.value)
-                result[context_enum.value] = context_obj.model_dump()
+                context_dict = context_obj.model_dump(exclude_none=True)
+                if context_dict:
+                    result[context_enum.value] = context_dict
             if result:
                 return result
             return None

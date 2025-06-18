@@ -13,6 +13,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLA
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -41,7 +43,6 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -49,10 +50,12 @@ public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
       Set.of(
           "changeDescription",
+          "votes",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
           "upstreamLineage.pipeline.incrementalChangeDescription",
-          "connection");
+          "connection",
+          "changeSummary");
 
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
@@ -89,10 +92,6 @@ public interface SearchIndex {
 
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
-  default List<SearchSuggest> getSuggest() {
-    return null;
-  }
-
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
     map.put(
@@ -108,6 +107,15 @@ public interface SearchIndex {
             : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
     map.put("totalVotes", totalVotes);
     map.put("descriptionStatus", getDescriptionStatus(entity));
+
+    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
+    map.put(
+        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(entity);
+    map.put("tagSources", tagAndTierSources.getTagSources());
+    map.put("tierSources", tagAndTierSources.getTierSources());
+
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
@@ -377,6 +385,7 @@ public interface SearchIndex {
 
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
+    fields.put(NAME_KEYWORD, 10.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 10.0f);
     fields.put(FIELD_NAME, 10.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);

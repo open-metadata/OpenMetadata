@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNa
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -29,8 +30,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       Pattern.compile(
           "\\w+\\s*:\\s*\\w+|"
               + // Field queries (field:value)
-              "\\b(?i)(?:AND|OR|NOT)\\b|"
-              + // Boolean operators
+              "\\b(?:AND|OR|NOT)\\b|"
+              + // Boolean operators (uppercase only)
               "[*?]|"
               + // Wildcards
               "[()]|"
@@ -41,6 +42,25 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
               + // Range queries
               "[+\\-~\\^]" // Special operators
           );
+
+  Set<String> FUZZY_FIELDS =
+      Set.of(
+          "name",
+          "displayName",
+          "fullyQualifiedName",
+          "columnNamesFuzzy",
+          "fieldNamesFuzzy",
+          "response_field_namesFuzzy",
+          "request_field_namesFuzzy",
+          "classification.name",
+          "classification.displayName",
+          "glossary.name",
+          "glossary.displayName");
+
+  // Keyword fields added to fuzzy because Lucene needs keyword fields for wildcard/prefix queries
+  // in query_string
+  Set<String> FUZZY_AND_NON_FUZZY_FIELDS =
+      Set.of("name.keyword", "displayName.keyword", "fullyQualifiedName.keyword");
 
   /**
    * Get the appropriate search source builder based on the index name.
@@ -211,5 +231,19 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
     query = query.replace("%20", " ").trim();
     return QUERY_SYNTAX_PATTERN.matcher(query).find();
+  }
+
+  default boolean isFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return FUZZY_FIELDS.contains(key);
+  }
+
+  default boolean isNonFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return !FUZZY_FIELDS.contains(key);
   }
 }

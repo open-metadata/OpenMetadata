@@ -9,7 +9,10 @@
           "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "normalizer": {
@@ -33,7 +36,9 @@
         "om_ngram": {
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -93,7 +98,8 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "similarity": "boolean"
+        "similarity": "boolean",
+        "term_vector": "with_positions_offsets"
       },
       "version": {
         "type": "float"
@@ -111,7 +117,7 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -235,7 +241,8 @@
               "description": {
                 "type": "text",
                 "analyzer": "om_analyzer",
-                "similarity": "boolean"
+                "similarity": "boolean",
+                "term_vector": "with_positions_offsets"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -482,8 +489,8 @@
           }
         }
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "lifeCycle": {
         "type": "keyword"
@@ -495,21 +502,24 @@
       "entityType": {
         "type": "keyword"
       },
-      "field_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

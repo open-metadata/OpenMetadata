@@ -781,8 +781,8 @@ site_menu:
     url: /how-to-guides/admin-guide/Reindexing-Search
   - category: How-to Guides / Admin Guide / Data Insights
     url: /how-to-guides/admin-guide/data-insights
-  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
-    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization
+    url: /how-to-guides/admin-guide/persona-landing-page-customization
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
     url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
@@ -811,7 +811,7 @@ site_menu:
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
   - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
+    url: /how-to-guides/guide-for-data-users/theme
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -902,8 +902,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -961,7 +959,7 @@ site_menu:
     url: /how-to-guides/data-governance
   - category: How-to Guides / Data Governance / Automation
     url: /how-to-guides/data-governance/automation
-  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate
     url: /how-to-guides/data-governance/automation/set-up-automation
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
@@ -1001,6 +999,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification

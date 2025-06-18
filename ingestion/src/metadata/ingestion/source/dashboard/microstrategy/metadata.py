@@ -16,12 +16,26 @@ from collate_sqllineage.core.models import Table as SqlLineageTable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
+)
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -43,16 +57,22 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.microstrategy.helpers import (
+    MicroStrategyColumnParser,
+)
 from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrDashboard,
     MstrDashboardDetails,
+    MstrDataset,
     MstrPage,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -206,30 +226,47 @@ class MicrostrategySource(DashboardServiceSource):
             if not cube_sql:
                 continue
 
+            datamodel_fqn = fqn.build(
+                self.metadata,
+                entity_type=DashboardDataModel,
+                service_name=self.context.get().dashboard_service,
+                data_model_name=dataset.id,
+            )
+            datamodel_entity = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=datamodel_fqn
+            )
+
             try:
                 lineage_parser = LineageParser(cube_sql, dialect=dialect)
                 for table in lineage_parser.source_tables:
-                    table_entity = self._get_table_entity_by_prefix(table, prefix_parts)
-                    if not table_entity:
+                    table_entities = get_table_entities_from_query(
+                        metadata=self.metadata,
+                        service_name=prefix_parts[0],
+                        database_name="*",
+                        database_schema="*",
+                        table_name=str(table),
+                    )
+                    if not table_entities:
+                        logger.debug(f"Table not found in metadata: {str(table)}")
                         continue
-
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(table_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(dashboard_entity.id.root),
-                                    type="dashboard",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DashboardLineage
-                                ),
+                    for table_entity in table_entities or []:
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=Uuid(table_entity.id.root),
+                                        type="table",
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=Uuid(datamodel_entity.id.root),
+                                        type="dashboardDataModel",
+                                    ),
+                                    lineageDetails=LineageDetails(
+                                        source=LineageSource.DashboardLineage
+                                    ),
+                                )
                             )
                         )
-                    )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -344,6 +381,74 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _get_column_info(self, dataset: MstrDataset) -> Optional[List[Column]]:
+        """Build columns from dataset"""
+        datasource_columns = []
+        for available_object in dataset.availableObjects or []:
+            try:
+                parsed_column = {
+                    "dataTypeDisplay": available_object.type.title(),
+                    "dataType": DataType.UNKNOWN,
+                    "name": available_object.name,
+                    "displayName": available_object.name,
+                }
+                parsed_column_children = []
+                for form in available_object.forms or []:
+                    parsed_column_children.append(MicroStrategyColumnParser.parse(form))
+                if parsed_column_children:
+                    parsed_column["children"] = parsed_column_children
+
+                datasource_columns.append(Column(**parsed_column))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to yield datamodel column: {exc}")
+        return datasource_columns
+
+    def yield_datamodel(
+        self, dashboard_details: MstrDashboardDetails
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """Get datamodel method
+
+        Args:
+            dashboard_details:
+        Returns:
+            Iterable[CreateDashboardDataModelRequest]
+        """
+        try:
+            if self.source_config.includeDataModels:
+                for dataset in dashboard_details.datasets:
+                    if filter_by_datamodel(
+                        self.source_config.dataModelFilterPattern, dataset.name
+                    ):
+                        self.status.filter(dataset.name, "Data model filtered out.")
+                        continue
+                    data_model_type = DataModelType.MicroStrategyDataset.value
+                    datamodel_columns = self._get_column_info(dataset)
+
+                    data_model_request = CreateDashboardDataModelRequest(
+                        name=EntityName(dataset.id),
+                        displayName=dataset.name,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        dataModelType=data_model_type,
+                        serviceType=DashboardServiceType.MicroStrategy.value,
+                        columns=datamodel_columns,
+                        project=self.get_project_name(
+                            dashboard_details=dashboard_details
+                        ),
+                    )
+                    yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=dataset.name,
+                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         # close the api session

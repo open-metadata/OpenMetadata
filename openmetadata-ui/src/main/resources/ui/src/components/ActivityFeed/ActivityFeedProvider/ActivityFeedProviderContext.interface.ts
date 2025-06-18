@@ -26,6 +26,8 @@ import { Paging } from '../../../generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
+  isPostsLoading?: boolean;
+  isTestCaseResolutionLoading?: boolean;
   entityThread: Thread[];
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;

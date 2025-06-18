@@ -81,6 +81,10 @@ export interface Webhook {
      */
     httpMethod?: HTTPMethod;
     /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
+    /**
      * List of receivers to send mail to
      */
     receivers?: string[];

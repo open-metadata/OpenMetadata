@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'.",
+      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'. Here make sure to use 'Href' is available in result to create a hyperlink to the entity in OpenMetadata.",
       "parameters": {
         "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
         "type": "object",
@@ -148,6 +148,38 @@
           "entityType",
           "entityFqn",
           "patch"
+        ]
+      }
+    },
+    {
+      "name": "get_entity_lineage",
+      "description": "Get detailed information about lineage (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities.",
+      "parameters": {
+        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity"
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity"
+          },
+          "upstream_depth": {
+            "type": "integer",
+            "description": "Depth for reaching upstream entities. Default is 5."
+          },
+          "downstream_depth": {
+            "type": "integer",
+            "description": "Depth for reaching downstream entities. Default is 5."
+          }
+        },
+        "required": [
+          "entity_type",
+          "fqn",
+          "upstream_depth",
+          "downstream_depth"
         ]
       }
     }

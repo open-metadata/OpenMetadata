@@ -291,6 +291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER1_REF;
   public static User USER2;
   public static EntityReference USER2_REF;
+  public static User USER3; // User with no roles for permission testing
+  public static EntityReference USER3_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
   public static EntityReference DEFAULT_BOT_ROLE_REF;
@@ -2743,7 +2745,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target =
         getResource(
-            String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+            String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {

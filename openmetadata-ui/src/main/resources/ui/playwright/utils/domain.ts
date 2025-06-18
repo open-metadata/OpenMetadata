@@ -136,7 +136,7 @@ export const selectSubDomain = async (
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   const res = page.waitForResponse(
-    '/api/v1/search/query?*&index=data_product_search_index'
+    '/api/v1/search/query?*&index=data_product_search_index*'
   );
   await page.getByTestId(subDomain.name).click();
   await res;
@@ -147,7 +147,7 @@ export const selectDataProductFromTab = async (
   dataProduct: DataProduct['data']
 ) => {
   const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
+    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index*'
   );
   await page
     .locator('.domain-details-page-tabs')
@@ -339,17 +339,25 @@ export const addAssetsToDomain = async (
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&*`
     );
     await page
       .getByTestId('asset-selection-modal')
       .getByTestId('searchbar')
-      .fill(name);
+      .fill(visibleName);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    await expect(
+      page.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);

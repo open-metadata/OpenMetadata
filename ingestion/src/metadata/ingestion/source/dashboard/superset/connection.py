@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
     SupersetConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+    MysqlConnection as MysqlConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -46,16 +46,16 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_ALL_CHARTS_TEST,
     FETCH_DASHBOARDS_TEST,
 )
-from metadata.ingestion.source.database.mysql.connection import (
-    get_connection as mysql_get_connection,
-)
+from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 from metadata.ingestion.source.database.postgres.connection import (
     get_connection as pg_get_connection,
 )
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
+def get_connection(
+    connection: SupersetConnection,
+) -> Union[SupersetAPIClient, Engine, None]:
     """
     Create connection
     """
@@ -63,8 +63,8 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
         return SupersetAPIClient(connection)
     if isinstance(connection.connection, PostgresConnection):
         return pg_get_connection(connection=connection.connection)
-    if isinstance(connection.connection, MysqlConnection):
-        return mysql_get_connection(connection=connection.connection)
+    if isinstance(connection.connection, MysqlConnectionConfig):
+        return MySQLConnection(connection.connection).get_client()
     return None
 
 
@@ -89,7 +89,7 @@ def test_connection(
     else:
         test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
         test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
-        if isinstance(service_connection.connection, MysqlConnection):
+        if isinstance(service_connection.connection, MysqlConnectionConfig):
             test_fn["GetCharts"] = partial(
                 test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`")
             )

@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -46,7 +46,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
+    "databricks-sdk": "databricks-sdk~=0.20.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -134,7 +134,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager>=2.19.0,<2.20.1",
+    "google-cloud-secret-manager==2.22.1",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -209,7 +209,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -292,7 +292,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny>=2.3.0"},
+    "mlflow": {"mlflow-skinny~=2.22.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -377,7 +377,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -396,7 +396,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -478,7 +478,7 @@ playwright_dependencies = {
     *plugins["datalake-s3"],
     *plugins["dbt"],
     *plugins["presidio-analyzer"],
-    *e2e_test
+    *e2e_test,
     # Add other plugins as needed for Playwright tests
 }
 

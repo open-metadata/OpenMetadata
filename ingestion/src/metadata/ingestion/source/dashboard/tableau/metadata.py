@@ -127,8 +127,8 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        return self.client.get_workbooks()
+    def get_dashboards_list(self) -> Iterable[TableauDashboard]:
+        yield from self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -137,6 +137,7 @@ class TableauSource(DashboardServiceSource):
         """
         Get Dashboard Details including the dashboard charts and datamodels
         """
+        dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
     def get_owner_ref(
@@ -298,8 +299,9 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
+            base_url = self.get_base_url()
             dashboard_url = (
-                f"{clean_uri(str(self.config.serviceConnection.root.config.hostPort))}"
+                f"{clean_uri(str(base_url))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
             dashboard_request = CreateDashboardRequest(
@@ -731,8 +733,9 @@ class TableauSource(DashboardServiceSource):
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
+                base_url = self.get_base_url()
                 chart_url = (
-                    f"{clean_uri(self.service_connection.hostPort)}/"
+                    f"{clean_uri(str(base_url))}"
                     f"#{site_url}"
                     f"views/{workbook_chart_name.workbook_name}"
                     f"/{workbook_chart_name.chart_url_name}"
@@ -1068,3 +1071,11 @@ class TableauSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_base_url(self) -> str:
+        """
+        Get the proxy url for the tableau server
+        """
+        if self.config.serviceConnection.root.config.proxyURL:
+            return str(self.config.serviceConnection.root.config.proxyURL)
+        return str(self.config.serviceConnection.root.config.hostPort)
