@@ -47,6 +47,11 @@ export interface TableauConnection {
      */
     projectFilterPattern?: FilterPattern;
     /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
+    /**
      * Tableau Site Name.
      */
     siteName?:                   string;
