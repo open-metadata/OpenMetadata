@@ -553,9 +553,11 @@ class UnitycatalogSource(
                 ],
             ),
         )
-        with get_sqlalchemy_connection(self.service_connection).connect() as connection:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                try:
+        try:
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                     for tag in connection.execute(query):
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(
@@ -568,11 +570,11 @@ class UnitycatalogSource(
                             metadata=self.metadata,
                             system_tags=True,
                         )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error getting tags for catalog/schema {database_name}: {exc}"
-                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting tags for catalog/schema {database_name}: {exc}"
+            )
 
     def yield_tag(
         self, schema_name: str
@@ -604,9 +606,11 @@ class UnitycatalogSource(
                 ],
             ),
         )
-        with get_sqlalchemy_connection(self.service_connection).connect() as connection:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                try:
+        try:
+            with get_sqlalchemy_connection(
+                self.service_connection
+            ).connect() as connection:
+                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                     for tag in connection.execute(query):
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(
@@ -619,11 +623,9 @@ class UnitycatalogSource(
                             metadata=self.metadata,
                             system_tags=True,
                         )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error getting tags for schema {schema_name}: {exc}"
-                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
