@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../styles/variables.less');
+import { DefaultOptionType } from 'antd/lib/select';
+import { PagingResponse } from './AsyncSelect';
 
-.tag-height-with-resizable-panel {
-  height: @tag-page-height;
-}
-
-.tag-page-tabs.ant-tabs.tabs-new {
-  .ant-tabs-tabpane {
-    background-color: transparent;
-  }
+export interface AsyncSelectListProps {
+  api: (
+    queryString: string,
+    page?: number
+  ) => Promise<DefaultOptionType[] | PagingResponse<DefaultOptionType[]>>;
+  enableInfiniteScroll?: boolean;
+  debounceTimeout?: number;
 }
