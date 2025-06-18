@@ -70,7 +70,7 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

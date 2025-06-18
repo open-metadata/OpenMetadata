@@ -6,7 +6,10 @@
           "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "normalizer": {
@@ -30,7 +33,9 @@
         "om_ngram": {
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -58,7 +63,7 @@
         "type": "date"
       },
       "@timestamp": {
-          "type": "date"
+        "type": "date"
       },
       "testResultValue": {
         "properties": {
@@ -120,7 +125,8 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "term_vector": "with_positions_offsets"
           },
           "testPlatforms": {
             "type": "keyword",
@@ -415,9 +421,9 @@
             "type": "keyword",
             "ignore_above": 256
           },
-          "displayName" : {
-            "type" : "text",
-            "fields" : {
+          "displayName": {
+            "type": "text",
+            "fields": {
               "keyword": {
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer",
