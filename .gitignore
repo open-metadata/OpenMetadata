@@ -134,3 +134,12 @@ ingestion/tests/cli_e2e/**/*test.yaml
 
 # Nox
 ingestion/.nox/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp 
