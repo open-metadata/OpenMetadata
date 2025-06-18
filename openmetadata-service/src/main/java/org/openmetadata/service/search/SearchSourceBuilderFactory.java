@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.ExactMatchPriority;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.Entity;
 
@@ -263,18 +262,5 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       return true;
     }
     return !FUZZY_FIELDS.contains(key);
-  }
-
-  default ExactMatchPriority getExactMatchPriority(
-      AssetTypeConfiguration assetConfig, SearchSettings searchSettings) {
-    if (assetConfig != null && assetConfig.getExactMatchPriority() != null) {
-      return assetConfig.getExactMatchPriority();
-    }
-    if (searchSettings != null
-        && searchSettings.getGlobalSettings() != null
-        && searchSettings.getGlobalSettings().getExactMatchPriority() != null) {
-      return searchSettings.getGlobalSettings().getExactMatchPriority();
-    }
-    return null;
   }
 }

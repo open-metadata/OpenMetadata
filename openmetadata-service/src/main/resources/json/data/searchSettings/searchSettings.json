@@ -107,29 +107,7 @@
         "modifier": "none",
         "missing": 0
       }
-    ],
-    "exactMatchPriority": {
-      "enabled": false,
-      "exactMatchFields": [
-        {
-          "field": "name.keyword",
-          "boost": 1000
-        },
-        {
-          "field": "displayName.keyword",
-          "boost": 1000
-        },
-        {
-          "field": "fullyQualifiedName.keyword",
-          "boost": 900
-        },
-        {
-          "field": "fqnParts",
-          "boost": 800
-        }
-      ],
-      "exactMatchBoostMode": "constant_score"
-    }
+    ]
   },
   "assetTypeConfigurations": [
     {
@@ -312,25 +290,7 @@
           "modifier": "none",
           "missing": 0
         }
-      ],
-      "exactMatchPriority": {
-        "enabled": true,
-        "exactMatchFields": [
-          {
-            "field": "name.keyword",
-            "boost": 1000
-          },
-          {
-            "field": "displayName.keyword",
-            "boost": 1000
-          },
-          {
-            "field": "fullyQualifiedName.keyword",
-            "boost": 900
-          }
-        ],
-        "exactMatchBoostMode": "constant_score"
-      }
+      ]
     },
     {
       "assetType": "storedProcedure",

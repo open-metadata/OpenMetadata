@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.ExactMatchField;
-import org.openmetadata.schema.api.search.ExactMatchPriority;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -225,106 +223,34 @@ public class OpenSearchSourceBuilderFactory
 
       baseQuery.must(combinedQuery);
     } else {
-      // Check for exact match priority configuration
-      ExactMatchPriority exactMatchPriority = getExactMatchPriority(assetConfig, searchSettings);
+      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
 
-      if (exactMatchPriority != null && Boolean.TRUE.equals(exactMatchPriority.getEnabled())) {
-        // Build query with exact match priority
-        BoolQueryBuilder exactMatchQuery = QueryBuilders.boolQuery();
-
-        // Add exact match queries with constant score if configured
-        if (exactMatchPriority.getExactMatchBoostMode()
-            == ExactMatchPriority.ExactMatchBoostMode.CONSTANT_SCORE) {
-          if (exactMatchPriority.getExactMatchFields() != null
-              && !exactMatchPriority.getExactMatchFields().isEmpty()) {
-            for (ExactMatchField field : exactMatchPriority.getExactMatchFields()) {
-              exactMatchQuery.should(
-                  QueryBuilders.constantScoreQuery(QueryBuilders.termQuery(field.getField(), query))
-                      .boost(field.getBoost().floatValue()));
-            }
-          } else {
-            // Default exact match fields
-            exactMatchQuery.should(
-                QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("name.keyword", query))
-                    .boost(1000f));
-            exactMatchQuery.should(
-                QueryBuilders.constantScoreQuery(
-                        QueryBuilders.termQuery("displayName.keyword", query))
-                    .boost(1000f));
-            exactMatchQuery.should(
-                QueryBuilders.constantScoreQuery(
-                        QueryBuilders.termQuery("fullyQualifiedName.keyword", query))
-                    .boost(900f));
-          }
-        } else {
-          // Multiplicative boost mode
-          if (exactMatchPriority.getExactMatchFields() != null
-              && !exactMatchPriority.getExactMatchFields().isEmpty()) {
-            for (ExactMatchField field : exactMatchPriority.getExactMatchFields()) {
-              exactMatchQuery.should(
-                  QueryBuilders.termQuery(field.getField(), query)
-                      .boost(field.getBoost().floatValue()));
-            }
-          }
-        }
-
-        // Add regular fuzzy and non-fuzzy queries
-        if (!fuzzyFields.isEmpty()) {
-          MultiMatchQueryBuilder fuzzyQueryBuilder =
-              QueryBuilders.multiMatchQuery(query)
-                  .type(MOST_FIELDS)
-                  .fuzziness(Fuzziness.AUTO)
-                  .maxExpansions(10)
-                  .prefixLength(1)
-                  .operator(Operator.AND)
-                  .tieBreaker(0.3f);
-          fuzzyFields.forEach(fuzzyQueryBuilder::field);
-          exactMatchQuery.should(fuzzyQueryBuilder);
-        }
-
-        if (!nonFuzzyFields.isEmpty()) {
-          MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-              QueryBuilders.multiMatchQuery(query)
-                  .type(MOST_FIELDS)
-                  .operator(Operator.AND)
-                  .tieBreaker(0.3f)
-                  .fuzziness(Fuzziness.ZERO);
-          nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
-          exactMatchQuery.should(nonFuzzyQueryBuilder);
-        }
-
-        baseQuery.must(exactMatchQuery);
-      } else {
-        // Original behavior without exact match priority
-        BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
-
-        if (!fuzzyFields.isEmpty()) {
-          MultiMatchQueryBuilder fuzzyQueryBuilder =
-              QueryBuilders.multiMatchQuery(query)
-                  .type(MOST_FIELDS)
-                  .fuzziness(Fuzziness.AUTO)
-                  .maxExpansions(10)
-                  .prefixLength(1)
-                  .operator(Operator.AND)
-                  .tieBreaker(0.3f);
-          fuzzyFields.forEach(fuzzyQueryBuilder::field);
-          combinedQuery.should(fuzzyQueryBuilder);
-        }
-
-        if (!nonFuzzyFields.isEmpty()) {
-          MultiMatchQueryBuilder nonFuzzyQueryBuilder =
-              QueryBuilders.multiMatchQuery(query)
-                  .type(MOST_FIELDS)
-                  .operator(Operator.AND)
-                  .tieBreaker(0.3f)
-                  .fuzziness(Fuzziness.ZERO);
-          nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
-          combinedQuery.should(nonFuzzyQueryBuilder);
-        }
-
-        combinedQuery.minimumShouldMatch(1);
-        baseQuery.must(combinedQuery);
+      if (!fuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder fuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .fuzziness(Fuzziness.AUTO)
+                .maxExpansions(10)
+                .prefixLength(1)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+        fuzzyFields.forEach(fuzzyQueryBuilder::field);
+        combinedQuery.should(fuzzyQueryBuilder);
       }
+
+      if (!nonFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f)
+                .fuzziness(Fuzziness.ZERO);
+        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+
+      combinedQuery.minimumShouldMatch(1);
+      baseQuery.must(combinedQuery);
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
