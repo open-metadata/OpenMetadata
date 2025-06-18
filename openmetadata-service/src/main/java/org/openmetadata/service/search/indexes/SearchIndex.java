@@ -19,11 +19,11 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -128,28 +128,12 @@ public interface SearchIndex {
   }
 
   default Set<String> getFQNParts(String fqn) {
-    Set<String> fqnParts = new HashSet<>();
-    String[] parts = FullyQualifiedName.split(fqn);
+    var parts = FullyQualifiedName.split(fqn);
+    var entityName = parts[parts.length - 1];
 
-    int n = parts.length;
-
-    // 1. Full top-down hierarchy: service.database.schema.table -> service
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < n; i++) {
-      if (i > 0) sb.append(".");
-      sb.append(parts[i]);
-      fqnParts.add(sb.toString());
-    }
-    Collections.addAll(fqnParts, parts);
-    for (int i = 1; i < n; i++) {
-      StringBuilder btm = new StringBuilder(parts[i]);
-      for (int j = i + 1; j < n; j++) {
-        btm.append(".").append(parts[j]);
-        fqnParts.add(btm.toString());
-      }
-    }
-
-    return fqnParts;
+    return FullyQualifiedName.getAllParts(fqn).stream()
+        .filter(part -> !part.equals(entityName))
+        .collect(Collectors.toSet());
   }
 
   default List<EntityReference> getEntitiesWithDisplayName(List<EntityReference> entities) {
