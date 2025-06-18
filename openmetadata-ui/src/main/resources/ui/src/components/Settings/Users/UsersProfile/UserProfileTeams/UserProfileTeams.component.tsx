@@ -149,7 +149,6 @@ const UserProfileTeams = ({
                     borderRadius: '5px',
                   }}>
                   <TeamsSelectableNew
-                    filterJoinable
                     handleDropdownChange={handleDropdownChange}
                     maxValueCount={3}
                     ref={teamsSelectableRef}
