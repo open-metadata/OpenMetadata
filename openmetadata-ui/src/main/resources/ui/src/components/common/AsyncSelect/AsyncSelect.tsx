@@ -14,11 +14,12 @@
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import _, { debounce } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
+import { AsyncSelectListProps } from './AsyncSelectList.interface';
 
 // Interface for paginated API response
 export interface PagingResponse<T> {
@@ -39,14 +40,7 @@ export const AsyncSelect = ({
   enableInfiniteScroll = false,
   debounceTimeout = 400,
   ...restProps
-}: SelectProps & {
-  api: (
-    queryString: string,
-    page?: number
-  ) => Promise<DefaultOptionType[] | PagingResponse<DefaultOptionType[]>>;
-  enableInfiniteScroll?: boolean;
-  debounceTimeout?: number;
-}) => {
+}: SelectProps & AsyncSelectListProps) => {
   const [optionsInternal, setOptionsInternal] = useState<DefaultOptionType[]>();
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
@@ -76,7 +70,7 @@ export const AsyncSelect = ({
         if (
           enableInfiniteScroll &&
           response &&
-          typeof response === 'object' &&
+          _.isObject(response) &&
           'data' in response
         ) {
           // Handle paginated response
@@ -125,7 +119,7 @@ export const AsyncSelect = ({
         currentTarget.scrollTop + currentTarget.offsetHeight ===
         currentTarget.scrollHeight
       ) {
-        const currentOptionsLength = optionsInternal?.length || 0;
+        const currentOptionsLength = optionsInternal?.length ?? 0;
         if (currentOptionsLength < paging.total && !hasContentLoading) {
           await fetchOptions(searchText, currentPage + 1);
         }
