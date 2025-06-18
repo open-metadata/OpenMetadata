@@ -75,7 +75,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
-          <div className="flex gap-2 w-max-full">
+          <div className="d-flex gap-2 w-max-full">
             <ProfilePicture name={userName} width="24" />
             <Tooltip title={userName}>
               <Typography.Link

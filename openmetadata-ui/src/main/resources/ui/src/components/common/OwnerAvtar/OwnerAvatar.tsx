@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
 import React from 'react';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -86,11 +86,11 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
-        <Tooltip title={displayName}>
-          <Typography.Text className="text-sm" ellipsis={{ tooltip: false }}>
-            {displayName}
-          </Typography.Text>
-        </Tooltip>
+        <Typography.Text
+          className="text-sm"
+          ellipsis={{ tooltip: displayName }}>
+          {displayName}
+        </Typography.Text>
       )}
     </div>
   ) : (

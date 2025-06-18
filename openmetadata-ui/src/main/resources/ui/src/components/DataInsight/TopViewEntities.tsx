@@ -96,7 +96,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         key: 'owner',
         render: (owner: string) =>
           owner ? (
-            <div className="flex gap-2 w-max-full">
+            <div className="d-flex gap-2 w-max-full">
               <ProfilePicture name={owner} width="24" />
               <Tooltip title={owner}>
                 <Typography.Text className="w-full truncate">
