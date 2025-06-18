@@ -124,7 +124,9 @@ public class ColumnRepository {
       }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
+      column.setTags(
+          addDerivedTags(
+              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
     }
     // Handle constraint updates and removal
     if (updateColumn.getRemoveConstraint() != null && updateColumn.getRemoveConstraint()) {
@@ -144,8 +146,6 @@ public class ColumnRepository {
 
     tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
-    // Include Derived Tags in response
-    column.setTags(addDerivedTags(column.getTags()));
     return column;
   }
 
@@ -194,7 +194,9 @@ public class ColumnRepository {
       }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
+      column.setTags(
+          addDerivedTags(
+              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
@@ -211,8 +213,6 @@ public class ColumnRepository {
 
     dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
-    // Include Derived Tags in response
-    column.setTags(addDerivedTags(column.getTags()));
     return column;
   }
 
