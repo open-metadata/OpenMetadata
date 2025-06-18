@@ -48,6 +48,9 @@ const mockTagResponse = {
       },
     },
   ],
+  paging: {
+    total: 1,
+  },
 };
 
 describe('TermBoost Component', () => {
@@ -72,10 +75,13 @@ describe('TermBoost Component', () => {
     fireEvent.mouseDown(select);
 
     await waitFor(() => {
-      expect(tagClassBase.getTags).toHaveBeenCalled();
+      expect(tagClassBase.getTags).toHaveBeenCalledWith('', 1, true);
     });
 
-    expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
+    // Wait for the async select to populate options
+    await waitFor(() => {
+      expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
+    });
   });
 
   it('Should handle delete tag boost', () => {

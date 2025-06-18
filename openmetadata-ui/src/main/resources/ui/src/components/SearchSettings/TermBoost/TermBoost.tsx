@@ -58,12 +58,9 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     }
   }, [termBoost, isNewBoost]);
 
-  const fetchTags = async (
-    searchText: string
-    // page: number
-  ) => {
+  const fetchTags = async (searchText: string, page = 1) => {
     try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
+      const response = await tagClassBase.getTags(searchText, page, true);
 
       const formattedOptions = response.data.map((item) => {
         const fqn = item.data.fullyQualifiedName;
@@ -96,39 +93,21 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         };
       });
 
-      return formattedOptions;
-
       // Return PagingResponse structure for infinite scroll support
-      // return {
-      //   data: formattedOptions,
-      //   paging: response.paging,
-      // };
+      return {
+        data: formattedOptions,
+        paging: response.paging,
+      };
     } catch (error) {
       showErrorToast(error as AxiosError);
 
-      return [];
-
       // Return empty PagingResponse structure on error
-      // return {
-      //   data: [],
-      //   paging: { total: 0 },
-      // };
+      return {
+        data: [],
+        paging: { total: 0 },
+      };
     }
   };
-
-  // const handleTagChange = (option: any) => {
-  //   // For single selection, option will be a single SelectOption object
-  //   if (option && option.value) {
-  //     const updatedData = {
-  //       ...termBoostData,
-  //       field: option.field || 'tags.tagFQN',
-  //       value: option.value,
-  //     };
-
-  //     setTermBoostData(updatedData);
-  //     onTermBoostChange(updatedData);
-  //   }
-  // };
 
   const handleTagChange = (value: string, option: any) => {
     const updatedData = {
@@ -153,6 +132,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
       <Row className="p-box d-flex flex-column">
         <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
+            enableInfiniteScroll
             showSearch
             api={fetchTags}
             className="w-full custom-select"
