@@ -1,0 +1,70 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../../styles/variables.less');
+
+.workflow-array-field {
+  &-container {
+    position: relative;
+  }
+
+  &-divider {
+    position: absolute;
+    right: 36px;
+    top: 0;
+    min-height: 32px;
+    height: 100%;
+    border-left: 1px solid @grey-22;
+    margin-top: @size-xxs;
+  }
+
+  &-copy-button {
+    position: absolute;
+    right: 0;
+    &.ant-btn-icon-only.ant-btn-sm {
+      padding: 10px 0px;
+      text-align: center;
+      &:hover,
+      &:focus,
+      &:active {
+        svg path {
+          stroke: @grey-500;
+        }
+      }
+    }
+  }
+}
+.select-container {
+  position: relative;
+  overflow: hidden;
+  .ant-select-selection-overflow {
+    padding-right: @size-md;
+  }
+}
+.custom-tooltip {
+  .ant-tooltip-inner {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-height: auto;
+    background-color: @grey-900;
+    color: @white;
+    font-weight: 600;
+    margin-top: -8px;
+  }
+
+  &.ant-tooltip {
+    padding: 0;
+  }
+  &.ant-tooltip-placement-top {
+    padding-bottom: 0;
+  }
+}

@@ -39,6 +39,16 @@ export const useClipboard = (
     }
   }, [valueState]);
 
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+
+      return text;
+    } catch (error) {
+      return null;
+    }
+  }, []);
+
   // side effects
   useEffect(() => setValueState(value), [value]);
 
@@ -62,6 +72,7 @@ export const useClipboard = (
 
   return {
     onCopyToClipBoard: handleCopy,
+    onPasteFromClipBoard: handlePaste,
     hasCopied,
   };
 };
