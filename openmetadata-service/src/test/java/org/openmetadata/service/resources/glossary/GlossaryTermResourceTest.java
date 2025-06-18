@@ -20,6 +20,7 @@ import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -42,6 +43,10 @@ import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
@@ -72,15 +77,18 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -88,11 +96,13 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -1352,6 +1362,149 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
     assertEquals(term1.getChildren().size(), response.getChildrenCount());
+  }
+
+  @Test
+  void test_validateCustomPropertyUpdate() throws IOException {
+    // This test verifies handling of corrupt custom property values by testing:
+    // 1. You can still update other properties even when a property contains corrupt enum Key
+    // 2. The system prevents updates to corrupt property (does not block other entity updates) if
+    // invalid values are still present.
+    // 3. You can successfully update a corrupted property by fixing or removing its invalid value
+
+    Glossary glossary = createGlossary("TestCustomPropsGlossary", null, null);
+
+    // Define custom property definitions
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+
+    CustomProperty enumCp =
+        new CustomProperty()
+            .withName("certified")
+            .withDescription("Certification status")
+            .withPropertyType(ENUM_TYPE.getEntityReference())
+            .withCustomPropertyConfig(
+                new CustomPropertyConfig()
+                    .withConfig(
+                        Map.of(
+                            "values",
+                            List.of("draft", "official", "verified"),
+                            "multiSelect",
+                            true)));
+
+    entityType =
+        typeResourceTest.addAndCheckCustomProperty(
+            entityType.getId(), enumCp, OK, ADMIN_AUTH_HEADERS);
+
+    CustomProperty sensitivityCp =
+        new CustomProperty()
+            .withName("sensitivity")
+            .withDescription("Data sensitivity")
+            .withPropertyType(ENUM_TYPE.getEntityReference())
+            .withCustomPropertyConfig(
+                new CustomPropertyConfig()
+                    .withConfig(
+                        Map.of(
+                            "values",
+                            List.of("confidential", "internal", "public", "restricted"),
+                            "multiSelect",
+                            false)));
+
+    entityType =
+        typeResourceTest.addAndCheckCustomProperty(
+            entityType.getId(), sensitivityCp, OK, ADMIN_AUTH_HEADERS);
+
+    // Create a glossary term
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName("TestCustomPropsTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("TestCustomPropsTerm");
+    GlossaryTerm term = createAndCheckEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Simulate a term with an invalid value for one property (as if created in version <1.5x)
+    // by directly setting the extension with an invalid value inside database
+    // Get the repository to directly access the database
+    GlossaryTermRepository termRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+
+    // Create corrupt data with an invalid enum value and store inside database bypassing validation
+    JsonNode corruptExtension =
+        JsonUtils.valueToTree(Map.of("certified", List.of("wrongValue", "official")));
+    term.setExtension(corruptExtension);
+    termRepository.storeExtension(term);
+    // Verify the corrupt extension was stored
+    GlossaryTerm termWithCorruptData = getEntity(term.getId(), "extension", ADMIN_AUTH_HEADERS);
+
+    JsonNode updatedExtension = JsonUtils.valueToTree(termWithCorruptData.getExtension());
+    assertEquals("wrongValue", updatedExtension.get("certified").get(1).asText());
+
+    // SCENARIO 1: Try to update a different property with a valid value via the API
+    // The API should allow updating other properties even with corrupt data present
+    String json = JsonUtils.pojoToJson(termWithCorruptData);
+
+    // Get the existing extension and add the new field to it
+    Map<String, Object> existingExtension =
+        (Map<String, Object>) termWithCorruptData.getExtension();
+    Map<String, Object> extensionUpdate = new HashMap<>(existingExtension);
+    extensionUpdate.put("sensitivity", List.of("internal"));
+    termWithCorruptData.setExtension(extensionUpdate);
+
+    // Patch the entity with our updated extension that preserves the corrupt field
+    GlossaryTerm updatedTerm =
+        patchEntity(term.getId(), json, termWithCorruptData, ADMIN_AUTH_HEADERS);
+
+    // Verify both the corrupt data and new valid property are present after the update
+    JsonNode resultExtension = JsonUtils.valueToTree(updatedTerm.getExtension());
+    assertEquals("wrongValue", resultExtension.get("certified").get(1).asText());
+    assertEquals("internal", resultExtension.get("sensitivity").get(0).asText());
+
+    // SCENARIO 2: Try to modify existing corrupt property by adding new valid value and not
+    // removing the wrong one
+    // This should fail with a 400 error
+    String jsonForWrongUpdate = JsonUtils.pojoToJson(updatedTerm);
+    Map<String, Object> invalidExtension = new HashMap<>(existingExtension);
+    invalidExtension.put("certified", List.of("wrongValue", "official"));
+    invalidExtension.put("sensitivity", List.of("internal"));
+    updatedTerm.setExtension(invalidExtension);
+
+    // Expect a 400 error when trying to update the corrupt property with another wrong value
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> patchEntity(term.getId(), jsonForWrongUpdate, updatedTerm, ADMIN_AUTH_HEADERS));
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("Values '[wrongValue"),
+        "Error should mention the invalid values");
+
+    // SCENARIO 3: Remove wrong values in corrupt property and add only valid values
+    // This should succeed
+    String jsonForValidUpdate = JsonUtils.pojoToJson(updatedTerm);
+    Map<String, Object> validExtension = new HashMap<>();
+    validExtension.put("certified", List.of("draft", "official"));
+    validExtension.put("sensitivity", List.of("internal"));
+    updatedTerm.setExtension(validExtension);
+
+    ObjectMapper mapper = new ObjectMapper();
+    ArrayNode patchArray = mapper.createArrayNode();
+    ObjectNode patchOp = mapper.createObjectNode();
+    patchOp.put("op", "replace");
+    patchOp.put("path", "/extension");
+    patchOp.set("value", mapper.valueToTree(validExtension));
+    patchArray.add(patchOp);
+
+    // This should succeed since we're replacing the corrupt property with valid values
+    GlossaryTerm properlyUpdatedTerm = patchEntity(term.getId(), patchArray, ADMIN_AUTH_HEADERS);
+
+    // Verify the corrupt data is replaced with valid values
+    JsonNode finalExtension = JsonUtils.valueToTree(properlyUpdatedTerm.getExtension());
+    JsonNode certifiedValues = finalExtension.get("certified");
+    assertNotNull(certifiedValues, "Certified values should exist");
+    assertTrue(certifiedValues.isArray(), "Certified should be an array");
+    assertEquals(2, certifiedValues.size(), "Should contain 2 values");
   }
 
   public Glossary createGlossary(
