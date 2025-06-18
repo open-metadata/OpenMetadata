@@ -154,6 +154,10 @@ export interface CreateTagRequest {
     mutuallyExclusive?: boolean;
     name:               string;
     /**
+     * Owners of this glossary term.
+     */
+    owners?: EntityReference[];
+    /**
      * Fully qualified name of the parent tag. When null, the term is at the root of the
      * classification.
      */
