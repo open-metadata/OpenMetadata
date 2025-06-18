@@ -132,5 +132,5 @@ class QueryParserSource(Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
+            self.metadata, self.engine, self.service_connection
         )
