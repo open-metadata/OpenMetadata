@@ -14,7 +14,7 @@
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import _, { debounce } from 'lodash';
+import { debounce, isObject } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -70,7 +70,7 @@ export const AsyncSelect = ({
         if (
           enableInfiniteScroll &&
           response &&
-          _.isObject(response) &&
+          isObject(response) &&
           'data' in response
         ) {
           // Handle paginated response
