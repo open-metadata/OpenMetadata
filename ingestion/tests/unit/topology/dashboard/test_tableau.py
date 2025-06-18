@@ -20,6 +20,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -313,3 +314,68 @@ class TableauUnitTest(TestCase):
 
         base_model = TableauBaseModel(id="1234")
         self.assertEqual(base_model.id, "1234")
+
+    def test_get_dashboard_project_filter(self):
+        """
+        Test get_dashboard filters dashboards based on projectFilterPattern
+        """
+        self.tableau.source_config.projectFilterPattern = FilterPattern(
+            includes=["FilteredProject", "OtherProject"]
+        )
+
+        mock_dashboard_details_list = [
+            TableauDashboard(
+                id="dashboard1",
+                name="dashboard1",
+                project=TableauBaseModel(id="p1", name="FilteredProject"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+            TableauDashboard(
+                id="dashboard2",
+                name="dashboard2",
+                project=TableauBaseModel(id="p2", name="OtherProject"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+            TableauDashboard(
+                id="dashboard3",
+                name="dashboard3",
+                project=TableauBaseModel(id="p3", name="excludedDashboard"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+        ]
+
+        project_names_return_map = {
+            "dashboard1": ["FilteredProject", "OtherProject"],
+            "dashboard2": ["FilteredProject", "OtherProject"],
+            "dashboard3": ["excludedDashboard"],
+        }
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 2)
