@@ -37,6 +37,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
+import { getLocatorWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -100,6 +101,8 @@ test.describe('Policy page should work properly', () => {
           const policyElement = page.locator('[data-testid="policy-name"]', {
             hasText: policy,
           });
+
+          await getLocatorWithPagination(page, policyElement, false);
 
           await expect(policyElement).toBeVisible();
         }
@@ -361,14 +364,18 @@ test.describe('Policy page should work properly', () => {
         effect: 'allow',
       },
     ];
-    const policyLocator = `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
-      policy.data.name
-    )}"]`;
+    const policyLocator = page.locator(
+      `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
+        policy.data.name
+      )}"]`
+    );
 
     await policy.create(apiContext, policyRules);
 
     await page.reload();
-    await page.locator(policyLocator).click();
+
+    await getLocatorWithPagination(page, policyLocator);
+
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
     await page
@@ -376,7 +383,7 @@ test.describe('Policy page should work properly', () => {
       .fill('DELETE');
     await page.locator('[data-testid="confirm-button"]').click();
 
-    await expect(page.locator(policyLocator)).not.toBeVisible();
+    await expect(policyLocator).not.toBeVisible();
 
     await policy.delete(apiContext);
     await afterAction();

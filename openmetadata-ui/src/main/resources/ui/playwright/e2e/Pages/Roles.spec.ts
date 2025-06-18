@@ -20,7 +20,10 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { removePolicyFromRole } from '../../utils/roles';
+import {
+  getLocatorWithPagination,
+  removePolicyFromRole,
+} from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
 const policies = {
@@ -107,11 +110,10 @@ test('Roles page should work properly', async ({ page }) => {
     // Navigating to roles tab to verify the added role
     await page.locator('[data-testid="breadcrumb-link"]').first().click();
 
-    await expect(
-      page.getByRole('cell', { name: roleName, exact: true })
-    ).toBeVisible();
+    const roleLocator = page.getByRole('cell', { name: roleName, exact: true });
 
-    // second policy should be visible on tooltip
+    await getLocatorWithPagination(page, roleLocator, false);
+
     await page
       .locator(`[data-row-key="${roleName}"] [data-testid="plus-more-count"]`)
       .click();
@@ -147,7 +149,11 @@ test('Roles page should work properly', async ({ page }) => {
   await test.step('Edit created role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
     // Edit description
-    await page.getByRole('link', { name: roleName }).click();
+
+    const roleLocator = page.getByRole('link', { name: roleName });
+
+    await getLocatorWithPagination(page, roleLocator);
+
     await page.locator('[data-testid="edit-description"]').click();
 
     await page.locator(descriptionBox).fill(`${description}-updated`);
@@ -176,7 +182,11 @@ test('Roles page should work properly', async ({ page }) => {
 
   await test.step('Add new policy to created role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.getByRole('link', { name: roleName }).click();
+
+    const roleLocator = page.getByRole('link', { name: roleName });
+
+    await getLocatorWithPagination(page, roleLocator);
+
     // Asserting navigation
     await page.locator('[data-testid="add-policy"]').click();
     // Checking the added policy is selected in the add policy modal
@@ -199,7 +209,11 @@ test('Roles page should work properly', async ({ page }) => {
 
   await test.step('Remove added policy from created role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.getByRole('link', { name: roleName }).click();
+
+    const roleLocator = page.getByRole('link', { name: roleName });
+
+    await getLocatorWithPagination(page, roleLocator);
+
     // Asserting navigation
     await removePolicyFromRole(
       page,
@@ -215,7 +229,11 @@ test('Roles page should work properly', async ({ page }) => {
 
   await test.step('Check if last policy is not removed', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.getByRole('link', { name: roleName }).click();
+
+    const roleLocator = page.getByRole('link', { name: roleName });
+
+    await getLocatorWithPagination(page, roleLocator);
+
     // Removing second policy from the role
     await removePolicyFromRole(
       page,
@@ -247,9 +265,13 @@ test('Roles page should work properly', async ({ page }) => {
 
   await test.step('Delete created Role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page
-      .locator(`[data-testid="delete-action-${updatedRoleName}"]`)
-      .click();
+
+    const roleLocator = page.locator(
+      `[data-testid="delete-action-${updatedRoleName}"]`
+    );
+
+    await getLocatorWithPagination(page, roleLocator);
+
     await page
       .locator('[data-testid="confirmation-text-input"]')
       .fill('DELETE');
@@ -269,20 +291,24 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   const role = new RolesClass();
   const policies = ['ApplicationBotPolicy'];
-  const roleLocator = `[data-testid="role-name"][href="/settings/access/roles/${encodeURIComponent(
-    role.data.name
-  )}"]`;
+  const roleLocator = page.locator(
+    `[data-testid="role-name"][href="/settings/access/roles/${encodeURIComponent(
+      role.data.name
+    )}"]`
+  );
 
   await role.create(apiContext, policies);
 
   await settingClick(page, GlobalSettingOptions.ROLES);
-  await page.locator(roleLocator).click();
+
+  await getLocatorWithPagination(page, roleLocator);
+
   await page.getByTestId('manage-button').click();
   await page.getByTestId('delete-button').click();
   await page.locator('[data-testid="confirmation-text-input"]').fill('DELETE');
   await page.locator('[data-testid="confirm-button"]').click();
 
-  await expect(page.locator(roleLocator)).not.toBeVisible();
+  await expect(roleLocator).not.toBeVisible();
 
   await role.delete(apiContext);
   await afterAction();
