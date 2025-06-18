@@ -593,8 +593,8 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const putTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PUT'
+    const putTagRequest = page.waitForResponse((response) =>
+      ['PUT', 'PATCH'].includes(response.request().method())
     );
 
     await page.waitForSelector(
@@ -778,8 +778,8 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const putRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PUT'
+    const putRequest = page.waitForResponse((response) =>
+      ['PUT', 'PATCH'].includes(response.request().method())
     );
 
     await page.waitForSelector(
