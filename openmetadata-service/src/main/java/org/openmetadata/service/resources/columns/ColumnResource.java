@@ -58,7 +58,7 @@ public class ColumnResource {
 
   public ColumnResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-    this.repository = new ColumnRepository();
+    this.repository = new ColumnRepository(authorizer);
   }
 
   @PUT
@@ -120,8 +120,7 @@ public class ColumnResource {
           UpdateColumn updateColumn) {
 
     Column updatedColumn =
-        repository.updateColumnByFQN(
-            uriInfo, securityContext.getUserPrincipal().getName(), fqn, entityType, updateColumn);
+        repository.updateColumnByFQN(uriInfo, securityContext, fqn, entityType, updateColumn);
 
     return Response.ok(updatedColumn).build();
   }

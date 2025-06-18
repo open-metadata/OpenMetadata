@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -28,15 +29,24 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ColumnRepository {
+  private final Authorizer authorizer;
+
+  public ColumnRepository(Authorizer authorizer) {
+    this.authorizer = authorizer;
+  }
 
   public Column updateColumnByFQN(
       UriInfo uriInfo,
-      String user,
+      SecurityContext securityContext,
       String columnFQN,
       String entityType,
       UpdateColumn updateColumn) {
@@ -61,17 +71,20 @@ public class ColumnRepository {
     }
 
     EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
+    String user = securityContext.getUserPrincipal().getName();
 
     if (TABLE.equals(entityType)) {
-      return updateTableColumn(uriInfo, user, columnFQN, updateColumn, parentEntityRef);
+      return updateTableColumn(
+          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
     } else {
       return updateDashboardDataModelColumn(
-          uriInfo, user, columnFQN, updateColumn, parentEntityRef);
+          uriInfo, securityContext, user, columnFQN, updateColumn, parentEntityRef);
     }
   }
 
   private Column updateTableColumn(
       UriInfo uriInfo,
+      SecurityContext securityContext,
       String user,
       String columnFQN,
       UpdateColumn updateColumn,
@@ -120,6 +133,14 @@ public class ColumnRepository {
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
+
+    // Authorize the patch operation
+    OperationContext operationContext = new OperationContext(TABLE, jsonPatch);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(
+            TABLE, parentEntityRef.getId(), null, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
     return column;
@@ -127,6 +148,7 @@ public class ColumnRepository {
 
   private Column updateDashboardDataModelColumn(
       UriInfo uriInfo,
+      SecurityContext securityContext,
       String user,
       String columnFQN,
       UpdateColumn updateColumn,
@@ -173,6 +195,17 @@ public class ColumnRepository {
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
+
+    // Authorize the patch operation
+    OperationContext operationContext = new OperationContext(DASHBOARD_DATA_MODEL, jsonPatch);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(
+            DASHBOARD_DATA_MODEL,
+            parentEntityRef.getId(),
+            null,
+            ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
 
     return column;

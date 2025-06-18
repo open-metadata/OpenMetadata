@@ -1681,12 +1681,8 @@ public class TableRepository extends EntityRepository<Table> {
                         && column.getName().toLowerCase().contains(searchTerm)) {
                       return true;
                     }
-                    if (column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    return column.getDescription() != null
-                        && column.getDescription().toLowerCase().contains(searchTerm);
+                    return column.getDisplayName() != null
+                        && column.getDisplayName().toLowerCase().contains(searchTerm);
                   })
               .toList();
     }
