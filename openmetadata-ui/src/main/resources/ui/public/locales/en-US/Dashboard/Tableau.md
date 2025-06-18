@@ -6,8 +6,6 @@ In this section, we provide guides and references to use the Tableau connector.
 
 To ingest Tableau metadata, the username used in the configuration **must** have at least the following role: `Site Role: Viewer`.
 
-To ingest Tableau owners, the username used in the configuration **must** have at least the following role: `Site Role: Site Admin Explorer`.
-
 To create lineage between Tableau dashboards and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server. For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html).
 
 You can find further information on the Tableau connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
@@ -59,9 +57,10 @@ $$
 
 $$section
 ### API Version $(id="apiVersion")
-Specify the Tableau API version to use for making requests. If not provided, the connector will automatically detect and use the version from your Tableau server.
 
-You can find a list of Tableau Server versions and their corresponding REST API versions [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
+When we make a request, we include the API version number in the request as in the following example: `https://{hostPort}/api/{api_version}/auth/signin`
+
+Find [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm) a list of Tableau Server versions and its corresponding REST API versions.
 $$
 
 $$section
@@ -72,6 +71,12 @@ This corresponds to the `contentUrl` attribute in the Tableau REST API. The `sit
 For example, `MarketingTeam` is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
 
 If it is empty, the default Tableau site will be used.
+$$
+
+$$section
+### Site URL $(id="siteUrl")
+
+If it is empty, the default Tableau site name will be used.
 $$
 
 $$section
