@@ -1609,9 +1609,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_validateCustomPropertyUpdate() throws IOException {
     // This test verifies handling of corrupt custom property values by testing:
-    // 1. You can update valid properties while preserving corrupted ones
-    // 2. The system prevents updates that maintain invalid values in properties
-    // 3. You can successfully fix corrupt properties by removing invalid values
+    // 1. You can still update other properties even when a property contains corrupt enum Key
+    // 2. The system prevents updates to corrupt property (does not block other entity updates) if
+    // invalid values are still present.
+    // 3. You can successfully update a corrupted property by fixing or removing its invalid value
 
     Glossary glossary = createGlossary("TestCustomPropsGlossary", null, null);
 
