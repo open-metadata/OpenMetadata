@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
@@ -76,10 +75,16 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
-          <Space>
+          <div className="flex gap-2 w-max-full">
             <ProfilePicture name={userName} width="24" />
-            <Link to={getUserPath(userName)}>{userName}</Link>
-          </Space>
+            <Tooltip title={userName}>
+              <Typography.Link
+                className="w-full truncate"
+                href={getUserPath(userName)}>
+                {userName}
+              </Typography.Link>
+            </Tooltip>
+          </div>
         ),
       },
       {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -96,10 +96,14 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         key: 'owner',
         render: (owner: string) =>
           owner ? (
-            <Space>
+            <div className="flex gap-2 w-max-full">
               <ProfilePicture name={owner} width="24" />
-              <Typography.Text>{owner}</Typography.Text>
-            </Space>
+              <Tooltip title={owner}>
+                <Typography.Text className="w-full truncate">
+                  {owner}
+                </Typography.Text>
+              </Tooltip>
+            </div>
           ) : (
             <Typography.Text>--</Typography.Text>
           ),
