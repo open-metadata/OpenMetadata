@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_7_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_7_4'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1864,6 +1864,17 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Tag search based on displayName.
 - Fix Hybrid Websocket Timeout. ${CollateIconWithLinkMD}
 - Fix automator for empty description entities & children. ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 72,
+    version: 'v1.7.4',
+    description: 'Released on 17th June 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `- Lineage export image cropping issue.
+- Advanced search 'Deleted' filter not working.
 `,
     },
   },

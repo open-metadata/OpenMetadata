@@ -30,6 +30,7 @@ import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
+
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
