@@ -31,6 +31,7 @@ import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
+
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 

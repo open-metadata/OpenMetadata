@@ -150,7 +150,7 @@
       "upstreamLineage": {
         "type": "object"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -443,5 +443,4 @@
       }
     }
   }
-
 }

@@ -23,64 +23,35 @@ const LoginCarousel = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="carousal-container" data-testid="carousel-container">
-      <Carousel
-        autoplay
-        dots
-        autoplaySpeed={5000}
-        beforeChange={(_, next) => setCurrentIndex(next)}
-        easing="ease-in-out"
-        effect="fade">
-        {carouselContent.map((data, idx) => (
-          <div
-            className="text-center"
-            data-testid="slider-container"
-            key={uniqueId() + '-' + currentIndex + '-' + idx}>
-            <Typography.Title className="carousel-header" level={1}>
+    <Carousel
+      autoplay
+      dots
+      autoplaySpeed={5000}
+      beforeChange={(_, next) => setCurrentIndex(next)}
+      data-testid="carousel-container"
+      easing="ease-in-out"
+      effect="fade">
+      {carouselContent.map((data, idx) => (
+        <div
+          className="slider-container"
+          data-testid="slider-container"
+          key={uniqueId() + '-' + currentIndex + '-' + idx}>
+          <div className="d-flex flex-col gap-4">
+            <Typography.Title className="carousel-header display-md" level={1}>
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="m-b-lg carousal-description"
+              className="carousal-description text-md p-x-lg"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
-            <div className="image-container">
-              <img
-                alt="slider"
-                className={data.imgClass}
-                key={`main-${currentIndex}-${idx}`}
-                src={data.image}
-                style={{ display: 'initial' }}
-              />
-              {data.image1 && (
-                <img
-                  alt="slider"
-                  className={data.image1.position}
-                  key={`img1-${currentIndex}-${idx}`}
-                  src={data.image1.image}
-                />
-              )}
-              {data.image2 && (
-                <img
-                  alt="slider"
-                  className={data.image2.position}
-                  key={`img2-${currentIndex}-${idx}`}
-                  src={data.image2.image}
-                />
-              )}
-              {data.image3 && (
-                <img
-                  alt="slider"
-                  className={data.image3.position}
-                  key={`img3-${currentIndex}-${idx}`}
-                  src={data.image3.image}
-                />
-              )}
-            </div>
           </div>
-        ))}
-      </Carousel>
-    </div>
+          <div className="image-container">
+            <img alt="slider" className="main-image" src={data.image} />
+          </div>
+        </div>
+      ))}
+    </Carousel>
   );
 };
 

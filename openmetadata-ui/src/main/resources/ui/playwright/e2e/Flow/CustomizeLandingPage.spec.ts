@@ -64,8 +64,6 @@ test.describe('Customize Landing Page Flow', () => {
   test('Add,Remove and Reset widget should work properly', async ({
     adminPage,
   }) => {
-    test.slow(true);
-
     await redirectToHomePage(adminPage);
     await setUserDefaultPersona(adminPage, persona.responseData.displayName);
 
@@ -233,10 +231,14 @@ test.describe('Customize Landing Page Flow', () => {
         await adminPage.locator('[data-testid="reset-button"]').click();
 
         // Confirm reset in modal
+        const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
+
         await adminPage
           .locator('[data-testid="reset-layout-modal"] .ant-modal-footer')
           .locator('text=Yes')
           .click();
+
+        await resetResponse;
 
         // Verify the toast notification
         await toastNotification(adminPage, 'Page layout updated successfully.');
