@@ -45,10 +45,14 @@ export const getElementWithPagination = async (
     }
 
     const nextBtn = page.locator('[data-testid="next"]');
+    hasNext = !(await nextBtn.getAttribute('disabled'));
+
+    if (!hasNext) {
+      throw new Error('Element not found and no more pages to paginate.');
+    }
+
     await nextBtn.click();
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    hasNext = await nextBtn.isVisible();
   }
 };
