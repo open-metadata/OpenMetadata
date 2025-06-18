@@ -129,7 +129,7 @@ public interface SearchIndex {
 
   default Set<String> getFQNParts(String fqn) {
     Set<String> fqnParts = new HashSet<>();
-    String[] parts = fqn.split("\\.");
+    String[] parts = FullyQualifiedName.split(fqn);
 
     int n = parts.length;
 
