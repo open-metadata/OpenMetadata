@@ -137,6 +137,7 @@ class PipelineServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["process_pipeline_bulk_lineage"],
     )
 
 
@@ -306,6 +307,23 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """Yields lineage if config is enabled"""
         if self.source_config.includeLineage:
             for lineage in self.yield_pipeline_lineage_details(pipeline_details) or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
+    def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
+        """Method to yield the bulk pipeline lineage details"""
+
+    def process_pipeline_bulk_lineage(self) -> Iterable[AddLineageRequest]:
+        """Method to process the bulk pipeline lineage"""
+        if self.source_config.includeLineage:
+            for lineage in self.yield_pipeline_bulk_lineage_details() or []:
                 if lineage.right is not None:
                     yield Either(
                         right=OMetaLineageRequest(
