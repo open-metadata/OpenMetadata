@@ -112,6 +112,7 @@ const EntityInfoDrawer = ({
       }>
       <DataAssetSummaryPanel
         isDomainVisible
+        isLineageView
         dataAsset={entityDetail}
         entityType={selectedNode.entityType as EntityType}
       />

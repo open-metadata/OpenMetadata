@@ -1417,7 +1417,10 @@ const processNodeArray = (
   return Object.values(nodes)
     .map((node: NodeData) => ({
       ...node.entity,
-      paging: node.paging,
+      paging: {
+        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+      },
       upstreamExpandPerformed:
         (node.entity as LineageEntityReference).upstreamExpandPerformed !==
         undefined
@@ -1538,7 +1541,8 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, rootFqn);
+  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges
