@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -44,6 +45,7 @@ const AccessTokenCard: FC<MockProps> = ({
   botUserData,
   revokeTokenHandlerBot,
   disabled = false,
+  isSCIMBot = false,
 }: MockProps) => {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -59,6 +61,7 @@ const AccessTokenCard: FC<MockProps> = ({
     useState<AuthenticationMechanism>({
       authType: AuthType.Jwt,
     } as AuthenticationMechanism);
+  const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
 
   const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
 
@@ -68,8 +71,10 @@ const AccessTokenCard: FC<MockProps> = ({
       if (response.length) {
         setAuthenticationMechanism(response[0]);
       }
+      setIsDataLoaded(true);
     } catch (error) {
       showErrorToast(error as AxiosError);
+      setIsDataLoaded(true);
     }
   };
 
@@ -82,9 +87,9 @@ const AccessTokenCard: FC<MockProps> = ({
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-      setIsLoading(false);
     } finally {
       setIsLoading(false);
+      setIsDataLoaded(true);
     }
   };
 
@@ -209,36 +214,79 @@ const AccessTokenCard: FC<MockProps> = ({
     setIsModalOpen(false);
   };
 
-  const tokenCard = (
-    <Card
-      className={classNames(
-        'access-token-card',
-        isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
-        { disabled }
-      )}
-      data-testid="center-panel">
-      {isAuthMechanismEdit ? (
+  const hasJWTToken = useMemo(() => {
+    return (
+      authenticationMechanismData &&
+      'config' in authenticationMechanismData &&
+      authenticationMechanismData.config?.JWTToken
+    );
+  }, [authenticationMechanismData]);
+
+  const renderAuthComponent = () => {
+    if (isAuthMechanismEdit || (isSCIMBot && !hasJWTToken)) {
+      return (
         <AuthMechanismForm
+          isSCIMBot
           authenticationMechanism={authenticationMechanismData}
           isBot={isBot}
           isUpdating={isUpdating}
           onCancel={() => setIsAuthMechanismEdit(false)}
           onSave={onSave}
         />
-      ) : (
-        <AuthMechanism
-          hasPermission
-          authenticationMechanism={authenticationMechanismData}
-          isBot={isBot}
-          onEdit={handleAuthMechanismEdit}
-          onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}
-        />
+      );
+    }
+
+    return (
+      <AuthMechanism
+        hasPermission
+        isSCIMBot
+        authenticationMechanism={authenticationMechanismData}
+        isBot={isBot}
+        onEdit={handleAuthMechanismEdit}
+        onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}
+      />
+    );
+  };
+
+  const tokenCard = (
+    <Card
+      className={classNames(
+        'access-token-card',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
+        { disabled },
+        isSCIMBot && 'scim-token-card'
       )}
+      data-testid="center-panel">
+      {!isDataLoaded ? <Loader /> : renderAuthComponent()}
       <ConfirmationModal
-        bodyText={confirmMessage}
+        bodyText={
+          isSCIMBot ? (
+            <div className="scim-token-delete-modal">
+              <div className="scim-modal-header  mb-4">
+                <span className="scim-modal-icon">
+                  <DeleteOutlined style={{ color: '#F04438', fontSize: 24 }} />
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Typography.Text className="scim-modal-delete-title">
+                  {t('message.delete-scim-token')}
+                </Typography.Text>
+                <Typography.Text className="scim-modal-delete-desc">
+                  {t('message.are-you-sure-to-delete-scim-token')}
+                </Typography.Text>
+              </div>
+            </div>
+          ) : (
+            confirmMessage
+          )
+        }
+        cancelButtonCss={isSCIMBot ? 'scim-modal-cancel-button' : ''}
         cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
-        header={t('message.are-you-sure')}
+        className={isSCIMBot ? 'scim-modal-delete' : ''}
+        confirmButtonCss={isSCIMBot ? 'scim-modal-delete-button' : ''}
+        confirmText={isSCIMBot ? t('label.delete') : t('label.confirm')}
+        footerClassName={isSCIMBot ? 'scim-modal-footer' : ''}
+        header={isSCIMBot ? '' : t('message.are-you-sure')}
         isLoading={isTokenRemoving}
         visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}

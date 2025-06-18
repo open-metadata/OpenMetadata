@@ -19,7 +19,7 @@ export interface ConfirmationModalProps {
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
   bodyText: string | ReactNode;
-  header: string;
+  header: string | ReactNode;
   visible: boolean;
   headerClassName?: string;
   bodyClassName?: string;
