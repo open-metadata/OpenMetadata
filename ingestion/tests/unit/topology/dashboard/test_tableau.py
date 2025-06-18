@@ -315,6 +315,7 @@ class TableauUnitTest(TestCase):
         base_model = TableauBaseModel(id="1234")
         self.assertEqual(base_model.id, "1234")
 
+
     def test_get_dashboard_project_filter(self):
         """
         Test get_dashboard filters dashboards based on projectFilterPattern
@@ -452,3 +453,16 @@ class TableauUnitTest(TestCase):
                 dashboards = list(self.tableau.get_dashboard())
                 self.assertEqual(len(dashboards), 1)
                 self.assertEqual(dashboards[0].name, "dashboard1")
+                
+    def test_generate_dashboard_url(self):
+        """
+        Test that the dashboard url is generated correctly with proxyURL
+        """
+        self.tableau.config.serviceConnection.root.config.proxyURL = (
+            "http://mockTableauServer.com"
+        )
+        result = list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+        self.assertEqual(
+            result[0].right.sourceUrl.root,
+            "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
+        )
