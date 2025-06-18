@@ -453,14 +453,11 @@ public class ElasticSearchClient implements SearchClient {
 
     try {
 
-      es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-              .source(searchSourceBuilder);
-
-      // Use DFS Query Then Fetch for consistent scoring across shards
-      searchRequest.searchType(es.org.elasticsearch.action.search.SearchType.DFS_QUERY_THEN_FETCH);
-
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      SearchResponse searchResponse =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
 
       if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();

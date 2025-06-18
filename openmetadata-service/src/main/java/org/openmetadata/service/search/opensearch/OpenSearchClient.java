@@ -475,14 +475,11 @@ public class OpenSearchClient implements SearchClient {
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
-      os.org.opensearch.action.search.SearchRequest searchRequest =
-          new os.org.opensearch.action.search.SearchRequest(request.getIndex())
-              .source(searchSourceBuilder);
-
-      // Use DFS Query Then Fetch for consistent scoring across shards
-      searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
-
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      SearchResponse searchResponse =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
       if (Boolean.FALSE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
