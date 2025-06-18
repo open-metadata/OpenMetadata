@@ -43,6 +43,8 @@ export enum EntityTypeEndpoint {
   TestSuites = 'dataQuality/testSuites',
   Topic = 'topics',
   User = 'users',
+  Classification = 'classifications',
+  Tag = 'tags',
 }
 
 export type EntityDataType = {

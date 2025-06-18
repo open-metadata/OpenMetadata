@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import tagClassBase from '../../../utils/TagClassBase';
 import TermBoostComponent from './TermBoost';
@@ -60,6 +60,9 @@ const mockTagResponse = {
       },
     },
   ],
+  paging: {
+    total: 1,
+  },
 };
 
 describe('TermBoost Component', () => {
@@ -83,7 +86,9 @@ describe('TermBoost Component', () => {
     const select = screen.getByTestId('term-boost-select');
     fireEvent.click(select);
 
-    expect(tagClassBase.getTags).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(tagClassBase.getTags).toHaveBeenCalledWith('test', 1, true);
+    });
   });
 
   it('Should handle delete tag boost', () => {

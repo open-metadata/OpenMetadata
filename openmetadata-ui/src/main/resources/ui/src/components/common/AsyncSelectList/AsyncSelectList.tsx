@@ -29,6 +29,7 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -76,7 +77,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     const filteredData = data.filter((item) => {
       const isFiltered = filterOptions.includes(
-        item.data?.fullyQualifiedName ?? ''
+        (item.data as Tag)?.fullyQualifiedName ?? ''
       );
       if (isFiltered) {
         count = optionFilteredCount + 1;
@@ -205,7 +206,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     const { label, onClose } = data;
     const tagLabel = getTagDisplay(label as string);
     const tag = {
-      tagFQN: selectedTag?.data.fullyQualifiedName,
+      tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
         selectedTag?.data,
         'description',
