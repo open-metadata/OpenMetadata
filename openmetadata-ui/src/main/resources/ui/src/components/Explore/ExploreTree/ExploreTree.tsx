@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -85,11 +85,10 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
 };
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+  const hasFetchedRef = useRef(false); // Use a ref to track if we've already fetched, in dev mode as it will fetch twice
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
-
-  const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -252,7 +251,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         showErrorToast(error as AxiosError);
       }
     },
-    [updateTreeData, searchQueryParam, defaultServiceType]
+    [updateTreeData, searchQueryParam, defaultServiceType, setTreeData]
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
@@ -317,10 +316,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [staticKeysHavingCounts]);
+  }, [searchQueryParam, setTreeData]);
 
   useEffect(() => {
-    fetchEntityCounts();
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchEntityCounts();
+    }
   }, []);
 
   useEffect(() => {

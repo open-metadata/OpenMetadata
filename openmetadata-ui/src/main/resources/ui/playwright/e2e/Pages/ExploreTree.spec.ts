@@ -44,6 +44,10 @@ test.describe('Explore Tree scenarios ', () => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await expect(page.getByRole('tree')).toContainText('Databases');
       await expect(page.getByRole('tree')).toContainText('Dashboards');
       await expect(page.getByRole('tree')).toContainText('Pipelines');
