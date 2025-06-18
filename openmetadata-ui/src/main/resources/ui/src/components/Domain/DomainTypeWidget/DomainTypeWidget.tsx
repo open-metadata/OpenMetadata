@@ -12,9 +12,10 @@
  */
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { cloneDeep } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
@@ -26,6 +27,7 @@ import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.c
 export const DomainTypeWidget = () => {
   const { data: domain, permissions, onUpdate } = useGenericContext<Domain>();
   const [editDomainType, setEditDomainType] = useState(false);
+  const { t } = useTranslation();
 
   const { editAllPermission } = useMemo(
     () => ({

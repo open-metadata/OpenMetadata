@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -37,7 +37,6 @@ import {
   removeFollower,
 } from '../../rest/domainAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -50,7 +49,7 @@ import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
@@ -100,8 +99,8 @@ const DomainPage = () => {
   }, [permissions]);
 
   const handleAddDomainClick = useCallback(() => {
-    history.push(ROUTES.ADD_DOMAIN);
-  }, [history]);
+    navigate(ROUTES.ADD_DOMAIN);
+  }, [navigate]);
 
   const handleDomainUpdate = async (updatedData: Domain) => {
     if (activeDomain) {
@@ -122,7 +121,7 @@ const DomainPage = () => {
         updateDomains(updatedDomains, false);
 
         if (activeDomain?.name !== updatedData.name) {
-          history.push(getDomainPath(response.fullyQualifiedName));
+          navigate(getDomainPath(response.fullyQualifiedName));
           refreshDomains();
         }
       } catch (error) {
@@ -138,7 +137,7 @@ const DomainPage = () => {
       : getDomainPath();
 
     refreshDomains();
-    history.push(domainPath);
+    navigate(domainPath);
   };
 
   const fetchDomainByName = async (domainFqn: string) => {
@@ -261,7 +260,7 @@ const DomainPage = () => {
 
   useEffect(() => {
     if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
-      history.push(getDomainPath(rootDomains[0].fullyQualifiedName));
+      navigate(getDomainPath(rootDomains[0].fullyQualifiedName));
     }
   }, [rootDomains, domainFqn]);
 
@@ -333,4 +332,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.domain'))(DomainPage);
+export default withPageLayout(DomainPage);

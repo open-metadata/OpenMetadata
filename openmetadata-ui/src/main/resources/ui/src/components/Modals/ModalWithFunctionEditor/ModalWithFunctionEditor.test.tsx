@@ -18,7 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import React from 'react';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithFunctionEditor } from './ModalWithFunctionEditor';
 

@@ -15,11 +15,12 @@ import '@inovua/reactdatagrid-community/index.css';
 import {
   TypeColumn,
   TypeComputedProps,
+  TypeEditInfo,
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
-import React, {
+import {
   MutableRefObject,
   useCallback,
   useEffect,
@@ -29,7 +30,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
@@ -62,6 +63,7 @@ import {
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './bulk-entity-import-page.less';
 import {
   CSVImportAsyncWebsocketResponse,
@@ -83,13 +85,13 @@ const BulkEntityImportPage = () => {
 
   const location = useLocation();
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<TypeColumn[]>([]);
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
-  const history = useHistory();
+  const navigate = useNavigate();
   const { readString } = usePapaParse();
   const [validateCSVData, setValidateCSVData] =
     useState<{ columns: TypeColumn[]; dataSource: Record<string, string>[] }>();
@@ -199,10 +201,9 @@ const BulkEntityImportPage = () => {
   );
 
   const onEditComplete = useCallback(
-    ({ value, columnId, rowId }) => {
+    ({ value, columnId, rowId }: TypeEditInfo) => {
       const data = [...dataSource];
-      data[rowId][columnId] = value;
-
+      data[parseInt(rowId)][columnId] = value;
       setDataSource(data);
     },
     [dataSource]
@@ -359,7 +360,7 @@ const BulkEntityImportPage = () => {
               fqn,
             })
           );
-          history.push(entityUtilClassBase.getEntityLink(entityType, fqn));
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
           handleResetImportJob();
           setIsValidating(false);
         }

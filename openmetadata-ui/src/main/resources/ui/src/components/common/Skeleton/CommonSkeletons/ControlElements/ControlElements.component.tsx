@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Skeleton } from 'antd';
-import React from 'react';
 import { ButtonSkeletonProps } from '../../Skeleton.interfaces';
 
 const ButtonSkeleton = (props: ButtonSkeletonProps) => {

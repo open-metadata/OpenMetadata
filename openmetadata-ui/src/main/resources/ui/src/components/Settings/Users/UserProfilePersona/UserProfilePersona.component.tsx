@@ -12,9 +12,8 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';

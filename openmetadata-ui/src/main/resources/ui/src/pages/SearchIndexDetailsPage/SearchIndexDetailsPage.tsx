@@ -16,15 +16,16 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -66,14 +67,15 @@ import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
@@ -180,7 +182,7 @@ function SearchIndexDetailsPage() {
   );
 
   const fetchResourcePermission = useCallback(
-    async (entityFQN) => {
+    async (entityFQN: string) => {
       try {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.SEARCH_INDEX,
@@ -208,12 +210,13 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
+      navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
           activeKey
-        )
+        ),
+        { replace: true }
       );
     }
   };
@@ -471,7 +474,7 @@ function SearchIndexDetailsPage() {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -481,11 +484,11 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({

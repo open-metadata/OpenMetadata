@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
-import { t } from 'i18next';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -75,6 +74,7 @@ import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
+import { t } from '../i18next/LocalUtil';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse

@@ -14,7 +14,7 @@ import '@inovua/reactdatagrid-community/index.css';
 import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
-import React, { FC, MutableRefObject, useCallback, useState } from 'react';
+import { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';

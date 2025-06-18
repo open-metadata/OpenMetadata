@@ -13,9 +13,9 @@
 
 import { Button, Dropdown } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
@@ -35,7 +35,7 @@ function AddIngestionButton({
   ingestionList,
 }: Readonly<AddIngestionButtonProps>) {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const supportedPipelineTypes = useMemo(
     (): PipelineType[] => getSupportedPipelineTypes(serviceDetails),
@@ -44,7 +44,7 @@ function AddIngestionButton({
 
   const handleAddIngestionClick = useCallback(
     (type: PipelineType) => {
-      history.push(getAddIngestionPath(serviceCategory, serviceName, type));
+      navigate(getAddIngestionPath(serviceCategory, serviceName, type));
     },
     [serviceCategory, serviceName]
   );

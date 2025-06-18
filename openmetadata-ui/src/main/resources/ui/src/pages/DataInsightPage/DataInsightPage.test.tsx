@@ -12,46 +12,39 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightPage from './DataInsightPage.component';
 
-const activeTab = DataInsightTabs.DATA_ASSETS;
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Switch: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Route: jest
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="route">{children}</div>
-    )),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
-  useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
+    .mockImplementation(() => ({ pathname: '/data-insights/data-assets' })),
+  useParams: jest
+    .fn()
+    .mockImplementation(() => ({ tab: DataInsightTabs.DATA_ASSETS })),
 }));
 
-jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
-  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <div>
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest
+    .fn()
+    .mockImplementation(() => ({ tab: DataInsightTabs.DATA_ASSETS })),
+}));
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
+jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div data-testid="resizable-panels">
       <div>{firstPanel.children}</div>
       <div>{secondPanel.children}</div>
     </div>
-  ));
-});
-
-jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
-}));
+  ))
+);
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),
@@ -61,27 +54,39 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('./DataInsightProvider', () =>
-  jest.fn().mockImplementation(({ children }) => <>{children}</>)
-);
+jest.mock('./DataInsightProvider', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  useDataInsightProvider: jest.fn().mockReturnValue({
+    teamFilter: {},
+    tierFilter: {},
+    chartFilter: { startTs: Date.now(), endTs: Date.now() },
+    onChartFilterChange: jest.fn(),
+    kpi: { isLoading: false, data: [] },
+    entitiesSummary: {},
+    updateEntitySummary: jest.fn(),
+  }),
+}));
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
-  jest.fn().mockReturnValue(<div>DataInsightHeader.component</div>)
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="data-insight-header">DataInsightHeader.component</div>
+    ))
 );
-const mockComponent = () => <div>dataAssetsComponent</div>;
+
 jest.mock('./DataInsightClassBase', () => ({
   getLeftPanel: jest.fn().mockReturnValue(() => <div>LeftPanel</div>),
-  getDataInsightTab: jest.fn().mockReturnValue([
-    {
-      key: 'data-assets',
-      path: '/data-insights/data-assets',
-      component: mockComponent,
-    },
-  ]),
+  getDataInsightTabComponent: jest
+    .fn()
+    .mockReturnValue(() => <div>dataAssetsComponent</div>),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -92,18 +97,30 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       },
       kpi: {
         ViewAll: true,
+        Create: true,
       },
     },
   }),
 }));
 
+jest.mock('../../utils/DataInsightUtils', () => ({
+  getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),
+}));
+
+const mockProps = {
+  pageTitle: 'data-insight',
+};
+
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {
-    render(<DataInsightPage />, { wrapper: MemoryRouter });
+    render(<DataInsightPage {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
-    expect(
-      await screen.findByText('DataInsightHeader.component')
-    ).toBeInTheDocument();
+    // Wait for the header to be present
+    const header = await screen.findByTestId('data-insight-header');
+
+    expect(header).toBeInTheDocument();
     expect(
       await screen.findByTestId('data-insight-container')
     ).toBeInTheDocument();

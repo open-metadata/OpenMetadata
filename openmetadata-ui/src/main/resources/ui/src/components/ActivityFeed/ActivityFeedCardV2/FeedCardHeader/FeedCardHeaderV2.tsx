@@ -14,7 +14,7 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {

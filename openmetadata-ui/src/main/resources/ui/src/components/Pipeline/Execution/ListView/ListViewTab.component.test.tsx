@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { StatusType } from '../../../../generated/entity/data/pipeline';
 import { EXECUTION_LIST_MOCK } from '../../../../mocks/PipelineVersion.mock';
 import ListView from './ListViewTab.component';

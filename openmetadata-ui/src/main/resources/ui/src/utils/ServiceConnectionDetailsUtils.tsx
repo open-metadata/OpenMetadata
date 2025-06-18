@@ -14,7 +14,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
 import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';

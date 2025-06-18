@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../../constants/Auth.constants';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
@@ -44,14 +44,14 @@ import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
   const [addIngestion, setAddIngestion] = useState(false);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
+    navigate(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
   };
 
   const handleTestSuitNextClick = (data: TestSuite) => {

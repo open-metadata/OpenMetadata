@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Input, InputProps } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './color-picker.style.less';
 

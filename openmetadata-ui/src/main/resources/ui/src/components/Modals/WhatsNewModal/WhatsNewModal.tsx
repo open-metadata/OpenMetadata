@@ -14,8 +14,8 @@
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import { t } from 'i18next';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
@@ -26,7 +26,6 @@ import FeaturesCarousel from './FeaturesCarousel';
 import './whats-new-modal.less';
 import { COOKIE_VERSION, WHATS_NEW } from './whatsNewData';
 import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
-
 const cookieStorage = new CookieStorage();
 
 const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
@@ -35,7 +34,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   visible,
 }: WhatsNewModalProps) => {
   const { theme } = useApplicationStore();
-
+  const { t } = useTranslation();
   const [activeData, setActiveData] = useState(WHATS_NEW[WHATS_NEW.length - 1]); // latest version will be last in the array
   const [checkedValue, setCheckedValue] = useState<ToggleType>(
     ToggleType.FEATURES

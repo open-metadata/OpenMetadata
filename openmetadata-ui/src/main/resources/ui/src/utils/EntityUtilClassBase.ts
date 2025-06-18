@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
@@ -445,24 +445,36 @@ class EntityUtilClassBase {
       | ServicesType
       | Database
       | DatabaseSchema
-      | APICollection
+      | APICollection,
+    navigate: NavigateFunction
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
       case EntityType.TABLE:
         return [
-          ...ExtraTableDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraTableDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE:
         return [
-          ...ExtraDatabaseDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraDatabaseDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE_SCHEMA:
         return [
           ...ExtraDatabaseSchemaDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       case EntityType.DATABASE_SERVICE:
@@ -470,7 +482,8 @@ class EntityUtilClassBase {
           ...ExtraDatabaseServiceDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       default:

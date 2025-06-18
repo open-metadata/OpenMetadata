@@ -15,9 +15,9 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -35,6 +35,7 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -70,7 +71,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
@@ -262,18 +263,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
+                  state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
                     openEntityInNewPage
                   )}
-                  to={{
-                    pathname: isObject(entityLink)
-                      ? entityLink.pathname
-                      : entityLink,
-                    state: {
-                      breadcrumbData: breadcrumbs.slice(0, -1),
-                    },
-                  }}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">

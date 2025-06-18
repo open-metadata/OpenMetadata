@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Editor } from '@tiptap/react';
-import React from 'react';
 import BubbleMenu from './BubbleMenu';
 
 const mockIsActive = jest.fn();
@@ -132,9 +130,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const heading1 = screen.getByLabelText('Heading 1');
-    await act(async () => {
-      userEvent.click(heading1);
-    });
+    fireEvent.click(heading1);
 
     expect(mockToggleHeading).toHaveBeenCalled();
   });
@@ -143,9 +139,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const bold = screen.getByLabelText('Bold');
-    await act(async () => {
-      userEvent.click(bold);
-    });
+    fireEvent.click(bold);
 
     expect(mockToggleBold).toHaveBeenCalled();
   });
@@ -154,9 +148,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const italic = screen.getByLabelText('Italic');
-    await act(async () => {
-      userEvent.click(italic);
-    });
+    fireEvent.click(italic);
 
     expect(mockToggleItalic).toHaveBeenCalled();
   });
@@ -165,9 +157,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const strike = screen.getByLabelText('Strike');
-    await act(async () => {
-      userEvent.click(strike);
-    });
+    fireEvent.click(strike);
 
     expect(mockToggleStrike).toHaveBeenCalled();
   });
@@ -176,9 +166,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const code = screen.getByLabelText('Inline code');
-    await act(async () => {
-      userEvent.click(code);
-    });
+    fireEvent.click(code);
 
     expect(mockToggleCode).toHaveBeenCalled();
   });
@@ -187,9 +175,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const link = screen.getByLabelText('Link');
-    await act(async () => {
-      userEvent.click(link);
-    });
+    fireEvent.click(link);
 
     expect(mockSetLink).toHaveBeenCalled();
     expect(mockToggleLink).toHaveBeenCalled();

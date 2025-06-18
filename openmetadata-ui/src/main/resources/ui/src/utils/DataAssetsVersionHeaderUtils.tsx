@@ -14,9 +14,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Space, Typography } from 'antd';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import React from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
@@ -33,7 +31,48 @@ import {
   getDiffByFieldName,
   getEntityVersionByField,
 } from './EntityVersionUtils';
+import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringsUtils';
+
+export const VersionExtraInfoLink = ({
+  value,
+  href,
+}: {
+  value: string;
+  href?: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {stringToHTML(value)}
+      </Typography.Link>
+    </div>
+  </>
+);
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
+  </>
+);
 
 export const getExtraInfoSourceUrl = (
   currentVersionData: Dashboard | Pipeline,
@@ -182,43 +221,3 @@ export const getDataAssetsVersionHeaderInfo = (
       return null;
   }
 };
-
-export const VersionExtraInfoLabel = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
-        {!isEmpty(label) && (
-          <span className="text-grey-muted">{`${label}: `}</span>
-        )}
-      </Typography.Text>
-
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
-        {stringToHTML(value)}
-      </Typography.Text>
-    </Space>
-  </>
-);
-
-export const VersionExtraInfoLink = ({
-  value,
-  href,
-}: {
-  value: string;
-  href?: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <div className="d-flex items-center text-xs">
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
-        {stringToHTML(value)}
-      </Typography.Link>
-    </div>
-  </>
-);

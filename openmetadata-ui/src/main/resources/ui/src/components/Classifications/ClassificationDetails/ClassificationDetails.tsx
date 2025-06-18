@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -26,7 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -90,7 +90,7 @@ const ClassificationDetails = forwardRef(
     const { permissions } = usePermissionProvider();
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
-    const history = useHistory();
+    const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(false);
     const {
@@ -161,8 +161,8 @@ const ClassificationDetails = forwardRef(
 
     const versionHandler = useCallback(() => {
       isVersionView
-        ? history.push(getClassificationDetailsPath(tagCategoryName))
-        : history.push(
+        ? navigate(getClassificationDetailsPath(tagCategoryName))
+        : navigate(
             getClassificationVersionsPath(
               tagCategoryName,
               toString(currentVersion)
