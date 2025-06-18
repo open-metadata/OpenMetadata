@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
+  createNewPage,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
@@ -52,24 +51,13 @@ const entities = [
 ];
 
 // use the admin user to login
-const adminUser = new UserClass();
-
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     await EntityDataClass.preRequisitesForTests(
       apiContext,
@@ -130,9 +118,7 @@ test.describe('Entity Version pages', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
+    const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.postRequisitesForTests(
       apiContext,
       entityCreationConfig
