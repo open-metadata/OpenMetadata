@@ -76,10 +76,10 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     Type,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
+    UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
+    UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
-    UNITY_CATALOG_GET_SCHEMA_TAGS,
-    UNITY_CATALOG_GET_TABLE_COLUMNS_TAGS,
-    UNITY_CATALOG_GET_TABLE_TAGS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -538,146 +538,92 @@ class UnitycatalogSource(
     def yield_database_tag(
         self, database_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Get Unity Catalog database/catalog tags using SQL query
-        """
-        try:
-            query = UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=database_name)
-
-            with get_sqlalchemy_connection(
-                self.service_connection
-            ).connect() as connection:
-                tags = connection.execute(query)
-
-            for tag in tags:
-                tag_name = tag.tag_name
-                tag_value = tag.tag_value
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service, database_name
+        """Get Unity Catalog database/catalog tags using SQL query"""
+        query_tag_fqn_builder_mapping = (
+            (
+                UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=database_name),
+                lambda tag: [self.context.get().database_service, database_name],
+            ),
+            (
+                UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=database_name),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database_name,
+                    tag.schema_name,
+                ],
+            ),
+        )
+        with get_sqlalchemy_connection(self.service_connection).connect() as connection:
+            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                try:
+                    for tag in connection.execute(query):
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),  # pylint: disable=protected-access
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
                         )
-                    ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=UNITY_CATALOG_TAG,
-                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for catalog {database_name}: {exc}")
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error getting tags for catalog/schema {database_name}: {exc}"
+                    )
 
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Get Unity Catalog schema tags using SQL query
-        """
-        try:
-            query = UNITY_CATALOG_GET_SCHEMA_TAGS.format(
-                database=self.context.get().database, schema=schema_name
-            )
-
-            with get_sqlalchemy_connection(
-                self.service_connection
-            ).connect() as connection:
-                tags = connection.execute(query)
-
-            for tag in tags:
-                tag_name = tag.tag_name
-                tag_value = tag.tag_value
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service,
-                            self.context.get().database,
-                            schema_name,
+        """Get Unity Catalog schema tags using SQL query"""
+        database = self.context.get().database
+        query_tag_fqn_builder_mapping = (
+            (
+                UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
+                    database=database, schema=schema_name
+                ),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database,
+                    schema_name,
+                    tag.table_name,
+                ],
+            ),
+            (
+                UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
+                    database=database, schema=schema_name
+                ),
+                lambda tag: [
+                    self.context.get().database_service,
+                    database,
+                    schema_name,
+                    tag.table_name,
+                    tag.column_name,
+                ],
+            ),
+        )
+        with get_sqlalchemy_connection(self.service_connection).connect() as connection:
+            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                try:
+                    for tag in connection.execute(query):
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),  # pylint: disable=protected-access
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
                         )
-                    ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=UNITY_CATALOG_TAG,
-                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
-
-    def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Get Unity Catalog table tags using SQL query
-        """
-        try:
-            table_name = table_name_and_type[0]
-            query = UNITY_CATALOG_GET_TABLE_TAGS.format(
-                database=self.context.get().database,
-                schema=self.context.get().database_schema,
-                table=table_name,
-            )
-
-            with get_sqlalchemy_connection(
-                self.service_connection
-            ).connect() as connection:
-                table_tags = connection.execute(query)
-                column_tags = connection.execute(
-                    UNITY_CATALOG_GET_TABLE_COLUMNS_TAGS.format(
-                        database=self.context.get().database,
-                        schema=self.context.get().database_schema,
-                        table=table_name,
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error getting tags for schema {schema_name}: {exc}"
                     )
-                )
-
-            # yield the table tags
-            for tag in table_tags:
-                tag_name = tag.tag_name
-                tag_value = tag.tag_value
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service,
-                            self.context.get().database,
-                            self.context.get().database_schema,
-                            table_name,
-                        )
-                    ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=UNITY_CATALOG_TAG,
-                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
-
-            # yield the column tags
-            for tag in column_tags:
-                tag_name = tag.tag_name
-                tag_value = tag.tag_value
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service,
-                            self.context.get().database,
-                            self.context.get().database_schema,
-                            table_name,
-                            tag.column_name,
-                        )
-                    ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=UNITY_CATALOG_TAG,
-                    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for table {table_name}: {exc}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
