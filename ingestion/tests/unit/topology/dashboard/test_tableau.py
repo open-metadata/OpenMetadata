@@ -379,3 +379,76 @@ class TableauUnitTest(TestCase):
             ):
                 dashboards = list(self.tableau.get_dashboard())
                 self.assertEqual(len(dashboards), 2)
+                self.assertEqual(dashboards[0].name, "dashboard1")
+                self.assertEqual(dashboards[1].name, "dashboard2")
+
+        # Test with other project names
+
+        project_names_return_map = {
+            "dashboard1": ["FilteredProject", "OtherProject"],
+            "dashboard2": ["FilteredProject"],
+            "dashboard3": ["excludedDashboard"],
+        }
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 1)
+                self.assertEqual(dashboards[0].name, "dashboard1")
+
+        # Test with includes and excludes
+
+        project_names_return_map = {
+            "dashboard1": ["FilteredProject", "OtherProject1"],
+            "dashboard2": ["FilteredProject", "OtherProject2"],
+            "dashboard3": ["excludedDashboard"],
+        }
+
+        self.tableau.source_config.projectFilterPattern = FilterPattern(
+            includes=["FilteredProject"],
+            excludes=["OtherProject2"],
+        )
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 1)
+                self.assertEqual(dashboards[0].name, "dashboard1")

@@ -72,7 +72,11 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_dashboard, filter_by_project
+from metadata.utils.filters import (
+    filter_by_dashboard,
+    filter_by_project,
+    filter_by_project_names,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -575,16 +579,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
                 # Filter based on list of project names if they exist
                 if project_names:
-                    should_filter = True
-                    for name in project_names:
-                        if not filter_by_project(
-                            self.source_config.projectFilterPattern,
-                            name,
-                        ):
-                            should_filter = False
-                            break
-
-                    if should_filter:
+                    # Check if any project path matches the filter pattern exactly
+                    if filter_by_project_names(
+                        self.source_config.projectFilterPattern,
+                        project_names,
+                    ):
+                        # Project names were filtered out
                         self.status.filter(
                             ", ".join(project_names),
                             "Project / Workspace Filtered Out",

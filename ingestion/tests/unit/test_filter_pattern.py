@@ -20,6 +20,7 @@ from metadata.utils.filters import (
     _filter,
     filter_by_dashboard,
     filter_by_fqn,
+    filter_by_project_names,
     validate_regex,
 )
 
@@ -78,3 +79,42 @@ def test_filter_numbers():
 
     assert filter_by_dashboard(num_filter, "50")
     assert filter_by_dashboard(num_filter, "54")
+
+
+def test_filter_by_project_names():
+    """Test filtering logic for project names list"""
+    # Includes: all must match at least one project name
+    filter_inc = FilterPattern(includes=[r"^projA$", r"^projB$"])
+    assert not filter_by_project_names(filter_inc, ["projA", "projB", "projC"])
+    assert filter_by_project_names(filter_inc, ["projA", "projC"])  # projB missing
+    assert filter_by_project_names(filter_inc, ["projB"])  # projA missing
+    assert filter_by_project_names(filter_inc, ["projC"])  # both missing
+
+    # Excludes: any match filters out
+    filter_exc = FilterPattern(excludes=[r"^projX$", r"^projY$"])
+    assert not filter_by_project_names(filter_exc, ["projA", "projB"])  # no match
+    assert filter_by_project_names(filter_exc, ["projA", "projX"])  # projX matches
+    assert filter_by_project_names(filter_exc, ["projY"])  # projY matches
+
+    # Both includes and excludes: includes must all match, and no excludes must match
+    filter_both = FilterPattern(
+        includes=[r"^projA$", r"^projB$"], excludes=[r"^projX$"]
+    )
+    assert not filter_by_project_names(
+        filter_both, ["projA", "projB"]
+    )  # all includes, no excludes
+    assert filter_by_project_names(
+        filter_both, ["projA", "projB", "projX"]
+    )  # exclude matches
+    assert filter_by_project_names(filter_both, ["projA"])  # missing projB
+    assert filter_by_project_names(filter_both, ["projB"])  # missing projA
+    assert filter_by_project_names(filter_both, ["projC"])  # missing both
+
+    # Edge cases
+    assert not filter_by_project_names(None, ["projA"])  # No filter pattern
+    assert filter_by_project_names(
+        FilterPattern(includes=[r"^projA$"]), []
+    )  # Pattern but no names
+    assert not filter_by_project_names(
+        FilterPattern(), ["projA"]
+    )  # Empty pattern, nothing to filter
