@@ -410,7 +410,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 self.set_catalog(session)
                 runner = self._create_thread_safe_runner(session, metric_func.column)
                 try:
-                    raise Exception("test")
                     row = self._get_metric_fn[metric_func.metric_type.value](
                         metric_func.metrics,
                         runner=runner,
@@ -462,7 +461,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     )
                     logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
-                    # break
+                    break
 
         # If we've exhausted all retries without success, return a tuple of None values
         return None, None, None
