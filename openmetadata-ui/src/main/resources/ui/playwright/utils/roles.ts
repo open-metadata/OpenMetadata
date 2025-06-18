@@ -45,6 +45,8 @@ export const getElementWithPagination = async (
     }
 
     const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
     hasNext = !(await nextBtn.getAttribute('disabled'));
 
     if (!hasNext) {
