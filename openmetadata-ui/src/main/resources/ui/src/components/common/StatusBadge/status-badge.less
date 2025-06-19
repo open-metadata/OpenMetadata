@@ -31,13 +31,15 @@
   }
 
   &.stopped,
-  &.failure {
+  &.failure,
+  &.failed {
     color: @red-10;
     background-color: @red-9;
     border-color: @red-10;
   }
 
-  &.pending {
+  &.pending,
+  &.aborted {
     color: @yellow-11;
     background-color: @yellow-10;
     border-color: @yellow-11;

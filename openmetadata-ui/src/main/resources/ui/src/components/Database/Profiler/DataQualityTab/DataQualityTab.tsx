@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isArray, isUndefined, sortBy } from 'lodash';
+import { isArray, isUndefined, sortBy, toLower } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -39,10 +37,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
-import {
-  formatDate,
-  formatDateTimeLong,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
@@ -55,9 +50,15 @@ import {
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
+import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { StatusBox } from '../../../common/LastRunGraph/LastRunGraph.component';
+import {
+  DeleteIconButton,
+  EditIconButton,
+} from '../../../common/IconButtons/EditIconButton';
+import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
@@ -143,6 +144,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const columns = useMemo(() => {
     const data: ColumnsType<TestCase> = [
       {
+        title: t('label.status'),
+        dataIndex: 'testCaseResult',
+        key: 'status',
+        width: 100,
+        render: (result: TestCaseResult) => {
+          return result?.testCaseStatus ? (
+            <StatusBadge
+              label={result.testCaseStatus}
+              status={toLower(result.testCaseStatus) as StatusType}
+            />
+          ) : (
+            '--'
+          );
+        },
+      },
+      {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
@@ -150,7 +167,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
-          const status = record.testCaseResult?.testCaseStatus;
           const urlData = {
             pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
@@ -159,17 +175,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           };
 
           return (
-            <Space data-testid={name}>
-              <Tooltip title={status}>
-                <div>
-                  <StatusBox status={status?.toLocaleLowerCase()} />
-                </div>
-              </Tooltip>
-
-              <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
-                <Link to={urlData}>{getEntityName(record)}</Link>
-              </Typography.Paragraph>
-            </Space>
+            <Typography.Paragraph
+              className="m-0"
+              data-testid={name}
+              style={{ maxWidth: 280 }}>
+              <Link to={urlData}>{getEntityName(record)}</Link>
+            </Typography.Paragraph>
           );
         },
       },
@@ -252,8 +263,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'lastRun',
         width: 150,
         sorter: true,
-        render: (result: TestCaseResult) =>
-          result?.timestamp ? formatDateTimeLong(result.timestamp) : '--',
+        render: (result: TestCaseResult) => {
+          return <DateTimeDisplay timestamp={result?.timestamp} />;
+        },
       },
       {
         title: t('label.incident'),
@@ -319,72 +331,49 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             isEditAllowed || testCasePermission?.EditAll;
           const testCaseDeletePermission = testCasePermission?.Delete;
 
+          const deleteBtnTooltip = removeFromTestSuite
+            ? t('label.remove')
+            : t('label.delete');
+
           return (
-            <Row align="middle">
-              <Tooltip
-                title={
-                  testCaseEditPermission
-                    ? t('label.edit')
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
+            <Row align="middle" gutter={[8, 8]}>
+              <Col>
+                <EditIconButton
+                  newLook
                   className="flex-center"
                   data-testid={`edit-${record.name}`}
                   disabled={!testCaseEditPermission}
-                  icon={<IconEdit width={14} />}
-                  size="small"
-                  type="text"
+                  size="middle"
+                  title={
+                    testCaseEditPermission
+                      ? t('label.edit')
+                      : NO_PERMISSION_FOR_ACTION
+                  }
                   onClick={(e) => {
                     // preventing expand/collapse on click of edit button
                     e.stopPropagation();
                     setSelectedTestCase({ data: record, action: 'UPDATE' });
                   }}
                 />
-              </Tooltip>
-
-              {removeFromTestSuite ? (
-                <Tooltip
+              </Col>
+              <Col>
+                <DeleteIconButton
+                  className="flex-center"
+                  data-testid={`delete-${record.name}`}
+                  disabled={!testCaseDeletePermission}
+                  size="middle"
                   title={
                     testCaseDeletePermission
-                      ? t('label.remove')
+                      ? deleteBtnTooltip
                       : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className="flex-center"
-                    data-testid={`remove-${record.name}`}
-                    disabled={!testCaseDeletePermission}
-                    icon={<IconDelete width={14} />}
-                    size="small"
-                    type="text"
-                    onClick={(e) => {
-                      // preventing expand/collapse on click of delete button
-                      e.stopPropagation();
-                      setSelectedTestCase({ data: record, action: 'DELETE' });
-                    }}
-                  />
-                </Tooltip>
-              ) : (
-                <Tooltip
-                  title={
-                    testCaseDeletePermission
-                      ? t('label.delete')
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className="flex-center"
-                    data-testid={`delete-${record.name}`}
-                    disabled={!testCaseDeletePermission}
-                    icon={<IconDelete width={14} />}
-                    size="small"
-                    type="text"
-                    onClick={(e) => {
-                      // preventing expand/collapse on click of delete button
-                      e.stopPropagation();
-                      setSelectedTestCase({ data: record, action: 'DELETE' });
-                    }}
-                  />
-                </Tooltip>
-              )}
+                  }
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of delete button
+                    e.stopPropagation();
+                    setSelectedTestCase({ data: record, action: 'DELETE' });
+                  }}
+                />
+              </Col>
             </Row>
           );
         },
