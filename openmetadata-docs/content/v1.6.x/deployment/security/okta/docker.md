@@ -1,5 +1,5 @@
 ---
-title: Okta SSO for Docker
+title: Okta SSO for Docker | OpenMetadata Deployment Guide
 slug: /deployment/security/okta/docker
 collate: false
 ---
