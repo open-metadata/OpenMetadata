@@ -1,6 +1,7 @@
 ---
 title: Run the SSIS Connector Externally
 slug: /connectors/pipeline/ssis/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader

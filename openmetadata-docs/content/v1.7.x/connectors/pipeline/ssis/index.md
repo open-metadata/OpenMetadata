@@ -1,6 +1,7 @@
 ---
 title: SSIS
 slug: /connectors/pipeline/ssis
+collate: true
 ---
 
 {% connectorDetailsHeader
