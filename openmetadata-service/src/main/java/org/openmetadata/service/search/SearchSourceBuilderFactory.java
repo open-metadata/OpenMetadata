@@ -72,6 +72,20 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * @return a search source builder configured for the specific entity type
    */
   default S getSearchSourceBuilder(String index, String q, int from, int size) {
+    return getSearchSourceBuilder(index, q, from, size, false);
+  }
+
+  /**
+   * Get the appropriate search source builder based on the index name.
+   *
+   * @param index the index name
+   * @param q the search query
+   * @param from the starting offset
+   * @param size the number of results to return
+   * @param explain whether to include explanation of the search results
+   * @return a search source builder configured for the specific entity type
+   */
+  default S getSearchSourceBuilder(String index, String q, int from, int size, boolean explain) {
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
 
     if (isTimeSeriesIndex(indexName)) {
@@ -87,7 +101,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
 
     if (isDataAssetIndex(indexName)) {
-      return buildDataAssetSearchBuilder(indexName, q, from, size);
+      return buildDataAssetSearchBuilder(indexName, q, from, size, explain);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
@@ -104,6 +118,9 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   S buildServiceSearchBuilder(String query, int from, int size);
 
   S buildDataAssetSearchBuilder(String indexName, String query, int from, int size);
+
+  S buildDataAssetSearchBuilder(
+      String indexName, String query, int from, int size, boolean explain);
 
   S buildCommonSearchBuilder(String query, int from, int size);
 

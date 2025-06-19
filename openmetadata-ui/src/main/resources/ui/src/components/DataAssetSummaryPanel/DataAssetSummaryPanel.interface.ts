@@ -26,4 +26,5 @@ export type DataAssetSummaryPanelProps = {
   };
   entityType: EntityType;
   isDomainVisible?: boolean;
+  isLineageView?: boolean;
 };
