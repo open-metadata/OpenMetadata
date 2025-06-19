@@ -20,9 +20,14 @@ import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants'
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
 import './customise-home-modal.less';
-import { CustomiseHomeModalProps } from './CustomiseHomeModal.interface';
 
-const CustomiseHomeModal = ({ onClose, open }: CustomiseHomeModalProps) => {
+const CustomiseHomeModal = ({
+  onClose,
+  open,
+}: {
+  onClose: () => void;
+  open: boolean;
+}) => {
   const { t } = useTranslation();
   const { preferences, setPreference } = useCurrentUserPreferences();
   const [selectedColor, setSelectedColor] = useState<string>(
@@ -82,6 +87,7 @@ const CustomiseHomeModal = ({ onClose, open }: CustomiseHomeModalProps) => {
           <Icon
             className="close-icon"
             component={CloseIcon}
+            data-testid="close-btn"
             onClick={onClose}
           />
         </Col>
@@ -105,10 +111,17 @@ const CustomiseHomeModal = ({ onClose, open }: CustomiseHomeModalProps) => {
       </Row>
       <Row className="customise-home-modal-footer">
         <Col className="d-flex items-center gap-4">
-          <Button className="cancel-btn" onClick={onClose}>
+          <Button
+            className="cancel-btn"
+            data-testid="cancel-btn"
+            onClick={onClose}>
             {t('label.cancel')}
           </Button>
-          <Button className="apply-btn" type="primary" onClick={handleApply}>
+          <Button
+            className="apply-btn"
+            data-testid="apply-btn"
+            type="primary"
+            onClick={handleApply}>
             {t('label.apply')}
           </Button>
         </Col>

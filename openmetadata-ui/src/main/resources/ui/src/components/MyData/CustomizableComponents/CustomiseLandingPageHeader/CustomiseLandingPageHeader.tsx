@@ -42,7 +42,7 @@ const CustomiseLandingPageHeader = ({
   const { currentUser } = useApplicationStore();
   const { preferences } = useCurrentUserPreferences();
   const { isNLPEnabled } = useSearchStore();
-  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(true);
+  const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
 
   const bgColor =
     backgroundColor ||
