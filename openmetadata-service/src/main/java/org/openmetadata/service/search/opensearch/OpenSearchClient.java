@@ -137,6 +137,7 @@ import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
+import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
@@ -384,7 +385,11 @@ public class OpenSearchClient implements SearchClient {
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+            request.getIndex(),
+            request.getQuery(),
+            request.getFrom(),
+            request.getSize(),
+            request.getExplain());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -509,6 +514,10 @@ public class OpenSearchClient implements SearchClient {
           os.org.opensearch.action.search.SearchRequest searchRequest =
               new os.org.opensearch.action.search.SearchRequest(request.getIndex());
           searchRequest.source(searchSourceBuilder);
+
+          // Use DFS Query Then Fetch for consistent scoring across shards
+          searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
           if (response.getHits() != null
@@ -541,6 +550,10 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.action.search.SearchRequest osRequest =
           new os.org.opensearch.action.search.SearchRequest(request.getIndex());
       osRequest.source(searchSourceBuilder);
+
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
       getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
