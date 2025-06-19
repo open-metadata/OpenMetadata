@@ -21,11 +21,11 @@
   }
 
   .ant-modal-content {
-    border-radius: 12px;
+    border-radius: @border-radius-sm;
 
     .ant-modal-close-icon {
       color: @white;
-      font-size: 24px;
+      font-size: @size-lg;
     }
   }
 
@@ -33,20 +33,20 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    padding: 20px;
+    padding: @padding-mlg;
     display: flex;
     align-items: center;
-    gap: 12px;
-    border-radius: 12px 12px 0 0;
-    background: linear-gradient(91.17deg, #3a86ff 0%, #0057e2 100%);
+    gap: @size-sm;
+    border-radius: @border-radius-sm @border-radius-sm 0 0;
+    background: linear-gradient(91.17deg, @blue-31 0%, @blue-32 100%);
 
     .add-icon {
       font-size: 32px;
     }
 
     .customise-home-modal-title {
-      font-size: 20px;
-      font-weight: 600;
+      font-size: @size-mlg;
+      font-weight: @font-semibold;
       color: @white;
     }
 
@@ -55,7 +55,7 @@
 
       .close-icon {
         color: @white;
-        font-size: 14px;
+        font-size: @font-size-base;
         cursor: pointer;
       }
     }
@@ -63,76 +63,81 @@
 
   .customise-home-modal-body {
     display: flex;
+    flex-wrap: wrap;
+    gap: @size-xxs;
 
     .sidebar {
-      flex: 0.75;
-      padding: 20px;
+      padding: @padding-mlg;
       position: sticky;
       top: 80px; // modal header height
+      flex: 1 1 250px;
+      min-width: 180px;
+      max-width: 300px;
       align-self: flex-start;
 
       .sidebar-option {
-        font-size: 16px;
-        font-weight: 600;
+        font-size: @size-md;
+        font-weight: @font-semibold;
         cursor: pointer;
-        padding: 10px 16px;
-        border-radius: 8px;
+        padding: 10px @padding-md;
+        border-radius: @border-radius-xs;
 
         &.active {
-          background-color: #eff8ff;
-          color: #175cd3;
+          background-color: @primary-button-background;
+          color: @blue-9;
         }
       }
     }
 
     .customise-home-modal-divider {
-      color: #e9eaeb;
+      color: @grey-200;
       height: auto;
       align-self: stretch;
     }
 
     .content {
-      flex: 3.25;
-      padding: 24px;
+      padding: @padding-mlg;
+      flex: 3 1 600px;
+      min-width: 0;
     }
   }
 
   .customise-home-modal-footer {
     position: sticky;
     bottom: 0;
-    padding: 20px;
+    padding: @padding-mlg;
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid #e9eaeb;
-    border-radius: 0 0 12px 12px;
+    gap: @size-sm;
+    border-top: 1px solid @grey-200;
+    border-radius: 0 0 @border-radius-sm @border-radius-sm;
     background-color: @white;
 
     button {
       padding: 1px 28px;
-      border-radius: 8px;
+      border-radius: @border-radius-xs;
     }
 
     .ant-btn.ant-btn-default:not(:hover) {
-      border-color: #d5d7da;
+      border-color: @grey-300;
     }
 
     .cancel-btn {
       background-color: @white;
-      color: #414651;
-      border: 1px solid #d5d7da;
-      font-weight: 500;
+      color: @grey-700;
+      border: 1px solid @grey-300;
+      font-weight: @font-medium;
       font-size: 18px;
-      box-shadow: 0px 1px 2px 0px #0a0d120d;
+      box-shadow: 0px 1px 2px 0px @grey-27;
     }
 
     .apply-btn {
-      background-color: #1570ef;
+      background-color: @blue-12;
       color: @white;
-      border: 1px solid #1570ef;
-      font-weight: 600;
-      font-size: 16px;
-      box-shadow: 0px 1px 2px 0px #0a0d120d;
+      border: 1px solid @blue-12;
+      font-weight: @font-semibold;
+      font-size: @size-md;
+      box-shadow: 0px 1px 2px 0px @grey-27;
     }
   }
 }

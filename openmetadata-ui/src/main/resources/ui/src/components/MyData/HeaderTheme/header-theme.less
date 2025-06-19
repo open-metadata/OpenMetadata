@@ -14,14 +14,14 @@
 
 .header-theme-settings {
   .header-theme-title {
-    font-size: 24px;
-    font-weight: 600;
+    font-size: @size-lg;
+    font-weight: @font-semibold;
   }
 
   .header-theme-container {
-    padding: 20px;
-    border-radius: 24px;
-    box-shadow: 0px 4px 4px 0px #00000040;
+    padding: @padding-mlg;
+    border-radius: @border-radius-xl;
+    box-shadow: 0px @size-xxs @size-xxs 0px @grey-28;
     background-color: @white;
   }
 
@@ -29,12 +29,12 @@
     padding-top: 28px;
 
     .select-background-text {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: @size-lg;
+      font-weight: @font-semibold;
     }
 
     .select-background-options {
-      padding: 24px 0;
+      padding: @padding-lg 0;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -44,10 +44,10 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 12px;
+        gap: @size-sm;
 
         .color-preview {
-          padding: 4px;
+          padding: @padding-xss;
           width: 34px;
           height: 34px;
           border: 2px solid;
@@ -60,12 +60,12 @@
           }
         }
         .color-hex-code {
-          padding: 8px 12px;
-          font-size: 16px;
-          font-weight: 400;
-          border-radius: 8px;
-          border: 1px solid #d5d7da;
-          box-shadow: 0px 1px 2px 0px #0a0d120d;
+          padding: @padding-xs @padding-xs;
+          font-size: @size-md;
+          font-weight: @font-regular;
+          border-radius: @border-radius-xs;
+          border: 1px solid @grey-300;
+          box-shadow: 0px 1px 2px 0px @grey-27;
         }
       }
 
@@ -73,7 +73,7 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px;
+        gap: @size-xs;
 
         .option-color {
           width: 52px;
