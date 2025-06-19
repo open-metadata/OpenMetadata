@@ -22,6 +22,14 @@ Configure the dbt Workflow from the UI.
 Configure the dbt Workflow from the CLI.
 {%/inlineCallout%}
 
+{%inlineCallout
+  icon="celebration"
+  bold="Auto Ingest DBT Artifacts (dbt-core)"
+  href="/connectors/ingestion/workflows/dbt/auto-ingest-dbt-core"%}
+Configure the auto dbt ingestion for dbt-core.
+
+{%/inlineCallout%}
+
 {%/inlineCalloutContainer%}
 
 # dbt Integration
