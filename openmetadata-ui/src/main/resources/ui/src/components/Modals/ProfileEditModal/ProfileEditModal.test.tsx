@@ -43,7 +43,7 @@ describe('ProfileEditModal', () => {
     );
 
     expect(screen.getByTestId('profile-edit-modal')).toBeInTheDocument();
-    expect(screen.getByText('label.edit-name')).toBeInTheDocument();
+    expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
     expect(screen.getByTestId('displayName-input')).toBeInTheDocument();
   });
 
