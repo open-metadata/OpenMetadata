@@ -30,7 +30,6 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -780,39 +779,52 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {
-    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
-    // its latest value.
+
+    // Get all nested terms (children, grandchildren, etc.) from the updated term
+    List<GlossaryTerm> childTerms = getNestedTerms(updated);
+    // Include the updated term itself
+    List<GlossaryTerm> allTerms = new ArrayList<>();
+    allTerms.add(updated);
+    allTerms.addAll(childTerms);
+    // Collect all FQN hashes for the glossary term and its children
     Set<String> targetFQNHashesFromDb =
         new HashSet<>(
             daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
-
-    List<GlossaryTerm> childTerms =
-        getNestedTerms(updated); // get old value of children term from database
     for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
+      targetFQNHashesFromDb.addAll(
           daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
     }
+    // Compute the old and new FQN prefix (for the term being updated)
+    String oldParentFqn = original.getFullyQualifiedName();
+    String newParentFqn = updated.getFullyQualifiedName();
 
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
-    List<EntityReference> childrenTerms =
-        searchRepository.getEntitiesContainingFQNFromES(
-            original.getFullyQualifiedName(),
-            childTerms.size(),
-            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
+    // Build a mapping of oldFqn -> newFqn for all terms (including children)
+    Map<String, GlossaryTerm> oldFqnToUpdatedTerm = new HashMap<>();
+    for (GlossaryTerm term : allTerms) {
+      String newFqn = term.getFullyQualifiedName();
+      // Reconstruct the old FQN by replacing the new parent FQN prefix with the old parent FQN
+      // prefix
+      String oldFqn =
+          newFqn.replaceFirst(
+              java.util.regex.Pattern.quote(newParentFqn),
+              java.util.regex.Matcher.quoteReplacement(oldParentFqn));
+      oldFqnToUpdatedTerm.put(oldFqn, term);
+    }
 
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
-
-    for (EntityReference child : childrenTerms) {
-      targetFQNFromES.putAll( // List of entity references tagged with the children term
-          getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
-      searchRepository.updateEntity(child); // update es index of child term
-      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
+    // For each oldFqn, find all ES usages and update the tag in ES to the new FQN
+    for (Map.Entry<String, GlossaryTerm> entry : oldFqnToUpdatedTerm.entrySet()) {
+      String oldFqn = entry.getKey();
+      GlossaryTerm term = entry.getValue();
+      String newFqn = term.getFullyQualifiedName();
+      String newDisplayName = term.getDisplayName();
+      String newName = term.getName();
+      String newDescription = term.getDescription();
+      Map<String, EntityReference> usage =
+          getGlossaryUsageFromES(oldFqn, targetFQNHashesFromDb.size(), false);
+      for (EntityReference ref : usage.values()) {
+        searchRepository.updateEntityGlossaryTagInSearch(
+            ref, oldFqn, newFqn, newDisplayName, newName, newDescription);
+      }
     }
   }
 
@@ -1274,6 +1286,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(original.getId());
       }
+      updateAssetIndexes(original, updated);
     }
 
     private void validateParent() {

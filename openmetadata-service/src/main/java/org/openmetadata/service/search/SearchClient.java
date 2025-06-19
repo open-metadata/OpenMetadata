@@ -81,6 +81,17 @@ public interface SearchClient {
       "for (int i = 0; i < ctx._source.dataProducts.length; i++) { if (ctx._source.dataProducts[i].fullyQualifiedName == params.fqn) { ctx._source.dataProducts.remove(i) }}";
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
+  String UPDATE_GLOSSARY_TERM_FQN_SCRIPT =
+      "if (ctx._source.tags != null) { "
+          + "for (tag in ctx._source.tags) { "
+          + "if (tag.tagFQN == params.oldTagFQN && tag.source == 'Glossary') { "
+          + "tag.tagFQN = params.newTagFQN; "
+          + "tag.displayName = params.displayName; "
+          + "tag.name = params.name; "
+          + "tag.description = params.description; "
+          + "} "
+          + "} "
+          + "}";
 
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
