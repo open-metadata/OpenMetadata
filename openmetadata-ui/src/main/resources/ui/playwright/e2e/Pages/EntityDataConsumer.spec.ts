@@ -162,7 +162,8 @@ entities.forEach((EntityClass) => {
         await entity.descriptionUpdateChildren(
           page,
           entity.childrenSelectorId ?? '',
-          rowSelector
+          rowSelector,
+          entity.endpoint
         );
       });
     }
@@ -179,6 +180,7 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
+          entityEndpoint: entity.endpoint,
           rowSelector:
             entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
         });

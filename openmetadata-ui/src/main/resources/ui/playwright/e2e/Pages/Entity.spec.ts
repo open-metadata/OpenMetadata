@@ -346,6 +346,7 @@ entities.forEach((EntityClass) => {
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
 
@@ -371,7 +372,8 @@ entities.forEach((EntityClass) => {
         await entity.descriptionUpdateChildren(
           page,
           entity.childrenSelectorId ?? '',
-          rowSelector
+          rowSelector,
+          entity.endpoint
         );
       });
     }
