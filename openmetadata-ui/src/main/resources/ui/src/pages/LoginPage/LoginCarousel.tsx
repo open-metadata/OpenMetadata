@@ -27,6 +27,7 @@ const LoginCarousel = () => {
       dots
       autoplaySpeed={5000}
       beforeChange={(_, next) => setCurrentIndex(next)}
+      className="login-carousel"
       data-testid="carousel-container"
       easing="ease-in-out"
       effect="fade">
