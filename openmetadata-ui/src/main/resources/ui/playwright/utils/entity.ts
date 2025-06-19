@@ -22,6 +22,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
@@ -345,6 +346,39 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
+export const assignCertification = async (
+  page: Page,
+  certification: TagClass,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page
+    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
+    .click();
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId('update-certification').click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification.responseData.displayName
+  );
+};
+
+export const removeCertification = async (page: Page, endpoint: string) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.getByTestId('clear-certification').click();
+  await patchRequest;
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    'No Certification'
+  );
+};
+
 export const updateDescription = async (
   page: Page,
   description: string,
@@ -559,8 +593,8 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const putTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PUT'
+    const putTagRequest = page.waitForResponse((response) =>
+      ['PUT', 'PATCH'].includes(response.request().method())
     );
 
     await page.waitForSelector(
@@ -744,8 +778,8 @@ export const removeGlossaryTermFromChildren = async ({
       .locator('svg')
       .click();
 
-    const putRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PUT'
+    const putRequest = page.waitForResponse((response) =>
+      ['PUT', 'PATCH'].includes(response.request().method())
     );
 
     await page.waitForSelector(
@@ -1565,6 +1599,22 @@ export const generateEntityChildren = (entityName: string, count = 25) => {
       displayName: `pw-${entityName}-${i + 1}-${id}`,
     };
   });
+};
+
+export const checkItemNotExistsInQuickFilter = async (
+  page: Page,
+  filterLabel: string,
+  filterValue: string
+) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  const testId = filterValue.toLowerCase();
+
+  // testId should not be present
+  await expect(page.getByTestId(testId)).toBeHidden();
+
+  await clickOutside(page);
 };
 
 export const checkExploreSearchFilter = async (
