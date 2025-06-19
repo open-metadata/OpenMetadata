@@ -131,6 +131,4 @@ class QueryParserSource(Source, ABC):
         masked_query_cache.clear()
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.engine, self.service_connection
-        )
+        test_connection_common(self.metadata, self.engine, self.service_connection)
