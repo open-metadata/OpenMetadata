@@ -141,8 +141,11 @@ test.describe('User with different Roles', () => {
     await userPage.waitForSelector('[role="dialog"].ant-modal', {
       state: 'visible',
     });
-    await userPage.fill('[data-testid="displayName"]', 'New Display Name');
-    await userPage.click('[data-testid="save-display-name"]');
+    await userPage.fill(
+      '[data-testid="displayName-input"]',
+      'New Display Name'
+    );
+    await userPage.getByText('Save').click();
 
     await expect(userPage.getByTestId('user-display-name')).toHaveText(
       'New Display Name'
