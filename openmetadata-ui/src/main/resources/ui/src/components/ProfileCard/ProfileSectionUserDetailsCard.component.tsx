@@ -153,7 +153,9 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-name')}
+            {t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}
           </Typography.Text>
         </Button>
       )}

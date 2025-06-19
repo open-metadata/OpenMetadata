@@ -66,7 +66,9 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
-      title={t('label.edit-name')}
+      title={t('label.edit-entity', {
+        entity: t('label.display-name'),
+      })}
       width={500}
       onCancel={onCancel}>
       <Form
