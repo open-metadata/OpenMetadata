@@ -15,11 +15,12 @@ Test SQA Interface
 
 import os
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, inspect
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
 
@@ -297,3 +298,124 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
     ][0]
     assert name_column_profile.nullCount == 0
     assert id_column_profile.median == 1.0
+
+
+def test_compute_metrics_in_thread_success(sqa_profiler_interface):
+    """Test successful execution of compute_metrics_in_thread"""
+    # Create a mock metric function
+    mock_metric = ThreadPoolMetrics(
+        metrics=[RowCount],
+        metric_type=MetricTypes.Table,
+        column=None,
+        table=User,
+    )
+
+    # Mock the _get_metric_fn to return a known value
+    sqa_profiler_interface._get_metric_fn = {
+        MetricTypes.Table.value: Mock(return_value={"rowCount": 2})
+    }
+
+    # Execute the method
+    result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
+        mock_metric
+    )
+
+    # Verify results
+    assert result == {"rowCount": 2}
+    assert column is None
+    assert metric_type == MetricTypes.Table.value
+
+
+def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interface):
+    """Test successful retry after disconnection error"""
+    # Create a mock metric function
+    mock_metric = ThreadPoolMetrics(
+        metrics=[RowCount],
+        metric_type=MetricTypes.Table,
+        column=None,
+        table=User,
+    )
+
+    # Mock the _get_metric_fn to raise a disconnection error once, then succeed
+    mock_fn = Mock(
+        side_effect=[DBAPIError("disconnected", None, None), {"rowCount": 2}]
+    )
+    sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: mock_fn}
+
+    # Mock the dialect's is_disconnect to return True
+    with patch.object(
+        sqa_profiler_interface.session.get_bind().dialect,
+        "is_disconnect",
+        return_value=True,
+    ):
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
+            mock_metric
+        )
+
+    # Verify results
+    assert result == {"rowCount": 2}
+    assert column is None
+    assert metric_type == MetricTypes.Table.value
+    assert mock_fn.call_count == 2  # Called twice - once for error, once for success
+
+
+def test_compute_metrics_in_thread_max_retries_exceeded(sqa_profiler_interface):
+    """Test behavior when max retries are exceeded"""
+    # Create a mock metric function
+    mock_metric = ThreadPoolMetrics(
+        metrics=[RowCount],
+        metric_type=MetricTypes.Table,
+        column=None,
+        table=User,
+    )
+
+    # Mock the _get_metric_fn to always raise a disconnection error
+    mock_fn = Mock(side_effect=DBAPIError("disconnected", None, None))
+    sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: mock_fn}
+
+    # Mock the dialect's is_disconnect to return True
+    with patch.object(
+        sqa_profiler_interface.session.get_bind().dialect,
+        "is_disconnect",
+        return_value=True,
+    ):
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
+            mock_metric
+        )
+
+    # Verify results - should return None values after max retries
+    assert result is None
+    assert column is None
+    assert metric_type is None
+    assert mock_fn.call_count == 3  # Called 3 times (max_retries)
+
+
+def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
+    """Test behavior with non-disconnection exception"""
+    # Create a mock metric function
+    mock_metric = ThreadPoolMetrics(
+        metrics=[RowCount],
+        metric_type=MetricTypes.Table,
+        column=None,
+        table=User,
+    )
+
+    # Mock the _get_metric_fn to raise a regular exception
+    mock_fn = Mock(side_effect=Exception("Some other error"))
+    sqa_profiler_interface._get_metric_fn = {MetricTypes.Table.value: mock_fn}
+
+    # Mock the dialect's is_disconnect to return False
+    with patch.object(
+        sqa_profiler_interface.session.get_bind().dialect,
+        "is_disconnect",
+        return_value=False,
+    ):
+        result, column, metric_type = sqa_profiler_interface.compute_metrics_in_thread(
+            mock_metric
+        )
+
+    # Verify results - should return None values after exception
+    assert result is None
+    assert column is None
+    assert metric_type is None
+    assert mock_fn.call_count == 1  # Called only once before breaking
