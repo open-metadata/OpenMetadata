@@ -1,7 +1,9 @@
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cell, Pie, PieChart } from 'recharts';
+import { PRIMARY_COLOR, WHITE_SMOKE } from '../../../constants/Color.constants';
+import PageHeader from '../../PageHeader/PageHeader.component';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
 const renderCenterText = (value: number) => (
@@ -20,98 +22,150 @@ const renderCenterText = (value: number) => (
 const PieChartSummaryPanel = ({
   testSummary,
   isLoading = false,
-  showAdditionalSummary = false,
 }: SummaryPanelProps) => {
   const { t } = useTranslation();
-  console.log('testSummary', testSummary);
 
-  //   {
-  //     "success": 4,
-  //     "failed": 3,
-  //     "aborted": 1,
-  //     "total": 8,
-  //     "unhealthy": 1,
-  //     "healthy": 1,
-  //     "totalDQEntities": 2,
-  //     "totalEntityCount": 36
-  // }
-
-  const success = useMemo(
-    () => [
+  const healthyDataAssets = useMemo(() => {
+    return [
       {
-        name: 'success',
-        value: testSummary?.success,
-        color: '#22C55E',
+        name: 'healthy',
+        value: testSummary?.healthy,
+        color: '#12B76A',
       },
       {
         name: 'total',
-        value: testSummary?.total,
-        color: '#E5E7EB',
+        value:
+          (testSummary?.totalDQEntities ?? 0) - (testSummary?.healthy ?? 0),
+        color: WHITE_SMOKE,
       },
-    ],
-    [testSummary]
-  );
+    ];
+  }, [testSummary?.healthy, testSummary?.totalDQEntities]);
+
+  const dataAssetsCoverage = useMemo(() => {
+    return [
+      {
+        name: 'dataAssetsCoverage',
+        value: testSummary?.totalDQEntities,
+        color: PRIMARY_COLOR,
+      },
+      {
+        name: 'total',
+        value:
+          (testSummary?.totalEntityCount ?? 0) -
+          (testSummary?.totalDQEntities ?? 0),
+        color: WHITE_SMOKE,
+      },
+    ];
+  }, [testSummary?.totalEntityCount, testSummary?.totalDQEntities]);
+
+  const testCaseSummary = useMemo(() => {
+    return [
+      {
+        name: 'success',
+        data: [
+          {
+            name: 'success',
+            value: testSummary?.success,
+            color: '#12B76A',
+          },
+          {
+            name: 'total',
+            value: (testSummary?.total ?? 0) - (testSummary?.success ?? 0),
+            color: WHITE_SMOKE,
+          },
+        ],
+        innerRadius: 90,
+        outerRadius: 100,
+      },
+      {
+        name: 'failed',
+        data: [
+          {
+            name: 'failed',
+            value: testSummary?.failed,
+            color: '#EF4444',
+          },
+          {
+            name: 'total',
+            value: (testSummary?.total ?? 0) - (testSummary?.failed ?? 0),
+            color: WHITE_SMOKE,
+          },
+        ],
+        innerRadius: 70,
+        outerRadius: 80,
+      },
+      {
+        name: 'aborted',
+        data: [
+          {
+            name: 'aborted',
+            value: testSummary?.aborted,
+            color: '#F59E0B',
+          },
+          {
+            name: 'total',
+            value: (testSummary?.total ?? 0) - (testSummary?.aborted ?? 0),
+            color: WHITE_SMOKE,
+          },
+        ],
+        innerRadius: 50,
+        outerRadius: 60,
+      },
+    ];
+  }, [testSummary]);
 
   return (
     <Card loading={isLoading}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontWeight: 600, fontSize: 20 }}>
-          {t('test-cases-status', 'Test Cases Status')}
-        </div>
-        <div style={{ color: '#6B7280' }}>
-          {t(
-            'test-cases-status-desc',
-            'Understand the metadata available in your service and keep track of the main KPIs coverage'
-          )}
-        </div>
-      </div>
-      <Row gutter={[32, 16]} justify="center">
+      <PageHeader
+        data={{
+          header: t('label.data-quality'),
+          subHeader: t('message.page-sub-header-for-data-quality'),
+        }}
+      />
+      <Row className="p-t-box" gutter={[32, 16]} justify="center">
         {/* Total Tests */}
         <Col md={8} xs={24}>
-          <Card style={{ textAlign: 'center', minHeight: 320 }}>
-            <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>
-              {t('total-tests', 'Total Tests')}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                position: 'relative',
-                height: 180,
-              }}>
+          <Card style={{ textAlign: 'center', minHeight: 300 }}>
+            <Typography.Title
+              className="heading"
+              data-testid="heading"
+              level={5}>
+              {t('label.total-entity', {
+                entity: t('label.test-case-plural'),
+              })}
+            </Typography.Title>
+            <div className="flex-center m-y-md" style={{ height: 200 }}>
               <PieChart height={200} width={200}>
-                <Pie
-                  cx="50%"
-                  cy="50%"
-                  data={success}
-                  dataKey="value"
-                  innerRadius={85}
-                  outerRadius={100}>
-                  {success?.map((entry) => (
-                    <Cell fill={entry.color} key={`cell-${entry.name}`} />
-                  ))}
-                </Pie>
-                {/* {renderCenterText(testSummary?.totalTests || 0)} */}
+                {testCaseSummary.map((item) => {
+                  return (
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      data={item.data}
+                      dataKey="value"
+                      endAngle={-270}
+                      innerRadius={item.innerRadius}
+                      key={item.name}
+                      outerRadius={item.outerRadius}
+                      startAngle={90}>
+                      {item.data?.map((entry) => (
+                        <Cell fill={entry.color} key={`cell-${entry.name}`} />
+                      ))}
+                    </Pie>
+                  );
+                })}
+                {renderCenterText(testSummary?.total || 0)}
               </PieChart>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: 16,
-                marginTop: 8,
-              }}>
-              {testSummary?.totalTests?.map((item: any) => (
-                <div
-                  key={item.name}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div className="flex-center gap-6">
+              {testCaseSummary?.map((item) => (
+                <div className="flex-center gap-2" key={item.name}>
                   <span
                     style={{
                       width: 10,
                       height: 10,
                       borderRadius: '50%',
-                      background: item.color,
+                      background: item.data[0].color,
                       display: 'inline-block',
                     }}
                   />
@@ -119,7 +173,7 @@ const PieChartSummaryPanel = ({
                     {t(item.name)}
                   </span>
                   <span style={{ color: '#6B7280', fontWeight: 500 }}>
-                    {item.value}
+                    {item.data[0].value}
                   </span>
                 </div>
               ))}
@@ -128,74 +182,58 @@ const PieChartSummaryPanel = ({
         </Col>
         {/* Healthy Data Assets */}
         <Col md={8} xs={24}>
-          <Card style={{ textAlign: 'center', minHeight: 320 }}>
-            <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>
-              {t('healthy-data-asset-plural')}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                position: 'relative',
-                height: 180,
-              }}>
-              <PieChart height={180} width={180}>
+          <Card style={{ textAlign: 'center', minHeight: 300 }}>
+            <Typography.Title
+              className="heading"
+              data-testid="heading"
+              level={5}>
+              {t('label.healthy-data-asset-plural')}
+            </Typography.Title>
+            <div className="flex-center m-y-md" style={{ height: 200 }}>
+              <PieChart height={200} width={200}>
                 <Pie
                   cx="50%"
                   cy="50%"
-                  data={testSummary?.healthyDataAssets}
+                  data={healthyDataAssets}
                   dataKey="value"
-                  endAngle={-30}
-                  innerRadius={60}
-                  nameKey="name"
-                  outerRadius={80}
-                  startAngle={210}
-                  stroke="none">
-                  {testSummary?.healthyDataAssets?.map(
-                    (entry: any, idx: number) => (
-                      <Cell fill={entry.color} key={`cell-healthy-${idx}`} />
-                    )
-                  )}
+                  endAngle={-270}
+                  innerRadius={90}
+                  outerRadius={100}
+                  startAngle={90}>
+                  {healthyDataAssets?.map((entry, idx) => (
+                    <Cell fill={entry.color} key={`cell-healthy-${idx}`} />
+                  ))}
                 </Pie>
-                {renderCenterText(1000)}
+                {renderCenterText(testSummary?.healthy || 0)}
               </PieChart>
             </div>
           </Card>
         </Col>
         {/* Data Assets Coverage */}
         <Col md={8} xs={24}>
-          <Card style={{ textAlign: 'center', minHeight: 320 }}>
-            <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>
-              {t('data-asset-plural-coverage')}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                position: 'relative',
-                height: 180,
-              }}>
-              <PieChart height={180} width={180}>
+          <Card style={{ textAlign: 'center', minHeight: 300 }}>
+            <Typography.Title
+              className="heading"
+              data-testid="heading"
+              level={5}>
+              {t('label.data-asset-plural-coverage')}
+            </Typography.Title>
+            <div className="flex-center m-y-md" style={{ height: 200 }}>
+              <PieChart height={200} width={200}>
                 <Pie
                   cx="50%"
                   cy="50%"
-                  data={testSummary?.dataAssetsCoverage}
+                  data={dataAssetsCoverage}
                   dataKey="value"
-                  endAngle={-30}
-                  innerRadius={60}
-                  nameKey="name"
-                  outerRadius={80}
-                  startAngle={210}
-                  stroke="none">
-                  {testSummary?.dataAssetsCoverage?.map(
-                    (entry: any, idx: number) => (
-                      <Cell fill={entry.color} key={`cell-coverage-${idx}`} />
-                    )
-                  )}
+                  endAngle={-270}
+                  innerRadius={90}
+                  outerRadius={100}
+                  startAngle={90}>
+                  {dataAssetsCoverage?.map((entry, idx) => (
+                    <Cell fill={entry.color} key={`cell-coverage-${idx}`} />
+                  ))}
                 </Pie>
-                {renderCenterText(1000)}
+                {renderCenterText(testSummary?.totalDQEntities || 0)}
               </PieChart>
             </div>
           </Card>

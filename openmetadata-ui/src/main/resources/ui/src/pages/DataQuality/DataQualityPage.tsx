@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Tabs, Typography } from 'antd';
+import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
@@ -68,18 +69,14 @@ const DataQualityPage = () => {
           <Card>
             <Row>
               <Col span={isEmpty(extraDropdownContent) ? 16 : 23}>
-                <Typography.Title
-                  className="m-b-md"
-                  data-testid="page-title"
-                  level={5}>
-                  {t('label.data-quality')}
-                </Typography.Title>
-                <Typography.Paragraph
-                  className="text-grey-muted m-b-0"
-                  data-testid="page-sub-title">
-                  {t('message.page-sub-header-for-data-quality')}
-                </Typography.Paragraph>
+                <PageHeader
+                  data={{
+                    header: t('label.data-quality'),
+                    subHeader: t('message.page-sub-header-for-data-quality'),
+                  }}
+                />
               </Col>
+
               <Col className="d-flex justify-end" span={8}>
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (

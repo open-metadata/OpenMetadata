@@ -83,7 +83,6 @@ import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
@@ -650,13 +649,13 @@ export const TestCases = () => {
             </Space>
           </Form>
         </Col>
-        <Col span={24}>
+        {/* <Col span={24}>
           <SummaryPanel
             showAdditionalSummary
             isLoading={isTestCaseSummaryLoading}
             testSummary={testCaseSummary}
           />
-        </Col>
+        </Col> */}
         <Col span={24}>
           <PieChartSummaryPanel
             isLoading={isTestCaseSummaryLoading}
