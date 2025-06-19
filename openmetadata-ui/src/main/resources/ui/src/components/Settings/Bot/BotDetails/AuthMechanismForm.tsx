@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Button, Form, FormProps, Select, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import React, { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
@@ -35,6 +35,7 @@ interface Props {
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
   onCancel?: () => void;
   isBot: boolean;
+  isSCIMBot?: boolean;
 }
 
 const AuthMechanismForm: FC<Props> = ({
@@ -43,6 +44,7 @@ const AuthMechanismForm: FC<Props> = ({
   onCancel,
   authenticationMechanism,
   isBot,
+  isSCIMBot,
 }) => {
   const { t } = useTranslation();
   const handleSave: FormProps['onFinish'] = (values) => {
@@ -85,7 +87,43 @@ const AuthMechanismForm: FC<Props> = ({
     };
   }, [isBot, authenticationMechanism]);
 
-  return (
+  const handleGenerateSCIMToken = useCallback(() => {
+    onSave({
+      authType: AuthType.Jwt,
+      config: {
+        JWTTokenExpiry: JWTTokenExpiry.OneHour,
+      },
+    });
+  }, [onSave]);
+
+  return isSCIMBot ? (
+    <div className="flex  justify-between items-center">
+      <div className="flex flex-col gap-2">
+        <Typography.Text className="card-title m-t-0 m-b-2">
+          {t('message.automate-provisioning-with-scim')}
+        </Typography.Text>
+        <Typography.Paragraph className="m-b-0 card-description">
+          {t(
+            'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
+          )}
+          <Typography.Link
+            // href="https://docs.open-metadata.org/connectors/sso/scim"
+            className="read-docs-link"
+            target="_blank">
+            {t('message.read-setup-docs')}
+          </Typography.Link>
+        </Typography.Paragraph>
+      </div>
+      <Button
+        className="text-sm generate-scim-token-btn"
+        data-testid="generate-scim-token"
+        size="small"
+        type="primary"
+        onClick={handleGenerateSCIMToken}>
+        {t('label.generate-token')}
+      </Button>
+    </div>
+  ) : (
     <Form
       id="update-auth-mechanism-form"
       initialValues={{ authType, tokenExpiry }}

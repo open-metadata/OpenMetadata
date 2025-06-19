@@ -113,6 +113,10 @@ class GlobalSettingsClassBase {
       name: t('label.persona'),
       url: GlobalSettingsMenuCategory.PERSONA,
     },
+    [GlobalSettingsMenuCategory.SSO]: {
+      name: t('label.sso'),
+      url: GlobalSettingsMenuCategory.SSO,
+    },
   };
 
   protected updateSettingCategories(
