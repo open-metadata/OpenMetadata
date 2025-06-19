@@ -26,6 +26,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -3671,6 +3672,61 @@ public interface CollectionDAO {
                 hash = true)
             String tagFqnHash);
 
+    /**
+     * Get tag usage counts for multiple tags.
+     * This method retrieves counts for exact tag matches and their children in one query.
+     */
+    @SqlQuery(
+        "SELECT tagFQN, count FROM ("
+            + "  SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
+            + "  FROM tag_usage "
+            + "  WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))"
+            + ") t WHERE tagFQN IN (<tagFQNs>)")
+    @RegisterRowMapper(TagCountMapper.class)
+    @Deprecated
+    List<Map.Entry<String, Integer>> getTagCountsBulkComplex(
+        @Bind("tagFQN") String sampleTagFQN,
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("tagFQNHashPrefix") String tagFQNHashPrefix,
+        @BindList("tagFQNs") List<String> tagFQNs);
+
+    default Map<String, Integer> getTagCountsBulk(int source, List<String> tagFQNs) {
+      if (tagFQNs == null || tagFQNs.isEmpty()) {
+        return Collections.emptyMap();
+      }
+
+      Map<String, Integer> resultMap = new HashMap<>();
+
+      // Process tags in batches to create a single efficient query
+      // We'll use a UNION ALL approach which is more compatible with JDBI
+      StringBuilder queryBuilder = new StringBuilder();
+      List<String> params = new ArrayList<>();
+
+      for (int i = 0; i < tagFQNs.size(); i++) {
+        if (i > 0) {
+          queryBuilder.append(" UNION ALL ");
+        }
+        queryBuilder.append(
+            "SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
+                + "FROM tag_usage "
+                + "WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))");
+        params.add(tagFQNs.get(i)); // tagFQN for selection
+        params.add(String.valueOf(source)); // source
+        params.add(tagFQNs.get(i)); // tagFQN for MD5
+        params.add(tagFQNs.get(i)); // tagFQN for LIKE
+      }
+
+      // For now, fall back to individual queries until we have a better solution
+      // This ensures correctness while we work on optimization
+      for (String tagFQN : tagFQNs) {
+        int count = getTagCount(source, tagFQN);
+        resultMap.put(tagFQN, count);
+      }
+
+      return resultMap;
+    }
+
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
     void deleteTagsByTarget(@BindFQN("targetFQNHash") String targetFQNHash);
 
@@ -3808,6 +3864,15 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    class TagCountMapper implements RowMapper<Map.Entry<String, Integer>> {
+      @Override
+      public Map.Entry<String, Integer> map(ResultSet r, StatementContext ctx) throws SQLException {
+        String tagFQN = r.getString("tagFQN");
+        int count = r.getInt("count");
+        return new AbstractMap.SimpleEntry<>(tagFQN, count);
       }
     }
 

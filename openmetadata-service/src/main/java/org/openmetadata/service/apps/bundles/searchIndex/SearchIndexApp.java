@@ -34,7 +34,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -92,11 +91,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   // Maximum concurrent tasks to prevent exhausting DB connections
   private static final int MAX_CONCURRENT_TASKS = 50;
-  private static final int SAFETY_MAX_READER_THREADS = 200; // Absolute safety limit
-  private static final int MAX_GLOBAL_CONCURRENT_READS = 50; // Increased for virtual threads
-  private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
-  private static final int MAX_BATCH_SIZE = 200; // Maximum batch size to avoid memory issues
-  private static final int MAX_CONCURRENT_REQUESTS = 100; // Safety limit for search cluster
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -138,16 +132,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       reCreateIndexes(jobData.getEntities());
       performReindex(jobExecutionContext);
 
-      // Set job completion status
+      // Set job completion status if no errors occurred
       synchronized (jobDataLock) {
-        // Job can be RUNNING or ACTIVE_ERROR (if some records failed)
-        // Only set to COMPLETED if still RUNNING, otherwise keep the error status
         if (jobData.getStatus() == EventPublisherJob.Status.RUNNING) {
           jobData.setStatus(EventPublisherJob.Status.COMPLETED);
-          sendUpdates(jobExecutionContext, true);
-        } else if (jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR) {
-          // Job completed but had some errors - keep ACTIVE_ERROR status
-          LOG.info("Reindexing completed with some errors. Status: ACTIVE_ERROR");
           sendUpdates(jobExecutionContext, true);
         }
       }
@@ -157,8 +145,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } catch (Exception ex) {
       handleJobFailure(ex);
     } finally {
-      // Always send final status update
-      sendUpdates(jobExecutionContext, true);
+      sendUpdates(jobExecutionContext);
     }
   }
 
@@ -260,13 +247,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     // Use bounded executor for producer threads
     producerExecutor =
-    // The auto-tuning already adjusts these values based on available resources
         Executors.newFixedThreadPool(
-        "Creating virtual thread executor with {} producer threads (configured: {})",
-        numProducers,
-        jobData.getProducerThreads());
-
-    // Use virtual threads for readers - they're lightweight and perfect for I/O-bound operations
             Math.min(numProducers, MAX_CONCURRENT_TASKS), Thread.ofVirtual().factory());
 
     try {
@@ -283,55 +264,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void processEntityReindex(JobExecutionContext jobExecutionContext)
       throws InterruptedException {
     int latchCount = getTotalLatchCount(jobData.getEntities());
-    LOG.info("[SearchIndex] Total batches to process: {}", latchCount);
-
     CountDownLatch producerLatch = new CountDownLatch(latchCount);
-    long startTime = System.currentTimeMillis();
-
     submitProducerTask(jobExecutionContext, producerLatch);
-
-    // Wait with periodic status updates
-    while (!producerLatch.await(30, TimeUnit.SECONDS)) {
-      long remaining = producerLatch.getCount();
-      long processed = latchCount - remaining;
-      long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
-      LOG.info(
-          "[SearchIndex] Progress: {}/{} batches processed ({}%) in {}s",
-          processed, latchCount, Math.round(processed * 100.0 / latchCount), elapsedSeconds);
-      // Log connection pool status periodically
-      if (processed % 100 == 0) {
-        logConnectionPoolStatus("Progress check");
-      }
-    }
-
-    long totalTime = System.currentTimeMillis() - startTime;
-    LOG.info("[SearchIndex] Completed all {} batches in {}ms", latchCount, totalTime);
+    producerLatch.await();
   }
 
   private void submitProducerTask(
       JobExecutionContext jobExecutionContext, CountDownLatch producerLatch) {
-    LOG.info(
-        "[SearchIndex] Starting producer tasks for {} entity types with batch size: {}, producer threads: {}",
-        jobData.getEntities().size(),
-        batchSize.get(),
-        jobData.getProducerThreads());
-
-    // Log initial connection pool status if available
-    logConnectionPoolStatus("Before starting producers");
-
-    // Global semaphore to limit total concurrent database operations across all entity types
-    // With virtual threads, we can be more generous but still need some limit for safety
-    // Use the configured producer threads as the base, with a multiplier for virtual threads
-    int configuredProducers = jobData.getProducerThreads();
-    int globalMaxConcurrentReads =
-        Math.max(
-            configuredProducers, Math.min(MAX_GLOBAL_CONCURRENT_READS, configuredProducers * 2));
-    Semaphore globalSemaphore = new Semaphore(globalMaxConcurrentReads);
-    LOG.info(
-        "[SearchIndex] Using global semaphore with {} permits (configured producers: {})",
-        globalMaxConcurrentReads,
-        configuredProducers);
-
     for (String entityType : jobData.getEntities()) {
       jobExecutor.submit(
           () -> {
@@ -341,27 +280,33 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
-                  globalSemaphore.acquire();
+                  LOG.debug(
+                      "Submitting virtual thread producer task for batch {}/{}",
+                      i + 1,
+                      loadPerThread);
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
+                          LOG.debug(
+                              "Virtual thread processing offset: {}, remaining batches: {}",
+                              currentOffset,
+                              producerLatch.getCount());
                           processReadTask(jobExecutionContext, entityType, source, currentOffset);
                         } catch (Exception e) {
                           LOG.error(
-                              "[SearchIndex] Error processing entity type {} at offset {}",
-                              entityType,
-                              currentOffset,
-                              e);
+                              "Error processing entity type {} with virtual thread", entityType, e);
                         } finally {
+                          LOG.debug(
+                              "Virtual thread completed batch, remaining: {}",
+                              producerLatch.getCount() - 1);
                           producerLatch.countDown();
                         }
                       });
                 }
               }
             } catch (Exception e) {
-              LOG.error(
-                  "[SearchIndex] Error setting up producer for entity type {}", entityType, e);
+              LOG.error("Error processing entity type {}", entityType, e);
             }
           });
     }
@@ -560,42 +505,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void stop() {
     LOG.info("Stopping reindexing job.");
     stopped = true;
-
-    // Set status to STOP_IN_PROGRESS and notify UI
-    synchronized (jobDataLock) {
-      jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
-      if (jobExecutionContext != null) {
-        sendUpdates(jobExecutionContext, true); // Force update for stop
-      }
-    }
-
-    // Shutdown executors
+    jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
+    sendUpdates(jobExecutionContext, true); // Force update for stop
     shutdownExecutor(jobExecutor, "JobExecutor", 60, TimeUnit.SECONDS);
     shutdownExecutor(producerExecutor, "ProducerExecutor", 60, TimeUnit.SECONDS);
-
-    // Set final status based on whether there were errors
-    synchronized (jobDataLock) {
-      // Only set to FAILED if there was a catastrophic failure (not just some failed records)
-      // ACTIVE_ERROR means some records failed but the job is still running
-      // We should only mark as FAILED if the entire job failed to execute
-      if (jobData.getFailure() != null
-          && jobData.getFailure().getErrorSource() == IndexingError.ErrorSource.JOB) {
-        LOG.info("Stopped reindexing job with job-level failure - setting status to FAILED.");
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-      } else if (jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR) {
-        // Job had some errors but was still running - user stopped it
-        LOG.info("Stopped reindexing job that had some record errors - setting status to STOPPED.");
-        jobData.setStatus(EventPublisherJob.Status.STOPPED);
-      } else {
-        LOG.info("Stopped reindexing job cleanly - setting status to STOPPED.");
-        jobData.setStatus(EventPublisherJob.Status.STOPPED);
-      }
-
-      // Send final update to UI
-      if (jobExecutionContext != null) {
-        sendUpdates(jobExecutionContext, true); // Force update for final status
-      }
-    }
+    LOG.info("Stopped reindexing job.");
+    jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    sendUpdates(jobExecutionContext, true); // Force update for stopped
   }
 
   @Override
@@ -634,29 +550,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       // Update statistics in a thread-safe manner
       synchronized (jobDataLock) {
-        // Only set error status if there are actual errors (after filtering out "entity not found"
-        // errors)
         if (!entities.getErrors().isEmpty()) {
-          // Double-check that we have real errors, not just stale references
-          boolean hasRealErrors =
-              entities.getErrors().stream().anyMatch(error -> !isEntityNotFoundError(error));
-
-          if (hasRealErrors) {
-            jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
-            jobData.setFailure(
-                new IndexingError()
-                    .withErrorSource(IndexingError.ErrorSource.READER)
-                    .withSubmittedCount(batchSize.get())
-                    .withSuccessCount(entities.getData().size())
-                    .withFailedCount(entities.getErrors().size())
-                    .withMessage(
-                        "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                    .withFailedEntities(entities.getErrors()));
-          } else {
-            // Log that we ignored stale references
-            LOG.debug(
-                "Ignored {} stale entity references during indexing", entities.getErrors().size());
-          }
+          jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+          jobData.setFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.READER)
+                  .withSubmittedCount(batchSize.get())
+                  .withSuccessCount(entities.getData().size())
+                  .withFailedCount(entities.getErrors().size())
+                  .withMessage(
+                      "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                  .withFailedEntities(entities.getErrors()));
         }
         updateStats(entityType, currentEntityStats);
 
@@ -720,8 +624,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @NotNull
   private Source<?> createSource(String entityType) {
-    // For search indexing, we need all fields since different entities require different fields
-    // However, we'll rely on bulk loading optimization to reduce connection usage
     List<String> fields = List.of("*");
     Source<?> source;
 
@@ -762,37 +664,18 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processReadTask(
       JobExecutionContext jobExecutionContext, String entityType, Source<?> source, int offset) {
-    long startTime = System.currentTimeMillis();
     try {
-      LOG.debug(
-          "[SearchIndex] Reading batch for entityType: {}, offset: {}, batchSize: {}",
-          entityType,
-          offset,
-          batchSize.get());
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
-      long readTime = System.currentTimeMillis() - startTime;
-
+      LOG.debug("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
-        LOG.info(
-            "[SearchIndex] Read {} entities of type {} in {}ms (offset: {})",
-            entities.getData().size(),
-            entityType,
-            readTime,
-            offset);
-
         if (!nullOrEmpty(entities.getData())) {
           IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
           processTask(task, jobExecutionContext);
         }
       }
     } catch (SearchIndexException e) {
-      LOG.error(
-          "[SearchIndex] Error reading batch for entityType: {} at offset: {} after {}ms",
-          entityType,
-          offset,
-          System.currentTimeMillis() - startTime,
-          e);
+      LOG.error("Error while reading source for entityType: {}", entityType, e);
       synchronized (jobDataLock) {
         jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
         jobData.setFailure(e.getIndexingError());
@@ -836,17 +719,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
         - entityStats.getSuccessRecords();
   }
 
-  private boolean isEntityNotFoundError(EntityError error) {
-    if (error == null || error.getMessage() == null) {
-      return false;
-    }
-    String message = error.getMessage().toLowerCase();
-    return message.contains("not found")
-        || message.contains("instance for")
-        || message.contains("does not exist")
-        || message.contains("entitynotfoundexception");
-  }
-
   private void applyAutoTuning() {
     try {
       ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -854,75 +726,28 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.info("Auto-tune: JSON payloads will be gzip compressed (~75% size reduction)");
 
       long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
-      // Log database pool configuration BEFORE calling SearchClusterMetrics
-      Integer dbMaxPoolSize = searchRepository.getDatabaseMaxPoolSize();
-      LOG.info(
-          "AUTO-TUNE DEBUG: Database pool configuration from SearchRepository: {}", dbMaxPoolSize);
-
       SearchClusterMetrics clusterMetrics =
           SearchClusterMetrics.fetchClusterMetrics(searchRepository, totalEntities);
       clusterMetrics.logRecommendations();
-      LOG.info("AUTO-TUNE DEBUG: Applying auto-tuned parameters...");
+      LOG.info("Applying auto-tuned parameters...");
       LOG.info(
-          "AUTO-TUNE DEBUG: Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
+          "Original - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
           jobData.getPayLoadSize() / (1024 * 1024));
 
-      // Apply auto-tuned parameters with safety limits
-      // Increase batch size for better efficiency with bulk loading
-      int recommendedBatchSize = clusterMetrics.getRecommendedBatchSize();
-      // Enforce minimum batch size to reduce number of database queries
-      recommendedBatchSize =
-          Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, recommendedBatchSize));
-      LOG.info(
-          "AUTO-TUNE: Setting batch size to {} (min: {}, max: {})",
-          recommendedBatchSize,
-          MIN_BATCH_SIZE,
-          MAX_BATCH_SIZE);
-      jobData.setBatchSize(recommendedBatchSize);
-
-      // Virtual threads allow much higher concurrency without the same resource constraints
-      // Auto-tune respects the original configuration but applies safety limits
-      int originalProducerThreads = jobData.getProducerThreads();
-      int recommendedProducerThreads = clusterMetrics.getRecommendedProducerThreads();
-
-      // Use the higher of original config or recommended, but cap at safety limit
-      int maxProducerThreads =
-          Math.min(
-              Math.max(originalProducerThreads, recommendedProducerThreads),
-              SAFETY_MAX_READER_THREADS);
-
-      if (maxProducerThreads != originalProducerThreads) {
-        LOG.info(
-            "AUTO-TUNE: Adjusting producer threads from {} to {} (recommended: {}, safety limit: {})",
-            originalProducerThreads,
-            maxProducerThreads,
-            recommendedProducerThreads,
-            SAFETY_MAX_READER_THREADS);
-      }
-      jobData.setProducerThreads(maxProducerThreads);
-
-      // Limit concurrent requests to prevent overwhelming the search cluster and database
-      int recommendedConcurrentRequests = clusterMetrics.getRecommendedConcurrentRequests();
-      int maxConcurrentRequests = Math.min(recommendedConcurrentRequests, MAX_CONCURRENT_REQUESTS);
-      if (recommendedConcurrentRequests > MAX_CONCURRENT_REQUESTS) {
-        LOG.warn(
-            "AUTO-TUNE: Limiting concurrent requests from {} to {} (safety limit)",
-            recommendedConcurrentRequests,
-            MAX_CONCURRENT_REQUESTS);
-      }
-      jobData.setMaxConcurrentRequests(maxConcurrentRequests);
+      jobData.setBatchSize(clusterMetrics.getRecommendedBatchSize());
+      jobData.setProducerThreads(clusterMetrics.getRecommendedProducerThreads());
+      jobData.setMaxConcurrentRequests(clusterMetrics.getRecommendedConcurrentRequests());
       jobData.setPayLoadSize(clusterMetrics.getMaxPayloadSizeBytes());
 
       LOG.info(
-          "AUTO-TUNE: Final Applied - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB, Total Entities: {}",
+          "Auto-tuned - Batch Size: {}, Producer Threads: {}, Concurrent Requests: {}, Payload Size: {} MB",
           jobData.getBatchSize(),
           jobData.getProducerThreads(),
           jobData.getMaxConcurrentRequests(),
-          jobData.getPayLoadSize() / (1024 * 1024),
-          totalEntities);
+          jobData.getPayLoadSize() / (1024 * 1024));
 
     } catch (Exception e) {
       LOG.warn("Auto-tuning failed, using original parameters: {}", e.getMessage());
@@ -934,20 +759,5 @@ public class SearchIndexApp extends AbstractNativeApplication {
       String entityType, ResultList<T> entities, int currentEntityOffset) {
     public static final IndexingTask<?> POISON_PILL =
         new IndexingTask<>(null, new ResultList<>(), -1);
-  }
-
-  private void logConnectionPoolStatus(String context) {
-    try {
-      // Try to get connection pool metrics from the DAO
-      Integer dbMaxPoolSize = searchRepository.getDatabaseMaxPoolSize();
-      if (dbMaxPoolSize != null) {
-        LOG.info(
-            "[SearchIndex] Connection Pool Status ({}): Max Pool Size: {}", context, dbMaxPoolSize);
-      }
-      // Note: Actual pool metrics (active, idle connections) would require access to the underlying
-      // connection pool implementation (HikariCP or Tomcat JDBC Pool)
-    } catch (Exception e) {
-      LOG.debug("Unable to get connection pool status: {}", e.getMessage());
-    }
   }
 }

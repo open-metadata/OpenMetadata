@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -82,21 +83,16 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
-    Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
-      EntityReference classificationRef = getClassification(tag);
-      if (classificationRef != null) {
-        tag.withClassification(classificationRef);
-      }
+    if (tag.getClassification() == null || tag.getClassification().getId() == null) {
+      return;
     }
 
-    inheritOwners(tag, fields, parent);
-      Classification parent =
-          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
-      if (parent.getDisabled() != null && parent.getDisabled()) {
-        tag.setDisabled(true);
-      }
+    Classification parent =
+        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
+    if (parent.getDisabled() != null && parent.getDisabled()) {
+      tag.setDisabled(true);
     }
+    inheritOwners(tag, fields, parent);
   }
 
   @Override
@@ -277,6 +273,140 @@ public class TagRepository extends EntityRepository<Tag> {
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Tag> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch classifications and parents for all tags
+    Map<UUID, EntityReference> classificationsMap = batchFetchClassifications(entities);
+    Map<UUID, EntityReference> parentsMap = batchFetchParents(entities);
+
+    // Set default fields (classification and parent) for all entities first
+    for (Tag entity : entities) {
+      entity
+          .withClassification(classificationsMap.get(entity.getId()))
+          .withParent(parentsMap.get(entity.getId()));
+    }
+
+    // Batch fetch usage counts if requested
+    if (fields.contains("usageCount")) {
+      Map<String, Integer> usageCountMap = batchFetchUsageCounts(entities);
+      for (Tag entity : entities) {
+        entity.withUsageCount(usageCountMap.getOrDefault(entity.getFullyQualifiedName(), 0));
+      }
+    }
+
+    // Process other fields using the standard bulk processing
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Tag entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchClassifications(List<Tag> tags) {
+    // Classification -> CONTAINS -> Tag relationship
+    return batchFetchFromIdsAndRelationSingleRelation(tags, Relationship.CONTAINS);
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
+    // Parent Tag -> CONTAINS -> Child Tag relationship
+    Map<UUID, EntityReference> resultMap = new HashMap<>();
+    if (tags == null || tags.isEmpty()) {
+      return resultMap;
+    }
+
+    List<String> entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+
+    // For parent tags, we need to find where current tags are the "to" side of CONTAINS
+    // relationship
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG);
+
+    if (records.isEmpty()) {
+      return resultMap;
+    }
+
+    // Get unique parent IDs
+    List<UUID> parentIds =
+        records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+
+    // Batch fetch parent references
+    List<EntityReference> parentRefs = Entity.getEntityReferencesByIds(TAG, parentIds, NON_DELETED);
+    Map<String, EntityReference> idToRefMap = new HashMap<>();
+    for (EntityReference ref : parentRefs) {
+      idToRefMap.put(ref.getId().toString(), ref);
+    }
+
+    // Map tags to their parents
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID tagId = UUID.fromString(record.getToId());
+      EntityReference parentRef = idToRefMap.get(record.getFromId());
+      if (parentRef != null) {
+        resultMap.put(tagId, parentRef);
+      }
+    }
+
+    return resultMap;
+  }
+
+  private Map<String, Integer> batchFetchUsageCounts(List<Tag> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return new HashMap<>();
+    }
+
+    // Build and execute a single query for all tags
+    List<String> tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
+    Map<String, Integer> resultMap = new HashMap<>();
+
+    // Build UNION query that gets counts for all tags in one go
+    StringBuilder query = new StringBuilder();
+    for (int i = 0; i < tagFQNs.size(); i++) {
+      if (i > 0) {
+        query.append(" UNION ALL ");
+      }
+      query.append(
+          "SELECT '"
+              + tagFQNs.get(i).replace("'", "''")
+              + "' as tagFQN, "
+              + "COUNT(DISTINCT targetFQNHash) as count "
+              + "FROM tag_usage "
+              + "WHERE source = "
+              + TagSource.CLASSIFICATION.ordinal()
+              + " "
+              + "AND (tagFQNHash = MD5('"
+              + tagFQNs.get(i).replace("'", "''")
+              + "') "
+              + "OR tagFQNHash LIKE CONCAT(MD5('"
+              + tagFQNs.get(i).replace("'", "''")
+              + "'), '.%'))");
+    }
+
+    try {
+      List<Map<String, Object>> results =
+          Entity.getJdbi()
+              .withHandle(handle -> handle.createQuery(query.toString()).mapToMap().list());
+
+      for (Map<String, Object> row : results) {
+        String tagFQN = (String) row.get("tagFQN");
+        Number count = (Number) row.get("count");
+        resultMap.put(tagFQN, count != null ? count.intValue() : 0);
+      }
+    } catch (Exception e) {
+      LOG.error("Error batch fetching usage counts", e);
+      // Fall back to individual queries
+      return daoCollection
+          .tagUsageDAO()
+          .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
+    }
+
+    return resultMap;
   }
 
   @Override
