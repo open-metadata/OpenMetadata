@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -123,7 +124,9 @@ public class ColumnRepository {
       }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
+      column.setTags(
+          addDerivedTags(
+              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
     }
     // Handle constraint updates and removal
     if (updateColumn.getRemoveConstraint() != null && updateColumn.getRemoveConstraint()) {
@@ -191,7 +194,9 @@ public class ColumnRepository {
       }
     }
     if (updateColumn.getTags() != null) {
-      column.setTags(updateColumn.getTags()); // Empty array = remove all tags
+      column.setTags(
+          addDerivedTags(
+              updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
