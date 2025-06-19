@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_7_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_7_5'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1864,6 +1864,30 @@ And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
 - Tag search based on displayName.
 - Fix Hybrid Websocket Timeout. ${CollateIconWithLinkMD}
 - Fix automator for empty description entities & children. ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 72,
+    version: 'v1.7.4',
+    description: 'Released on 17th June 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `- Lineage export image cropping issue.
+- Advanced search 'Deleted' filter not working.
+`,
+    },
+  },
+  {
+    id: 73,
+    version: 'v1.7.5',
+    description: 'Released on 20th June 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `- Lineage expand collapse nodes.
+- Default boost score and improve fqn parsing.
+- OpenSearch by default limits the number of characters, if the field is very large then the limit gets exceeded. 
+- Handled spaces in database, schema, table, and column names across all connectors for reverse metadata. ${CollateIconWithLinkMD}
 `,
     },
   },

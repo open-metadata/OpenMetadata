@@ -9,7 +9,10 @@
           "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "normalizer": {
@@ -33,7 +36,9 @@
         "om_ngram": {
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -93,7 +98,8 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "similarity": "boolean"
+        "similarity": "boolean",
+        "term_vector": "with_positions_offsets"
       },
       "tier": {
         "properties": {
@@ -142,7 +148,8 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "term_vector": "with_positions_offsets"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -369,7 +376,7 @@
       "lifeCycle": {
         "type": "object"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -471,7 +478,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
@@ -527,8 +534,8 @@
         }
       },
       "indexType": {
-       "type": "text"
-    }
+        "type": "text"
+      }
     }
   }
 }

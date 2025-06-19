@@ -110,15 +110,23 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               true,
               Entity.getFields(entityType, fields),
               null);
+
+      // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
+      // point to deleted entities and should not be counted as failures
+      List<EntityError> realErrors = new ArrayList<>();
       if (!result.getErrors().isEmpty()) {
-        // Filter out "entity not found" errors - these are expected for stale relationships
-        List<EntityError> realErrors =
+        for (EntityError error : result.getErrors()) {
+          // Skip entities with missing relationships - these will be garbage collected separately
+          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
             result.getErrors().stream()
-                .filter(error -> !isEntityNotFoundError(error))
-                .collect(Collectors.toList());
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
 
         if (!realErrors.isEmpty()) {
-          LOG.warn("[PaginatedEntitiesSource] Real errors found: {}", realErrors.size());
+          lastFailedCursor = this.cursor.get();
           realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
         }
 
@@ -137,10 +145,10 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           this.cursor.set(result.getPaging().getAfter());
         }
 
-        // Update stats with only real errors
+        // Update stats with only real errors, not missing relationship errors
         updateStats(result.getData().size(), realErrors.size());
 
-        // Replace the errors list with only real errors
+        // Update the result to only include real errors
         result.setErrors(realErrors);
         return result;
       }
@@ -199,6 +207,20 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               true,
               Entity.getFields(entityType, fields),
               null);
+
+      // Filter out EntityNotFoundExceptions from errors - same as in read() method
+      if (!result.getErrors().isEmpty()) {
+        List<EntityError> realErrors = new ArrayList<>();
+        for (EntityError error : result.getErrors()) {
+          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
+        result.setErrors(realErrors);
+      }
+
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());

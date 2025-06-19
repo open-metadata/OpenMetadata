@@ -20,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -83,7 +82,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private ExecutorService producerExecutor;
-  private final ExecutorService jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
+  private ExecutorService jobExecutor;
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
   private JobExecutionContext jobExecutionContext;
@@ -91,8 +90,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
 
-  // Connection pool optimization settings - these are safety limits, not hard caps
-  private static final int DEFAULT_MAX_READER_THREADS = 50; // Default max for auto-tuning
+  // Maximum concurrent tasks to prevent exhausting DB connections
+  private static final int MAX_CONCURRENT_TASKS = 50;
   private static final int SAFETY_MAX_READER_THREADS = 200; // Absolute safety limit
   private static final int MAX_GLOBAL_CONCURRENT_READS = 50; // Increased for virtual threads
   private static final int MIN_BATCH_SIZE = 50; // Minimum batch size for efficiency
@@ -124,6 +123,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
       this.jobExecutionContext = jobExecutionContext;
+
+      // Initialize bounded executors
+      this.jobExecutor =
+          Executors.newFixedThreadPool(MAX_CONCURRENT_TASKS, Thread.ofVirtual().factory());
+
       initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -254,16 +258,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    // Use the configured number of producer threads directly
-    // Virtual threads are lightweight, so we can respect the user's configuration
+    // Use bounded executor for producer threads
+    producerExecutor =
     // The auto-tuning already adjusts these values based on available resources
-    LOG.info(
+        Executors.newFixedThreadPool(
         "Creating virtual thread executor with {} producer threads (configured: {})",
         numProducers,
         jobData.getProducerThreads());
 
     // Use virtual threads for readers - they're lightweight and perfect for I/O-bound operations
-    producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+            Math.min(numProducers, MAX_CONCURRENT_TASKS), Thread.ofVirtual().factory());
 
     try {
       processEntityReindex(jobExecutionContext);
@@ -335,13 +339,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
-
-              LOG.info(
-                  "[SearchIndex] Processing entityType: {}, totalRecords: {}, batches: {}",
-                  entityType,
-                  totalEntityRecords,
-                  loadPerThread);
-
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
                   globalSemaphore.acquire();
@@ -358,7 +355,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
                               e);
                         } finally {
                           producerLatch.countDown();
-                          globalSemaphore.release();
                         }
                       });
                 }

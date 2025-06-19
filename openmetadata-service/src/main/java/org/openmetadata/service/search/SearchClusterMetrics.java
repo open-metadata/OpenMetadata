@@ -54,11 +54,11 @@ public class SearchClusterMetrics {
       Map<String, Object> clusterSettings = osClient.clusterSettings();
 
       Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = (Integer) nodes.get("count");
+      int totalNodes = ((Number) nodes.get("count")).intValue();
 
       Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
       Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
-      int totalShards = (Integer) shards.get("total");
+      int totalShards = ((Number) shards.get("total")).intValue();
 
       Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
       Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();
@@ -100,10 +100,11 @@ public class SearchClusterMetrics {
       Map<String, Object> clusterSettings = client.clusterSettings();
 
       Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = (Integer) nodes.get("count");
+      int totalNodes = ((Number) nodes.get("count")).intValue();
 
       Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
-      int totalShards = (Integer) indices.get("shards");
+      Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
+      int totalShards = ((Number) shards.get("total")).intValue();
 
       Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
       Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();

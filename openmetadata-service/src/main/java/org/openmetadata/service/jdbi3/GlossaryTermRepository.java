@@ -445,7 +445,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new HashSet<>(
             daoCollection.tagUsageDAO().getTargetFQNHashForTag(term.getFullyQualifiedName()));
     Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
+    // Inclusion of soft deleted assets as well
+    targetFQNFromES.putAll(
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size(), true));
 
     for (String fqnHash : targetFQNHashesFromDb) {
       // Update Result Processed
@@ -499,7 +502,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  protected Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) {
+  protected Map<String, EntityReference> getGlossaryUsageFromES(
+      String glossaryFqn, int size, boolean softDeleted) {
     try {
       String key = "_source";
       SearchRequest searchRequest =
@@ -514,7 +518,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .withFetchSource(true)
               .withTrackTotalHits(false)
               .withSortFieldParam("_score")
-              .withDeleted(false)
+              .withDeleted(softDeleted)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
       Response response = searchRepository.search(searchRequest, null);
@@ -796,7 +800,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+        getGlossaryUsageFromES(
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -809,7 +814,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
-          getGlossaryUsageFromES(child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+          getGlossaryUsageFromES(
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }

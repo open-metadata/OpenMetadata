@@ -194,6 +194,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
 
+    // USER3 with no roles for permission testing
+    create = createRequest(test, 3).withRoles(List.of());
+    USER3 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER3_REF = USER3.getEntityReference();
+
     Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
     BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
