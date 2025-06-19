@@ -37,7 +37,7 @@ describe('ChangePasswordForm', () => {
 
   it('should handle form submission correctly for logged in user', async () => {
     render(<ChangePasswordForm {...MOCK_PROPS} />);
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
     const submitButton = await screen.findByText('label.update-entity');
 
     expect(cancelButton).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('ChangePasswordForm', () => {
       />
     );
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
     const submitButton = await screen.findByText('label.update-entity');
 
     expect(cancelButton).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe('ChangePasswordForm', () => {
       />
     );
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
     const submitButton = await screen.findByText('label.update-entity');
 
     expect(cancelButton).toBeInTheDocument();
