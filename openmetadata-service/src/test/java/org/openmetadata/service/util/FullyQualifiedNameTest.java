@@ -149,7 +149,7 @@ class FullyQualifiedNameTest {
     // Test with single part
     List<String> singleHierarchy = FullyQualifiedName.getHierarchicalParts("service");
     assertEquals(1, singleHierarchy.size());
-    assertEquals("service", singleHierarchy.getFirst());
+    assertEquals("service", singleHierarchy.get(0));
   }
 
   @Test
@@ -162,7 +162,7 @@ class FullyQualifiedNameTest {
 
     List<String> twoPartAncestors = FullyQualifiedName.getAncestors("a.b");
     assertEquals(1, twoPartAncestors.size());
-    assertEquals("a", twoPartAncestors.getFirst());
+    assertEquals("a", twoPartAncestors.get(0));
 
     // Test with single part (no ancestors)
     List<String> noAncestors = FullyQualifiedName.getAncestors("service");
