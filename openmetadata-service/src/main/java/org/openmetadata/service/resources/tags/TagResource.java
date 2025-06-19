@@ -93,7 +93,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private final ClassificationMapper classificationMapper = new ClassificationMapper();
   private final TagMapper mapper = new TagMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS = "children,usageCount";
+  static final String FIELDS = "owners,children,usageCount";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
@@ -105,7 +105,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,usageCount", MetadataOperation.VIEW_BASIC);
+    addViewOperation("owners,children,usageCount", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
