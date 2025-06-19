@@ -54,12 +54,14 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
 from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
 
+logger = ingestion_logger()
 dialect = SnowflakeDialect()
 Query = str
 QueryMap = Dict[str, Query]
@@ -238,6 +240,8 @@ def get_table_names(self, connection, schema: str, **kw):
             for row in cursor
         ]
     )
+    if kw.get("dynamic_tables"):
+        logger.debug(f"Dynamic tables: {result}")
     return result
 
 

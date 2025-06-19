@@ -561,10 +561,11 @@ class SnowflakeSource(
         table_list.extend(
             self._get_table_names_and_types(schema_name, table_type=TableType.External)
         )
-
+        logger.debug(f"Starting dynamic tables processing")
         table_list.extend(
             self._get_table_names_and_types(schema_name, table_type=TableType.Dynamic)
         )
+        logger.debug(f"Dynamic tables processing completed")
 
         if self.service_connection.includeTransientTables:
             table_list.extend(
