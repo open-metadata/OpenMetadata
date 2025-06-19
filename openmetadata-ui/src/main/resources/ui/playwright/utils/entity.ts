@@ -486,12 +486,14 @@ export const assignTagToChildren = async ({
   rowId,
   action = 'Add',
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tag: string;
   rowId: string;
   action?: 'Add' | 'Edit';
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
@@ -508,10 +510,15 @@ export const assignTagToChildren = async ({
   await searchTags;
 
   await page.getByTestId(`tag-${tag}`).click();
-
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
+  let patchRequest;
+  if (
+    entityEndpoint === 'tables' ||
+    entityEndpoint === 'dashboard/datamodels'
+  ) {
+    patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+  } else {
+    patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+  }
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -522,7 +529,7 @@ export const assignTagToChildren = async ({
 
   await page.getByTestId('saveAssociatedTag').click();
 
-  await putRequest;
+  await patchRequest;
 
   await expect(
     page
@@ -574,11 +581,13 @@ export const removeTagsFromChildren = async ({
   rowId,
   tags,
   rowSelector = 'data-row-key',
+  entityEndpoint,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
+  entityEndpoint: string;
 }) => {
   for (const tag of tags) {
     await page
@@ -593,10 +602,15 @@ export const removeTagsFromChildren = async ({
       .getByTestId('remove-tags')
       .click();
 
-    const putTagRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PUT'
-    );
-
+    let patchRequest;
+    if (
+      entityEndpoint === 'tables' ||
+      entityEndpoint === 'dashboard/datamodels'
+    ) {
+      patchRequest = page.waitForResponse('/api/v1/columns/name/*');
+    } else {
+      patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    }
     await page.waitForSelector(
       '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
       { state: 'visible' }
@@ -606,7 +620,7 @@ export const removeTagsFromChildren = async ({
 
     await page.getByTestId('saveAssociatedTag').click();
 
-    await putTagRequest;
+    await patchRequest;
 
     await expect(
       page

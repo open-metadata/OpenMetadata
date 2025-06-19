@@ -336,32 +336,43 @@ export class EntityClass {
     tag2,
     rowId,
     rowSelector = 'data-row-key',
+    entityEndpoint,
   }: {
     page: Page;
     tag1: string;
     tag2: string;
     rowId: string;
     rowSelector?: string;
+    entityEndpoint: string;
   }) {
-    await assignTagToChildren({ page, tag: tag1, rowId, rowSelector });
+    await assignTagToChildren({
+      page,
+      tag: tag1,
+      rowId,
+      rowSelector,
+      entityEndpoint,
+    });
     await assignTagToChildren({
       page,
       tag: tag2,
       rowId,
       rowSelector,
       action: 'Edit',
+      entityEndpoint,
     });
     await removeTagsFromChildren({
       page,
       tags: [tag2],
       rowId,
       rowSelector,
+      entityEndpoint,
     });
     await removeTagsFromChildren({
       page,
       tags: [tag1],
       rowId,
       rowSelector,
+      entityEndpoint,
     });
 
     await page

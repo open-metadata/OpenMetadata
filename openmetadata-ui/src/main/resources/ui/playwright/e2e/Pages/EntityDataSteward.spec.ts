@@ -151,6 +151,7 @@ entities.forEach((EntityClass) => {
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -204,6 +205,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });

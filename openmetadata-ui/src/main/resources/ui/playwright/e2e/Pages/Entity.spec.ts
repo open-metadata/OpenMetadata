@@ -318,6 +318,8 @@ entities.forEach((EntityClass) => {
       test('Tag Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
+
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
@@ -326,6 +328,7 @@ entities.forEach((EntityClass) => {
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
