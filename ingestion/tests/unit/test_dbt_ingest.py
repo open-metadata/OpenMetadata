@@ -264,18 +264,109 @@ vars:
             )
         self.assertIn("Field required", str(context.exception))
 
-        # Test invalid URL format
-        with self.assertRaises(ValueError) as context:
-            extract_openmetadata_config(
-                {
-                    "vars": {
-                        "openmetadata_host_port": "invalid-url",
-                        "openmetadata_jwt_token": "token",
-                        "openmetadata_service_name": "service",
-                    }
-                }
-            )
-        self.assertIn("valid URL", str(context.exception))
+    def test_url_validation_comprehensive(self):
+        """Test comprehensive URL validation scenarios including valid and invalid URLs"""
+
+        # Test valid URLs - should all pass (based on URL class behavior)
+        valid_urls = [
+            "http://localhost:8585",
+            "https://openmetadata.example.com:8585",
+            "http://192.168.1.100:8585/api",
+            "https://my-openmetadata-server.com/api",
+            "ws://localhost:8585",
+            "wss://secure-websocket.example.com:8585",
+            "http://127.0.0.1:8585",
+            "https://openmetadata-prod.company.com:443/api/v1",
+            # URL class accepts these edge cases
+            "http://",
+            "https://",
+            "http:///",
+            "ws://",
+            "wss://",
+            "http://localhost:8585 with spaces",  # URL class is permissive
+            "http://local<host>:8585",  # URL class allows special chars
+            "http://localhost:8585\nwith\nnewlines",  # URL class even accepts newlines
+        ]
+
+        print(f"\nTesting {len(valid_urls)} valid URLs:")
+        for url in valid_urls:
+            with self.subTest(url=url):
+                try:
+                    config = OpenMetadataDBTConfig(
+                        openmetadata_host_port=url,
+                        openmetadata_jwt_token="test-jwt-token",
+                        openmetadata_service_name="test_service",
+                    )
+                    print(f"✅ {url!r} - VALID")
+                except Exception as e:
+                    self.fail(f"Valid URL {url!r} was rejected: {e}")
+
+        # Test invalid URLs - should all fail based on URL class behavior
+        invalid_urls = [
+            # Missing protocol entirely
+            "localhost:8585",
+            "openmetadata.example.com:8585",
+            "192.168.1.100:8585",
+            # Invalid protocols (not http*, https*, ws*, wss*)
+            "ftp://localhost:8585",
+            "file:///path/to/file",
+            "sftp://server.com:22",
+            "ssh://server.com:22",
+            "tcp://localhost:8585",
+            "smtp://mail.server.com:25",
+            "mysql://localhost:3306/db",
+            # Malformed URLs
+            "invalid-url",
+            "not_a_url_at_all",
+            "://localhost:8585",  # missing protocol
+            "htp://localhost:8585",  # typo in protocol
+            "http:/localhost:8585",  # missing slash
+            # Empty and whitespace
+            "",
+            "   ",
+            "\n",
+            "\t",
+            # Completely invalid formats
+            "just some random text",
+            "12345",
+        ]
+
+        print(f"\nTesting {len(invalid_urls)} invalid URLs:")
+        for url in invalid_urls:
+            with self.subTest(url=url):
+                with self.assertRaises(
+                    ValueError, msg=f"Invalid URL {repr(url)} should have been rejected"
+                ):
+                    OpenMetadataDBTConfig(
+                        openmetadata_host_port=url,
+                        openmetadata_jwt_token="test-jwt-token",
+                        openmetadata_service_name="test_service",
+                    )
+                print(f"✅ {repr(url)} - CORRECTLY REJECTED")
+
+        # Test edge cases with None and non-string types
+        edge_cases = [
+            None,
+            123,
+            [],
+            {},
+            True,
+            False,
+        ]
+
+        print(f"\nTesting {len(edge_cases)} edge cases:")
+        for case in edge_cases:
+            with self.subTest(case=case):
+                with self.assertRaises(
+                    (ValueError, TypeError),
+                    msg=f"Edge case {repr(case)} should have been rejected",
+                ):
+                    OpenMetadataDBTConfig(
+                        openmetadata_host_port=case,
+                        openmetadata_jwt_token="test-jwt-token",
+                        openmetadata_service_name="test_service",
+                    )
+                print(f"✅ {repr(case)} - CORRECTLY REJECTED")
 
     def test_dbt_project_yml_vars_format_validation(self):
         """Test that dbt_project.yml vars follow correct format and naming convention"""

@@ -25,6 +25,7 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
+from metadata.ingestion.ometa.credentials import URL
 from metadata.utils.logger import cli_logger
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -83,12 +84,15 @@ class OpenMetadataDBTConfig(BaseModel):
     @field_validator("openmetadata_host_port")
     @classmethod
     def validate_host_port(cls, v):
-        """Validate that host_port is a valid URL"""
-        if not (v.startswith("http://") or v.startswith("https://")):
+        """Validate that host_port is a valid URL using the existing URL class"""
+        try:
+            # This will raise ValueError if not a valid http/https/ws/wss URL
+            URL(v)
+            return v
+        except (ValueError, TypeError) as e:
             raise ValueError(
-                "Host port must be a valid URL starting with http:// or https://"
+                f"Host port must be a valid URL starting with http:// or https://"
             )
-        return v
 
     def _get_filter_pattern(
         self, pattern_dict: Optional[Dict[str, List[str]]]
@@ -168,13 +172,13 @@ def substitute_env_vars(content: str) -> str:
 
     # Pattern for {{ env_var("VAR") }} and {{ env_var("VAR", "default") }}
     # This handles both single and double quotes around variable names and defaults
-    dbt_pattern = re.compile(
-        r'\{\{\s*env_var\(\s*["\']([^"\']+)["\']\s*(?:,\s*(["\'][^"\']*["\']))?\s*\)\s*\}\}'
+    function_pattern = re.compile(
+        r'\{\{\s*env_var\(\s*["\']([\w-]+)["\']\s*(?:,\s*["\']([\w\s-]*)["\']\s*)?\)\s*\}\}'
     )
 
     # Apply substitutions
     content = shell_pattern.sub(replace_shell_vars, content)
-    content = dbt_pattern.sub(replace_dbt_env_vars, content)
+    content = function_pattern.sub(replace_dbt_env_vars, content)
 
     return content
 
