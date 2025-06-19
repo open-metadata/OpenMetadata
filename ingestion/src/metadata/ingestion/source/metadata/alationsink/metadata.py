@@ -33,12 +33,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import (
     SERVICE_TYPE_MAPPER,
@@ -475,8 +472,6 @@ class AlationsinkSource(Source):
         """Not required to implement"""
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.alation_sink_client, self.service_connection
         )
-        raise_test_connection_exception(result)
