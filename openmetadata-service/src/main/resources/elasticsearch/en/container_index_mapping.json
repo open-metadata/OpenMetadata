@@ -6,7 +6,10 @@
           "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "normalizer": {
@@ -30,7 +33,9 @@
         "om_ngram": {
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -90,7 +95,8 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "similarity": "boolean"
+        "similarity": "boolean",
+        "term_vector": "with_positions_offsets"
       },
       "version": {
         "type": "float"
@@ -144,7 +150,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -181,7 +188,8 @@
               "description": {
                 "type": "text",
                 "analyzer": "om_analyzer",
-                "similarity": "boolean"
+                "similarity": "boolean",
+                "term_vector": "with_positions_offsets"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -258,7 +266,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -268,7 +277,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -307,7 +316,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -349,7 +359,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -411,7 +422,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -461,7 +473,8 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "similarity": "boolean"
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"

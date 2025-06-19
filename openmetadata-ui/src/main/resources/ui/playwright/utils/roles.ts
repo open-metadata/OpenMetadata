@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
 export const removePolicyFromRole = async (
   page: Page,
@@ -27,4 +27,34 @@ export const removePolicyFromRole = async (
   );
 
   await page.locator('[type="button"]:has-text("Confirm")').click();
+};
+
+// TODO: Remove this function once we have a better way to get locator using SearchBar
+export const getElementWithPagination = async (
+  page: Page,
+  locator: Locator,
+  click = true
+) => {
+  let hasNext = true;
+
+  while (hasNext) {
+    if (await locator.isVisible()) {
+      click && (await locator.click());
+
+      break;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    hasNext = !(await nextBtn.getAttribute('disabled'));
+
+    if (!hasNext) {
+      throw new Error('Element not found and no more pages to paginate.');
+    }
+
+    await nextBtn.click();
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  }
 };

@@ -50,6 +50,7 @@ from metadata.profiler.metrics.core import (
     QueryMetric,
     StaticMetric,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
 from metadata.sampler.pandas.sampler import DatalakeSampler
@@ -197,7 +198,7 @@ class PandasInterfaceTest(TestCase):
         """
 
         cls.table = User
-        cls.metrics = get_default_metrics(cls.table)
+        cls.metrics = get_default_metrics(Metrics, cls.table)
         cls.static_metrics = [
             metric for metric in cls.metrics if issubclass(metric, StaticMetric)
         ]

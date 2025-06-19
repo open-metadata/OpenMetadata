@@ -311,7 +311,6 @@
       "entityType": {
         "type": "keyword"
       },
-
       "owners": {
         "properties": {
           "id": {
@@ -362,7 +361,7 @@
       "followers": {
         "type": "keyword"
       },
-      "votes" : {
+      "votes": {
         "properties": {
           "upVotes": {
             "type": "long"
@@ -527,7 +526,7 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

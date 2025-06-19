@@ -211,7 +211,7 @@
       "sourceUrl": {
         "type": "text"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
