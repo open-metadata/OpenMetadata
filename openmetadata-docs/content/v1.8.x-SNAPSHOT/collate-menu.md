@@ -530,9 +530,11 @@ site_menu:
   - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / SSIS
-    url: /connectors/pipeline/SSIS
+    url: /connectors/pipeline/ssis
   - category: Connectors / Pipeline / SSIS / Run Externally
-    url: /connectors/pipeline/SSIS/yaml
+    url: /connectors/pipeline/ssis/yaml
+  - category: Connectors / Pipeline / SSIS / Troubleshooting
+    url: /connectors/pipeline/ssis/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
