@@ -175,6 +175,7 @@ const mockProp = {
   versionHandler: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
+  onMlModelUpdateCertification: jest.fn(),
 };
 
 const mockParams = {
