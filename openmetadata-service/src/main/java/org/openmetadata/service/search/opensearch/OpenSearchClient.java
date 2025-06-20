@@ -92,6 +92,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -1505,6 +1506,26 @@ public class OpenSearchClient implements SearchClient {
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
     return jsonResponse.getJsonObject("aggregations");
+  }
+
+  @Override
+  public MappingMapper getMapping(IndexMapping indexMapping) throws IOException {
+    GetMappingsRequest request = new GetMappingsRequest();
+    if (indexMapping.getIndexName() != null) {
+      request.indices(indexMapping.getIndexName(clusterAlias));
+    }
+    try {
+      GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+      MappingMapper mapper = new MappingMapper();
+      mapper.fromOpenSearch(response.mappings());
+      return mapper;
+    } catch (OpenSearchException e) {
+      LOG.error("Failed to get mapping for index: {}", indexMapping.getIndexName(), e);
+      throw new SearchException(
+          String.format(
+              "Failed to get mapping for index: %s, error: %s" + indexMapping.getIndexName(),
+              e.getMessage()));
+    }
   }
 
   @SneakyThrows

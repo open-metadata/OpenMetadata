@@ -1244,6 +1244,11 @@ public class SearchRepository {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
+  public MappingMapper getMapping(String entityType) throws IOException {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    return searchClient.getMapping(indexMapping);
+  }
+
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,

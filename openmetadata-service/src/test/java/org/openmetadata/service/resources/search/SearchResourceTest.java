@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
@@ -26,7 +27,9 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -44,6 +47,7 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -173,6 +177,22 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
                 response.getStatus() == 200, "Search in index '" + index + "' should succeed");
           });
     }
+  }
+
+  @Test
+  public void testListMapping(TestInfo test) throws HttpResponseException {
+    WebTarget target = getResource("search/mapping").queryParam("entityType", "table");
+    MappingMapper response = TestUtils.get(target, MappingMapper.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(response);
+    Map<String, Map<String, Object>> map = response.getMapping();
+    assertEquals(1, map.size());
+
+    // Should return all the mappings for all entity types
+    target = getResource("search/mapping");
+    response = TestUtils.get(target, MappingMapper.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(response);
+    map = response.getMapping();
+    assertTrue(map.size() > 1);
   }
 
   private Response searchWithQuery(String query, String index) {
