@@ -13,10 +13,11 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { DEFAULT_HEADER_BG_COLOR } from '../../constants/Mydata.constants';
 import { useApplicationStore } from '../useApplicationStore';
-
 interface UserPreferences {
   isSidebarCollapsed: boolean;
+  homePageBannerBackgroundColor: string;
 }
 
 interface Store {
@@ -31,6 +32,7 @@ interface Store {
 
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
+  homePageBannerBackgroundColor: DEFAULT_HEADER_BG_COLOR,
   // Add default values for other preferences
 };
 
