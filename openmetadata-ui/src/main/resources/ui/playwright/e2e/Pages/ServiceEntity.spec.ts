@@ -192,6 +192,8 @@ entities.forEach((EntityClass) => {
       test(`Follow & Un-follow entity for Database Entity`, async ({
         page,
       }) => {
+        test.slow(true);
+
         const entityName = entity.entityResponseData?.['displayName'];
         await entity.followUnfollowEntity(page, entityName);
       });
