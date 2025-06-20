@@ -12,6 +12,7 @@
  */
 
 import { ReactNode } from 'react';
+import { Layout } from 'react-grid-layout';
 import { Document } from '../../../../generated/entity/docStore/document';
 
 export interface AddWidgetModalProps {
@@ -25,6 +26,7 @@ export interface AddWidgetModalProps {
     widgetKey: string,
     widgetSize: number
   ) => void;
+  handleLayoutUpdate: (layout: Layout[]) => void;
 }
 
 export interface AddWidgetTabContentProps {

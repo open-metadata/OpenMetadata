@@ -59,9 +59,26 @@ function AddWidgetModal({
         limit: PAGE_SIZE_MEDIUM,
       });
 
+      const testCuratedAssetsWidget = {
+        id: '123',
+        name: 'Curated Assets',
+        displayName: 'Curated Assets',
+        fullyQualifiedName: 'KnowledgePanel.CuratedAssets',
+        description:
+          'Curated Assets KnowledgePanel shows list of curated assets.',
+        entityType: 'KnowledgePanel',
+        data: {
+          gridSizes: ['medium'],
+        },
+        updatedAt: 1713403302750,
+        updatedBy: 'admin',
+        version: 0.1,
+        href: 'https://sandbox-beta.open-metadata.org/v1/docStore/c8ed9685-80c7-4098-9cfc-148ded194772',
+      };
+
       // User can't add / update / delete Announcements widget
       setWidgetsList(
-        data.filter(
+        [...data, testCuratedAssetsWidget].filter(
           (widget) =>
             widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS
         )

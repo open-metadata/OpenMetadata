@@ -28,6 +28,7 @@ const mockProps: AddWidgetModalProps = {
   handleAddWidget: jest.fn(),
   maxGridSizeSupport: 4,
   placeholderWidgetKey: 'placeholderKey',
+  handleLayoutUpdate: jest.fn(),
 };
 
 jest.mock('../../../common/Loader/Loader', () =>
