@@ -15,6 +15,8 @@ package org.openmetadata.service.clients.pipeline;
 
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -27,8 +29,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;

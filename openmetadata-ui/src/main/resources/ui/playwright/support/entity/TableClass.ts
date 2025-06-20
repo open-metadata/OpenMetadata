@@ -158,19 +158,25 @@ export class TableClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
+      data: { ...this.database, service: service.fullyQualifiedName },
     });
+    const database = await databaseResponse.json();
+
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
+      data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    const schema = await schemaResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/tables', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      },
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
@@ -220,10 +226,10 @@ export class TableClass extends EntityClass {
     };
   }
 
-  async visitEntityPage(page: Page) {
+  async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
@@ -324,7 +330,6 @@ export class TableClass extends EntityClass {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
-          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
@@ -344,8 +349,8 @@ export class TableClass extends EntityClass {
     testCaseFqn: string,
     testCaseResult: unknown
   ) {
-    const testCaseResultResponse = await apiContext.put(
-      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
       { data: testCaseResult }
     );
 

@@ -80,8 +80,12 @@
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "owners": {
+      "description": "Owners of this Classification.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["name", "description"],
+  "required": ["id", "name", "description"],
   "additionalProperties": false
 }

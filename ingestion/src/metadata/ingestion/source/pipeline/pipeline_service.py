@@ -41,9 +41,6 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -55,7 +52,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
@@ -137,6 +134,7 @@ class PipelineServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["process_pipeline_bulk_lineage"],
     )
 
 
@@ -316,11 +314,27 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 else:
                     yield lineage
 
+    def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
+        """Method to yield the bulk pipeline lineage details"""
+
+    def process_pipeline_bulk_lineage(self) -> Iterable[AddLineageRequest]:
+        """Method to process the bulk pipeline lineage"""
+        if self.source_config.includeLineage:
+            for lineage in self.yield_pipeline_bulk_lineage_details() or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
+        :param table_details: TableDetails object containing table name, schema, database information
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
@@ -330,7 +344,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Table,
                 service_name=db_service,
-                database_name=None,
+                database_name=table_details.database,
                 schema_name=table_details.schema,
                 table_name=table_details.name,
             )
@@ -374,11 +388,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             yield pipeline_detail
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""

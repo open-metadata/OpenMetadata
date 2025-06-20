@@ -35,6 +35,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCaseResolutionStatus';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -65,7 +66,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getTestCaseDetailPagePath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
@@ -154,6 +155,7 @@ const IncidentManager = ({
         const { data, paging } = await getListTestCaseIncidentStatus({
           limit: pageSize,
           latest: true,
+          include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           ...params,
         });
@@ -390,7 +392,7 @@ const IncidentManager = ({
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
               style={{ maxWidth: 280 }}
-              to={getIncidentManagerDetailPagePath(
+              to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record.testCaseReference)}
@@ -463,7 +465,7 @@ const IncidentManager = ({
           return (
             <TestCaseIncidentManagerStatus
               data={record}
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               onSubmit={handleStatusSubmit}
             />
           );
@@ -487,7 +489,7 @@ const IncidentManager = ({
 
           return (
             <Severity
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
@@ -507,7 +509,12 @@ const IncidentManager = ({
         ),
       },
     ],
-    [testCaseListData.data, testCasePermissions, isPermissionLoading]
+    [
+      tableDetails?.deleted,
+      testCaseListData.data,
+      testCasePermissions,
+      isPermissionLoading,
+    ]
   );
 
   if (
@@ -517,6 +524,9 @@ const IncidentManager = ({
     return (
       <ErrorPlaceHolder
         className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );

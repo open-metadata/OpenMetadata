@@ -24,6 +24,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './test-summary-custom-tooltip.less';
 
 const TestSummaryCustomTooltip = (
   props: TooltipProps<string | number, string>
@@ -82,9 +83,9 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {/* freshness will always be in seconds  */}
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? convertMillisecondsToHumanReadableFormat(value)
+            ? // freshness will always be in seconds, so we need to convert it to milliseconds
+              convertMillisecondsToHumanReadableFormat(value * 1000)
             : value}
         </span>
       </li>
@@ -98,7 +99,9 @@ const TestSummaryCustomTooltip = (
           {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
-      <ul data-testid="test-summary-tooltip-container">
+      <ul
+        className="test-summary-tooltip-container"
+        data-testid="test-summary-tooltip-container">
         {data.map(tooltipRender)}
       </ul>
     </Card>

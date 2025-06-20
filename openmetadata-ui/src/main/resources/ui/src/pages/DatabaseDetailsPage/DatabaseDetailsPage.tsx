@@ -37,6 +37,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -54,13 +55,16 @@ import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  addFollowers,
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
+  removeFollowers,
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
@@ -81,7 +85,7 @@ import {
   getVersionPath,
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -111,11 +115,14 @@ const DatabaseDetails: FunctionComponent = () => {
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const { version: currentVersion, deleted } = useMemo(
-    () => database,
-    [database]
-  );
+  const {
+    version: currentVersion,
+    deleted,
+    id: databaseId,
+  } = useMemo(() => database, [database]);
 
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
   const tier = getTierTags(database?.tags ?? []);
 
   const [databasePermission, setDatabasePermission] =
@@ -177,7 +184,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.DOMAIN,
+        TabSpecificField.VOTES,
+        TabSpecificField.EXTENSION,
+        TabSpecificField.DATA_PRODUCTS,
+        TabSpecificField.FOLLOWERS,
+      ].join(','),
       include: Include.All,
     })
       .then((res) => {
@@ -325,14 +340,22 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const { isFollowing, followers = [] } = useMemo(
+    () => ({
+      isFollowing: database?.followers?.some(
+        ({ id }) => id === currentUser?.id
+      ),
+      followers: database?.followers ?? [],
+    }),
+    [database, currentUser]
+  );
   const handleRestoreDatabase = useCallback(async () => {
     try {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -431,10 +454,83 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+  const followDatabase = useCallback(async () => {
+    try {
+      const res = await addFollowers(
+        databaseId,
+        USERId ?? '',
+        GlobalSettingOptions.DATABASES
+      );
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setDatabase((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, databaseId]);
+  const unfollowDatabase = useCallback(async () => {
+    try {
+      const res = await removeFollowers(
+        databaseId,
+        USERId,
+        GlobalSettingOptions.DATABASES
+      );
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setDatabase((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(database),
+        })
+      );
+    }
+  }, [USERId, database]);
+
+  const handleFollowClick = useCallback(async () => {
+    isFollowing ? await unfollowDatabase() : await followDatabase();
+  }, [isFollowing, unfollowDatabase, followDatabase]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (database) {
+        const certificationTag: Database['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...database,
+          certification: certificationTag,
+        };
+
+        await settingsUpdateHandler(updatedTableDetails as Database);
+      }
+    },
+    [settingsUpdateHandler, database]
+  );
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
@@ -446,7 +542,15 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!(databasePermission.ViewAll || databasePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.database'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -470,7 +574,9 @@ const DatabaseDetails: FunctionComponent = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleUpdateDisplayName}
+              onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}

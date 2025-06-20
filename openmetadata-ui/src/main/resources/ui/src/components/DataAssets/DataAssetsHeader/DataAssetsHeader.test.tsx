@@ -12,25 +12,25 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useParams } from 'react-router-dom';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
-import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
-import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader } from './DataAssetsHeader.component';
-import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
-
-import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
@@ -89,12 +89,14 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
-  ExtraInfoLabel: jest.fn().mockImplementation(({ label, value }) => (
-    <div>
-      {label && <span>{label}</span>}
-      <span>{value}</span>
-    </div>
-  )),
+  ExtraInfoLabel: jest
+    .fn()
+    .mockImplementation(({ label, value, dataTestId }) => (
+      <div data-testid={dataTestId}>
+        {label && <span>{label}</span>}
+        <div>{value}</div>
+      </div>
+    )),
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,
@@ -317,7 +319,7 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
-  it('should render certification when certification is present', () => {
+  it('should render certification only when serviceCategory is undefined', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {
         tagFQN: 'Certification.Bronze',
@@ -335,7 +337,15 @@ describe('DataAssetsHeader component', () => {
       appliedDate: 1732814645688,
       expiryDate: 1735406645688,
     };
-    render(
+
+    // Mock useParams to return undefined serviceCategory
+    const useParamsMock = useParams as jest.Mock;
+    useParamsMock.mockReturnValue({
+      serviceCategory: undefined,
+    });
+
+    // Test with certification when serviceCategory is undefined
+    const { unmount } = render(
       <DataAssetsHeader
         {...mockProps}
         dataAsset={{
@@ -350,6 +360,57 @@ describe('DataAssetsHeader component', () => {
     const certificatComponent = screen.getByText(`CertificationTag`);
 
     expect(certificatComponent).toBeInTheDocument();
+
+    // Clean up the first render before rendering again
+    unmount();
+
+    // Test without certification when serviceCategory is undefined
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(screen.getByTestId('certification-label')).toContainHTML(
+      'label.no-entity'
+    );
+
+    // Reset the mock to original value
+    useParamsMock.mockReturnValue({
+      serviceCategory: ServiceCategory.DATABASE_SERVICES,
+    });
+  });
+
+  it('should not render certification when serviceCategory has a value', () => {
+    const mockCertification: AssetCertification = {
+      tagLabel: {
+        tagFQN: 'Certification.Bronze',
+        name: 'Bronze',
+        displayName: 'Bronze_Medal',
+        description: 'Bronze certified Data Asset test',
+        style: {
+          color: '#C08329',
+          iconURL: 'BronzeCertification.svg',
+        },
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      appliedDate: 1732814645688,
+      expiryDate: 1735406645688,
+    };
+
+    // serviceCategory is already set to DATABASE_SERVICES by default mock
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          certification: mockCertification,
+        }}
+      />
+    );
+
+    // Certification should not be rendered when serviceCategory has a value
+    expect(screen.queryByText('label.certification')).not.toBeInTheDocument();
+    expect(screen.queryByText('CertificationTag')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('certification-label')).not.toBeInTheDocument();
   });
 
   it('should trigger the AutoPilot application when the button is clicked', () => {

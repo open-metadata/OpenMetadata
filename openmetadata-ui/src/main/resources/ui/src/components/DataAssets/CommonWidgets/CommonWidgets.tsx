@@ -279,6 +279,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -302,6 +303,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -324,7 +326,6 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
-        newLook
         showSuggestions
         wrapInCard
         description={description}
@@ -367,7 +368,6 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -408,13 +408,7 @@ export const CommonWidgets = ({
 
   return (
     <>
-      <div
-        data-grid={widgetConfig}
-        data-testid={widgetConfig.i}
-        id={widgetConfig.i}
-        key={widgetConfig.i}>
-        {widget}
-      </div>
+      {widget}
       {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={updatedData as unknown as GlossaryTerm}

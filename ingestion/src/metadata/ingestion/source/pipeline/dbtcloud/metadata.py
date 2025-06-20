@@ -168,13 +168,6 @@ class DbtcloudSource(PipelineServiceSource):
                     entity=Pipeline, fqn=pipeline_fqn
                 )
 
-                lineage_details = LineageDetails(
-                    pipeline=EntityReference(
-                        id=pipeline_entity.id.root, type="pipeline"
-                    ),
-                    source=LineageSource.PipelineLineage,
-                )
-
                 dbt_models = self.client.get_model_details(
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
@@ -221,6 +214,13 @@ class DbtcloudSource(PipelineServiceSource):
 
                                 if from_entity is None:
                                     continue
+
+                                lineage_details = LineageDetails(
+                                    pipeline=EntityReference(
+                                        id=pipeline_entity.id.root, type="pipeline"
+                                    ),
+                                    source=LineageSource.PipelineLineage,
+                                )
 
                                 yield Either(
                                     right=AddLineageRequest(

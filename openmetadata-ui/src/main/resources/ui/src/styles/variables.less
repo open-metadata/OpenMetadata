@@ -100,6 +100,9 @@
 @blue-24: #2e90fa;
 @blue-25: #b2ddff;
 @blue-26: #1849a9;
+@blue-27: #2196f3;
+@blue-28: #e3f2fd4d;
+@grey-text: #2c2c2c;
 
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
@@ -123,6 +126,9 @@
 @grey-19: #363f72;
 @grey-20: #dce3ec;
 @grey-21: #ababab;
+@grey-22: #d9d9d9;
+@grey-23: #f7f7f7;
+@grey-24: #979797;
 
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
@@ -130,8 +136,7 @@
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @button-box-shadow-default: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-hover: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-@button-box-shadow-focus: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
-  0px 0px 0px 4px #f4ebff;
+@button-box-shadow-focus: 0px 0px 0px 4px rgba(209, 233, 255, 1);
 @button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
   0px 0px 0px 4px #f5f5f5;
@@ -166,9 +171,9 @@
 @global-border: 1px solid @border-color;
 @active-color: #e8f4ff;
 @background-color: #ffffff;
-@announcement-background: #0950c50d;
+@announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
-@announcement-border: @blue-3;
+@announcement-border: @blue-27;
 @announcement-border-light: #e2e2e2;
 @test-parameter-bg-color: #e7ebf0;
 @group-title-color: #76746f;
@@ -222,7 +227,7 @@
 @tab-height: 60px;
 
 @entity-details-tab-height: calc(
-  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-xs
 );
 @entity-version-page-tabs-height: calc(
   100vh - @data-asset-header-height-versions-page - @tab-height -
@@ -268,9 +273,9 @@
 
 @welcome-page-height: calc(100vh - 112px);
 
-@profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
+@profile-page-sidebar: calc(100vh - @om-navbar-height - 20px);
 @profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
-@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 108px);
+@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 88px);
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
@@ -45,14 +46,39 @@ public class OpenSearchSourceBuilderFactory
   }
 
   @Override
-  public QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query)
-        .fields(fields)
-        .type(MOST_FIELDS)
-        .defaultOperator(Operator.AND)
-        .fuzziness(Fuzziness.AUTO)
-        .fuzzyPrefixLength(3)
-        .tieBreaker(0.5f);
+  public QueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    Map<String, Float> fuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    Map<String, Float> nonFuzzyFields =
+        fields.entrySet().stream()
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    QueryStringQueryBuilder fuzzyQueryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(fuzzyFields)
+            .type(MOST_FIELDS)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10)
+            .fuzzyPrefixLength(3)
+            .tieBreaker(0.5f);
+
+    MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+        QueryBuilders.multiMatchQuery(query)
+            .fields(nonFuzzyFields)
+            .type(MOST_FIELDS)
+            .operator(Operator.AND)
+            .tieBreaker(0.5f)
+            .fuzziness(Fuzziness.ZERO);
+
+    return QueryBuilders.boolQuery()
+        .should(fuzzyQueryBuilder)
+        .should(nonFuzzyQueryBuilder)
+        .minimumShouldMatch(1);
   }
 
   @Override
@@ -70,7 +96,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, UserIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, UserIndex.getFields());
     return searchBuilder(queryBuilder, null, from, size);
   }
 
@@ -89,8 +115,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, TestCaseIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseIndex.getFields());
     HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -103,7 +128,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseResolutionStatusSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
@@ -111,16 +136,14 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   @Override
   public SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
+    QueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -130,7 +153,8 @@ public class OpenSearchSourceBuilderFactory
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .fields(SearchIndex.getAllFields())
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyMaxExpansions(10);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -138,48 +162,95 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size) {
+    return buildDataAssetSearchBuilder(indexName, query, from, size, false);
+  }
+
+  @Override
+  public SearchSourceBuilder buildDataAssetSearchBuilder(
+      String indexName, String query, int from, int size, boolean explain) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
-    Map<String, Float> fields;
+    Map<String, Float> fuzzyFields;
+    Map<String, Float> nonFuzzyFields;
+
     if (assetConfig.getSearchFields() != null && !assetConfig.getSearchFields().isEmpty()) {
-      fields = new HashMap<>();
-      assetConfig
-          .getSearchFields()
-          .forEach(
-              fieldBoost -> fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+      fuzzyFields =
+          assetConfig.getSearchFields().stream()
+              .filter(fieldBoost -> isFuzzyField(fieldBoost.getField()))
+              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
+      nonFuzzyFields =
+          assetConfig.getSearchFields().stream()
+              .filter(fieldBoost -> isNonFuzzyField(fieldBoost.getField()))
+              .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
     } else {
-      fields = SearchIndex.getDefaultFields();
+      Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
+      fuzzyFields =
+          defaultFields.entrySet().stream()
+              .filter(entry -> isFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      nonFuzzyFields =
+          defaultFields.entrySet().stream()
+              .filter(entry -> isNonFuzzyField(entry.getKey()))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
     } else if (containsQuerySyntax(query)) {
-      QueryStringQueryBuilder queryStringBuilder =
+      QueryStringQueryBuilder fuzzyQueryBuilder =
           QueryBuilders.queryStringQuery(query)
-              .fields(fields)
+              .fields(fuzzyFields)
               .defaultOperator(Operator.AND)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .type(MOST_FIELDS)
               .fuzziness(Fuzziness.AUTO)
+              .fuzzyMaxExpansions(10)
               .fuzzyPrefixLength(1)
               .tieBreaker(0.3f);
 
-      baseQuery.must(queryStringBuilder);
-    } else {
-      MultiMatchQueryBuilder multiMatchQueryBuilder =
+      MultiMatchQueryBuilder nonFuzzyQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .prefixLength(1)
+              .fields(nonFuzzyFields)
+              .type(MOST_FIELDS)
               .operator(Operator.AND)
-              .tieBreaker(0.3f);
+              .tieBreaker(0.3f)
+              .fuzziness(Fuzziness.ZERO);
 
-      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
-        String fieldName = fieldEntry.getKey();
-        Float boost = fieldEntry.getValue();
-        multiMatchQueryBuilder.field(fieldName, boost);
+      BoolQueryBuilder combinedQuery =
+          QueryBuilders.boolQuery()
+              .should(fuzzyQueryBuilder)
+              .should(nonFuzzyQueryBuilder)
+              .minimumShouldMatch(1);
+
+      baseQuery.must(combinedQuery);
+    } else {
+      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+
+      if (!fuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder fuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .fuzziness(Fuzziness.AUTO)
+                .maxExpansions(10)
+                .prefixLength(1)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f);
+        fuzzyFields.forEach(fuzzyQueryBuilder::field);
+        combinedQuery.should(fuzzyQueryBuilder);
       }
 
-      baseQuery.must(multiMatchQueryBuilder);
+      if (!nonFuzzyFields.isEmpty()) {
+        MultiMatchQueryBuilder nonFuzzyQueryBuilder =
+            QueryBuilders.multiMatchQuery(query)
+                .type(MOST_FIELDS)
+                .operator(Operator.AND)
+                .tieBreaker(0.3f)
+                .fuzziness(Fuzziness.ZERO);
+        nonFuzzyFields.forEach(nonFuzzyQueryBuilder::field);
+        combinedQuery.should(nonFuzzyQueryBuilder);
+      }
+
+      combinedQuery.minimumShouldMatch(1);
+      baseQuery.must(combinedQuery);
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
@@ -223,10 +294,8 @@ public class OpenSearchSourceBuilderFactory
         functionScore.boostMode(CombineFunction.SUM);
       }
 
-      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
-      combinedQuery.must(baseQuery);
-      combinedQuery.should(functionScore.boost(functionBoostFactor));
-      finalQuery = combinedQuery;
+      functionScore.boost(functionBoostFactor);
+      finalQuery = functionScore;
     }
 
     HighlightBuilder highlightBuilder = null;
@@ -249,7 +318,7 @@ public class OpenSearchSourceBuilderFactory
     }
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
-    searchSourceBuilder.explain(true);
+    searchSourceBuilder.explain(explain);
     return searchSourceBuilder;
   }
 
@@ -372,7 +441,7 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildCommonSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
+    QueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, getAllSearchFieldsFromSettings(searchSettings));
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();

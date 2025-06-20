@@ -13,10 +13,9 @@
 Source connection handler
 """
 import traceback
-from functools import partial
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
-from tableau_api_lib.utils import extract_pages
+import tableauserverclient as TSC
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -36,14 +35,9 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.tableau import (
-    TABLEAU_GET_VIEWS_PARAM_DICT,
-    TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-)
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
 
@@ -52,14 +46,13 @@ def get_connection(connection: TableauConnection) -> TableauClient:
     """
     Create connection
     """
-    tableau_server_config = build_server_config(connection)
-    get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
+    tableau_server_auth = build_server_config(connection)
+    verify_ssl = set_verify_ssl(connection)
     try:
         return TableauClient(
-            tableau_server_config=tableau_server_config,
+            tableau_server_auth=tableau_server_auth,
             config=connection,
-            env=connection.env,
-            ssl_verify=get_verify_ssl(connection.sslConfig),
+            verify_ssl=verify_ssl,
             pagination_limit=connection.paginationLimit,
         )
     except Exception as exc:
@@ -67,6 +60,21 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection}: {exc}."
         )
+
+
+def set_verify_ssl(connection: TableauConnection) -> Union[bool, str]:
+    """
+    Set verify ssl based on connection configuration
+    ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
+    """
+    if connection.verifySSL.value == "validate":
+        if connection.sslConfig.root.caCertificate:
+            return connection.sslConfig.root.caCertificate.get_secret_value()
+        if connection.sslConfig.root.sslCertificate:
+            return connection.sslConfig.root.sslCertificate.get_secret_value()
+    if connection.verifySSL.value == "ignore":
+        return False
+    return None
 
 
 def test_connection(
@@ -83,26 +91,11 @@ def test_connection(
 
     test_fn = {
         "ServerInfo": client.server_info,
-        # The Tableau server_info API doesn't provide direct access to the API version.
-        # This is due to the "api_version" being a mandatory field for the tableau library's connection class.
-        # Without this information, requests to the Tableau server cannot be made,
-        # including fetching the server info containing the "api_version".
-        # Consequently, we'll compare the declared api_version with the server's api_version during the test connection
-        # once the tableau library's connection class is initialized.
-        "ValidateApiVersion": client.test_api_version,
+        "ValidateApiVersion": client.server_api_version,
         "ValidateSiteUrl": client.test_site_url,
-        "GetWorkbooks": partial(
-            extract_pages,
-            query_func=client.query_workbooks_for_site,
-            parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-        ),
-        "GetViews": partial(
-            extract_pages,
-            query_func=client.query_views_for_site,
-            content_id=client.site_id,
-            parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
-        ),
-        "GetOwners": client.get_owners,
+        "GetWorkbooks": client.test_get_workbooks,
+        "GetViews": client.test_get_workbook_views,
+        "GetOwners": client.test_get_owners,
         "GetDataModels": client.test_get_datamodels,
     }
 
@@ -123,24 +116,20 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
     Returns:
         Client configuration
     """
-    tableau_server_config = {
-        f"{connection.env}": {
-            "server": str(connection.hostPort),
-            "api_version": str(connection.apiVersion),
-            "site_name": connection.siteName if connection.siteName else "",
-            "site_url": connection.siteUrl if connection.siteUrl else "",
-        }
-    }
+
     if isinstance(connection.authType, BasicAuth):
-        tableau_server_config[connection.env]["username"] = connection.authType.username
-        tableau_server_config[connection.env][
-            "password"
-        ] = connection.authType.password.get_secret_value()
+        tableau_auth = TSC.TableauAuth(
+            username=connection.authType.username,
+            password=connection.authType.password.get_secret_value(),
+            site_id=connection.siteName if connection.siteName else "",
+        )
     elif isinstance(connection.authType, AccessTokenAuth):
-        tableau_server_config[connection.env][
-            "personal_access_token_name"
-        ] = connection.authType.personalAccessTokenName
-        tableau_server_config[connection.env][
-            "personal_access_token_secret"
-        ] = connection.authType.personalAccessTokenSecret.get_secret_value()
-    return tableau_server_config
+        tableau_auth = TSC.PersonalAccessTokenAuth(
+            token_name=connection.authType.personalAccessTokenName,
+            personal_access_token=connection.authType.personalAccessTokenSecret.get_secret_value(),
+            site_id=connection.siteName if connection.siteName else "",
+        )
+    else:
+        raise ValueError("Unsupported authentication type")
+
+    return tableau_auth

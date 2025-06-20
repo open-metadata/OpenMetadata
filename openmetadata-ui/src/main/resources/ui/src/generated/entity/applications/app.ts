@@ -26,7 +26,7 @@ export interface App {
     /**
      * Application Configuration object.
      */
-    appConfiguration?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application Logo Url.
      */
@@ -34,7 +34,7 @@ export interface App {
     /**
      * In case the app supports scheduling, list of different app schedules
      */
-    appSchedule: any[] | boolean | AppScheduleClass | number | number | null | string;
+    appSchedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
     /**
      * Application Screenshots.
      */
@@ -301,6 +301,11 @@ export interface CollateAIAppConfig {
      */
     active?: boolean;
     /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
@@ -309,6 +314,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -606,6 +612,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -888,7 +895,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",
@@ -1262,19 +1269,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1296,9 +1304,11 @@ export interface AppLimitsConfig {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1321,6 +1331,7 @@ export interface ExecutionContext {
 export enum ScheduleType {
     Live = "Live",
     NoSchedule = "NoSchedule",
+    OnlyManual = "OnlyManual",
     Scheduled = "Scheduled",
     ScheduledOrManual = "ScheduledOrManual",
 }

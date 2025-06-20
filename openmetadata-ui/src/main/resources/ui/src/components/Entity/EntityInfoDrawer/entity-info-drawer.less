@@ -34,6 +34,12 @@
 
   .ant-drawer-header {
     border-bottom: none;
+    align-items: flex-start;
+  }
+
+  .entity-header-title-link {
+    // added to fix title overlap with close button
+    max-width: 90%;
   }
 
   .ant-drawer-body {
@@ -77,5 +83,26 @@
 
   .aborted {
     color: @aborted-color;
+  }
+}
+
+.edge-info-drawer {
+  .summary-panel-card {
+    .ant-btn-sm {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .ant-space.schema-description {
+      gap: 8px !important; // needed to override inline styles
+
+      .ant-typography {
+        color: @grey-4;
+      }
+    }
   }
 }

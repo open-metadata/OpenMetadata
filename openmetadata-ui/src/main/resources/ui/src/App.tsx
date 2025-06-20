@@ -22,6 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import AirflowStatusProvider from './context/AirflowStatusProvider/AirflowStatusProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
@@ -29,6 +30,7 @@ import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
+
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
@@ -86,7 +88,9 @@ const App: FC = () => {
                             <ApplicationsProvider>
                               <AsyncDeleteProvider>
                                 <EntityExportModalProvider>
-                                  <AppRouter />
+                                  <AirflowStatusProvider>
+                                    <AppRouter />
+                                  </AirflowStatusProvider>
                                 </EntityExportModalProvider>
                               </AsyncDeleteProvider>
                             </ApplicationsProvider>

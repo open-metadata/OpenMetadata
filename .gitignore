@@ -85,6 +85,7 @@ openmetadata-ui/src/main/resources/ui/playwright/output/
 openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/.env
 openmetadata-ui/src/main/resources/ui/playwright/.auth
+openmetadata-ui/src/main/resources/ui/blob-report
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
@@ -130,3 +131,15 @@ ingestion/tests/cli_e2e/**/*test.yaml
 # Cursor rules
 .cursorrules
 .cursor/
+
+# Nox
+ingestion/.nox/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp 

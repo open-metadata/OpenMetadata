@@ -217,8 +217,7 @@ const DataModelsPage = () => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
-      setDataModelData((prev) => ({
-        ...prev,
+      setDataModelData(() => ({
         ...response,
         ...(key && { [key]: response[key] }),
       }));
@@ -298,7 +297,15 @@ const DataModelsPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-model'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

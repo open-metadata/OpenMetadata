@@ -43,6 +43,7 @@ export enum SettingType {
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
+    ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",
@@ -385,6 +386,10 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedFields?: AllowedSearchFields[];
     /**
+     * Configurations of allowed field value boost fields for each entity type
+     */
+    allowedFieldValueBoosts?: AllowedFieldValueBoostFields[];
+    /**
      * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
@@ -427,15 +432,35 @@ export interface PipelineServiceClientConfiguration {
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
 }
 
+export interface AllowedFieldValueBoostFields {
+    /**
+     * Entity type this field value boost configuration applies to
+     */
+    entityType: string;
+    fields:     AllowedFieldValueBoostField[];
+}
+
+export interface AllowedFieldValueBoostField {
+    /**
+     * Detailed explanation of what this numeric field represents and how it can be used for
+     * boosting relevance
+     */
+    description: string;
+    /**
+     * Field name that can be used in fieldValueBoosts
+     */
+    name: string;
+}
+
 export interface AllowedSearchFields {
     /**
      * Entity type this field configuration applies to
      */
     entityType: string;
-    fields:     Field[];
+    fields:     AllowedFieldField[];
 }
 
-export interface Field {
+export interface AllowedFieldField {
     /**
      * Detailed explanation of what this field represents and how it affects search behavior
      */
@@ -1242,6 +1267,10 @@ export interface Bedrock {
      * AWS secret key for Bedrock service authentication
      */
     secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
 }
 
 /**
@@ -1420,6 +1449,10 @@ export interface OidcClientConfig {
      * Preferred Jws Algorithm.
      */
     preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
     /**
      * Auth0 Client Secret Key.
      */

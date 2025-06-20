@@ -21,6 +21,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -35,6 +36,7 @@ import {
   isEqual,
   isUndefined,
   last,
+  orderBy,
   startCase,
   unionBy,
 } from 'lodash';
@@ -48,7 +50,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -164,6 +165,7 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    isPostsLoading,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -435,6 +437,8 @@ export const TaskTabNew = ({
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
 
+  const shouldEditAssignee =
+    (isCreator || hasEditAccess) && !isTaskClosed && owners.length === 0;
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
@@ -838,6 +842,12 @@ export const TaskTabNew = ({
       );
       setUsersList(filterData);
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.assignee'),
+        })
+      );
       setUsersList([]);
     }
   }, []);
@@ -857,6 +867,10 @@ export const TaskTabNew = ({
   useEffect(() => {
     setTaskAction(latestAction);
   }, [latestAction]);
+
+  const handleEditClick = () => {
+    setIsEditAssignee(true);
+  };
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeaderNew thread={taskThread} />
@@ -937,52 +951,39 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex items-center gap-2 text-grey-muted" span={8}>
+              <Col className="flex gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex items-center gap-2" span={16}>
+              <Col className="flex gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
-                      userName={
-                        taskThread?.task?.assignees[0].displayName ?? ''
-                      }>
+                      userName={taskThread?.task?.assignees[0].name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
-                          name={
-                            taskThread?.task?.assignees[0].displayName ?? ''
-                          }
+                          name={taskThread?.task?.assignees[0].name ?? ''}
                           width="24"
                         />
                       </div>
                     </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
-                      {taskThread?.task?.assignees[0].displayName}
+                      {getEntityName(taskThread?.task?.assignees[0])}
                     </Typography.Text>
                   </div>
                 ) : (
                   <OwnerLabel
+                    isAssignee
                     avatarSize={24}
+                    hasPermission={shouldEditAssignee}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}
                     showLabel={false}
+                    onEditClick={handleEditClick}
                   />
                 )}
-                {(isCreator || hasEditAccess) &&
-                !isTaskClosed &&
-                owners.length === 0 ? (
-                  <Button
-                    className="flex-center p-0 h-auto"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
               </Col>
             </>
           )}
@@ -1048,6 +1049,34 @@ export const TaskTabNew = ({
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };
+
+  const posts = useMemo(() => {
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(taskThread.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={taskThread}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [taskThread, closeFeedEditor, isPostsLoading]);
 
   useEffect(() => {
     closeFeedEditor();
@@ -1130,11 +1159,11 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                    <UserPopOverCard userName={currentUser?.name ?? ''}>
                       <div className="d-flex items-center">
                         <ProfilePicture
                           key={taskThread.id}
-                          name={getEntityName(currentUser)}
+                          name={currentUser?.name ?? ''}
                           width="32"
                         />
                       </div>
@@ -1151,22 +1180,7 @@ export const TaskTabNew = ({
               )
             )}
 
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts
-                  ?.slice()
-                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply, index, arr) => (
-                    <CommentCard
-                      closeFeedEditor={closeFeedEditor}
-                      feed={taskThread}
-                      isLastReply={index === arr.length - 1}
-                      key={reply.id}
-                      post={reply}
-                    />
-                  ))}
-              </Col>
-            )}
+            {posts}
           </div>
         </Col>
       </Col>

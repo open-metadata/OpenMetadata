@@ -75,14 +75,22 @@
     color: @primary-heading-color;
     max-width: 200px;
   }
-
-  .domain-link-text.render-domain-lebel-style {
-    color: @grey-700;
-    display: inline-block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .owner-label-container,
+  .domain-label-container {
     max-width: 148px;
+  }
+  .domain-link-container {
+    //consistent width for data-asset-header
+    max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      color: @grey-700;
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
   }
   a.source-url-link {
     text-decoration: none;

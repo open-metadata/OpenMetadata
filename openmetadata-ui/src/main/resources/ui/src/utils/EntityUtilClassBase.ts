@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -51,13 +52,24 @@ import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { EntityTypeName } from './EntityUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -67,12 +79,37 @@ import {
   getSettingPath,
   getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -192,7 +229,7 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return getIncidentManagerDetailPagePath(fullyQualifiedName);
+        return getTestCaseDetailPagePath(fullyQualifiedName);
 
       case EntityType.TEST_SUITE:
         return getTestSuiteDetailsPath({
@@ -439,6 +476,32 @@ class EntityUtilClassBase {
       default:
         return [];
     }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
   }
 }
 

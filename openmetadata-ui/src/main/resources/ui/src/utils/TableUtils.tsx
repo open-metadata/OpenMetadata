@@ -878,7 +878,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children:
         !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <SampleDataTableComponent
             isTableDeleted={deleted}
@@ -903,7 +909,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.TABLE_QUERIES,
       children: !viewQueriesPermission ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.query-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ) : (
         <TableQueries
           isTableDeleted={deleted}
@@ -925,7 +937,13 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.PROFILER,
       children:
         !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-observability'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         ) : (
           <TableProfiler
             permissions={tablePermissions}
@@ -966,6 +984,7 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.DBT}
           sqlQuery={
             get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
@@ -1000,7 +1019,15 @@ export const getTableDetailPageBaseTabs = ({
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
       key: EntityTabs.VIEW_DEFINITION,
-      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+      children: (
+        <QueryViewer
+          isActive={[
+            EntityTabs.VIEW_DEFINITION,
+            EntityTabs.SCHEMA_DEFINITION,
+          ].includes(activeTab)}
+          sqlQuery={tableDetails?.schemaDefinition ?? ''}
+        />
+      ),
     },
     {
       label: (
@@ -1198,13 +1225,13 @@ export const getTableWidgetFromKey = (
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
   ) {
-    return <TableConstraints newLook />;
+    return <TableConstraints />;
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
   ) {
-    return <FrequentlyJoinedTables newLook />;
+    return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
-    return <PartitionedKeys newLook />;
+    return <PartitionedKeys />;
   } else {
     return (
       <CommonWidgets

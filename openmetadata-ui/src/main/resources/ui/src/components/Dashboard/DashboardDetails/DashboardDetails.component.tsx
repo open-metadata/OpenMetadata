@@ -38,7 +38,10 @@ import {
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -182,8 +185,7 @@ const DashboardDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -261,6 +263,21 @@ const DashboardDetails = ({
     viewAllPermission,
     onExtensionUpdate,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dashboardDetails) {
+        const certificationTag: Dashboard['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedDashboardDetails = {
+          ...dashboardDetails,
+          certification: certificationTag,
+        };
+
+        await onDashboardUpdate(updatedDashboardDetails, 'certification');
+      }
+    },
+    [dashboardDetails, onDashboardUpdate]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -292,6 +309,7 @@ const DashboardDetails = ({
             entityType={EntityType.DASHBOARD}
             openTaskCount={feedCount.openTaskCount}
             permissions={dashboardPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}
             onOwnerUpdate={onOwnerUpdate}
@@ -308,7 +326,7 @@ const DashboardDetails = ({
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}
           onUpdate={onDashboardUpdate}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

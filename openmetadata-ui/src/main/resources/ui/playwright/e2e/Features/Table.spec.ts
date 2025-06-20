@@ -140,7 +140,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
     await page.getByTestId('page-size-selection-dropdown').click();
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
 
     await expect(
       page.getByRole('menuitem', { name: '15 / Page' })
@@ -168,9 +172,137 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
 
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'
     );
+  });
+});
+
+test.describe('Table & Data Model columns table pagination', () => {
+  test('paginatino for table column should work', async ({ page }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Check for column count
+    expect(page.getByTestId('schema').getByTestId('filter-count')).toHaveText(
+      '2000'
+    );
+
+    // 50 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+
+    await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
+
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+
+    await page.getByTestId('previous').click();
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 15 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
+
+    // Change page size to 25
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 25 Row + 1 Header row
+    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+  });
+
+  test('pagination for dashboard data model columns should work', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 50 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(51);
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+
+    await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
+
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(51);
+
+    await page.getByTestId('previous').click();
+
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    // Change page size to 15
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 15 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(16);
+
+    // Change page size to 25
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // 25 Row + 1 Header row
+    expect(
+      page.getByTestId('data-model-column-table').getByRole('row')
+    ).toHaveCount(26);
   });
 });

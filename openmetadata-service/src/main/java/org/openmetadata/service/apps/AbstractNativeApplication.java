@@ -8,6 +8,7 @@ import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPE
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -61,15 +62,18 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void init(App app) {
     this.app = app;
+    ApplicationContext.getInstance().registerApp(this);
   }
 
   @Override
   public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
-    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
-      return;
-    }
-    if (app.getAppType().equals(AppType.Internal)
+    if (Boolean.TRUE.equals(app.getDeleted())
+        || (app.getAppSchedule() == null)
+        || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
+            .contains(app.getScheduleType())) {
+      LOG.debug("App {} does not support scheduling.", app.getName());
+    } else if (app.getAppType().equals(AppType.Internal)
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
@@ -90,7 +94,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void uninstall() {
-    /* Not needed by default */
+    ApplicationContext.getInstance().unregisterApp(this);
   }
 
   @Override
@@ -101,7 +105,8 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
+    if (Set.of(ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual)
+        .contains(app.getScheduleType())) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application with the provided configuration payload

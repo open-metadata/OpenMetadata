@@ -1,9 +1,10 @@
 package org.openmetadata.service.search;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 
+@Slf4j
 public class SearchUtil {
-
   /**
    * Check if the index is a data asset index
    * @param indexName name of the index to check
@@ -82,6 +83,34 @@ public class SearchUtil {
           "search_service_index",
           "metadata_service_index" -> true;
       default -> false;
+    };
+  }
+
+  public static String mapEntityTypesToIndexNames(String indexName) {
+    return switch (indexName) {
+      case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
+      case "dashboard_search_index", Entity.DASHBOARD -> Entity.DASHBOARD;
+      case "pipeline_search_index", Entity.PIPELINE -> Entity.PIPELINE;
+      case "mlmodel_search_index", Entity.MLMODEL -> Entity.MLMODEL;
+      case "table_search_index", Entity.TABLE -> Entity.TABLE;
+      case "database_search_index", Entity.DATABASE -> Entity.DATABASE;
+      case "database_schema_search_index", Entity.DATABASE_SCHEMA -> Entity.DATABASE_SCHEMA;
+      case "container_search_index", Entity.CONTAINER -> Entity.CONTAINER;
+      case "query_search_index", Entity.QUERY -> Entity.QUERY;
+      case "stored_procedure_search_index", Entity.STORED_PROCEDURE -> Entity.STORED_PROCEDURE;
+      case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL -> Entity
+          .DASHBOARD_DATA_MODEL;
+      case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
+      case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
+      case "tag_search_index", Entity.TAG -> Entity.TAG;
+      case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
+      case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
+      case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
+      case "team_search_index", Entity.TEAM -> Entity.TEAM;
+      case "user_Search_index", Entity.USER -> Entity.USER;
+      case "dataAsset" -> "dataAsset";
+      default -> "dataAsset";
     };
   }
 }

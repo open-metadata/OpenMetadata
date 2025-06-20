@@ -15,10 +15,9 @@ import userEvent from '@testing-library/user-event';
 import { AxiosResponse } from 'axios';
 import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
-import AuthProvider from './AuthProvider';
+import AuthProvider, { useAuthProvider } from './AuthProvider';
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -88,7 +87,6 @@ jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    setHelperFunctionsRef: jest.fn(),
     setCurrentUser: jest.fn(),
     updateNewUser: jest.fn(),
     setIsAuthenticated: jest.fn(),
@@ -118,7 +116,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useApplicationStore();
+      const { onLogoutHandler } = useAuthProvider();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>

@@ -149,7 +149,6 @@ const UserProfileTeams = ({
                     borderRadius: '5px',
                   }}>
                   <TeamsSelectableNew
-                    filterJoinable
                     handleDropdownChange={handleDropdownChange}
                     maxValueCount={3}
                     ref={teamsSelectableRef}
@@ -162,12 +161,7 @@ const UserProfileTeams = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="teams-edit-close-btn"
-                    icon={
-                      <ClosePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<ClosePopoverIcon height={24} />}
                     size="small"
                     style={{
                       width: '30px',
@@ -183,12 +177,7 @@ const UserProfileTeams = ({
                   <Button
                     className="profile-edit-cancel"
                     data-testid="teams-edit-save-btn"
-                    icon={
-                      <SavePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<SavePopoverIcon height={24} />}
                     loading={isLoading}
                     size="small"
                     style={{

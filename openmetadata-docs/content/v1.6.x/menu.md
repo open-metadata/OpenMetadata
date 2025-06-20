@@ -212,14 +212,6 @@ site_menu:
     url: /deployment/upgrade/docker
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
     url: /deployment/upgrade/kubernetes
-  - category: Deployment / Upgrade OpenMetadata / Version Changes
-    url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
-    url: /deployment/upgrade/versions/100-to-110
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.1.x to 1.2.x
-    url: /deployment/upgrade/versions/110-to-120
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
-    url: /deployment/upgrade/versions/120-to-130
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
@@ -1001,8 +993,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/external-workflow
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -1084,6 +1074,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -1227,9 +1219,6 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
-
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts
