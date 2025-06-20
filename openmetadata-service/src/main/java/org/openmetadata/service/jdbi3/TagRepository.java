@@ -87,12 +87,20 @@ public class TagRepository extends EntityRepository<Tag> {
       return;
     }
 
-    Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
-    if (parent.getDisabled() != null && parent.getDisabled()) {
-      tag.setDisabled(true);
+    try {
+      Classification parent =
+          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
+      if (parent.getDisabled() != null && parent.getDisabled()) {
+        tag.setDisabled(true);
+      }
+      inheritOwners(tag, fields, parent);
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to get classification {} for tag {}: {}",
+          tag.getClassification().getId(),
+          tag.getId(),
+          e.getMessage());
     }
-    inheritOwners(tag, fields, parent);
   }
 
   @Override
@@ -310,7 +318,47 @@ public class TagRepository extends EntityRepository<Tag> {
 
   private Map<UUID, EntityReference> batchFetchClassifications(List<Tag> tags) {
     // Classification -> CONTAINS -> Tag relationship
-    return batchFetchFromIdsAndRelationSingleRelation(tags, Relationship.CONTAINS);
+    // We need to find classifications that contain these tags
+    Map<UUID, EntityReference> resultMap = new HashMap<>();
+    if (tags == null || tags.isEmpty()) {
+      return resultMap;
+    }
+
+    List<String> entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+
+    // Find all CONTAINS relationships where tags are on the "to" side and from entity is
+    // CLASSIFICATION
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+    if (records.isEmpty()) {
+      return resultMap;
+    }
+
+    // Get unique classification IDs
+    List<UUID> classificationIds =
+        records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+
+    // Batch fetch classification references
+    List<EntityReference> classificationRefs =
+        Entity.getEntityReferencesByIds(Entity.CLASSIFICATION, classificationIds, NON_DELETED);
+    Map<String, EntityReference> idToRefMap = new HashMap<>();
+    for (EntityReference ref : classificationRefs) {
+      idToRefMap.put(ref.getId().toString(), ref);
+    }
+
+    // Map tags to their classifications
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID tagId = UUID.fromString(record.getToId());
+      EntityReference classificationRef = idToRefMap.get(record.getFromId());
+      if (classificationRef != null) {
+        resultMap.put(tagId, classificationRef);
+      }
+    }
+
+    return resultMap;
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {

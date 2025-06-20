@@ -63,6 +63,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -501,9 +502,15 @@ public final class TestUtils {
       assertEquals(limit, actual.getData().size());
     }
     for (int i = 0; i < actual.getData().size(); i++) {
-      assertEquals(
-          ((EntityInterface) allEntities.get(offset + i)).getId(),
-          ((EntityInterface) actual.getData().get(i)).getId());
+      if (actual.getData().get(i) instanceof EntityTimeSeriesInterface) {
+        assertEquals(
+            ((EntityTimeSeriesInterface) allEntities.get(offset + i)).getId(),
+            ((EntityTimeSeriesInterface) actual.getData().get(i)).getId());
+      } else {
+        assertEquals(
+            ((EntityInterface) allEntities.get(offset + i)).getId(),
+            ((EntityInterface) actual.getData().get(i)).getId());
+      }
     }
     // Ensure total count returned in paging is correct
     assertEquals(allEntities.size(), actual.getPaging().getTotal());
