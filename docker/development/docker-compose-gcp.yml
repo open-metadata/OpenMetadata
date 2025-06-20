@@ -19,6 +19,7 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
+  mysql-data:
 services:
   mysql:
     build:
@@ -43,7 +44,7 @@ services:
       timeout: 10s
       retries: 10
     volumes:
-     - ./docker-volume/db-data:/var/lib/mysql
+     - mysql-data:/var/lib/mysql
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
