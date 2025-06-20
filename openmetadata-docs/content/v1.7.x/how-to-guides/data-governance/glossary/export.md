@@ -1,5 +1,5 @@
 ---
-title: Glossary Export
+title: Glossary Export | OpenMetadata Export Guide
 slug: /how-to-guides/data-governance/glossary/export
 ---
 

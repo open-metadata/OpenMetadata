@@ -1,5 +1,5 @@
 ---
-title: MSSQL
+title: MSSQL Connector | OpenMetadata SQL Server Integration Guide
 slug: /connectors/database/mssql
 ---
 

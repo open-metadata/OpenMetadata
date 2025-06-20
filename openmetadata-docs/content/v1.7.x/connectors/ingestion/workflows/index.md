@@ -1,5 +1,5 @@
 ---
-title: Ingestion Workflows
+title: Ingestion Workflows | OpenMetadata Pipeline Orchestration
 slug: /connectors/ingestion/workflows
 ---
 
