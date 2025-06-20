@@ -90,7 +90,12 @@ mock_config = {
                 "tenantId": "tenant_id",
             },
         },
-        "sourceConfig": {"config": {"type": "DashboardMetadata"}},
+        "sourceConfig": {
+            "config": {
+                "type": "DashboardMetadata",
+                "includeOwners": True,
+            }
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
