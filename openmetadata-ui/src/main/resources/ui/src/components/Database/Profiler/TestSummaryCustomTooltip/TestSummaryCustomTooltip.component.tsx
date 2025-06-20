@@ -85,7 +85,13 @@ const TestSummaryCustomTooltip = (
         <span className="font-medium" data-testid={key}>
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
             ? // freshness will always be in seconds, so we need to convert it to milliseconds
-              convertMillisecondsToHumanReadableFormat(value * 1000)
+              convertMillisecondsToHumanReadableFormat(
+                value * 1000,
+                undefined,
+                false,
+                // negative value will be shown as late by
+                `${t('label.late-by')} `
+              )
             : value}
         </span>
       </li>
