@@ -30,6 +30,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -779,53 +780,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {
-
-    // Get all nested terms (children, grandchildren, etc.) from the updated term
-    List<GlossaryTerm> childTerms = getNestedTerms(updated);
-    // Include the updated term itself
-    List<GlossaryTerm> allTerms = new ArrayList<>();
-    allTerms.add(updated);
-    allTerms.addAll(childTerms);
-    // Collect all FQN hashes for the glossary term and its children
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
-    for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll(
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
-    }
-    // Compute the old and new FQN prefix (for the term being updated)
     String oldParentFqn = original.getFullyQualifiedName();
     String newParentFqn = updated.getFullyQualifiedName();
-
-    // Build a mapping of oldFqn -> newFqn for all terms (including children)
-    Map<String, GlossaryTerm> oldFqnToUpdatedTerm = new HashMap<>();
-    for (GlossaryTerm term : allTerms) {
-      String newFqn = term.getFullyQualifiedName();
-      // Reconstruct the old FQN by replacing the new parent FQN prefix with the old parent FQN
-      // prefix
-      String oldFqn =
-          newFqn.replaceFirst(
-              java.util.regex.Pattern.quote(newParentFqn),
-              java.util.regex.Matcher.quoteReplacement(oldParentFqn));
-      oldFqnToUpdatedTerm.put(oldFqn, term);
-    }
-
-    // For each oldFqn, find all ES usages and update the tag in ES to the new FQN
-    for (Map.Entry<String, GlossaryTerm> entry : oldFqnToUpdatedTerm.entrySet()) {
-      String oldFqn = entry.getKey();
-      GlossaryTerm term = entry.getValue();
-      String newFqn = term.getFullyQualifiedName();
-      String newDisplayName = term.getDisplayName();
-      String newName = term.getName();
-      String newDescription = term.getDescription();
-      Map<String, EntityReference> usage =
-          getGlossaryUsageFromES(oldFqn, targetFQNHashesFromDb.size(), false);
-      for (EntityReference ref : usage.values()) {
-        searchRepository.updateEntityGlossaryTagInSearch(
-            ref, oldFqn, newFqn, newDisplayName, newName, newDescription);
-      }
-    }
+    searchRepository
+        .getSearchClient()
+        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldParentFqn, newParentFqn, TAGS_FQN);
   }
 
   private void updateEntityLinks(GlossaryTerm original, GlossaryTerm updated) {

@@ -33,7 +33,6 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHI
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
@@ -1340,25 +1339,5 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
-  }
-
-  public void updateEntityGlossaryTagInSearch(
-      EntityReference entityRef,
-      String oldFqn,
-      String newFqn,
-      String newDisplayName,
-      String newName,
-      String newDescription) {
-    IndexMapping indexMapping = entityIndexMap.get(entityRef.getType());
-    String indexName = indexMapping.getIndexName(clusterAlias);
-    Map<String, Object> paramMap = new HashMap<>();
-    paramMap.put("oldTagFQN", oldFqn);
-    paramMap.put("newTagFQN", newFqn);
-    paramMap.put("displayName", newDisplayName);
-    paramMap.put("name", newName);
-    paramMap.put("description", newDescription);
-
-    searchClient.updateEntity(
-        indexName, entityRef.getId().toString(), paramMap, UPDATE_GLOSSARY_TERM_FQN_SCRIPT);
   }
 }
