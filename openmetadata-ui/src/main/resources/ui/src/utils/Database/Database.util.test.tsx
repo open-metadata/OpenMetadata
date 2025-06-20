@@ -120,6 +120,7 @@ describe('Database Util', () => {
           dataIndex: 'owners',
           key: 'owners',
           width: 180,
+          onCell: expect.any(Function),
           render: expect.any(Function),
           filterIcon: expect.any(Function),
         },
