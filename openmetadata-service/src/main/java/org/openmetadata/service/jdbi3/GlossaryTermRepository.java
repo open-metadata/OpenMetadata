@@ -143,6 +143,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<GlossaryTerm> entities) {
+    // Set default fields (parent and glossary) for all entities first
+    for (GlossaryTerm entity : entities) {
+      entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (GlossaryTerm entity : entities) {

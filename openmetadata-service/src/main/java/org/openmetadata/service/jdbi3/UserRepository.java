@@ -33,8 +33,10 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -102,6 +104,15 @@ public class UserRepository extends EntityRepository<User> {
         USER_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+
+    // Register bulk field fetchers for User-specific fields
+    this.fieldFetchers.put("teams", this::fetchAndSetTeams);
+    this.fieldFetchers.put("roles", this::fetchAndSetRoles);
+    this.fieldFetchers.put("owns", this::fetchAndSetOwns);
+    this.fieldFetchers.put("follows", this::fetchAndSetFollows);
+    this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
+    this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
+    this.fieldFetchers.put("domains", this::fetchAndSetDomains);
   }
 
   private EntityReference getOrganization() {
@@ -275,7 +286,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(
-        fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
+        fields.contains("defaultPersona") ? getDefaultPersona(user) : user.getDefaultPersona());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
     user.setDomains(fields.contains("domains") ? getDomains(user.getId()) : user.getDomains());
@@ -291,6 +302,9 @@ public class UserRepository extends EntityRepository<User> {
     user.setAuthenticationMechanism(
         fields.contains(AUTH_MECHANISM_FIELD) ? user.getAuthenticationMechanism() : null);
     user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
+    user.setPersonas(fields.contains("personas") ? user.getPersonas() : null);
+    user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
+    user.setDomains(fields.contains("domains") ? user.getDomains() : null);
   }
 
   @Override
@@ -478,7 +492,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public EntityReference getDefaultPersona(User user) {
-    return getToEntityRef(user.getId(), Relationship.DEFAULTS_TO, Entity.PERSONA, false);
+    return getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -516,6 +530,292 @@ public class UserRepository extends EntityRepository<User> {
     if (persona != null) {
       addRelationship(
           persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
+    }
+  }
+
+  // Bulk fetch methods for User-specific fields
+  private void fetchAndSetTeams(List<User> users, Fields fields) {
+    if (!fields.contains(TEAMS_FIELD) || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> teamRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+
+    Map<UUID, List<EntityReference>> userToTeams = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference teamRef =
+          Entity.getEntityReferenceById(
+              Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+      userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+    }
+
+    for (User user : users) {
+      List<EntityReference> teamRefs = userToTeams.get(user.getId());
+      if (teamRefs != null && !teamRefs.isEmpty()) {
+        // Filter out deleted teams
+        teamRefs =
+            teamRefs.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
+        // If there are teams and more than 1, filter out organization
+        if (teamRefs.size() > 1) {
+          teamRefs =
+              teamRefs.stream()
+                  .filter(t -> !t.getId().equals(getOrganization().getId()))
+                  .collect(Collectors.toList());
+        }
+        user.setTeams(teamRefs);
+      } else {
+        // If no teams, set organization as default
+        user.setTeams(new ArrayList<>(List.of(getOrganization())));
+      }
+    }
+  }
+
+  private void fetchAndSetRoles(List<User> users, Fields fields) {
+    if (!fields.contains(ROLES_FIELD) || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> roleRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(userIds, Relationship.HAS.ordinal(), USER, Entity.ROLE);
+
+    Map<UUID, List<EntityReference>> userToRoles = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
+      UUID userId = UUID.fromString(record.getFromId());
+      EntityReference roleRef =
+          Entity.getEntityReferenceById(
+              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
+      userToRoles.computeIfAbsent(userId, k -> new ArrayList<>()).add(roleRef);
+    }
+
+    for (User user : users) {
+      List<EntityReference> roleRefs = userToRoles.get(user.getId());
+      user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
+      // Also set inherited roles
+      user.withInheritedRoles(getInheritedRoles(user));
+    }
+  }
+
+  private void fetchAndSetOwns(List<User> users, Fields fields) {
+    if (!fields.contains("owns") || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    // Get entities owned by users
+    List<CollectionDAO.EntityRelationshipObject> ownsRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(userIds, Relationship.OWNS.ordinal(), USER, null);
+
+    // Also get entities owned by teams that users belong to
+    // First get all teams for all users
+    Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
+    if (!fields.contains(TEAMS_FIELD)) {
+      // If teams weren't already fetched, we need to get them
+      List<CollectionDAO.EntityRelationshipObject> teamRecords =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+        UUID userId = UUID.fromString(record.getToId());
+        EntityReference teamRef =
+            Entity.getEntityReferenceById(
+                Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+        userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+      }
+    } else {
+      // Use already fetched teams
+      for (User user : users) {
+        if (user.getTeams() != null) {
+          userTeams.put(user.getId(), user.getTeams());
+        }
+      }
+    }
+
+    // Get entities owned by teams
+    Set<String> allTeamIds =
+        userTeams.values().stream()
+            .flatMap(List::stream)
+            .map(EntityReference::getId)
+            .map(UUID::toString)
+            .collect(Collectors.toSet());
+
+    List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
+    if (!allTeamIds.isEmpty()) {
+      teamOwnsRecords =
+          daoCollection
+              .relationshipDAO()
+              .findToBatch(
+                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Entity.TEAM, null);
+    }
+
+    // Map user to owned entities
+    Map<UUID, List<EntityReference>> userToOwns = new HashMap<>();
+
+    // Add directly owned entities
+    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
+      UUID userId = UUID.fromString(record.getFromId());
+      try {
+        EntityReference ownedRef =
+            Entity.getEntityReferenceById(
+                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
+        userToOwns.computeIfAbsent(userId, k -> new ArrayList<>()).add(ownedRef);
+      } catch (Exception e) {
+        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
+      }
+    }
+
+    // Add team-owned entities
+    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : teamOwnsRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      try {
+        EntityReference ownedRef =
+            Entity.getEntityReferenceById(
+                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
+        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
+      } catch (Exception e) {
+        LOG.warn("Failed to get entity reference for team-owned entity: {}", record.getToId(), e);
+      }
+    }
+
+    // Combine user and team owned entities
+    for (User user : users) {
+      List<EntityReference> ownedEntities =
+          userToOwns.getOrDefault(user.getId(), new ArrayList<>());
+      List<EntityReference> teams = userTeams.get(user.getId());
+      if (teams != null) {
+        for (EntityReference team : teams) {
+          List<EntityReference> teamOwned = teamToOwns.get(team.getId());
+          if (teamOwned != null) {
+            ownedEntities.addAll(teamOwned);
+          }
+        }
+      }
+      user.setOwns(ownedEntities);
+    }
+  }
+
+  private void fetchAndSetFollows(List<User> users, Fields fields) {
+    if (!fields.contains("follows") || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> followsRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(userIds, Relationship.FOLLOWS.ordinal(), USER, null);
+
+    Map<UUID, List<EntityReference>> userToFollows = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : followsRecords) {
+      UUID userId = UUID.fromString(record.getFromId());
+      try {
+        EntityReference followedRef =
+            Entity.getEntityReferenceById(
+                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
+        userToFollows.computeIfAbsent(userId, k -> new ArrayList<>()).add(followedRef);
+      } catch (Exception e) {
+        LOG.warn("Failed to get entity reference for followed entity: {}", record.getToId(), e);
+      }
+    }
+
+    for (User user : users) {
+      List<EntityReference> followsRefs = userToFollows.get(user.getId());
+      user.setFollows(followsRefs != null ? followsRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetPersonas(List<User> users, Fields fields) {
+    if (!fields.contains("personas") || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> personaRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.APPLIED_TO.ordinal(), Entity.PERSONA, USER);
+
+    Map<UUID, List<EntityReference>> userToPersonas = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : personaRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference personaRef =
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, UUID.fromString(record.getFromId()), Include.ALL);
+      userToPersonas.computeIfAbsent(userId, k -> new ArrayList<>()).add(personaRef);
+    }
+
+    for (User user : users) {
+      List<EntityReference> personaRefs = userToPersonas.get(user.getId());
+      user.setPersonas(personaRefs != null ? personaRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetDefaultPersona(List<User> users, Fields fields) {
+    if (!fields.contains("defaultPersona") || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> defaultPersonaRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.PERSONA, USER);
+
+    Map<UUID, EntityReference> userToDefaultPersona = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : defaultPersonaRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference personaRef =
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, UUID.fromString(record.getFromId()), Include.ALL);
+      userToDefaultPersona.put(userId, personaRef);
+    }
+
+    for (User user : users) {
+      EntityReference defaultPersonaRef = userToDefaultPersona.get(user.getId());
+      user.setDefaultPersona(defaultPersonaRef);
+    }
+  }
+
+  private void fetchAndSetDomains(List<User> users, Fields fields) {
+    if (!fields.contains("domains") || users == null || users.isEmpty()) {
+      return;
+    }
+
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> domainRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.DOMAIN, USER);
+
+    Map<UUID, List<EntityReference>> userToDomains = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : domainRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference domainRef =
+          Entity.getEntityReferenceById(
+              Entity.DOMAIN, UUID.fromString(record.getFromId()), Include.ALL);
+      userToDomains.computeIfAbsent(userId, k -> new ArrayList<>()).add(domainRef);
+    }
+
+    for (User user : users) {
+      List<EntityReference> domainRefs = userToDomains.get(user.getId());
+      user.setDomains(domainRefs != null ? domainRefs : new ArrayList<>());
     }
   }
 
@@ -658,8 +958,7 @@ public class UserRepository extends EntityRepository<User> {
       updateRoles(original, updated);
       updateTeams(original, updated);
       updatePersonas(original, updated);
-      recordChange(
-          "defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
+      updateDefaultPersona(original, updated);
       recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
@@ -766,6 +1065,13 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateDefaultPersona(User original, User updated) {
+      deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+      assignDefaultPersona(updated, updated.getDefaultPersona());
+      recordChange(
+          "defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
     }
 
     private void updateAuthenticationMechanism(User original, User updated) {

@@ -27,24 +27,27 @@ public class SearchClusterMetrics {
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities) {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
+    Integer maxDbConnections = searchRepository.getDatabaseMaxPoolSize();
 
     try {
       if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
         return fetchOpenSearchMetrics(
-            (OpenSearchClient) searchRepository.getSearchClient(), totalEntities);
+            (OpenSearchClient) searchRepository.getSearchClient(), totalEntities, maxDbConnections);
       } else {
         return fetchElasticSearchMetrics(
-            (ElasticSearchClient) searchRepository.getSearchClient(), totalEntities);
+            (ElasticSearchClient) searchRepository.getSearchClient(),
+            totalEntities,
+            maxDbConnections);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch cluster metrics, using conservative defaults: {}", e.getMessage());
-      return getConservativeDefaults(totalEntities);
+      return getConservativeDefaults(totalEntities, maxDbConnections);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchOpenSearchMetrics(
-      OpenSearchClient osClient, long totalEntities) {
+      OpenSearchClient osClient, long totalEntities, Integer maxDbConnections) {
     try {
       Map<String, Object> clusterStats = osClient.clusterStats();
       Map<String, Object> nodesStats = osClient.nodesStats();
@@ -79,17 +82,18 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
-          totalEntities);
+          totalEntities,
+          maxDbConnections);
 
     } catch (Exception e) {
       LOG.warn("Failed to fetch OpenSearch cluster metrics: {}", e.getMessage());
-      return getConservativeDefaults(totalEntities);
+      return getConservativeDefaults(totalEntities, maxDbConnections);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchElasticSearchMetrics(
-      ElasticSearchClient client, long totalEntities) {
+      ElasticSearchClient client, long totalEntities, Integer maxDbConnections) {
     try {
       Map<String, Object> clusterStats = client.clusterStats();
       Map<String, Object> nodesStats = client.nodesStats();
@@ -124,11 +128,12 @@ public class SearchClusterMetrics {
           memoryUsagePercent,
           heapMaxBytes,
           maxContentLength,
-          totalEntities);
+          totalEntities,
+          maxDbConnections);
 
     } catch (Exception e) {
       LOG.warn("Failed to fetch ElasticSearch cluster metrics: {}", e.getMessage());
-      return getConservativeDefaults(totalEntities);
+      return getConservativeDefaults(totalEntities, maxDbConnections);
     }
   }
 
@@ -139,16 +144,37 @@ public class SearchClusterMetrics {
       double memoryUsagePercent,
       long heapMaxBytes,
       long maxContentLength,
-      long totalEntities) {
+      long totalEntities,
+      Integer maxDbConnections) {
 
-    int baseThreadsPerNode = Runtime.getRuntime().availableProcessors() * 4;
-    int recommendedProducerThreads = Math.min(100, baseThreadsPerNode * totalNodes);
+    // With virtual threads, we can be much more aggressive
+    int baseThreadsPerNode =
+        Runtime.getRuntime().availableProcessors() * 8; // Increased multiplier for virtual threads
+    int recommendedProducerThreads =
+        Math.min(200, baseThreadsPerNode * totalNodes); // Increased initial cap
 
     if (cpuUsagePercent > 80) {
-      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 2);
+      recommendedProducerThreads = Math.max(20, recommendedProducerThreads / 2); // Higher floor
     } else if (cpuUsagePercent < 40) {
-      recommendedProducerThreads = Math.min(200, recommendedProducerThreads * 3);
+      recommendedProducerThreads = Math.min(400, recommendedProducerThreads * 3); // Higher ceiling
     }
+
+    // Limit producer threads based on database connection pool capacity
+    int effectiveMaxDbConnections =
+        maxDbConnections != null ? maxDbConnections : 50; // fallback default
+    // Reserve 60% of connections for regular user traffic and other app components
+    int reservedConnections = (int) (effectiveMaxDbConnections * 0.6);
+    int maxProducerThreads = Math.max(5, effectiveMaxDbConnections - reservedConnections);
+    recommendedProducerThreads = Math.min(recommendedProducerThreads, maxProducerThreads);
+
+    LOG.info(
+        "AUTO-TUNE DB ANALYSIS: MaxDbConnections param: {}, Effective: {}, Reserved (60%): {}, Available for indexing: {}, Calculated producer threads: {}, Final producer threads: {}",
+        maxDbConnections,
+        effectiveMaxDbConnections,
+        reservedConnections,
+        maxProducerThreads,
+        Math.min(200, baseThreadsPerNode * totalNodes),
+        recommendedProducerThreads);
 
     int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
@@ -171,8 +197,8 @@ public class SearchClusterMetrics {
 
     if (totalEntities > 1000000) {
       recommendedBatchSize = Math.max(500, recommendedBatchSize);
-      recommendedProducerThreads =
-          Math.min(50, recommendedProducerThreads); // Increased from 10 to 50
+      // For large datasets with virtual threads, don't artificially limit threads
+      // The calling code will apply safety limits if needed
     }
 
     return SearchClusterMetrics.builder()
@@ -248,11 +274,30 @@ public class SearchClusterMetrics {
     }
   }
 
-  private static SearchClusterMetrics getConservativeDefaults(long totalEntities) {
+  private static SearchClusterMetrics getConservativeDefaults(
+      long totalEntities, Integer maxDbConnections) {
     int conservativeBatchSize = totalEntities > 100000 ? 200 : 100;
     // More aggressive defaults with virtual threads - they're lightweight
-    int conservativeThreads = totalEntities > 500000 ? 20 : 10; // Increased from 3:2 to 20:10
+    int conservativeThreads =
+        totalEntities > 500000 ? 40 : 20; // Increased to take advantage of virtual threads
     int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50; // Doubled
+
+    // Limit conservative threads based on database connection pool capacity
+    int effectiveMaxDbConnections =
+        maxDbConnections != null ? maxDbConnections : 50; // fallback default
+    // Reserve 60% of connections for regular user traffic and other app components
+    int reservedConnections = (int) (effectiveMaxDbConnections * 0.6);
+    int maxProducerThreads = Math.max(5, effectiveMaxDbConnections - reservedConnections);
+    conservativeThreads = Math.min(conservativeThreads, maxProducerThreads);
+
+    LOG.info(
+        "AUTO-TUNE CONSERVATIVE DB ANALYSIS: MaxDbConnections param: {}, Effective: {}, Reserved (60%): {}, Available for indexing: {}, Original conservative threads: {}, Final producer threads: {}",
+        maxDbConnections,
+        effectiveMaxDbConnections,
+        reservedConnections,
+        maxProducerThreads,
+        totalEntities > 500000 ? 40 : 20,
+        conservativeThreads);
 
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())

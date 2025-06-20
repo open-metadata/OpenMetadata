@@ -15,12 +15,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,12 +64,48 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
+    fieldFetchers.put("parent", this::fetchAndSetParents);
+    fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
 
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
     entity.withParent(getParent(entity));
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Domain> entities) {
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Domain entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetAssets(List<Domain> domains, Fields fields) {
+    if (!fields.contains(FIELD_ASSETS) || domains == null || domains.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, domains, batchFetchAssets(domains), Domain::setAssets);
+  }
+
+  private void fetchAndSetParents(List<Domain> domains, Fields fields) {
+    if (!fields.contains("parent") || domains == null || domains.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, domains, batchFetchParents(domains), Domain::setParent);
+  }
+
+  private void fetchAndSetExperts(List<Domain> domains, Fields fields) {
+    if (!fields.contains("experts") || domains == null || domains.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
   }
 
   @Override
@@ -309,5 +347,85 @@ public class DomainRepository extends EntityRepository<Domain> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
+    Map<UUID, List<EntityReference>> assetsMap = new HashMap<>();
+    if (domains == null || domains.isEmpty()) {
+      return assetsMap;
+    }
+
+    // Initialize empty lists for all domains
+    for (Domain domain : domains) {
+      assetsMap.put(domain.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all assets for all domains
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(domains), Relationship.HAS.ordinal(), null);
+
+    // Group assets by domain ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID domainId = UUID.fromString(record.getFromId());
+      EntityReference assetRef =
+          getEntityReferenceById(
+              record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+      assetsMap.get(domainId).add(assetRef);
+    }
+
+    return assetsMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {
+    Map<UUID, EntityReference> parentsMap = new HashMap<>();
+    if (domains == null || domains.isEmpty()) {
+      return parentsMap;
+    }
+
+    // Single batch query to get all parent relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(domains), Relationship.CONTAINS.ordinal());
+
+    // Map domain to its parent
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID domainId = UUID.fromString(record.getToId());
+      EntityReference parentRef =
+          getEntityReferenceById(DOMAIN, UUID.fromString(record.getFromId()), NON_DELETED);
+      parentsMap.put(domainId, parentRef);
+    }
+
+    return parentsMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<Domain> domains) {
+    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+    if (domains == null || domains.isEmpty()) {
+      return expertsMap;
+    }
+
+    // Initialize empty lists for all domains
+    for (Domain domain : domains) {
+      expertsMap.put(domain.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all expert relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(domains), Relationship.EXPERT.ordinal(), Entity.USER);
+
+    // Group experts by domain ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID domainId = UUID.fromString(record.getFromId());
+      EntityReference expertRef =
+          getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
+      expertsMap.get(domainId).add(expertRef);
+    }
+
+    return expertsMap;
   }
 }
