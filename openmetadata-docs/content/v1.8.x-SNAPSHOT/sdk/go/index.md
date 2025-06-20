@@ -65,7 +65,7 @@ func main() {
 }
 ```
 
-## How to Use APIs Using the Java Client
+## How to Use APIs Using the Go Client
 Once you have instantiated a `Rest` object you can call any of the 4 methods to perform any kind of operation against OpenMetadata API
 
 ### `Get` method
