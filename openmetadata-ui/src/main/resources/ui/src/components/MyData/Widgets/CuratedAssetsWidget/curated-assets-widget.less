@@ -1,0 +1,123 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../../styles/variables.less');
+
+.right-panel-heading {
+  margin-bottom: 8px !important;
+  color: @text-grey-muted;
+}
+
+.right-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.right-panel-list-item {
+  .entity-button-icon {
+    height: 24px;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 18px;
+      width: 18px;
+    }
+  }
+}
+
+.curated-assets-widget-container {
+  .ant-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0px;
+  }
+
+  .widget-title {
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 28px;
+    margin-bottom: 0;
+  }
+
+  .widget-footer-border {
+    border-top: 1px solid @grey-15;
+    margin-top: 8px;
+  }
+
+  .ant-row {
+    padding: 20px 20px 0px 20px;
+  }
+
+  .entity-list-body {
+    padding: 0px 20px 20px 20px;
+  }
+
+  .footer-view-more-button {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+}
+
+.widget-header-icon {
+  padding: 10px;
+  height: 40px;
+  width: 40px;
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: @white;
+
+  &:hover {
+    background-color: @grey-1;
+    border-color: @primary-color;
+  }
+}
+
+// .curated-assets-popover {
+//   z-index: 1000;
+
+//   .ant-popover-inner {
+//     padding: 8px 0;
+//     border-radius: 8px;
+//     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+//   }
+
+//   .curated-assets-popover-content {
+//     min-width: 160px;
+//   }
+
+//   .curated-assets-menu-item {
+//     padding: 8px 16px;
+//     border: none;
+//     transition: background-color 0.2s ease;
+
+//     &:hover {
+//       background-color: @primary-color;
+//     }
+
+//     .ant-list-item-meta {
+//       align-items: center;
+//     }
+
+//     .ant-typography {
+//       margin: 0;
+//       color: @text-color;
+//     }
+//   }
+// }

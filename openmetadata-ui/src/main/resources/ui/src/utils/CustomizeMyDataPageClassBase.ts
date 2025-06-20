@@ -14,9 +14,10 @@
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import AnnouncementImg from '../assets/img/announcement.png';
-import DataAssetsImg from '../assets/img/data-assets-widget.png';
-import FollowingImg from '../assets/img/following-widget.png';
-import KPISmallImg from '../assets/img/kpi-widget.png';
+import CuratedAssets from '../assets/img/curated-assets.png';
+import DataAssetsImg from '../assets/img/data-assets.png';
+import FollowingImg from '../assets/img/following.png';
+import KPISmallImg from '../assets/img/kpi-small.png';
 import KPIImg from '../assets/img/kpi.png';
 import MyDataImg from '../assets/img/my-data-widget.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
@@ -29,6 +30,7 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
+import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
@@ -50,14 +52,25 @@ class CustomizeMyDataPageClassBase {
   landingPageMaxGridSize = 4;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 4,
-    announcements: 4,
-    following: 4,
-    recentlyViewed: 4,
-    myData: 4,
-    kpi: 4,
-    totalAssets: 4,
-    DataAssets: 4,
+    activityFeed: 6,
+    announcements: 3,
+    following: 3,
+    recentlyViewed: 3,
+    myData: 3,
+    kpi: 3,
+    totalAssets: 3,
+    DataAssets: 3,
+    curatedAssets: 3,
+  };
+
+  curatedAssetsWidgetDefaultValues: WidgetConfig = {
+    config: {},
+    h: this.landingPageWidgetDefaultHeights.curatedAssets,
+    i: LandingPageWidgetKeys.CURATED_ASSETS,
+    static: false,
+    w: 2,
+    x: 0,
+    y: 0,
   };
 
   announcementWidget: WidgetConfig = {
@@ -178,6 +191,9 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
       return RecentlyViewed;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.CURATED_ASSETS)) {
+      return CuratedAssetsWidget;
+    }
 
     return (() => null) as React.FC;
   }
@@ -216,6 +232,9 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.RECENTLY_VIEWED: {
         return RecentViewsImg;
       }
+      case LandingPageWidgetKeys.CURATED_ASSETS: {
+        return CuratedAssets;
+      }
       default: {
         return '';
       }
@@ -240,6 +259,8 @@ class CustomizeMyDataPageClassBase {
         return this.landingPageWidgetDefaultHeights.kpi;
       case 'TotalAssets':
         return this.landingPageWidgetDefaultHeights.totalAssets;
+      case 'CuratedAssets':
+        return this.landingPageWidgetDefaultHeights.curatedAssets;
       default:
         return this.defaultWidgetHeight;
     }
