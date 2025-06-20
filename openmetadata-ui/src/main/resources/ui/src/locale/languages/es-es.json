@@ -1705,6 +1705,7 @@
     "derived-tag-warning": "Esta etiqueta se deriva automáticamente y solo se puede eliminar eliminando el Término del glosario relacionado.",
     "description-coverage-widget-description": "Cobertura de descripción para todos los activos de datos en el servicio. <0>saber más.</0>",
     "destination-selection-warning": "Asegúrese de que los \"{{subscriptionCategory}}\" hayan configurado su \"{{subscriptionType}}\" para recibir las alertas.",
+    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "Esto deshabilitará la aplicación {{app}}.",
     "disable-classification-description": "Opción para deshabilitar las clasificaciones. No podrá ver las etiquetas asociadas dentro de la aplicación.",
     "disabled-classification-actions-message": "No puede realizar esta acción en clasificaciones deshabilitadas.",

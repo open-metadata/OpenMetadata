@@ -1705,6 +1705,7 @@
     "derived-tag-warning": "Ce tag est déduit automatiquement et ne peut être supprimé qu'en effaçant le terme qui lui est associé dans le glossaire.",
     "description-coverage-widget-description": "Couverture des descriptions pour tous les actifs de données dans le service. <0>en savoir plus.</0>",
     "destination-selection-warning": "Assurez-vous que \"{{subscriptionCategory}}\" ont bien configuré leur \"{{subscriptionType}}\" pour recevoir les alertes.",
+    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "Ceci désactivera l'application {{app}}.",
     "disable-classification-description": "Option pour désactiver les classifications, vous ne pourrez plus voir les tags associés au sein de l'application",
     "disabled-classification-actions-message": "Vous ne pouvez pas effectuer cette action sur des classifications désactivées.",

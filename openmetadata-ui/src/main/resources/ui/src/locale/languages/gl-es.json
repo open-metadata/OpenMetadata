@@ -1705,6 +1705,7 @@
     "derived-tag-warning": "Esta etiqueta é automaticamente derivada e só pode ser eliminada eliminando o Termo do Glosario relacionado.",
     "description-coverage-widget-description": "Cobertura de descrición para todos os activos de datos no servizo. <0>saber máis.</0>",
     "destination-selection-warning": "Asegúrate de que a \"{{subscriptionCategory}}\" configurou o seu \"{{subscriptionType}}\" para recibir as alertas.",
+    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "Isto desactivará a aplicación {{app}}.",
     "disable-classification-description": "Ao desactivar a clasificación, non poderás buscar por etiquetas asociadas nin asignalas a ningunha entidade.",
     "disabled-classification-actions-message": "Non podes realizar esta acción en clasificacións desactivadas.",

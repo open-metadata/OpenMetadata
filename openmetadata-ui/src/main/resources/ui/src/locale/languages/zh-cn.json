@@ -1705,6 +1705,7 @@
     "derived-tag-warning": "该标签是自动生成的, 只有通过删除相关术语库术语才能删除该标签。",
     "description-coverage-widget-description": "服务中所有数据资产的描述覆盖率。<0>了解更多。</0>",
     "destination-selection-warning": "请确认\"{{subscriptionCategory}}\"是否已配置其\"{{subscriptionType}}\"以接收警报",
+    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "这将禁用{{app}}应用.",
     "disable-classification-description": "禁用分类选项, 您将无法查看到关联的标签",
     "disabled-classification-actions-message": "您无法在已禁用的分类上执行此操作",
