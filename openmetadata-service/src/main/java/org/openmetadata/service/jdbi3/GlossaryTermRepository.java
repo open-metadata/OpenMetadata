@@ -722,17 +722,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void validateHierarchy(GlossaryTerm term) {
-    // The glossary and the parent term must belong to the same hierarchy
     if (term.getParent() == null) {
       return; // Parent is the root of the glossary
     }
-    String glossaryFqn = FullyQualifiedName.build(term.getGlossary().getName());
-    if (!term.getParent().getFullyQualifiedName().startsWith(glossaryFqn)) {
+    // Check for circular references
+    String parentFqn = term.getParent().getFullyQualifiedName();
+    String termFqn = term.getFullyQualifiedName();
+    if (FullyQualifiedName.isParent(parentFqn, termFqn)) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid hierarchy - parent [%s] does not belong to glossary[%s]",
-              term.getParent().getFullyQualifiedName(),
-              term.getGlossary().getFullyQualifiedName()));
+              "Invalid hierarchy - cannot move term [%s] under its child [%s]",
+              termFqn, parentFqn));
     }
   }
 
