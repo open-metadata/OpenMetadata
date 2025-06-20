@@ -550,7 +550,7 @@ public class SearchResource {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Table Aggregate API",
+            description = "Mapping search request API",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -561,7 +561,7 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Parameter(
               description =
-                  "Entity type for which to get the mapping. If omitted, returns mapping for all entities.",
+                  "Entity type to get the mapping for. If omitted, returns mapping for all entities.",
               required = false)
           @QueryParam("entityType")
           String entityType)
