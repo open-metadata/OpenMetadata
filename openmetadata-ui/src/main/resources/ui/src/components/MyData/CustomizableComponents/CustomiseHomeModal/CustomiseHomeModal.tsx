@@ -101,7 +101,7 @@ const CustomiseHomeModal = ({
       <Row className="customise-home-modal-body">
         <Col className="sidebar">
           {customiseOptions.map((item) => (
-            <Button
+            <div
               className={`sidebar-option ${
                 selectedKey === item.key ? 'active' : ''
               }`}
@@ -109,7 +109,7 @@ const CustomiseHomeModal = ({
               key={item.key}
               onClick={() => setSelectedKey(item.key)}>
               {item.label}
-            </Button>
+            </div>
           ))}
         </Col>
         <Divider className="customise-home-modal-divider" type="vertical" />
