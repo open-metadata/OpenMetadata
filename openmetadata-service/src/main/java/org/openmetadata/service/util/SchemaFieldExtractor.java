@@ -334,15 +334,6 @@ public class SchemaFieldExtractor {
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema itemSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
-        if (itemSchema != null) {
-          extractFieldsFromSchema(
-              itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-        } else {
-          LOG.warn(
-              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
-              fullFieldName);
-        }
       } else if (isEntityReference(propertyType)) {
         String referenceType = "entityReference";
         FieldDefinition referenceFieldDefinition =
@@ -351,15 +342,6 @@ public class SchemaFieldExtractor {
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema referredSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
-        if (referredSchema != null) {
-          extractFieldsFromSchema(
-              referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-        } else {
-          LOG.warn(
-              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
-              fullFieldName);
-        }
       } else {
         FieldDefinition entityFieldDefinition =
             new FieldDefinition(fullFieldName, propertyType, customPropertyConfigObj);
