@@ -32,9 +32,9 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -83,9 +83,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   private DefaultOperationalConfigProvider operationalApplicationConfigProvider;
 
   private static final String CERTIFICATE_PATH = "certificatePath";
-
-  @JsonProperty("mcpConfiguration")
-  private MCPConfiguration mcpConfiguration = new MCPConfiguration();
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
     if (pipelineServiceClientConfiguration != null) {
@@ -145,6 +142,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("objectStorage")
   @Valid
   private ObjectStorageConfiguration objectStorage;
+
+  @JsonProperty("scimConfiguration")
+  private ScimConfiguration scimConfiguration;
 
   @Override
   public String toString() {

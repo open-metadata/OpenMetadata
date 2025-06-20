@@ -362,7 +362,31 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            yield from self.yield_lineage_request(lineage)
+
+        # yield datamodel lineage with tables from db services
+        db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details) or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+        for db_service_name in db_service_names or []:
+            for lineage in (
+                self.yield_dashboard_lineage_details(dashboard_details, db_service_name)
+                or []
+            ):
+                yield from self.yield_lineage_request(lineage)
+
+    def yield_lineage_request(
+        self, lineage: Optional[Either[AddLineageRequest]] = None
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Method to yield lineage request
+        """
+        if lineage:
             if lineage.right is not None:
                 yield Either(
                     right=OMetaLineageRequest(
@@ -372,14 +396,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
             else:
                 yield lineage
-
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
 
     def yield_bulk_tags(
         self, *args, **kwargs
@@ -550,15 +566,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.context.get().project_name = (  # pylint: disable=E1128
                     self.get_project_name(dashboard_details=dashboard_details)
                 )
+
+                # Get both single project name and list of project names
+                project_name = self.context.get().project_name
+                project_names = (
+                    self.get_project_names(dashboard_details=dashboard_details) or []
+                )
+                if project_names:
+                    project_name = project_names
+
                 if filter_by_project(
                     self.source_config.projectFilterPattern,
-                    self.context.get().project_name,
+                    project_name,
                 ):
                     self.status.filter(
-                        self.context.get().project_name,
+                        project_name,
                         "Project / Workspace Filtered Out",
                     )
                     continue
+
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -601,7 +627,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get the project / workspace / folder / collection name of the dashboard
         """
         logger.debug(
-            f"Projects are not supported for {self.service_connection.type.name}"
+            f"Project name is not supported for {self.service_connection.type.name}"
+        )
+        return None
+
+    def get_project_names(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection names of the dashboard
+        """
+        logger.debug(
+            f"Project names are not supported for {self.service_connection.type.name}"
         )
         return None
 

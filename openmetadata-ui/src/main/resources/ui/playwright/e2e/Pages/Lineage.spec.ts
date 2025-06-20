@@ -44,6 +44,7 @@ import {
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
   verifyExportLineagePNG,
+  verifyLineageConfig,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -159,6 +160,13 @@ for (const EntityClass of entities) {
           }
         }
       );
+
+      await test.step('Verify Lineage Config', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyLineageConfig(page);
+      });
     } finally {
       await cleanup();
     }
@@ -267,6 +275,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   await table.visitEntityPage(page);
   await visitLineageTab(page);
+  await activateColumnLayer(page);
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -380,6 +389,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq;
+
+    await activateColumnLayer(page);
 
     await page
       .locator(

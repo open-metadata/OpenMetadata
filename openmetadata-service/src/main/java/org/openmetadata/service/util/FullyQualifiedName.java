@@ -14,7 +14,9 @@
 package org.openmetadata.service.util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.antlr.v4.runtime.BailErrorStrategy;
@@ -205,5 +207,64 @@ public class FullyQualifiedName {
 
   public static String getColumnName(String columnFQN) {
     return FullyQualifiedName.split(columnFQN)[4]; // Get from column name from FQN
+  }
+
+  /**
+   * Generates all possible FQN parts for search and matching purposes.
+   * For example, given FQN "service.database.schema.table", this method generates:
+   * - Full hierarchy: "service", "service.database", "service.database.schema", "service.database.schema.table"
+   * - Individual parts: "service", "database", "schema", "table"
+   * - Bottom-up combinations: "database.schema.table", "schema.table", "table"
+   *
+   * @param fqn The fully qualified name to generate parts from
+   * @return Set of all possible FQN parts
+   */
+  public static Set<String> getAllParts(String fqn) {
+    var parts = split(fqn);
+    var fqnParts = new HashSet<String>();
+
+    // Generate all possible sub-paths
+    for (int start = 0; start < parts.length; start++) {
+      for (int end = start + 1; end <= parts.length; end++) {
+        var subPath =
+            String.join(Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, start, end));
+        fqnParts.add(subPath);
+      }
+    }
+
+    return fqnParts;
+  }
+
+  /**
+   * Generates hierarchical FQN parts from root to the full FQN.
+   * For example, given FQN "service.database.schema.table", this method generates:
+   * ["service", "service.database", "service.database.schema", "service.database.schema.table"]
+   *
+   * @param fqn The fully qualified name to generate hierarchy from
+   * @return List of hierarchical FQN parts from root to full FQN
+   */
+  public static List<String> getHierarchicalParts(String fqn) {
+    var parts = split(fqn);
+    return java.util.stream.IntStream.rangeClosed(1, parts.length)
+        .mapToObj(i -> String.join(Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, 0, i)))
+        .toList();
+  }
+
+  /**
+   * Gets all ancestor FQNs for a given FQN.
+   * For example, given FQN "service.database.schema.table", this method returns:
+   * ["service.database.schema", "service.database", "service"]
+   *
+   * @param fqn The fully qualified name to get ancestors from
+   * @return List of ancestor FQNs (excluding the input FQN itself)
+   */
+  public static List<String> getAncestors(String fqn) {
+    var parts = split(fqn);
+    return java.util.stream.IntStream.range(1, parts.length)
+        .mapToObj(
+            i ->
+                String.join(
+                    Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, 0, parts.length - i)))
+        .toList();
   }
 }

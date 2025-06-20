@@ -112,6 +112,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
@@ -136,6 +137,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -161,6 +163,8 @@ GET_DASHBOARD_FIELDS = [
 
 TEMP_FOLDER_DIRECTORY = os.path.join(os.getcwd(), "tmp")
 REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
+
+LOOKER_TAG_CATEGORY = "LookerTags"
 
 
 def clean_dashboard_name(name: str) -> str:
@@ -433,6 +437,21 @@ class LookerSource(DashboardServiceSource):
         )
         return _datamodel
 
+    def yield_data_model_tags(
+        self, tags: List[str]
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to yield tags related to specific dashboards
+        """
+        if tags and self.source_config.includeTags:
+            yield from get_ometa_tag_and_classification(
+                tags=tags or [],
+                classification_name=LOOKER_TAG_CATEGORY,
+                tag_description="Looker Tag",
+                classification_description="Tags associated with looker entities",
+                include_tags=self.source_config.includeTags,
+            )
+
     def yield_bulk_datamodel(
         self, model: LookmlModelExplore
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -447,6 +466,8 @@ class LookerSource(DashboardServiceSource):
             ):
                 self.status.filter(datamodel_name, "Data model filtered out.")
             else:
+                if model.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(model.tags or [])
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
@@ -454,6 +475,12 @@ class LookerSource(DashboardServiceSource):
                     if model.description
                     else None,
                     service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=model.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
@@ -551,15 +578,24 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
+                if view.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(view.tags or [])
+                datamodel_view_name = (
+                    build_datamodel_name(explore.model_name, view.name) + "_view"
+                )
                 data_model_request = CreateDashboardDataModelRequest(
-                    name=EntityName(
-                        build_datamodel_name(explore.model_name, view.name)
-                    ),
+                    name=EntityName(datamodel_view_name),
                     displayName=view.name,
                     description=Markdown(view.description)
                     if view.description
                     else None,
                     service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=view.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),
@@ -568,9 +604,7 @@ class LookerSource(DashboardServiceSource):
                     project=explore.project_name,
                 )
                 yield Either(right=data_model_request)
-                self._view_data_model = self._build_data_model(
-                    build_datamodel_name(explore.model_name, view.name)
-                )
+                self._view_data_model = self._build_data_model(datamodel_view_name)
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
@@ -649,13 +683,14 @@ class LookerSource(DashboardServiceSource):
         Extract column level lineage from a LookML view.
         Returns a list of tuples containing (source_column, target_column)
         """
+        logger.debug(f"Extracting column lineage for view: {view.name}")
         column_lineage = []
         try:
             # Build a map: field_name → sql block
             field_sql_map = {}
             for field_type in ["dimensions", "measures", "dimension_groups"]:
                 for field in getattr(view, field_type, []):
-                    if hasattr(field, "sql"):
+                    if hasattr(field, "sql") and field.sql is not None:
                         field_sql_map[field.name] = field.sql
 
             # Regex to extract ${TABLE}.col and ${field}
@@ -682,16 +717,74 @@ class LookerSource(DashboardServiceSource):
                 return source_cols
 
             # Build lineage for each field
-            for field_name, _ in field_sql_map.items():
-                source_cols = resolve(field_name)
-                for source_col in source_cols:
-                    column_lineage.append((source_col, field_name))
+            for field_name, sql in field_sql_map.items():
+                try:
+                    if not sql:  # Skip if sql is None or empty
+                        continue
+                    source_cols = resolve(field_name)
+                    for source_col in source_cols:
+                        column_lineage.append((source_col, field_name))
+                except Exception as err:
+                    logger.warning(f"Error processing field {field_name}: {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
 
             return column_lineage
         except Exception as e:
             logger.warning(f"Error extracting column lineage: {e}")
             logger.debug(traceback.format_exc())
             return []
+
+    def _get_explore_column_lineage(
+        self, explore_model: LookmlModelExplore
+    ) -> Optional[List[ColumnLineage]]:
+        """
+        Build the lineage between the view and the explore
+        """
+        processed_column_lineage = []
+        for field in explore_model.columns or []:
+            try:
+                # Look for fields with format view_name.col
+                field_name = field.name.root
+                if "." not in field_name:
+                    logger.debug(
+                        f"Field [{field_name}] does not have a view name. Skipping."
+                    )
+                    continue
+
+                view_name, col_name = field_name.split(".")
+                if view_name != self._view_data_model.displayName:
+                    logger.debug(
+                        f"View name [{view_name}] do not match the view name"
+                        f"[{self._view_data_model.displayName}] Skipping."
+                    )
+                    continue
+
+                # Add lineage from view column to explore column
+                view_col = None
+                for col in self._view_data_model.columns:
+                    if (
+                        col.displayName and col.displayName.lower() == col_name.lower()
+                    ) or (col.name.root.lower() == col_name.lower()):
+                        view_col = col
+                        break
+                from_column = view_col.fullyQualifiedName.root if view_col else None
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=explore_model, column=str(field.name.root)
+                )
+
+                if from_column and to_column:
+                    processed_column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            except Exception as err:
+                logger.warning(
+                    "Error processing column lineage for explore_model"
+                    f"[{explore_model.name}] field [{field.name}]: {err}"
+                )
+                logger.debug(traceback.format_exc())
+                continue
+        return processed_column_lineage
 
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
@@ -707,8 +800,14 @@ class LookerSource(DashboardServiceSource):
             # TODO: column-level lineage parsing the explore columns with the format `view_name.col`
             # Now the context has the newly created view
             if explore_model:
+                logger.debug(
+                    f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"
+                )
+                column_lineage = self._get_explore_column_lineage(explore_model)
                 yield self._get_add_lineage_request(
-                    from_entity=self._view_data_model, to_entity=explore_model
+                    from_entity=self._view_data_model,
+                    to_entity=explore_model,
+                    column_lineage=column_lineage,
                 )
 
             else:
@@ -781,15 +880,23 @@ class LookerSource(DashboardServiceSource):
                 self._parsed_views[view_name] = sql_query
                 for from_table_name in lineage_parser.source_tables:
                     # Process column level lineage
-                    column_lineage = [
-                        (
-                            source_col.raw_name,
-                            target_col.raw_name,
-                        )
-                        for source_col, target_col in lineage_parser.column_lineage
-                        or []
-                        if source_col.parent == from_table_name
-                    ]
+                    column_lineage = []
+                    for column_tuple in lineage_parser.column_lineage or []:
+                        if (
+                            column_tuple
+                            and hasattr(column_tuple[0], "parent")
+                            and column_tuple[0].parent == from_table_name
+                        ):
+                            column_lineage.append(
+                                (
+                                    column_tuple[0].raw_name
+                                    if hasattr(column_tuple[0], "raw_name")
+                                    else column_tuple[0],
+                                    column_tuple[-1].raw_name
+                                    if hasattr(column_tuple[-1], "raw_name")
+                                    else column_tuple[-1],
+                                )
+                            )
                     yield self.build_lineage_request(
                         source=str(from_table_name),
                         db_service_name=db_service_name,
@@ -1048,6 +1155,55 @@ class LookerSource(DashboardServiceSource):
                 )
             )
 
+    def _process_and_validate_column_lineage(
+        self,
+        column_lineage: List[Tuple[Column, Column]],
+        from_entity: Table,
+        to_entity: Union[Dashboard, DashboardDataModel],
+    ) -> List[ColumnLineage]:
+        """
+        Process and validate column lineage
+        """
+        processed_column_lineage = []
+        if column_lineage:
+            for column_tuple in column_lineage or []:
+                try:
+                    if len(column_tuple) < 2:
+                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")
+                        continue
+
+                    source_col = column_tuple[0]
+                    target_col = column_tuple[-1]
+
+                    if not source_col or not target_col:
+                        logger.debug(
+                            f"Skipping column tuple with empty values: source={source_col}, "
+                            f"target={target_col}, to_entity={to_entity.name}"
+                        )
+                        continue
+
+                    from_column = get_column_fqn(
+                        table_entity=from_entity, column=str(target_col)
+                    )
+                    to_column = self._get_data_model_column_fqn(
+                        data_model_entity=to_entity,
+                        column=str(source_col),
+                    )
+                    if from_column and to_column:
+                        processed_column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[from_column],
+                                toColumn=to_column,
+                            )
+                        )
+                except Exception as err:
+                    logger.warning(
+                        f"Error processing column lineage {column_tuple}: {err}"
+                    )
+                    logger.debug(traceback.format_exc())
+                    continue
+        return processed_column_lineage
+
     def build_lineage_request(
         self,
         source: str,
@@ -1066,6 +1222,7 @@ class LookerSource(DashboardServiceSource):
             db_service_name: name of the service from the config
             to_entity: Dashboard Entity being used
         """
+        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
 
@@ -1084,31 +1241,20 @@ class LookerSource(DashboardServiceSource):
                 fqn=from_fqn,
             )
 
-            if column_lineage:
-                processed_column_lineage = []
-                for source_col, target_col in column_lineage:
-                    from_column = get_column_fqn(
-                        table_entity=from_entity, column=str(target_col)
-                    )
-                    to_column = self._get_data_model_column_fqn(
-                        data_model_entity=to_entity,
-                        column=str(source_col),
-                    )
-                    if from_column and to_column:
-                        processed_column_lineage.append(
-                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                        )
-                column_lineage = processed_column_lineage
-
             if from_entity:
                 if from_entity.id.root not in self._added_lineage:
                     self._added_lineage[from_entity.id.root] = []
                 if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
                     self._added_lineage[from_entity.id.root].append(to_entity.id.root)
+                    processed_column_lineage = (
+                        self._process_and_validate_column_lineage(
+                            column_lineage, from_entity, to_entity
+                        )
+                    )
                     return self._get_add_lineage_request(
                         to_entity=to_entity,
                         from_entity=from_entity,
-                        column_lineage=column_lineage,
+                        column_lineage=processed_column_lineage,
                     )
 
         return None

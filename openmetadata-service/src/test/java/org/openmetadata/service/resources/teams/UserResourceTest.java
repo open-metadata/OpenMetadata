@@ -194,6 +194,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
 
+    // USER3 with no roles for permission testing
+    create = createRequest(test, 3).withRoles(List.of());
+    USER3 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER3_REF = USER3.getEntityReference();
+
     Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
     BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
@@ -216,7 +221,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Create user with mandatory email field null
     CreateUser create = createRequest(test).withEmail(null);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must not be null]");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param email must not be null]");
 
     // Create user with mandatory email field empty
     create.withEmail("");

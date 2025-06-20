@@ -70,7 +70,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test

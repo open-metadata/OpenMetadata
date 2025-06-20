@@ -42,6 +42,7 @@ const mockProps: DisplayNameProps = {
   displayName: 'Sample Display Name',
   link: '/entity/1',
   allowRename: true,
+  hasEditPermission: true,
   onEditDisplayName: mockOnEditDisplayName,
 };
 
@@ -97,6 +98,55 @@ describe('Test DisplayName Component', () => {
       const displayNameField = await screen.findByTestId('column-display-name');
 
       expect(displayNameField).toBeInTheDocument();
+    });
+  });
+
+  it('Should render a link when link prop is provided', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DisplayName {...mockProps} />
+        </MemoryRouter>
+      );
+
+      const linkElement = screen.getByTestId('Sample Entity');
+
+      expect(linkElement.tagName).toBe('SPAN');
+      expect(linkElement).toHaveTextContent('Sample Display Name');
+    });
+  });
+
+  it('Should render plain text when link prop is not provided', async () => {
+    const propsWithoutLink = { ...mockProps, link: undefined };
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DisplayName {...propsWithoutLink} />
+        </MemoryRouter>
+      );
+
+      const nameElement = screen.getByTestId('Sample Entity');
+
+      expect(nameElement.tagName).toBe('SPAN');
+      expect(nameElement).toHaveTextContent('Sample Display Name');
+    });
+  });
+
+  it('Should render name as a link when displayName is empty and link is provided', async () => {
+    const props = { ...mockProps, displayName: '', link: '/entity/1' };
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DisplayName {...props} />
+        </MemoryRouter>
+      );
+
+      const nameElement = screen.getByTestId('Sample Entity');
+
+      expect(nameElement).toBeInTheDocument();
+      expect(nameElement).toHaveTextContent('Sample Entity');
     });
   });
 });
