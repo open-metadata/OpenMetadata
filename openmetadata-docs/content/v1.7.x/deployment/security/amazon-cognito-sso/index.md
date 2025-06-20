@@ -1,5 +1,5 @@
 ---
-title: Amazon Cognito SSO
+title: Amazon Cognito SSO | OpenMetadata Authentication Setup
 slug: /deployment/security/amazon-cognito
 collate: false
 ---

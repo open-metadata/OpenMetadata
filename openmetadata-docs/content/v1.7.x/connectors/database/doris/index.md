@@ -1,5 +1,5 @@
 ---
-title: Doris
+title: Doris Connector | OpenMetadata Database Integration Guide
 slug: /connectors/database/doris
 ---
 

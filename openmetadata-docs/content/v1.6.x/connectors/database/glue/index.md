@@ -1,5 +1,5 @@
 ---
-title: Glue
+title: AWS Glue Connector | OpenMetadata Data Integration Guide
 slug: /connectors/database/glue
 ---
 

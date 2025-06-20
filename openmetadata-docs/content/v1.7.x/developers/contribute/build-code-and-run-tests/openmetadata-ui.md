@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata UI
+title: OpenMetadata UI | Developer Guide & Setup
 slug: /developers/contribute/build-code-and-run-tests/openmetadata-ui
 ---
 

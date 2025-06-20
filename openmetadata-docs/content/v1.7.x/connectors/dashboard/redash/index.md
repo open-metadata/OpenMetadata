@@ -1,5 +1,5 @@
 ---
-title: Redash
+title: Redash Connector | OpenMetadata Dashboard Integration
 slug: /connectors/dashboard/redash
 ---
 

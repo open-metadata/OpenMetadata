@@ -1,5 +1,5 @@
 ---
-title: Prerequisites
+title: Prerequisites | OpenMetadata Developer Setup Requirements
 slug: /developers/contribute/build-code-and-run-tests/prerequisites
 ---
 

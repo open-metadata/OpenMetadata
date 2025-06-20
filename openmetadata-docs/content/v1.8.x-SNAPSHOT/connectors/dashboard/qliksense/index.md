@@ -1,5 +1,5 @@
 ---
-title: Qlik Sense
+title: Qlik Sense Connector | OpenMetadata Integration Guide
 slug: /connectors/dashboard/qliksense
 ---
 

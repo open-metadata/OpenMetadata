@@ -1,5 +1,5 @@
 ---
-title: Sigma
+title: Sigma Connector | OpenMetadata Dashboard Integration Guide
 slug: /connectors/dashboard/sigma
 ---
 

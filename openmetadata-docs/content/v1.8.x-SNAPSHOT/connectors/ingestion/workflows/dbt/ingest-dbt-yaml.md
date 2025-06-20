@@ -1,5 +1,5 @@
 ---
-title: Run Externally
+title: Run dbt Workflow Externally | OpenMetadata Guide
 slug: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
 ---
 

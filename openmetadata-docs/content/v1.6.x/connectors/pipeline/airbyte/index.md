@@ -1,5 +1,5 @@
 ---
-title: Airbyte
+title: Airbyte Connector | OpenMetadata Pipeline Integration
 slug: /connectors/pipeline/airbyte
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Atlas
+title: Atlas Connector | OpenMetadata Metadata Integration
 slug: /connectors/metadata/atlas
 ---
 

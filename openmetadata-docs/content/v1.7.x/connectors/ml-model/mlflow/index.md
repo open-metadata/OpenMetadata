@@ -1,5 +1,5 @@
 ---
-title: MLflow
+title: MLflow Connector | OpenMetadata ML Model Integration
 slug: /connectors/ml-model/mlflow
 ---
 

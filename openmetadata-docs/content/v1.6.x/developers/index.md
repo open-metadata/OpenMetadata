@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata
+title: OpenMetadata Developers | Developer Resources Overview
 slug: /developers
 ---
 

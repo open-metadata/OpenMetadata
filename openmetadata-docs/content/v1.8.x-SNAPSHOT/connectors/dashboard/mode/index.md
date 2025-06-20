@@ -1,5 +1,5 @@
 ---
-title: Mode
+title: Mode Connector | OpenMetadata Dashboard Integration Guide
 slug: /connectors/dashboard/mode
 ---
 

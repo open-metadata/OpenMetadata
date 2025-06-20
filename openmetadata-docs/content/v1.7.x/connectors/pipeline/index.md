@@ -1,5 +1,5 @@
 ---
-title: Pipeline Services
+title: Pipeline Services | OpenMetadata Data Pipeline Guide
 slug: /connectors/pipeline
 ---
 

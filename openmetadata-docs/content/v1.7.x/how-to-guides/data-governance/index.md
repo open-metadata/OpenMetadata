@@ -1,5 +1,5 @@
 ---
-title: Data Governance
+title: Data Governance | OpenMetadata Governance Guide
 slug: /how-to-guides/data-governance
 ---
 

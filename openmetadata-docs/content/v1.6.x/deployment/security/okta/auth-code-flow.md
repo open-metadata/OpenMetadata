@@ -1,5 +1,5 @@
 ---
-title: Okta SSO
+title: Okta SSO (Docker) | OpenMetadata Deployment Guide
 slug: /deployment/security/okta/auth-code-flow
 collate: false
 ---

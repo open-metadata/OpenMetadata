@@ -1,5 +1,5 @@
 ---
-title: Metadata Ingestion
+title: Metadata Ingestion | OpenMetadata Data Pipeline Overview
 slug: /connectors/ingestion
 ---
 

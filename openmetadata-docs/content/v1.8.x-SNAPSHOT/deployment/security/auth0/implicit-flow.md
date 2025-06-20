@@ -1,5 +1,5 @@
 ---
-title: Auth0 SSO for Docker
+title: Azure SSO for Docker | OpenMetadata Deployment Guide
 slug: /deployment/security/auth0/implicit-flow
 collate: false
 ---

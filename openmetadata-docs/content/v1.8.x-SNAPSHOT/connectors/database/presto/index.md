@@ -1,5 +1,5 @@
 ---
-title: Presto
+title: Presto Connector | OpenMetadata Distributed SQL Guide
 slug: /connectors/database/presto
 ---
 

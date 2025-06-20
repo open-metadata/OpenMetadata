@@ -1,5 +1,5 @@
 ---
-title: GCS Datalake
+title: GCS Datalake Connector | OpenMetadata Cloud Storage Integration
 slug: /connectors/database/gcs-datalake
 ---
 

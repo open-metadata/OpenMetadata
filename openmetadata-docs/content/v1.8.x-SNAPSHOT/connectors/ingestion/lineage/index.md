@@ -1,5 +1,5 @@
 ---
-title: Lineage Ingestion
+title: Lineage Ingestion | OpenMetadata Data Lineage Setup Guide
 slug: /connectors/ingestion/lineage
 ---
 

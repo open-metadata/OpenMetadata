@@ -1,5 +1,5 @@
 ---
-title: Search Services
+title: Search Services | OpenMetadata Search Integration Guide
 slug: /connectors/search
 ---
 

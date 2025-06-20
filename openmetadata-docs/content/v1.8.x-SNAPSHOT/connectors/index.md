@@ -1,5 +1,5 @@
 ---
-title: Connectors
+title: Connectors | OpenMetadata Docs for Seamless Data Integration
 slug: /connectors
 ---
 

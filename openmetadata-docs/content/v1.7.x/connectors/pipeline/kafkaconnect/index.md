@@ -1,5 +1,5 @@
 ---
-title: KafkaConnect
+title: KafkaConnect | OpenMetadata Messaging Pipeline Connector
 slug: /connectors/pipeline/kafkaconnect
 ---
 

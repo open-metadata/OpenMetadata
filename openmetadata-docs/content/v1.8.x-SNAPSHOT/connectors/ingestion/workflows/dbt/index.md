@@ -1,5 +1,5 @@
 ---
-title: dbt Workflow
+title: dbt Workflow | OpenMetadata Data Build Tool Integration
 slug: /connectors/ingestion/workflows/dbt
 ---
 

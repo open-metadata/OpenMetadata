@@ -1,5 +1,5 @@
 ---
-title: SAP HANA
+title: SAP HANA Connector | OpenMetadata High-Performance DB
 slug: /connectors/database/sap-hana
 ---
 

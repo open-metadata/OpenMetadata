@@ -1,5 +1,5 @@
 ---
-title: Impala
+title: Impala Connector | OpenMetadata SQL-on-Hadoop Integration
 slug: /connectors/database/impala
 ---
 

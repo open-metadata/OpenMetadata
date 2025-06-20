@@ -1,5 +1,5 @@
 ---
-title: Dagster
+title: Dagster Connector | OpenMetadata Pipeline Integration
 slug: /connectors/pipeline/dagster
 ---
 

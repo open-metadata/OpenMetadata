@@ -1,5 +1,5 @@
 ---
-title: Data Insights
+title: Data Insights | OpenMetadata Reporting & Insights
 slug: /how-to-guides/data-insights
 ---
 

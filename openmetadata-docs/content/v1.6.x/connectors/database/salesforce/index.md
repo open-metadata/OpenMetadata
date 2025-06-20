@@ -1,5 +1,5 @@
 ---
-title: Salesforce
+title: Salesforce Connector | OpenMetadata CRM Integration Guide
 slug: /connectors/database/salesforce
 ---
 

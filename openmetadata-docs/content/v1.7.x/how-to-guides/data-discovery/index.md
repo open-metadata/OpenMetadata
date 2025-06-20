@@ -1,5 +1,5 @@
 ---
-title: Data Discovery
+title: Data Discovery | OpenMetadata How-To Guide
 slug: /how-to-guides/data-discovery
 ---
 

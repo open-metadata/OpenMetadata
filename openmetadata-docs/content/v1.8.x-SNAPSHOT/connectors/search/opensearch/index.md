@@ -1,5 +1,5 @@
 ---
-title: OpenSearch
+title: OpenSearch Connector | OpenMetadata Search Integration
 slug: /connectors/search/opensearch
 ---
 

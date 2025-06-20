@@ -1,5 +1,5 @@
 ---
-title: DeltaLake
+title: DeltaLake Connector | OpenMetadata Data Lake Integration
 slug: /connectors/database/deltalake
 ---
 

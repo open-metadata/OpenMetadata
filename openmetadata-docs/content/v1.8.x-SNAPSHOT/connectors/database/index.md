@@ -1,5 +1,5 @@
 ---
-title: Database Services
+title: Database Services | OpenMetadata Connector Integration
 slug: /connectors/database
 ---
 

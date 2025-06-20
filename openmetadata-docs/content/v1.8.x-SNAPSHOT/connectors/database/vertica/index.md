@@ -1,5 +1,5 @@
 ---
-title: Vertica
+title: Vertica Connector | OpenMetadata Analytics Database Guide
 slug: /connectors/database/vertica
 ---
 

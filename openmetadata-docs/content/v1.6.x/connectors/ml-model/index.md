@@ -1,5 +1,5 @@
 ---
-title: ML Model Services
+title: ML Model Services | OpenMetadata Machine Learning Guide
 slug: /connectors/ml-model
 ---
 
