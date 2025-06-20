@@ -39,10 +39,10 @@ describe('getAddWidgetHandler function', () => {
     )([
       ...mockCurrentAddWidget,
       {
-        h: 3,
+        h: 4,
         i: 'KnowledgePanel.dataAsset',
         w: 1,
-        x: 2,
+        x: 0,
         y: 4,
         static: false,
       },
