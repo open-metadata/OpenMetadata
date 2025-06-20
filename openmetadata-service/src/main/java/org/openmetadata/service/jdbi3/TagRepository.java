@@ -25,11 +25,11 @@ import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -290,162 +290,154 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     // Batch fetch classifications and parents for all tags
-    Map<UUID, EntityReference> classificationsMap = batchFetchClassifications(entities);
-    Map<UUID, EntityReference> parentsMap = batchFetchParents(entities);
+    var classificationsMap = batchFetchClassifications(entities);
+    var parentsMap = batchFetchParents(entities);
 
     // Set default fields (classification and parent) for all entities first
-    for (Tag entity : entities) {
-      entity
-          .withClassification(classificationsMap.get(entity.getId()))
-          .withParent(parentsMap.get(entity.getId()));
-    }
+    entities.forEach(
+        entity ->
+            entity
+                .withClassification(classificationsMap.get(entity.getId()))
+                .withParent(parentsMap.get(entity.getId())));
 
     // Batch fetch usage counts if requested
     if (fields.contains("usageCount")) {
-      Map<String, Integer> usageCountMap = batchFetchUsageCounts(entities);
-      for (Tag entity : entities) {
-        entity.withUsageCount(usageCountMap.getOrDefault(entity.getFullyQualifiedName(), 0));
-      }
+      var usageCountMap = batchFetchUsageCounts(entities);
+      entities.forEach(
+          entity ->
+              entity.withUsageCount(usageCountMap.getOrDefault(entity.getFullyQualifiedName(), 0)));
     }
 
     // Process other fields using the standard bulk processing
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
-    for (Tag entity : entities) {
-      clearFieldsInternal(entity, fields);
-    }
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
   private Map<UUID, EntityReference> batchFetchClassifications(List<Tag> tags) {
     // Classification -> CONTAINS -> Tag relationship
     // We need to find classifications that contain these tags
-    Map<UUID, EntityReference> resultMap = new HashMap<>();
     if (tags == null || tags.isEmpty()) {
-      return resultMap;
+      return Map.of();
     }
 
-    List<String> entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+    var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
 
     // Find all CONTAINS relationships where tags are on the "to" side and from entity is
     // CLASSIFICATION
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION);
 
     if (records.isEmpty()) {
-      return resultMap;
+      return Map.of();
     }
 
-    // Get unique classification IDs
-    List<UUID> classificationIds =
+    // Get unique classification IDs and batch fetch references
+    var classificationIds =
         records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
 
-    // Batch fetch classification references
-    List<EntityReference> classificationRefs =
+    var classificationRefs =
         Entity.getEntityReferencesByIds(Entity.CLASSIFICATION, classificationIds, NON_DELETED);
-    Map<String, EntityReference> idToRefMap = new HashMap<>();
-    for (EntityReference ref : classificationRefs) {
-      idToRefMap.put(ref.getId().toString(), ref);
-    }
+    var idToRefMap =
+        classificationRefs.stream()
+            .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
 
     // Map tags to their classifications
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID tagId = UUID.fromString(record.getToId());
-      EntityReference classificationRef = idToRefMap.get(record.getFromId());
-      if (classificationRef != null) {
-        resultMap.put(tagId, classificationRef);
-      }
-    }
-
-    return resultMap;
+    return records.stream()
+        .collect(
+            Collectors.toMap(
+                r -> UUID.fromString(r.getToId()),
+                r -> idToRefMap.get(r.getFromId()),
+                (existing, replacement) -> existing // In case of duplicates, keep first
+                ))
+        .entrySet()
+        .stream()
+        .filter(e -> e.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
     // Parent Tag -> CONTAINS -> Child Tag relationship
-    Map<UUID, EntityReference> resultMap = new HashMap<>();
     if (tags == null || tags.isEmpty()) {
-      return resultMap;
+      return Map.of();
     }
 
-    List<String> entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+    var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
 
     // For parent tags, we need to find where current tags are the "to" side of CONTAINS
     // relationship
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG);
 
     if (records.isEmpty()) {
-      return resultMap;
+      return Map.of();
     }
 
-    // Get unique parent IDs
-    List<UUID> parentIds =
-        records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+    // Get unique parent IDs and batch fetch references
+    var parentIds = records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
 
-    // Batch fetch parent references
-    List<EntityReference> parentRefs = Entity.getEntityReferencesByIds(TAG, parentIds, NON_DELETED);
-    Map<String, EntityReference> idToRefMap = new HashMap<>();
-    for (EntityReference ref : parentRefs) {
-      idToRefMap.put(ref.getId().toString(), ref);
-    }
+    var parentRefs = Entity.getEntityReferencesByIds(TAG, parentIds, NON_DELETED);
+    var idToRefMap =
+        parentRefs.stream().collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
 
     // Map tags to their parents
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID tagId = UUID.fromString(record.getToId());
-      EntityReference parentRef = idToRefMap.get(record.getFromId());
-      if (parentRef != null) {
-        resultMap.put(tagId, parentRef);
-      }
-    }
-
-    return resultMap;
+    return records.stream()
+        .collect(
+            Collectors.toMap(
+                r -> UUID.fromString(r.getToId()),
+                r -> idToRefMap.get(r.getFromId()),
+                (existing, replacement) -> existing))
+        .entrySet()
+        .stream()
+        .filter(e -> e.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   private Map<String, Integer> batchFetchUsageCounts(List<Tag> tags) {
     if (tags == null || tags.isEmpty()) {
-      return new HashMap<>();
+      return Map.of();
     }
 
     // Build and execute a single query for all tags
-    List<String> tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
-    Map<String, Integer> resultMap = new HashMap<>();
+    var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
 
     // Build UNION query that gets counts for all tags in one go
-    StringBuilder query = new StringBuilder();
-    for (int i = 0; i < tagFQNs.size(); i++) {
-      if (i > 0) {
-        query.append(" UNION ALL ");
-      }
-      query.append(
-          "SELECT '"
-              + tagFQNs.get(i).replace("'", "''")
-              + "' as tagFQN, "
-              + "COUNT(DISTINCT targetFQNHash) as count "
-              + "FROM tag_usage "
-              + "WHERE source = "
-              + TagSource.CLASSIFICATION.ordinal()
-              + " "
-              + "AND (tagFQNHash = MD5('"
-              + tagFQNs.get(i).replace("'", "''")
-              + "') "
-              + "OR tagFQNHash LIKE CONCAT(MD5('"
-              + tagFQNs.get(i).replace("'", "''")
-              + "'), '.%'))");
-    }
+    var queryBuilder = new StringBuilder();
+    tagFQNs.forEach(
+        tagFQN -> {
+          if (queryBuilder.length() > 0) {
+            queryBuilder.append(" UNION ALL ");
+          }
+          var escapedFQN = tagFQN.replace("'", "''");
+          queryBuilder.append(
+              """
+          SELECT '%s' as tagFQN,
+          COUNT(DISTINCT targetFQNHash) as count
+          FROM tag_usage
+          WHERE source = %d
+          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
+          """
+                  .formatted(
+                      escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
+        });
 
     try {
-      List<Map<String, Object>> results =
+      var results =
           Entity.getJdbi()
-              .withHandle(handle -> handle.createQuery(query.toString()).mapToMap().list());
+              .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
 
-      for (Map<String, Object> row : results) {
-        String tagFQN = (String) row.get("tagFQN");
-        Number count = (Number) row.get("count");
-        resultMap.put(tagFQN, count != null ? count.intValue() : 0);
-      }
+      return results.stream()
+          .collect(
+              Collectors.toMap(
+                  row -> (String) row.get("tagFQN"),
+                  row -> {
+                    var count = (Number) row.get("count");
+                    return count != null ? count.intValue() : 0;
+                  }));
     } catch (Exception e) {
       LOG.error("Error batch fetching usage counts", e);
       // Fall back to individual queries
@@ -453,8 +445,6 @@ public class TagRepository extends EntityRepository<Tag> {
           .tagUsageDAO()
           .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
     }
-
-    return resultMap;
   }
 
   @Override
