@@ -20,12 +20,10 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { searchData } from '../../../rest/miscAPI';
 import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
@@ -62,7 +60,6 @@ const Users = ({
   const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
     useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
-  const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useCustomLocation();
@@ -80,16 +77,6 @@ const Users = ({
     () => decodedUsername === currentUser?.name,
     [decodedUsername]
   );
-
-  const fetchAssetsCount = async (query: string) => {
-    try {
-      const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
-
-      setAssetCount(res.data.hits.total.value ?? 0);
-    } catch {
-      setAssetCount(0);
-    }
-  };
 
   const initLimits = async () => {
     const limits = await getResourceLimit('user', false);
@@ -140,7 +127,6 @@ const Users = ({
         <Col flex="auto">
           <div className="user-layout-scroll">
             <AssetsTabs
-              assetCount={assetCount}
               isSummaryPanelOpen={Boolean(previewAsset)}
               permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
               onAddAsset={() => history.push(ROUTES.EXPLORE)}
@@ -160,7 +146,7 @@ const Users = ({
         )}
       </Row>
     ),
-    [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
+    [previewAsset, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
     if (
@@ -278,15 +264,6 @@ const Users = ({
     ]
   );
 
-  useEffect(() => {
-    if ([UserPageTabs.MY_DATA, UserPageTabs.FOLLOWING].includes(activeTab)) {
-      fetchAssetsCount(
-        activeTab === UserPageTabs.MY_DATA
-          ? queryFilters.myData
-          : queryFilters.following
-      );
-    }
-  }, [activeTab]);
   const handleRestoreUser = useCallback(async () => {
     try {
       await restoreUser(userData.id);

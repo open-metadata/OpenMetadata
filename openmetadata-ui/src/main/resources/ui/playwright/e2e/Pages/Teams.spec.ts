@@ -424,6 +424,8 @@ test.describe('Teams Page', () => {
       'false'
     );
 
+    await clickOutside(page);
+
     await visitOwnProfilePage(page);
     await page.waitForLoadState('networkidle');
 

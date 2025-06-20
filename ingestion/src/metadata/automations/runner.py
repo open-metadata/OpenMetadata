@@ -12,6 +12,8 @@
 Run the Automation Workflow for OpenMetadata
 """
 
+from typing import Optional
+
 from metadata.automations.execute_runner import run_workflow
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
@@ -41,22 +43,15 @@ def _(
     if ssl_manager:
         request.connection.config = ssl_manager.setup_ssl(request.connection.config)
 
-    # Find the test_connection function in each <source>/connection.py file
-    test_connection_fn = get_test_connection_fn(request.connection.config)
-
     try:
-        connection = get_connection(request.connection.config)
         if hasattr(request.connection.config, "hostPort"):
             host_port_str = str(request.connection.config.hostPort or "")
             if "localhost" in host_port_str:
-                result = test_connection_fn(
-                    metadata, connection, request.connection.config
-                )
+
+                result = _test_connection(metadata, request.connection.config)
                 raise_test_connection_exception(result)
 
-        test_connection_fn(
-            metadata, connection, request.connection.config, automation_workflow
-        )
+        _ = _test_connection(metadata, request.connection.config, automation_workflow)
     except Exception as error:
         host_port_str = str(getattr(request.connection.config, "hostPort", None) or "")
         if not host_port_str or "localhost" not in host_port_str:
@@ -68,10 +63,25 @@ def _(
         )
         request.connection.config.hostPort = host_port_type(docker_host_port_str)
 
-        connection = get_connection(request.connection.config)
-        test_connection_fn(
-            metadata, connection, request.connection.config, automation_workflow
-        )
+        _ = _test_connection(metadata, request.connection.config, automation_workflow)
 
     if ssl_manager:
         ssl_manager.cleanup_temp_files()
+
+
+def _test_connection(
+    metadata: OpenMetadata,
+    config,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+):
+    """
+    Test the connection
+    """
+    test_connection_fn = get_test_connection_fn(config)
+    try:
+        return test_connection_fn(metadata, automation_workflow=automation_workflow)
+    except TypeError:
+        connection = get_connection(config)
+        return test_connection_fn(
+            metadata, connection, config, automation_workflow=automation_workflow
+        )
