@@ -40,11 +40,7 @@ export interface DatabaseServiceProfilerPipeline {
     /**
      * Optional configuration to turn off fetching metadata for views.
      */
-    includeViews?: boolean;
-    /**
-     * Processing Engine Configuration. If not provided, the Native Engine will be used by
-     * default.
-     */
+    includeViews?:     boolean;
     processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data

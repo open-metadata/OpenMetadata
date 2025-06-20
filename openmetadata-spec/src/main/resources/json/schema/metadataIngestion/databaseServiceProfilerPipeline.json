@@ -10,13 +10,6 @@
       "type": "string",
       "enum": ["Profiler"],
       "default": "Profiler"
-    }
-  },
-  "properties": {
-    "type": {
-      "description": "Pipeline type",
-      "$ref": "#/definitions/profilerConfigType",
-      "default": "Profiler"
     },
     "processingEngine": {
       "title": "Processing Engine",
@@ -32,6 +25,16 @@
       "default": {
         "type": "Native"
       }
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/profilerConfigType",
+      "default": "Profiler"
+    },
+    "processingEngine": {
+      "$ref": "#/definitions/processingEngine"
     },
     "classificationFilterPattern": {
       "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
