@@ -73,7 +73,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const APICollectionPage: FunctionComponent = () => {
@@ -443,6 +443,21 @@ const APICollectionPage: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (apiCollection) {
+        const certificationTag: APICollection['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...apiCollection,
+          certification: certificationTag,
+        };
+
+        await handleAPICollectionUpdate(updatedTableDetails as APICollection);
+      }
+    },
+    [handleAPICollectionUpdate, apiCollection]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -502,6 +517,7 @@ const APICollectionPage: FunctionComponent = () => {
                 entityType={EntityType.API_COLLECTION}
                 extraDropdownContent={extraDropdownContent}
                 permissions={apiCollectionPermission}
+                onCertificationUpdate={onCertificationUpdate}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
                 onRestoreDataAsset={handleRestoreAPICollection}

@@ -1,7 +1,7 @@
-# 1.7.2 Release 🎉
+# 1.7.5 Release 🎉
 
 {% note noteType="Tip" %}
-**June 10th, 2025**
+**20th June 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,102 +10,19 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.7.2!
+Learn how to upgrade your OpenMetadata instance to 1.7.5!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.7.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.7.5-release).
 
 # What's New
 
-## Improvements
-
-- Made Trino query table configurable.
-- Added company name details in Pendo.
-- Introduced Databricks Sampler and refactored Unity Catalog Sampler.
-- Implemented Looker column lineage between views and tables.
-- Implemented Looker column lineage between explores and views.
-- Added support for dbt tags filter.
-- Introduced a utility in openmetadata-ops.sh to delete orphaned relations.
-- Added lineage dialect support for Exasol, Trino, and Vertica.
-- Upgraded google-cloud-secret-manager Python dependency version.
-- Introduced data insights migrations to remove stale objects.
-- Added Turkish language support.
-- Added method to filter ingestion pipelines based on metadata.
-- Improved rendering time for profiler charts with large datasets.
-- Added logic to handle WorkflowContext during ingestion.
-- Exposed Pendo integration key in API response.
-- Introduced support for SSIS connector.
-- Enhanced PDF export to improve image handling and support dynamic spacing.
-- Implemented reverse metadata extensions.
-
 ## Fixes
 
-- Corrected Explore tabs with ellipsis to render label and count correctly.
-- Documented reason for Snowflake owner ingestion limitation.
-- Addressed TooManyNestedClauses error in complex queries.
-- Resolved BigQuery import issue.
-- Fixed loading issue in react-awesome-query
-- Japanese localization: updated "view-in-service-type" translation from "{{serviceType}}에서 보기" to "{{serviceType}}で表示".
-- Changed references from jakarta to javax.
-- Resolved search indexing issue: exceeded total fields limit [1000].
-- Fixed DB2 custom driver installation problem.
-- Corrected domain deletion via import.
-- Displayed correct timestamp in freshness test results.
-- Updated file upload input option in service config.
-- Removed unwanted type from pdfLayout config.
-- Aligned the profile config plus icon correctly.
-- Fixed additional nodes issue in upstream lineage.
-- Improved Tableau connector functionalities and validation.
-- Resolved Looker CLL parsing and error handling issues.
-- Enhanced domain truncation and consistent domain UI/UX.
-- Fixed SQL query viewer-related errors.
-- Corrected redirection issue for profiles with displayName.
-- Truncated entity header text appropriately.
-- Made select popup sticky in scrollable containers.
-- Resolved overflow in frequently joined table widget.
-- Fixed persona switch UI update issue without customization.
-- Ensured schema, tags, and API collection switches reflect correct content.
-- Prevented Excel copy-paste from triggering file upload.
-- Added displayName to asset selection model.
-- Applied background color highlight in explore cards.
-- Fixed glossary permission-related error.
-- Handled pydantic_fields exceptions gracefully.
-- Resolved flickering and tooltip issues in lineage column nodes.
-- Corrected row sampling error.
-- Fixed tier tag updates in search filters.
-- Enabled support for multiple owners in dbt models.
-- Removed unused getBasePath import from RouterUtils.ts.
-- Resolved tag dropdown overlap when multiple dropdowns are open.
-- Enabled ingestion pipeline filtering by provider.
-- Prevented automation workflow updates by Service Manager; added cleanup migration.
-- Fixed bot usage in pipelines and workflows.
-- Removed Tier filters from AI agents in Autopilot.
-- Improved column name space handling in lineage child node cards.
-- Implemented graceful logout handling.
-- Added schema description support for Databricks.
-- Made dashboard data model name column non-clickable.
-- Set pagination limits for dashboards.
-- Resolved issue with agents dropdown not showing auto-classification agent.
-- Filtered announcement widget from customization options.
-- Updated Snowflake tests based on new configuration settings.
-- Fixed PII false positives for DateTime fields.
-- Corrected profile picture display issues.
-- Resolved persona customization widget style issues.
-- Updated Lightdash connector.
-- Fixed Doris ingestion failure.
-- Corrected query builder widget behavior for any and not operations.
-- Reverted search order and adjusted minor UI styles.
-- Increased indices.query.bool.max_clause_count to 4096.
-- Made presidio_analyzer a lazy import in the PII processor.
-- Fixed empty expression value issue in Power BI datasets.
-- Applied fixes to limits and logging functionality.
-- Addressed import failure caused by double-encoded database service paths.
-- Corrected auto tier serialization with followers.
-- Cleaned up WAII-generated descriptions.
-- Resolved review activity tracking issue.
-- Fixed setIdleTimeout with lower Jetty versions.
-- Resolved missing new tags in automator form component.
-- Removed deprecated SearchSuggest component.
+- Lineage expand collapse nodes.
+- Default boost score and improve fqn parsing.
+- OpenSearch by default limits the number of characters, if the field is very large then the limit gets exceeded.
+- Handled spaces in database, schema, table, and column names across all connectors for reverse metadata.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.7.1-release...1.7.2-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.7.4-release...1.7.5-release)
