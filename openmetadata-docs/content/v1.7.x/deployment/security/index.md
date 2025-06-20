@@ -1,5 +1,5 @@
 ---
-title: Enable Security
+title: Enable Security | OpenMetadata Deployment Security
 slug: /deployment/security
 collate: false
 ---

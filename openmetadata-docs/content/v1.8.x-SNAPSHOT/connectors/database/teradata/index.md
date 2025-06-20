@@ -1,5 +1,5 @@
 ---
-title: Teradata
+title: Teradata Connector | OpenMetadata Data Warehouse Guide
 slug: /connectors/database/teradata
 ---
 

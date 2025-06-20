@@ -1,5 +1,5 @@
 ---
-title: Azure Key Vault
+title: Azure Key Vault | OpenMetadata Secrets Manager Guide
 slug: /deployment/secrets-manager/supported-implementations/azure-key-vault
 collate: false
 ---
