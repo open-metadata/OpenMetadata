@@ -85,11 +85,11 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page) => {
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
   for (const reaction of FEED_REACTIONS) {
     await page
       .locator(
-        '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+        `[data-testid="activity-feed-widget"] [data-testid="message-container"]:nth-child(${feedNumber})`
       )
       .locator('[data-testid="feed-reaction-container"]')
       .locator('[data-testid="add-reactions"]')
