@@ -33,7 +33,7 @@ test.describe.serial('Data Insight Report Application', () => {
         await apiContext.delete(
           '/api/v1/apps/name/DataInsightsReportApplication?hardDelete=true'
         );
-      } catch (error) {
+      } catch {
         // Do Nothing
       }
 

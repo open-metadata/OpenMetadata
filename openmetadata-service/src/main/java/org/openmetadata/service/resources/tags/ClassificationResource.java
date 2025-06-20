@@ -79,7 +79,7 @@ public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
   private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "usageCount,termCount";
+  static final String FIELDS = "owners,usageCount,termCount";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
@@ -123,8 +123,8 @@ public class ClassificationResource
               description =
                   "Limit the number classifications returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(

@@ -217,8 +217,7 @@ const DataModelsPage = () => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
-      setDataModelData((prev) => ({
-        ...prev,
+      setDataModelData(() => ({
         ...response,
         ...(key && { [key]: response[key] }),
       }));

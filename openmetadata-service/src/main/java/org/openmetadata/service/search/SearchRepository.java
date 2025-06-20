@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -70,6 +71,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +93,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -106,6 +109,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -124,7 +128,7 @@ public class SearchRepository {
   private final List<String> inheritableFields =
       List.of(
           FIELD_OWNERS,
-          Entity.FIELD_DOMAIN,
+          FIELD_DOMAIN,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -528,22 +532,81 @@ public class SearchRepository {
     }
   }
 
+  private static final String CERTIFICATION = "Certification";
+  private static final String CERTIFICATION_FIELD = "certification";
+  private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
+
   public void propagateCertificationTags(
       String entityType, EntityInterface entity, ChangeDescription changeDescription) {
-    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.TAG)) {
-      Tag tagEntity = (Tag) entity;
-      if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("name", entity.getName());
-        paramMap.put("description", entity.getDescription());
-        paramMap.put("tagFQN", entity.getFullyQualifiedName());
-        paramMap.put("style", entity.getStyle());
-        searchClient.updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("certification.tagLabel.tagFQN", entity.getFullyQualifiedName()),
-            new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
-      }
+    if (changeDescription == null) {
+      return;
     }
+
+    if (Entity.TAG.equalsIgnoreCase(entityType)) {
+      handleTagEntityUpdate((Tag) entity);
+    } else {
+      handleEntityCertificationUpdate(entity, changeDescription);
+    }
+  }
+
+  private void handleTagEntityUpdate(Tag tagEntity) {
+    if (CERTIFICATION.equals(tagEntity.getClassification().getFullyQualifiedName())) {
+      updateCertificationInSearch(tagEntity);
+    }
+  }
+
+  private void updateCertificationInSearch(Tag tagEntity) {
+    Map<String, Object> paramMap = new HashMap<>();
+    paramMap.put("name", tagEntity.getName());
+    paramMap.put("description", tagEntity.getDescription());
+    paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
+    paramMap.put("style", tagEntity.getStyle());
+    searchClient.updateChildren(
+        DATA_ASSET_SEARCH_ALIAS,
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
+        new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
+    if (!isCertificationUpdated(change)) {
+      return;
+    }
+
+    AssetCertification certification = getCertificationFromEntity(entity);
+    updateEntityCertificationInSearch(entity, certification);
+  }
+
+  private boolean isCertificationUpdated(ChangeDescription change) {
+    return Stream.concat(
+            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+            change.getFieldsDeleted().stream())
+        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+  }
+
+  private AssetCertification getCertificationFromEntity(EntityInterface entity) {
+    return (AssetCertification) EntityUtil.getEntityField(entity, CERTIFICATION_FIELD);
+  }
+
+  private void updateEntityCertificationInSearch(
+      EntityInterface entity, AssetCertification certification) {
+    IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    Map<String, Object> paramMap = new HashMap<>();
+
+    if (certification != null && certification.getTagLabel() != null) {
+      paramMap.put("name", certification.getTagLabel().getName());
+      paramMap.put("description", certification.getTagLabel().getDescription());
+      paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
+      paramMap.put("style", certification.getTagLabel().getStyle());
+    } else {
+      paramMap.put("name", null);
+      paramMap.put("description", null);
+      paramMap.put("tagFQN", null);
+      paramMap.put("style", null);
+    }
+
+    searchClient.updateEntity(
+        indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
   }
 
   public void propagateToRelatedEntities(
@@ -622,7 +685,7 @@ public class SearchRepository {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
-        if (field.getName().equalsIgnoreCase(Entity.FIELD_DISPLAY_NAME)) {
+        if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
           Map<String, Object> updates = new HashMap<>();
           updates.put("displayName", field.getNewValue().toString());
           paramMap.put("tagFQN", oldFQN);
@@ -692,7 +755,7 @@ public class SearchRepository {
             if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
               scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
               fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
-            } else if (field.getName().equals(Entity.FIELD_DISPLAY_NAME)) {
+            } else if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());
               fieldData.put(field.getName(), field.getNewValue().toString());
@@ -732,7 +795,7 @@ public class SearchRepository {
             }
             scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
-            if (field.getName().equals(Entity.FIELD_DISPLAY_NAME)) {
+            if (field.getName().equals(FIELD_DISPLAY_NAME)) {
               String fieldPath =
                   getFieldPath(entity.getEntityReference().getType(), field.getName());
               fieldData.put(field.getName(), field.getNewValue().toString());
@@ -1179,10 +1242,6 @@ public class SearchRepository {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
-  }
-
-  public Response suggest(SearchRequest request) throws IOException {
-    return searchClient.suggest(request);
   }
 
   public Response listDataInsightChartResult(

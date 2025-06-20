@@ -1013,6 +1013,7 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.DBT}
           sqlQuery={
             get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
@@ -1047,7 +1048,15 @@ export const getTableDetailPageBaseTabs = ({
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
       key: EntityTabs.VIEW_DEFINITION,
-      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+      children: (
+        <QueryViewer
+          isActive={[
+            EntityTabs.VIEW_DEFINITION,
+            EntityTabs.SCHEMA_DEFINITION,
+          ].includes(activeTab)}
+          sqlQuery={tableDetails?.schemaDefinition ?? ''}
+        />
+      ),
     },
     {
       label: (

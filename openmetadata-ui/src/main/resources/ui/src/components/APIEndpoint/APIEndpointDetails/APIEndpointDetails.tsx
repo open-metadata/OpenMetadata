@@ -37,7 +37,10 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -113,8 +116,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.api-endpoint'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -235,6 +237,20 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (apiEndpointDetails) {
+        const certificationTag = updateCertificationTag(newCertification);
+        const updatedApiEndpointDetails: APIEndpoint = {
+          ...apiEndpointDetails,
+          certification: certificationTag,
+        };
+
+        await onApiEndpointUpdate(updatedApiEndpointDetails, 'certification');
+      }
+    },
+    [apiEndpointDetails, onApiEndpointUpdate]
+  );
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
@@ -261,6 +277,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             entityType={EntityType.API_ENDPOINT}
             openTaskCount={feedCount.openTaskCount}
             permissions={apiEndpointPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followApiEndpoint}
             onOwnerUpdate={onOwnerUpdate}

@@ -127,8 +127,8 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
-        return self.client.get_workbooks()
+    def get_dashboards_list(self) -> Iterable[TableauDashboard]:
+        yield from self.client.get_workbooks()
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -137,6 +137,7 @@ class TableauSource(DashboardServiceSource):
         """
         Get Dashboard Details including the dashboard charts and datamodels
         """
+        dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
     def get_owner_ref(
@@ -298,8 +299,9 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
+            base_url = self.get_base_url()
             dashboard_url = (
-                f"{clean_uri(str(self.config.serviceConnection.root.config.hostPort))}"
+                f"{clean_uri(str(base_url))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
             dashboard_request = CreateDashboardRequest(
@@ -640,6 +642,10 @@ class TableauSource(DashboardServiceSource):
                                     fqn_search_string=fqn_search_string,
                                     fetch_multiple_entities=True,
                                 )
+                                if not from_entities:
+                                    logger.debug(
+                                        f"No table entities found for custom SQL lineage. fqn_search_string={fqn_search_string}, table_name={table_name}, query={query}"
+                                    )
                                 for table_entity in from_entities:
                                     yield self._get_add_lineage_request(
                                         to_entity=upstream_data_model_entity,
@@ -726,8 +732,9 @@ class TableauSource(DashboardServiceSource):
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
+                base_url = self.get_base_url()
                 chart_url = (
-                    f"{clean_uri(self.service_connection.hostPort)}/"
+                    f"{clean_uri(str(base_url))}"
                     f"#{site_url}"
                     f"views/{workbook_chart_name.workbook_name}"
                     f"/{workbook_chart_name.chart_url_name}"
@@ -810,6 +817,9 @@ class TableauSource(DashboardServiceSource):
             )
             if table_entity:
                 return [TableAndQuery(table=table_entity)]
+            logger.debug(
+                f"No table entity found for lineage using GraphQL APIs. fqn_search_string={fqn_search_string}, table_name={table_name}"
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to get tables for lineage using GraphQL Apis: {exc}")
@@ -863,6 +873,10 @@ class TableauSource(DashboardServiceSource):
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )
+                    if not from_entities:
+                        logger.debug(
+                            f"No table entities found for lineage using SQL Queries. fqn_search_string={fqn_search_string}, table_name={table_name}, query={custom_sql_table.query}"
+                        )
                     tables_list.extend(
                         [
                             TableAndQuery(table=table, query=custom_sql_table.query)
@@ -979,6 +993,19 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
+    def get_project_names(self, dashboard_details: Any) -> Optional[str]:
+        """
+        Get the project / workspace / folder / collection names of the dashboard
+        """
+        try:
+            return self.client.get_project_parents_by_id(dashboard_details.project.id)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching project names for {dashboard_details.id}: {exc}"
+            )
+        return None
+
     def yield_dashboard_usage(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[DashboardUsage]]:
@@ -1059,3 +1086,11 @@ class TableauSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_base_url(self) -> str:
+        """
+        Get the proxy url for the tableau server
+        """
+        if self.config.serviceConnection.root.config.proxyURL:
+            return str(self.config.serviceConnection.root.config.proxyURL)
+        return str(self.config.serviceConnection.root.config.hostPort)

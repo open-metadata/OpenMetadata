@@ -124,20 +124,12 @@ describe('TestSuiteIngestionPage', () => {
   });
 
   it('should render loading state', async () => {
-    jest.useFakeTimers();
-    (getTestSuiteByName as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => setTimeout(() => resolve(mockTestSuite), 1000))
-    );
+    (getTestSuiteByName as jest.Mock).mockResolvedValueOnce(mockTestSuite);
 
     await act(async () => {
       render(<TestSuiteIngestionPage />);
-    });
 
-    expect(screen.getByText('Loader.component')).toBeInTheDocument();
-
-    await act(async () => {
-      await jest.runAllTimers();
+      expect(screen.getByText('Loader.component')).toBeInTheDocument();
     });
 
     expect(screen.queryByText('Loader.component')).not.toBeInTheDocument();

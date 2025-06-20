@@ -241,7 +241,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static final Map<
           String, EntityResourceTest<? extends EntityInterface, ? extends CreateEntity>>
       ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
-  private final String entityType;
+  protected final String entityType;
   protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
@@ -291,6 +291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER1_REF;
   public static User USER2;
   public static EntityReference USER2_REF;
+  public static User USER3; // User with no roles for permission testing
+  public static EntityReference USER3_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
   public static EntityReference DEFAULT_BOT_ROLE_REF;
@@ -574,7 +576,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
   }
 
-  public final K createRequest(
+  public K createRequest(
       String name, String description, String displayName, List<EntityReference> owners) {
     if (!supportsEmptyDescription && description == null) {
       throw new IllegalArgumentException(
@@ -1230,7 +1232,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
@@ -2741,7 +2745,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target =
         getResource(
-            String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+            String.format("search/query?q=&index=%s&from=0&deleted=false&size=1000", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {

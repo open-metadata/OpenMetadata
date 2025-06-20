@@ -154,7 +154,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "sum"
     },
     {
       "assetType": "databaseSchema",
@@ -200,7 +200,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "sum"
     },
     {
       "assetType": "table",
@@ -250,6 +250,10 @@
           "boost": 1.0
         },
         {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
+        },
+        {
           "field": "tags.tagFQN.text",
           "boost": 5.0
         }
@@ -267,7 +271,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -337,7 +341,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -396,7 +400,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "description",
@@ -439,24 +443,16 @@
           "boost": 5.0
         },
         {
-          "field": "messageSchema.schemaFields.name",
-          "boost": 7.0
-        },
-        {
           "field": "messageSchema.schemaFields.name.keyword",
           "boost": 1.0
         },
         {
-          "field": "messageSchema.schemaFields.description",
-          "boost": 1.0
-        },
-        {
-          "field": "messageSchema.schemaFields.children.name",
-          "boost": 7.0
-        },
-        {
           "field": "messageSchema.schemaFields.children.name.keyword",
           "boost": 1.0
+        },
+        {
+          "field": "fieldNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [
@@ -472,7 +468,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -575,7 +571,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -623,20 +619,8 @@
           "boost": 10.0
         },
         {
-          "field": "columns.name",
-          "boost": 2.0
-        },
-        {
-          "field": "columns.displayName",
-          "boost": 1.0
-        },
-        {
-          "field": "columns.description",
-          "boost": 1.0
-        },
-        {
-          "field": "columns.children.name",
-          "boost": 2.0
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [
@@ -657,7 +641,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -717,7 +701,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -778,7 +762,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -839,7 +823,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -892,16 +876,8 @@
           "boost": 10.0
         },
         {
-          "field": "dataModel.columns.displayName",
-          "boost": 2.0
-        },
-        {
-          "field": "dataModel.columns.description",
-          "boost": 1.0
-        },
-        {
-          "field": "dataModel.columns.children.name",
-          "boost": 2.0
+          "field": "columnNamesFuzzy",
+          "boost": 1.5
         }
       ],
       "aggregations": [
@@ -912,7 +888,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -958,23 +934,27 @@
           "boost": 5.0
         },
         {
-          "field": "responseSchema.schemaFields.name",
-          "boost": 7.0
+          "field": "response_field_namesFuzzy",
+          "boost": 1.5
+        },
+        {
+          "field": "request_field_namesFuzzy",
+          "boost": 1.5
         },
         {
           "field": "responseSchema.schemaFields.name.keyword",
           "boost": 8.0
         },
         {
-          "field": "responseSchema.schemaFields.description",
-          "boost": 1.0
-        },
-        {
-          "field": "responseSchema.schemaFields.children.name",
-          "boost": 7.0
-        },
-        {
           "field": "responseSchema.schemaFields.children.keyword",
+          "boost": 5.0
+        },
+        {
+          "field": "requestSchema.schemaFields.name.keyword",
+          "boost": 8.0
+        },
+        {
+          "field": "requestSchema.schemaFields.children.keyword",
           "boost": 5.0
         }
       ],
@@ -985,13 +965,18 @@
           "field": "responseSchema.schemaFields.name.keyword"
         },
         {
+          "name": "requestSchema.schemaFields.name",
+          "type": "terms",
+          "field": "requestSchema.schemaFields.name.keyword"
+        },
+        {
           "name": "fieldNames",
           "type": "terms",
           "field": "fieldsNames"
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1042,7 +1027,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1088,7 +1073,7 @@
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1133,12 +1118,16 @@
         {
           "field": "classification.name",
           "boost": 7.0
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0
         }
       ],
       "aggregations": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -1215,7 +1204,7 @@
         }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply",
+      "boostMode": "sum",
       "highlightFields": [
         "name",
         "displayName",
@@ -2113,6 +2102,26 @@
         {
           "name": "responseSchema.schemaFields.children.keyword",
           "description": "Exact match on nested field names in the response schema."
+        },
+        {
+          "name": "requestSchema.schemaFields.name",
+          "description": "Search on field names in the API request schema to find endpoints accepting specific data fields."
+        },
+        {
+          "name": "requestSchema.schemaFields.name.keyword",
+          "description": "Exact match on request schema field names for precise field lookups."
+        },
+        {
+          "name": "requestSchema.schemaFields.description",
+          "description": "Search on field descriptions in the request schema to find endpoints with fields serving specific purposes."
+        },
+        {
+          "name": "requestSchema.schemaFields.children.name",
+          "description": "Search on nested field names within complex request schema structures."
+        },
+        {
+          "name": "requestSchema.schemaFields.children.keyword",
+          "description": "Exact match on nested field names in the request schema."
         },
         {
           "name": "tags.tagFQN.text",

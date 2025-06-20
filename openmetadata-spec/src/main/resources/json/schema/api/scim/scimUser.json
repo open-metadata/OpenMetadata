@@ -1,0 +1,92 @@
+{
+  "$id": "https://open-metadata.org/schema/api/scimUser.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ScimUser",
+  "description": "SCIM-compliant User object",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.scim.ScimUser",
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "id": { "type": "string" },
+    "externalId": { "type": "string" },
+    "userName": { "type": "string" },
+    "displayName": { "type": "string" },
+    "active": { "type": "boolean", "default": true },
+    "title": { "type": "string" },
+    "preferredLanguage": { "type": "string" },
+    "emails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "format": "email" },
+          "type": { "type": "string" },
+          "primary": { "type": "boolean" }
+        }
+      }
+    },
+    "phoneNumbers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      }
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "formatted": { "type": "string" },
+          "streetAddress": { "type": "string" },
+          "locality": { "type": "string" },
+          "region": { "type": "string" },
+          "postalCode": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      }
+    },
+    "name": {
+      "type": "object",
+      "properties": {
+        "givenName": { "type": "string" },
+        "familyName": { "type": "string" },
+        "formatted": { "type": "string" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "resourceType": { "type": "string" },
+        "created": { "type": "string", "format": "date-time" },
+        "lastModified": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "department": { "type": "string" },
+        "manager": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "string" },
+            "displayName": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

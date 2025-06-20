@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -77,7 +77,7 @@ import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangePare
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
-
+import './glossery-header.less';
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -257,8 +257,8 @@ const GlossaryHeader = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: !isEmpty(data.color) ? data.color : undefined,
+      iconURL: !isEmpty(data.iconURL) ? data.iconURL : undefined,
     };
     const updatedDetails = {
       ...selectedData,
@@ -543,7 +543,7 @@ const GlossaryHeader = ({
 
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
-    handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
+    handleBreadcrumb(fullyQualifiedName ?? name);
   }, [selectedData]);
 
   useEffect(() => {
@@ -554,8 +554,8 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col className="d-flex" flex="auto">
+      <div className="glossary-header flex gap-4 justify-between no-wrap ">
+        <div className="flex w-min-0 flex-auto">
           <EntityHeader
             badge={statusBadge}
             breadcrumb={breadcrumb}
@@ -565,8 +565,8 @@ const GlossaryHeader = ({
             serviceName=""
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
-        </Col>
-        <Col flex="360px">
+        </div>
+        <div className="flex items-center">
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
@@ -642,8 +642,8 @@ const GlossaryHeader = ({
               )}
             </ButtonGroup>
           </div>
-        </Col>
-      </Row>
+        </div>
+      </div>
       {selectedData && (
         <EntityDeleteModal
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
