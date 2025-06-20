@@ -1705,6 +1705,7 @@
     "derived-tag-warning": "Dieses Tag wird automatisch abgeleitet und kann nur entfernt werden, indem der zugehörige Glossarbegriff gelöscht wird.",
     "description-coverage-widget-description": "Beschreibungsabdeckung für alle Datenvermögenswerte im Dienst. <0>Mehr erfahren.</0>",
     "destination-selection-warning": "Bitte stellen Sie sicher, dass die \"{{subscriptionCategory}}\" ihre \"{{subscriptionType}}\" konfiguriert haben, um die Alarme zu erhalten.",
+    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "Dies wird die {{app}}-Anwendung deaktivieren.",
     "disable-classification-description": "Durch Deaktivieren der Klassifizierung können Sie nicht mehr nach dieser suchen oder sie mit zugeordneten Tags einer Entität zuweisen.",
     "disabled-classification-actions-message": "Sie können diese Aktion auf deaktivierten Klassifikationen nicht ausführen.",

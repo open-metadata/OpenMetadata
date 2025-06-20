@@ -352,7 +352,11 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {statusLabel}
+                          {t('message.destination-status-display', {
+                            statusCode: destinationStatusDetails?.statusCode,
+                            statusLabel,
+                            reason: destinationStatusDetails?.reason,
+                          })}
                         </Typography.Text>
                       </>
                     }
