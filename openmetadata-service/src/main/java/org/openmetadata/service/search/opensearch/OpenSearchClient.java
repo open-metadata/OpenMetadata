@@ -2170,7 +2170,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public DataInsightCustomChartResultList buildDIChart(
-      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
     OpenSearchDynamicChartAggregatorInterface aggregator =
         OpenSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {
@@ -2178,7 +2179,7 @@ public class OpenSearchClient implements SearchClient {
       Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
           new HashMap<>();
       os.org.opensearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder);
+          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
       return aggregator.processSearchResponse(
           diChart, searchResponse, formulas, metricFormulaHolder);
