@@ -17,21 +17,25 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
 import './customise-home-modal.less';
+
+interface CustomiseHomeModalProps {
+  onClose: () => void;
+  open: boolean;
+  onBackgroundColorUpdate?: (color: string) => Promise<void>;
+  currentBackgroundColor?: string;
+}
 
 const CustomiseHomeModal = ({
   onClose,
   open,
-}: {
-  onClose: () => void;
-  open: boolean;
-}) => {
+  onBackgroundColorUpdate,
+  currentBackgroundColor,
+}: CustomiseHomeModalProps) => {
   const { t } = useTranslation();
-  const { preferences, setPreference } = useCurrentUserPreferences();
   const [selectedColor, setSelectedColor] = useState<string>(
-    preferences.homePageBannerBackgroundColor || DEFAULT_HEADER_BG_COLOR
+    currentBackgroundColor ?? DEFAULT_HEADER_BG_COLOR
   );
 
   const customiseOptions = [
@@ -59,7 +63,9 @@ const CustomiseHomeModal = ({
   )?.component;
 
   const handleApply = () => {
-    setPreference({ homePageBannerBackgroundColor: selectedColor });
+    if (onBackgroundColorUpdate) {
+      onBackgroundColorUpdate(selectedColor);
+    }
     onClose();
   };
 
@@ -95,7 +101,7 @@ const CustomiseHomeModal = ({
       <Row className="customise-home-modal-body">
         <Col className="sidebar">
           {customiseOptions.map((item) => (
-            <div
+            <Button
               className={`sidebar-option ${
                 selectedKey === item.key ? 'active' : ''
               }`}
@@ -103,7 +109,7 @@ const CustomiseHomeModal = ({
               key={item.key}
               onClick={() => setSelectedKey(item.key)}>
               {item.label}
-            </div>
+            </Button>
           ))}
         </Col>
         <Divider className="customise-home-modal-divider" type="vertical" />

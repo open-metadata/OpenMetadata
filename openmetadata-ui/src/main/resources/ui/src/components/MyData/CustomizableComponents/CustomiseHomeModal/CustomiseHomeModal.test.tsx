@@ -13,12 +13,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import CustomiseHomeModal from './CustomiseHomeModal';
 
 // Mock dependencies
-jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore');
-
 jest.mock('../../HeaderTheme/HeaderTheme', () => {
   return function MockHeaderTheme({
     selectedColor,
@@ -55,27 +52,18 @@ jest.mock('antd', () => {
   };
 });
 
-const mockUseCurrentUserPreferences = useCurrentUserPreferences as jest.Mock;
-
 describe('CustomiseHomeModal Component', () => {
   const mockOnClose = jest.fn();
-  const mockSetPreference = jest.fn();
+  const mockOnBackgroundColorUpdate = jest.fn();
 
   const defaultProps = {
     open: true,
     onClose: mockOnClose,
-  };
-
-  const mockPreferences = {
-    homePageBannerBackgroundColor: DEFAULT_HEADER_BG_COLOR,
+    onBackgroundColorUpdate: mockOnBackgroundColorUpdate,
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseCurrentUserPreferences.mockReturnValue({
-      preferences: mockPreferences,
-      setPreference: mockSetPreference,
-    });
   });
 
   describe('Modal Rendering', () => {
@@ -144,13 +132,8 @@ describe('CustomiseHomeModal Component', () => {
     });
   });
 
-  describe('Header Theme Functionality', () => {
-    it('should initialize with default color when no preference is set', () => {
-      mockUseCurrentUserPreferences.mockReturnValue({
-        preferences: {},
-        setPreference: mockSetPreference,
-      });
-
+  describe('Background Color Initialization', () => {
+    it('should initialize with default color when no currentBackgroundColor is provided', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       expect(screen.getByTestId('selected-color')).toHaveTextContent(
@@ -158,26 +141,61 @@ describe('CustomiseHomeModal Component', () => {
       );
     });
 
-    it('should initialize with saved preference color', () => {
+    it('should initialize with currentBackgroundColor when provided', () => {
       const customColor = '#123456';
-      mockUseCurrentUserPreferences.mockReturnValue({
-        preferences: { homePageBannerBackgroundColor: customColor },
-        setPreference: mockSetPreference,
-      });
-
-      render(<CustomiseHomeModal {...defaultProps} />);
+      render(
+        <CustomiseHomeModal
+          {...defaultProps}
+          currentBackgroundColor={customColor}
+        />
+      );
 
       expect(screen.getByTestId('selected-color')).toHaveTextContent(
         customColor
       );
     });
 
+    it('should fallback to default color when currentBackgroundColor is undefined', () => {
+      render(
+        <CustomiseHomeModal
+          {...defaultProps}
+          currentBackgroundColor={undefined}
+        />
+      );
+
+      expect(screen.getByTestId('selected-color')).toHaveTextContent(
+        DEFAULT_HEADER_BG_COLOR
+      );
+    });
+  });
+
+  describe('Header Theme Functionality', () => {
     it('should update selected color when HeaderTheme component changes it', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       const colorChangeButton = screen.getByTestId('color-change-button');
       fireEvent.click(colorChangeButton);
 
+      expect(screen.getByTestId('selected-color')).toHaveTextContent('#ff0000');
+    });
+
+    it('should maintain color selection across sidebar navigation', () => {
+      render(<CustomiseHomeModal {...defaultProps} />);
+
+      // Change color
+      const colorChangeButton = screen.getByTestId('color-change-button');
+      fireEvent.click(colorChangeButton);
+
+      // Switch to another sidebar option and back
+      const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
+      fireEvent.click(allWidgetsOption);
+
+      const headerThemeOption = screen.getByTestId(
+        'sidebar-option-header-theme'
+      );
+      fireEvent.click(headerThemeOption);
+
+      // Color should still be maintained
       expect(screen.getByTestId('selected-color')).toHaveTextContent('#ff0000');
     });
   });
@@ -201,19 +219,19 @@ describe('CustomiseHomeModal Component', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should save preference and close modal when apply button is clicked', () => {
+    it('should call onBackgroundColorUpdate and onClose when apply button is clicked', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       const applyButton = screen.getByTestId('apply-btn');
       fireEvent.click(applyButton);
 
-      expect(mockSetPreference).toHaveBeenCalledWith({
-        homePageBannerBackgroundColor: DEFAULT_HEADER_BG_COLOR,
-      });
+      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith(
+        DEFAULT_HEADER_BG_COLOR
+      );
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should save updated color when apply is clicked after color change', () => {
+    it('should call onBackgroundColorUpdate with updated color when apply is clicked after color change', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
@@ -224,13 +242,27 @@ describe('CustomiseHomeModal Component', () => {
       const applyButton = screen.getByTestId('apply-btn');
       fireEvent.click(applyButton);
 
-      expect(mockSetPreference).toHaveBeenCalledWith({
-        homePageBannerBackgroundColor: '#ff0000',
-      });
+      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith('#ff0000');
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should not save preferences when cancel is clicked', () => {
+    it('should call onBackgroundColorUpdate with currentBackgroundColor when apply is clicked without changes', () => {
+      const customColor = '#abcdef';
+      render(
+        <CustomiseHomeModal
+          {...defaultProps}
+          currentBackgroundColor={customColor}
+        />
+      );
+
+      const applyButton = screen.getByTestId('apply-btn');
+      fireEvent.click(applyButton);
+
+      expect(mockOnBackgroundColorUpdate).toHaveBeenCalledWith(customColor);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call onBackgroundColorUpdate when cancel is clicked', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
@@ -241,29 +273,23 @@ describe('CustomiseHomeModal Component', () => {
       const cancelButton = screen.getByTestId('cancel-btn');
       fireEvent.click(cancelButton);
 
-      expect(mockSetPreference).not.toHaveBeenCalled();
+      expect(mockOnBackgroundColorUpdate).not.toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('User Preferences Integration', () => {
-    it('should call useCurrentUserPreferences hook', () => {
-      render(<CustomiseHomeModal {...defaultProps} />);
+    it('should handle missing onBackgroundColorUpdate callback gracefully', () => {
+      const propsWithoutCallback = {
+        ...defaultProps,
+        onBackgroundColorUpdate: undefined,
+      };
 
-      expect(mockUseCurrentUserPreferences).toHaveBeenCalled();
-    });
+      render(<CustomiseHomeModal {...propsWithoutCallback} />);
 
-    it('should handle undefined homePageBannerBackgroundColor preference', () => {
-      mockUseCurrentUserPreferences.mockReturnValue({
-        preferences: { someOtherPreference: 'value' },
-        setPreference: mockSetPreference,
-      });
+      const applyButton = screen.getByTestId('apply-btn');
 
-      render(<CustomiseHomeModal {...defaultProps} />);
-
-      expect(screen.getByTestId('selected-color')).toHaveTextContent(
-        DEFAULT_HEADER_BG_COLOR
-      );
+      // Should not throw error when callback is undefined
+      expect(() => fireEvent.click(applyButton)).not.toThrow();
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
   });
 });

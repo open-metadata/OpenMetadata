@@ -20,34 +20,42 @@ import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg'
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
+import { Page } from '../../../../generated/system/ui/page';
+import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 
+interface CustomiseLandingPageHeaderProps {
+  hideCustomiseButton?: boolean;
+  overlappedContainer?: boolean;
+  backgroundColor?: string;
+  onBackgroundColorUpdate?: (color: string) => Promise<void>;
+}
+
 const CustomiseLandingPageHeader = ({
   hideCustomiseButton = false,
   overlappedContainer = false,
   backgroundColor,
-}: {
-  hideCustomiseButton?: boolean;
-  overlappedContainer?: boolean;
-  backgroundColor?: string;
-}) => {
+  onBackgroundColorUpdate,
+}: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { preferences } = useCurrentUserPreferences();
   const { isNLPEnabled } = useSearchStore();
+  const { document } = useCustomizeStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
 
+  const defaultBackgroundColor = document?.data?.pages?.find(
+    (item: Page) => item.pageType === PageType.LandingPage
+  )?.homePageBannerBackgroundColor;
+
   const bgColor =
-    backgroundColor ||
-    preferences.homePageBannerBackgroundColor ||
-    DEFAULT_HEADER_BG_COLOR;
+    backgroundColor ?? defaultBackgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const recentlyViewData = useMemo(() => {
     const entities = getRecentlyViewedData();
@@ -171,7 +179,9 @@ const CustomiseLandingPageHeader = ({
 
       {!hideCustomiseButton && showCustomiseHomeModal && (
         <CustomiseHomeModal
+          currentBackgroundColor={bgColor}
           open={showCustomiseHomeModal}
+          onBackgroundColorUpdate={onBackgroundColorUpdate}
           onClose={handleCloseCustomiseHomeModal}
         />
       )}

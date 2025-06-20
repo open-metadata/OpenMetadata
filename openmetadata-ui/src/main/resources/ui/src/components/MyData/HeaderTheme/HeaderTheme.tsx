@@ -17,13 +17,12 @@ import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import './header-theme.less';
 
-const HeaderTheme = ({
-  selectedColor,
-  setSelectedColor,
-}: {
+interface HeaderThemeProps {
   selectedColor: string;
   setSelectedColor: (color: string) => void;
-}) => {
+}
+
+const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
   const { t } = useTranslation();
 
   const handleColorClick = (color: string) => {
