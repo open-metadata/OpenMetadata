@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -648,6 +649,48 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/move")
+  @Operation(
+      operationId = "moveGlossaryTerm",
+      summary = "Move a glossary term to a new parent or glossary",
+      description =
+          "Move a glossary term to a new parent term or glossary. Only parent or glossary can be changed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The moved glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class)))
+      })
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response moveGlossaryTerm(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @RequestBody(
+              description = "MoveGlossaryTermRequest with new parent or glossary",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema = @Schema(implementation = MoveGlossaryTermRequest.class)))
+          MoveGlossaryTermRequest moveRequest) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    GlossaryTerm movedGlossaryTerm =
+        repository.moveGlossaryTerm(id, moveRequest, securityContext.getUserPrincipal().getName());
+    return Response.ok(movedGlossaryTerm).build();
   }
 
   @DELETE

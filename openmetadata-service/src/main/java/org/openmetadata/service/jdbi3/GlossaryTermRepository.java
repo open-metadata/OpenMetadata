@@ -65,6 +65,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -75,6 +76,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -1052,6 +1054,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
+    /**
+     * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+     */
+    public void moveAndStore() {
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      incrementalChange();
+      if (consolidateChanges) {
+        revert();
+      }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      validateParent();
+      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
+      storeUpdate();
+      postUpdate(original, updated);
+    }
+
     private boolean validateIfTagsAreEqual(
         List<TagLabel> originalTags, List<TagLabel> updatedTags) {
       Set<String> originalTagsFqn =
@@ -1296,5 +1315,40 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(tagRecord.getId());
       }
     }
+  }
+
+  /**
+   * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+   */
+  public GlossaryTerm moveGlossaryTerm(UUID id, MoveGlossaryTermRequest moveRequest, String user) {
+    if (moveRequest == null
+        || (moveRequest.getParent() == null && moveRequest.getGlossary() == null)) {
+      return null; // Nothing to move
+    }
+    GlossaryTerm original = Entity.getEntity(GLOSSARY_TERM, id, "*", Include.ALL);
+
+    GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
+    // Only update parent and glossary fields
+    if (moveRequest.getParent() != null) {
+      GlossaryTerm parentGlossaryTerm =
+          Entity.getEntity(GLOSSARY_TERM, moveRequest.getParent().getId(), "*", Include.ALL);
+      updated.setParent(
+          moveRequest.getParent() == null
+              ? original.getParent()
+              : parentGlossaryTerm.getEntityReference());
+    } else updated.setParent(null); // No Parent, root of the glossary
+    if (moveRequest.getGlossary() != null) { // Glossary always expected to avoid confusion
+      Glossary parentGlossary =
+          Entity.getEntity(GLOSSARY, moveRequest.getGlossary().getId(), "*", Include.ALL);
+      updated.setGlossary(
+          moveRequest.getGlossary() == null
+              ? original.getGlossary()
+              : parentGlossary.getEntityReference());
+    }
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PATCH);
+    updater.moveAndStore();
+    return updated;
   }
 }
