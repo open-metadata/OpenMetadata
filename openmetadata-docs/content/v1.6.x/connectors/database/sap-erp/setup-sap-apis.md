@@ -1,5 +1,5 @@
 ---
-title: Setup SAP ERP APIs
+title: Setup SAP ERP APIs | OpenMetadata Integration Guide
 slug: /connectors/database/sap-erp/setup-sap-apis
 ---
 # Setup SAP ERP APIs

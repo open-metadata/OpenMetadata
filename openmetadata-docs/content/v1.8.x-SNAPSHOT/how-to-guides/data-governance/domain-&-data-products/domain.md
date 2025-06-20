@@ -1,5 +1,5 @@
 ---
-title:  How to Use Domains
+title:  How to Use Domains | OpenMetadata Governance Guide
 slug: /how-to-guides/data-governance/domains-&-data-products/domains
 ---
 
