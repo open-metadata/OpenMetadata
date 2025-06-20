@@ -66,6 +66,7 @@ import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -84,7 +85,7 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "feeds")
-public class FeedResource {
+public class FeedResource extends ReplicaAwareResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
   private final FeedMapper mapper = new FeedMapper();
   private final PostMapper postMapper = new PostMapper();

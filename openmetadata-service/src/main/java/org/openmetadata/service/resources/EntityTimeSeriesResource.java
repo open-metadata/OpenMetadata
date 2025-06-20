@@ -9,6 +9,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
@@ -20,7 +21,8 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 public abstract class EntityTimeSeriesResource<
-    T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>> {
+        T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>>
+    extends ReplicaAwareResource {
   protected final Class<T> entityClass;
   protected final String entityType;
   @Getter protected final K repository;
