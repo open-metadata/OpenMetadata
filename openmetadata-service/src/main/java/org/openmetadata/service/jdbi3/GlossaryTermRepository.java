@@ -1326,28 +1326,27 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return null; // Nothing to move
     }
     GlossaryTerm original = Entity.getEntity(GLOSSARY_TERM, id, "*", Include.ALL);
-
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
-    // Only update parent and glossary fields
+
+    // Set the new parent for the glossary term. If the parent is not passed,
+    // the term is being moved to the root of the glossary, and we set the parent to null.
     if (moveRequest.getParent() != null) {
       GlossaryTerm parentGlossaryTerm =
           Entity.getEntity(GLOSSARY_TERM, moveRequest.getParent().getId(), "*", Include.ALL);
-      updated.setParent(
-          moveRequest.getParent() == null
-              ? original.getParent()
-              : parentGlossaryTerm.getEntityReference());
-    } else updated.setParent(null); // No Parent, root of the glossary
-    if (moveRequest.getGlossary() != null) { // Glossary always expected to avoid confusion
+      updated.setParent(parentGlossaryTerm.getEntityReference());
+    } else {
+      updated.setParent(null); // No parent, so this becomes a root-level term
+    }
+
+    // Set the new glossary for the term. Glossary is always expected to avoid confusion
+    if (moveRequest.getGlossary() != null) {
       Glossary parentGlossary =
           Entity.getEntity(GLOSSARY, moveRequest.getGlossary().getId(), "*", Include.ALL);
-      updated.setGlossary(
-          moveRequest.getGlossary() == null
-              ? original.getGlossary()
-              : parentGlossary.getEntityReference());
+      updated.setGlossary(parentGlossary.getEntityReference());
     }
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
-    GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PATCH);
+    GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
     return updated;
   }
