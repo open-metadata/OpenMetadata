@@ -4,9 +4,9 @@
   "editor.formatOnSave": true,
 
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "always",
-    "source.fixAll.stylelint": "always",
-    "source.organizeImports": "always"
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.stylelint": "explicit",
+    "source.organizeImports": "explicit"
   },
 
   // Indentations purely based on linters and file formatters, not based on existing occurrences
