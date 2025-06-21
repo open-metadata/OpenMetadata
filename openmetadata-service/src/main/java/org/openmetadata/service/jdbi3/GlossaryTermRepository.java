@@ -30,7 +30,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -65,6 +65,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -75,6 +76,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -722,17 +724,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void validateHierarchy(GlossaryTerm term) {
-    // The glossary and the parent term must belong to the same hierarchy
     if (term.getParent() == null) {
       return; // Parent is the root of the glossary
     }
-    String glossaryFqn = FullyQualifiedName.build(term.getGlossary().getName());
-    if (!term.getParent().getFullyQualifiedName().startsWith(glossaryFqn)) {
+    // Check for circular references
+    String parentFqn = term.getParent().getFullyQualifiedName();
+    String termFqn = term.getFullyQualifiedName();
+    if (FullyQualifiedName.isParent(parentFqn, termFqn)) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid hierarchy - parent [%s] does not belong to glossary[%s]",
-              term.getParent().getFullyQualifiedName(),
-              term.getGlossary().getFullyQualifiedName()));
+              "Invalid hierarchy - cannot move term [%s] under its child [%s]",
+              termFqn, parentFqn));
     }
   }
 
@@ -780,40 +782,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {
-    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
-    // its latest value.
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection.tagUsageDAO().getTargetFQNHashForTag(updated.getFullyQualifiedName()));
-
-    List<GlossaryTerm> childTerms =
-        getNestedTerms(updated); // get old value of children term from database
-    for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
-    }
-
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
-    List<EntityReference> childrenTerms =
-        searchRepository.getEntitiesContainingFQNFromES(
-            original.getFullyQualifiedName(),
-            childTerms.size(),
-            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
-
+    String oldParentFqn = original.getFullyQualifiedName();
+    String newParentFqn = updated.getFullyQualifiedName();
     searchRepository
         .getSearchClient()
-        .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
-
-    for (EntityReference child : childrenTerms) {
-      targetFQNFromES.putAll( // List of entity references tagged with the children term
-          getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
-      searchRepository.updateEntity(child); // update es index of child term
-      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
-    }
+        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldParentFqn, newParentFqn, TAGS_FQN);
   }
 
   private void updateEntityLinks(GlossaryTerm original, GlossaryTerm updated) {
@@ -1081,6 +1054,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
+    /**
+     * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+     */
+    @Transaction
+    public void moveAndStore() {
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      incrementalChange();
+      if (consolidateChanges) {
+        revert();
+      }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      validateParent();
+      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
+      storeUpdate();
+      postUpdate(original, updated);
+    }
+
     private boolean validateIfTagsAreEqual(
         List<TagLabel> originalTags, List<TagLabel> updatedTags) {
       Set<String> originalTagsFqn =
@@ -1274,6 +1265,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(original.getId());
       }
+      updateAssetIndexes(original, updated);
     }
 
     private void validateParent() {
@@ -1324,5 +1316,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(tagRecord.getId());
       }
     }
+  }
+
+  /**
+   * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+   */
+  public GlossaryTerm moveGlossaryTerm(UUID id, MoveGlossaryTermRequest moveRequest, String user) {
+    if (moveRequest == null
+        || (moveRequest.getParent() == null && moveRequest.getGlossary() == null)) {
+      return null; // Nothing to move
+    }
+    GlossaryTerm original = Entity.getEntity(GLOSSARY_TERM, id, "*", Include.ALL);
+    GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
+
+    // Set the new parent for the glossary term. If the parent is not passed,
+    // the term is being moved to the root of the glossary, and we set the parent to null.
+    if (moveRequest.getParent() != null) {
+      GlossaryTerm parentGlossaryTerm =
+          Entity.getEntity(GLOSSARY_TERM, moveRequest.getParent().getId(), "*", Include.ALL);
+      updated.setParent(parentGlossaryTerm.getEntityReference());
+    } else {
+      updated.setParent(null); // No parent, so this becomes a root-level term
+    }
+
+    // Set the new glossary for the term. Glossary is always expected to avoid confusion
+    if (moveRequest.getGlossary() != null) {
+      Glossary parentGlossary =
+          Entity.getEntity(GLOSSARY, moveRequest.getGlossary().getId(), "*", Include.ALL);
+      updated.setGlossary(parentGlossary.getEntityReference());
+    }
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
+    updater.moveAndStore();
+    return updated;
   }
 }
