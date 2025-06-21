@@ -3339,8 +3339,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      this.recordChange(
-          "displayName", this.original.getDisplayName(), this.updated.getDisplayName());
+      recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
     private void updateOwners() {
