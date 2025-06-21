@@ -198,8 +198,13 @@ public class CompiledRule extends Rule {
   }
 
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES)
-        || getResources().contains(resource));
+    if (resource.equalsIgnoreCase("scim")) {
+      return getResources().stream().anyMatch(r -> r.equalsIgnoreCase("scim"));
+    }
+    if (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES)) {
+      return true;
+    }
+    return getResources().contains(resource);
   }
 
   private boolean matchOperation(MetadataOperation operation) {

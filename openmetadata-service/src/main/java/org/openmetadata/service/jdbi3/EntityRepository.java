@@ -3339,15 +3339,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDisplayName())
-          && updatedByBot()
-          && isNotScimBot()) {
-        // Revert change to non-empty displayName if it is being updated by a bot
-        updated.setDisplayName(original.getDisplayName());
-        return;
-      }
-      recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
+      this.recordChange(
+          "displayName", this.original.getDisplayName(), this.updated.getDisplayName());
     }
 
     private void updateOwners() {
@@ -4127,10 +4120,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String json =
           daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
       return JsonUtils.readValue(json, entityClass);
-    }
-
-    private boolean isNotScimBot() {
-      return !"scim-bot".equalsIgnoreCase(this.updatingUser.getName());
     }
   }
 

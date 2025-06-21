@@ -38,8 +38,10 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -134,9 +136,14 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public static List<String> filterRedundantResources(List<String> resources) {
     // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
     boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
-    return containsAllResources
-        ? new ArrayList<>(List.of(ALL_RESOURCES))
-        : new ArrayList<>(resources);
+    if (!containsAllResources) {
+      return new ArrayList<>(resources);
+    }
+
+    return ResourceRegistry.listResourceDescriptors().stream()
+        .map(ResourceDescriptor::getName)
+        .filter(name -> !name.equalsIgnoreCase("scim"))
+        .collect(Collectors.toList());
   }
 
   public static List<MetadataOperation> filterRedundantOperations(
