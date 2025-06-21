@@ -1,5 +1,5 @@
 ---
-title: What are Tiers
+title: What are Tiers | OpenMetadata Classification Tiers Guide
 slug: /how-to-guides/data-governance/classification/tiers
 ---
 

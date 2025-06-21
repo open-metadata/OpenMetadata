@@ -1,5 +1,5 @@
 ---
-title: Enable SSL with Nginx
+title: Enable SSL with Nginx | OpenMetadata Security Setup
 slug: /deployment/security/enable-ssl/nginx
 collate: false
 ---

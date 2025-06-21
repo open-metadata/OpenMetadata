@@ -1,5 +1,5 @@
 ---
-title: Couchbase
+title: Couchbase Connector | OpenMetadata NoSQL Integration Guide
 slug: /connectors/database/couchbase
 ---
 
