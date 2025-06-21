@@ -1057,6 +1057,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     /**
      * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
      */
+    @Transaction
     public void moveAndStore() {
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       incrementalChange();
