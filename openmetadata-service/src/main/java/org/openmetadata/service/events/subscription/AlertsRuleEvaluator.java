@@ -41,7 +41,7 @@ import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class AlertsRuleEvaluator {

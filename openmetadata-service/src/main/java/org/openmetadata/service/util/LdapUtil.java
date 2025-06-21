@@ -22,6 +22,8 @@ import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
 import com.unboundid.util.ssl.TrustAllTrustManager;
 import com.unboundid.util.ssl.TrustStoreTrustManager;
 import javax.net.ssl.X509TrustManager;
+
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig;

@@ -37,7 +37,7 @@ import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();

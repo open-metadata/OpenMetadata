@@ -15,7 +15,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class FetchEntitiesImpl implements JavaDelegate {
   private Expression entityTypeExpr;

@@ -13,7 +13,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
   private static final Set<String> excludeFields =

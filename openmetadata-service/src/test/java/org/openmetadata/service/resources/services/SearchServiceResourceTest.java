@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class SearchServiceResourceTest

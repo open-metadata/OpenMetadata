@@ -35,7 +35,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SignalBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class EventBasedEntityTrigger implements TriggerInterface {
   private final Process process;

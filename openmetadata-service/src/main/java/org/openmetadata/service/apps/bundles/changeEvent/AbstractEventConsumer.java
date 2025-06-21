@@ -37,7 +37,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.util.DIContainer;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;

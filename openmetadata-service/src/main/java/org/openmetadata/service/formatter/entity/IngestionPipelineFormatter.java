@@ -29,7 +29,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class IngestionPipelineFormatter implements EntityFormatter {
   private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";

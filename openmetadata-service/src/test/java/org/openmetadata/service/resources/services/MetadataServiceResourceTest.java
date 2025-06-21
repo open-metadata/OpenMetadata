@@ -34,7 +34,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j

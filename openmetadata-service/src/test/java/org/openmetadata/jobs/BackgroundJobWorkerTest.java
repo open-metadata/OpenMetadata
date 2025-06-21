@@ -36,7 +36,7 @@ import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class BackgroundJobWorkerTest extends OpenMetadataApplicationTest {

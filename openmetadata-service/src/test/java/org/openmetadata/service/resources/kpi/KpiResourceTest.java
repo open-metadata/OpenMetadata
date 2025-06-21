@@ -35,7 +35,7 @@ import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchI
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j

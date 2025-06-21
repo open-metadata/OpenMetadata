@@ -32,7 +32,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.email.DefaultTemplateProvider;
 import org.openmetadata.service.util.email.TemplateProvider;
 

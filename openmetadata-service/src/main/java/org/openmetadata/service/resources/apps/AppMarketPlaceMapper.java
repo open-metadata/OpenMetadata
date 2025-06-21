@@ -10,7 +10,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.mapper.EntityMapper;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class AppMarketPlaceMapper
     implements EntityMapper<AppMarketPlaceDefinition, CreateAppMarketPlaceDefinitionReq> {

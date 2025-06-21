@@ -14,7 +14,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.postgresql.util.PGobject;
 
 @Slf4j

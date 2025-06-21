@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.apiservices.APIServiceResource;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class APIServiceResourceTest extends ServiceResourceTest<ApiService, CreateApiService> {

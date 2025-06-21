@@ -60,6 +60,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -123,7 +124,6 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
@@ -2631,7 +2631,7 @@ public class OpenSearchClient implements SearchClient {
           client.getLowLevelClient().performRequest(catRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
       com.fasterxml.jackson.databind.JsonNode indices =
-          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+          JsonUtils.readTree(responseBody);
       if (!indices.isArray()) {
         LOG.warn("No indices found matching pattern: {}", indexPattern);
         return;

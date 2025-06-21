@@ -22,7 +22,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class TagFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the tags for %s %s";

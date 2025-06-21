@@ -30,7 +30,7 @@ import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerTest {

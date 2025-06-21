@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public interface DataInsightsSearchInterface {
   String DATA_INSIGHTS_SEARCH_CONFIG_PATH = "/dataInsights/config.json";

@@ -25,6 +25,7 @@ import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.*;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.entity.data.*;
 import org.openmetadata.schema.entity.services.DatabaseService;

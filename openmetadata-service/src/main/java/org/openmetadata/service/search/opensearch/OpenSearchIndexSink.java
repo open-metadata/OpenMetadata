@@ -17,7 +17,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import os.org.opensearch.action.DocWriteRequest;
 import os.org.opensearch.action.bulk.BulkRequest;

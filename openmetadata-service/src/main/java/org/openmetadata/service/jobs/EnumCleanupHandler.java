@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class EnumCleanupHandler implements JobHandler {

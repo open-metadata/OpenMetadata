@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class McpAuthFilter implements Filter {
   private final JwtFilter jwtFilter;

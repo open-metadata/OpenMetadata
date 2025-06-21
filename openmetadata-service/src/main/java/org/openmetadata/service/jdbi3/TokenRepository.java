@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 @Repository

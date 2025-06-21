@@ -10,7 +10,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.email.DefaultTemplateProvider;
 
 public class DocStoreMapper implements EntityMapper<Document, CreateDocument> {

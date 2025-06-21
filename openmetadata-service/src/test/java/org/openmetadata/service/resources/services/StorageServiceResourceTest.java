@@ -29,7 +29,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class StorageServiceResourceTest

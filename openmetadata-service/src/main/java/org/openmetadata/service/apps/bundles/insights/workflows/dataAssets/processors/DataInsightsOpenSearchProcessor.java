@@ -10,7 +10,7 @@ import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.index.IndexRequest;

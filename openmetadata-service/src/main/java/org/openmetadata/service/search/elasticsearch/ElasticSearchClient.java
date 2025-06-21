@@ -121,6 +121,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -184,7 +185,6 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
@@ -2511,7 +2511,7 @@ public class ElasticSearchClient implements SearchClient {
           client.getLowLevelClient().performRequest(catRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
       com.fasterxml.jackson.databind.JsonNode indices =
-          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+          JsonUtils.readTree(responseBody);
       if (!indices.isArray()) {
         LOG.warn("No indices found matching pattern: {}", indexPattern);
         return;
@@ -2551,7 +2551,7 @@ public class ElasticSearchClient implements SearchClient {
           client.getLowLevelClient().performRequest(getRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
       com.fasterxml.jackson.databind.JsonNode templateNode =
-          org.openmetadata.service.util.JsonUtils.readTree(responseBody);
+          JsonUtils.readTree(responseBody);
 
       if (!templateNode.has("component_templates")
           || templateNode.get("component_templates").isEmpty()) {

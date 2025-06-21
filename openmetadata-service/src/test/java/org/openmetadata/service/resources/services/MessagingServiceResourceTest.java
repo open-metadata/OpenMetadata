@@ -47,7 +47,7 @@ import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
