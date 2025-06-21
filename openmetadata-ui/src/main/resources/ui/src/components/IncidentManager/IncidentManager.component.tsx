@@ -501,6 +501,11 @@ const IncidentManager = ({
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
         width: 150,
+        onCell: () => ({
+          style: {
+            maxWidth: 150, // Ensures content respects width
+          },
+        }),
         render: (value?: Assigned) => (
           <OwnerLabel
             owners={value?.assignee ? [value.assignee] : []}

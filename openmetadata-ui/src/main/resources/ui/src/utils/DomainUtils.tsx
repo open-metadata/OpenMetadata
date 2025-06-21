@@ -243,7 +243,7 @@ export const renderDomainLink = (
           'no-underline domain-link domain-link-text font-medium',
           {
             'text-sm': !showDomainHeading,
-            'text-truncate': trimLink,
+            'text-truncate truncate w-max-full': trimLink,
           },
           textClassName
         )}

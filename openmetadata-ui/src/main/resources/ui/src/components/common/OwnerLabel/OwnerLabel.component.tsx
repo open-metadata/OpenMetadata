@@ -233,6 +233,7 @@ export const OwnerLabel = ({
                 <div
                   className={classNames({
                     'w-full': owner.type === OwnerType.TEAM,
+                    'w-max-full': isCompactView,
                   })}
                   key={owner.id}>
                   <OwnerItem
