@@ -159,6 +159,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -750,27 +751,27 @@ export const getTableColumnConfigSelections = (
   isFullViewTable: boolean,
   defaultColumns: string[] | undefined
 ) => {
-  if (!userFqn) {
-    return [];
+  if (!userFqn || !entityType || isFullViewTable) {
+    return defaultColumns || [];
   }
 
-  const storageKey = `selectedColumns-${userFqn}`;
-  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+  const { getUserPreference, setUserPreference } =
+    usePersistentStorage.getState();
+  const userPrefs = getUserPreference(userFqn);
+  const selectedColumns = userPrefs.tableColumns[entityType] || [];
 
-  if (entityType) {
-    if (selectedColumns[entityType]) {
-      return selectedColumns[entityType];
-    } else if (!isFullViewTable) {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          ...selectedColumns,
-          [entityType]: defaultColumns,
-        })
-      );
+  if (selectedColumns.length > 0) {
+    return selectedColumns;
+  } else if (defaultColumns) {
+    // Set default columns if none are selected
+    setUserPreference(userFqn, {
+      tableColumns: {
+        ...userPrefs.tableColumns,
+        [entityType]: defaultColumns,
+      },
+    });
 
-      return defaultColumns;
-    }
+    return defaultColumns;
   }
 
   return [];
@@ -787,21 +788,49 @@ export const handleUpdateTableColumnSelections = (
     ? [...columnDropdownSelections, key]
     : columnDropdownSelections.filter((item) => item !== key);
 
-  // Updating localStorage
-  const selectedColumns = JSON.parse(
-    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
-  );
-  if (entityType) {
-    localStorage.setItem(
-      `selectedColumns-${userFqn}`,
-      JSON.stringify({
-        ...selectedColumns,
+  // Update using the store
+  if (entityType && userFqn) {
+    const { getUserPreference, setUserPreference } =
+      usePersistentStorage.getState();
+    const userPrefs = getUserPreference(userFqn);
+
+    setUserPreference(userFqn, {
+      tableColumns: {
+        ...userPrefs.tableColumns,
         [entityType]: updatedSelections,
-      })
-    );
+      },
+    });
   }
 
   return updatedSelections;
+};
+
+export const handleBulkTableColumnAction = (
+  dropdownColumnList: { value: string }[],
+  columnDropdownSelections: string[],
+  userFqn: string,
+  entityType: string | undefined
+) => {
+  const newSelections =
+    dropdownColumnList.length === columnDropdownSelections.length
+      ? []
+      : dropdownColumnList.map((option) => option.value);
+
+  // Update using the store
+  if (entityType && userFqn) {
+    const { getUserPreference, setUserPreference } =
+      usePersistentStorage.getState();
+    const userPrefs = getUserPreference(userFqn);
+
+    setUserPreference(userFqn, {
+      tableColumns: {
+        ...userPrefs.tableColumns,
+        [entityType]: newSelections,
+      },
+    });
+  }
+
+  return newSelections;
 };
 
 export const getTableDetailPageBaseTabs = ({
