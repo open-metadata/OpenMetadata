@@ -355,13 +355,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def parse_db_service_prefix(
         self, db_service_prefix: Optional[str]
-    ) -> Tuple[str, str, str, str]:
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
         """
         Parse the db service prefix
         Returns:
-            Tuple[str, str, str, str]: service, database, schema, table
+            Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]: service, database, schema, table
         """
-        return ((db_service_prefix or "").split(".") + ["*", "*", "*", "*"])[:4]
+        prefix_parts = (db_service_prefix or "").split(".")
+        return prefix_parts + ([None] * (4 - len(prefix_parts)))
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
@@ -378,14 +379,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # yield datamodel lineage with tables from db services
         db_service_prefixes = self.get_db_service_prefixes()
-
-        if not db_service_prefixes:
-            for lineage in (
-                self.yield_dashboard_lineage_details(dashboard_details) or []
-            ):
-                yield from self.yield_lineage_request(lineage)
-
-        for db_service_prefix in db_service_prefixes or []:
+        for db_service_prefix in db_service_prefixes or [None]:
             for lineage in (
                 self.yield_dashboard_lineage_details(
                     dashboard_details, db_service_prefix

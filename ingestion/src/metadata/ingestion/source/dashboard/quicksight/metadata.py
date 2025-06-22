@@ -260,7 +260,12 @@ class QuicksightSource(DashboardServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
-        db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
         if db_service_prefix:
             db_service_entity = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=db_service_name
@@ -291,16 +296,46 @@ class QuicksightSource(DashboardServiceSource):
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query
             )
             for db_name in source_database_names:
+                if (
+                    prefix_database_name
+                    and db_name
+                    and prefix_database_name.lower() != str(db_name).lower()
+                ):
+                    logger.debug(
+                        f"Database {db_name} does not match prefix {prefix_database_name}"
+                    )
+                    continue
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
+
+                    if (
+                        prefix_schema_name
+                        and database_schema_name
+                        and prefix_schema_name.lower() != database_schema_name.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+
+                    if (
+                        prefix_table_name
+                        and table
+                        and prefix_table_name.lower() != table.lower()
+                    ):
+                        logger.debug(
+                            f"Table {table} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=db_name,
-                        schema_name=database_schema_name,
+                        database_name=prefix_database_name or db_name,
+                        schema_name=prefix_schema_name or database_schema_name,
                         service_name=db_service_name or "*",
-                        table_name=table,
+                        table_name=prefix_table_name or table,
                     )
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
@@ -400,17 +435,54 @@ class QuicksightSource(DashboardServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
-            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
             schema_name = data_source_resp.data_source_resp.schema_name
             table_name = data_source_resp.data_source_resp.table_name
+
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                )
+                return
+
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
+                )
+                return
+
             if data_source_resp and data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for db in data_source_dict.keys() or []:
+                    database_name = data_source_dict[db].get("Database")
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=data_source_dict[db].get("Database"),
-                        schema_name=schema_name,
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or schema_name,
                         service_name=db_service_name or "*",
-                        table_name=table_name,
+                        table_name=prefix_table_name or table_name,
                     )
                     from_entity = self.metadata.search_in_any_service(
                         entity_type=Table,

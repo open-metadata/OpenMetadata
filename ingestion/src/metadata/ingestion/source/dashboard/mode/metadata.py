@@ -161,9 +161,10 @@ class ModeSource(DashboardServiceSource):
                     continue
 
                 database_name = data_source.get(client.DATABASE)
-                if prefix_database_name.lower() not in (
-                    (database_name or "").lower(),
-                    "*",
+                if (
+                    prefix_database_name
+                    and database_name
+                    and prefix_database_name.lower() != str(database_name).lower()
                 ):
                     logger.debug(
                         f"Database {database_name} does not match prefix {prefix_database_name}"
@@ -177,15 +178,21 @@ class ModeSource(DashboardServiceSource):
                         database_schema_name
                     )
 
-                    if prefix_table_name.lower() not in ((table or "").lower(), "*"):
+                    if (
+                        prefix_table_name
+                        and table
+                        and prefix_table_name.lower() != str(table).lower()
+                    ):
                         logger.debug(
                             f"Table {table} does not match prefix {prefix_table_name}"
                         )
                         continue
 
-                    if prefix_schema_name.lower() not in (
-                        (database_schema_name or "").lower(),
-                        "*",
+                    if (
+                        prefix_schema_name
+                        and database_schema_name
+                        and prefix_schema_name.lower()
+                        != str(database_schema_name).lower()
                     ):
                         logger.debug(
                             f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
@@ -193,36 +200,27 @@ class ModeSource(DashboardServiceSource):
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=(
-                            database_name
-                            if prefix_database_name == "*"
-                            else prefix_database_name
-                        ),
-                        schema_name=(
-                            database_schema_name
-                            if prefix_schema_name == "*"
-                            else prefix_schema_name
-                        ),
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or database_schema_name,
                         service_name=prefix_service_name or "*",
-                        table_name=(
-                            table if prefix_table_name == "*" else prefix_table_name
-                        ),
+                        table_name=prefix_table_name or table,
                     )
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )
+
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=fqn.build(
+                            self.metadata,
+                            Lineage_Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=dashboard_details.get(client.TOKEN),
+                        ),
+                    )
                     for from_entity in from_entities or []:
-                        to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
-                            fqn=fqn.build(
-                                self.metadata,
-                                Lineage_Dashboard,
-                                service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details.get(client.TOKEN),
-                            ),
-                        )
                         yield self._get_add_lineage_request(
                             to_entity=to_entity, from_entity=from_entity
                         )

@@ -623,7 +623,6 @@ class PowerbiSource(DashboardServiceSource):
         """
         create the lineage between datamodel and report
         """
-        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
 
         try:
             report_fqn = fqn.build(
@@ -817,29 +816,33 @@ class PowerbiSource(DashboardServiceSource):
 
         try:
             table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
-
-            if prefix_table_name.lower() not in (
-                (table.name or "").lower(),
-                (table_info.get("table") or "").lower(),
-                "*",
+            table_name = table.name or table_info.get("table")
+            schema_name = table_info.get("schema")
+            database_name = table_info.get("database")
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
             ):
                 logger.debug(
-                    f"Table {table.name} does not match prefix {prefix_table_name}"
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
                 )
                 return
 
-            if prefix_schema_name.lower() not in (
-                (table_info.get("schema") or "").lower(),
-                "*",
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
             ):
                 logger.debug(
                     f"Schema {table_info.get('schema')} does not match prefix {prefix_schema_name}"
                 )
                 return
 
-            if prefix_database_name.lower() not in (
-                (table_info.get("database") or "").lower(),
-                "*",
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
             ):
                 logger.debug(
                     f"Database {table_info.get('database')} does not match prefix {prefix_database_name}"
@@ -848,21 +851,9 @@ class PowerbiSource(DashboardServiceSource):
 
             fqn_search_string = build_es_fqn_search_string(
                 service_name=prefix_service_name or "*",
-                table_name=(
-                    (table_info.get("table") or table.name)
-                    if prefix_table_name == "*"
-                    else prefix_table_name
-                ),
-                schema_name=(
-                    (table_info.get("schema") or "*")
-                    if prefix_schema_name == "*"
-                    else prefix_schema_name
-                ),
-                database_name=(
-                    (table_info.get("database") or "*")
-                    if prefix_database_name == "*"
-                    else prefix_database_name
-                ),
+                table_name=(prefix_table_name or table_name),
+                schema_name=(prefix_schema_name or schema_name),
+                database_name=(prefix_database_name or database_name),
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -1104,7 +1095,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Dashboard Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{str(db_service_name)}]: {exc}",
+                        error=f"Error to yield dashboard lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -1134,7 +1125,7 @@ class PowerbiSource(DashboardServiceSource):
                         # 1. datamodel-db_table lineage
                         for table in datamodel.tables or []:
                             yield from self._get_table_and_datamodel_lineage(
-                                db_service_name=db_service_name,
+                                db_service_prefix=db_service_prefix,
                                 table=table,
                                 datamodel_entity=datamodel_entity,
                             )
@@ -1149,7 +1140,7 @@ class PowerbiSource(DashboardServiceSource):
                         # create the lineage between table and datamodel using the pbit files
                         if self.client.file_client:
                             yield from self.create_table_datamodel_lineage_from_files(
-                                db_service_name=db_service_name,
+                                db_service_prefix=db_service_prefix,
                                 datamodel_entity=datamodel_entity,
                             )
                     elif isinstance(datamodel, Dataflow):
@@ -1165,7 +1156,7 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Datamodel Lineage",
-                        error=f"Error to yield datamodel lineage details for DB service name [{str(db_service_name)}]: {exc}",
+                        error=f"Error to yield datamodel lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )

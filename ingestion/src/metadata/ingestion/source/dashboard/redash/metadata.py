@@ -241,51 +241,47 @@ class RedashSource(DashboardServiceSource):
                         if not database_schema_table.get("table"):
                             continue
 
-                        if prefix_table_name.lower() not in (
-                            (database_schema_table.get("table") or "").lower(),
-                            "*",
+                        if (
+                            prefix_table_name
+                            and prefix_table_name.lower()
+                            != database_schema_table.get("table").lower()
                         ):
                             logger.debug(
                                 f"Table {database_schema_table.get('table')} does not match prefix {prefix_table_name}"
                             )
                             continue
 
-                        if prefix_schema_name.lower() not in (
-                            (database_schema_name or "").lower(),
-                            "*",
+                        if (
+                            prefix_schema_name
+                            and database_schema_name
+                            and prefix_schema_name.lower()
+                            != database_schema_name.lower()
                         ):
                             logger.debug(
                                 f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
                             )
                             continue
 
-                        if prefix_database_name.lower() not in (
-                            (database_schema_table.get("database") or "").lower(),
-                            "*",
+                        if (
+                            prefix_database_name
+                            and database_schema_table.get("database")
+                            and prefix_database_name.lower()
+                            != database_schema_table.get("database").lower()
                         ):
                             logger.debug(
-                                f"""Database {database_schema_table.get('database')} does 
-                                not match prefix {prefix_database_name}"""
+                                f"Database {database_schema_table.get('database')} does not match prefix {prefix_database_name}"
                             )
                             continue
 
                         fqn_search_string = build_es_fqn_search_string(
                             database_name=(
-                                database_schema_table.get("database")
-                                if prefix_database_name == "*"
-                                else prefix_database_name
+                                prefix_database_name
+                                or database_schema_table.get("database")
                             ),
-                            schema_name=(
-                                database_schema_name
-                                if prefix_schema_name == "*"
-                                else prefix_schema_name
-                            ),
+                            schema_name=(prefix_schema_name or database_schema_name),
                             service_name=prefix_service_name,
-                            table_name=(
-                                database_schema_table.get("table")
-                                if prefix_table_name == "*"
-                                else prefix_table_name
-                            ),
+                            table_name=prefix_table_name
+                            or database_schema_table.get("table"),
                         )
                         from_entity = self.metadata.search_in_any_service(
                             entity_type=Table,

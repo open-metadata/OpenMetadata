@@ -248,12 +248,10 @@ class SupersetSourceMixin(DashboardServiceSource):
     ):
         result = []
 
-        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
-
         for from_entity in from_entities:
             input_table, _column_lineage = from_entity
             datasource_fqn = self._get_datasource_fqn_for_lineage(
-                input_table, prefix_service_name
+                input_table, db_service_prefix
             )
             from_entity = self.metadata.search_in_any_service(
                 entity_type=Table,

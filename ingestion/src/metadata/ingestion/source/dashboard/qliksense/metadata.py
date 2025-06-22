@@ -338,27 +338,30 @@ class QliksenseSource(DashboardServiceSource):
                     else:
                         schema_name, database_name = None, None
 
-                    if prefix_table_name.lower() not in (
-                        (datamodel.tableName or "").lower(),
-                        "*",
+                    if (
+                        prefix_table_name
+                        and datamodel.tableName
+                        and prefix_table_name.lower() != datamodel.tableName.lower()
                     ):
                         logger.debug(
                             f"Table {datamodel.tableName} does not match prefix {prefix_table_name}"
                         )
                         continue
 
-                    if prefix_schema_name.lower() not in (
-                        (schema_name or "").lower(),
-                        "*",
+                    if (
+                        prefix_schema_name
+                        and schema_name
+                        and prefix_schema_name.lower() != schema_name.lower()
                     ):
                         logger.debug(
                             f"Schema {schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
 
-                    if prefix_database_name.lower() not in (
-                        (database_name or "").lower(),
-                        "*",
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
                     ):
                         logger.debug(
                             f"Database {database_name} does not match prefix {prefix_database_name}"
@@ -366,22 +369,10 @@ class QliksenseSource(DashboardServiceSource):
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=(
-                            database_name
-                            if prefix_database_name == "*"
-                            else prefix_database_name
-                        ),
-                        schema_name=(
-                            schema_name
-                            if prefix_schema_name == "*"
-                            else prefix_schema_name
-                        ),
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or schema_name,
                         service_name=prefix_service_name or "*",
-                        table_name=(
-                            datamodel.tableName
-                            if prefix_table_name == "*"
-                            else prefix_table_name
-                        ),
+                        table_name=prefix_table_name or datamodel.tableName,
                     )
                     om_table = self.metadata.search_in_any_service(
                         entity_type=Table,

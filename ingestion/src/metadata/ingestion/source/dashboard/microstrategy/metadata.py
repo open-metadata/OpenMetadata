@@ -12,8 +12,6 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from collate_sqllineage.core.models import Table as SqlLineageTable
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -21,11 +19,6 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
-    MicroStrategyConnection,
-)
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -70,8 +63,6 @@ from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrPage,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -201,19 +192,15 @@ class MicrostrategySource(DashboardServiceSource):
         if not db_service_prefix:
             return
 
-        dashboard_fqn = fqn.build(
-            self.metadata,
-            entity_type=Dashboard,
-            service_name=self.context.get().dashboard_service,
-            dashboard_name=dashboard_details.id,
-        )
-        dashboard_entity = self.metadata.get_by_name(
-            entity=Dashboard, fqn=dashboard_fqn
-        )
+        (
+            prefix_db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
 
-        prefix_parts = self.parse_db_service_prefix(db_service_prefix)
         database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=prefix_parts[0]
+            entity=DatabaseService, fqn=prefix_db_service_name
         )
         dialect = ConnectionTypeDialectMapper.dialect_of(
             database_service.serviceType.value
@@ -241,7 +228,7 @@ class MicrostrategySource(DashboardServiceSource):
                 for table in lineage_parser.source_tables:
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
-                        service_name=prefix_parts[0],
+                        service_name=prefix_db_service_name,
                         database_name="*",
                         database_schema="*",
                         table_name=str(table),
@@ -250,6 +237,29 @@ class MicrostrategySource(DashboardServiceSource):
                         logger.debug(f"Table not found in metadata: {str(table)}")
                         continue
                     for table_entity in table_entities or []:
+                        if (
+                            prefix_table_name
+                            and prefix_table_name.lower()
+                            != str(table_entity.name.root).lower()
+                        ):
+                            continue
+
+                        if (
+                            prefix_schema_name
+                            and getattr(table_entity.databaseSchema, "name", None)
+                            and prefix_schema_name.lower()
+                            != str(table_entity.databaseSchema.name).lower()
+                        ):
+                            continue
+
+                        if (
+                            prefix_database_name
+                            and getattr(table_entity.database, "name", None)
+                            and prefix_database_name.lower()
+                            != str(table_entity.database.name).lower()
+                        ):
+                            continue
+
                         yield Either(
                             right=AddLineageRequest(
                                 edge=EntitiesEdge(
@@ -275,64 +285,6 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
-
-    def _get_table_entity_by_prefix(
-        self, table: SqlLineageTable, prefix_parts: tuple
-    ) -> Optional[Table]:
-        """
-        Validates if the table matches prefix filters and returns the corresponding table entity if found
-        """
-        (
-            prefix_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = prefix_parts
-
-        table_name = table.raw_name.lower()
-        schema_parts = table.schema.raw_name.lower().split(".")
-        schema_name = schema_parts[-1]
-        database_name = schema_parts[0] if len(schema_parts) > 1 else "*"
-
-        # Validate prefix filters
-        if prefix_table_name.lower() not in (table_name, "*"):
-            logger.debug(
-                f"Table {table_name} does not match prefix {prefix_table_name}"
-            )
-            return None
-
-        if prefix_schema_name.lower() not in (schema_name, "*"):
-            logger.debug(
-                f"Schema {schema_name} does not match prefix {prefix_schema_name}"
-            )
-            return None
-
-        if prefix_database_name.lower() not in (database_name, "*"):
-            logger.debug(
-                f"Database {database_name} does not match prefix {prefix_database_name}"
-            )
-            return None
-
-        # Get table entity if validation passes
-        table_fqn = build_es_fqn_search_string(
-            service_name=prefix_service_name,
-            database_name=(
-                database_name if prefix_database_name == "*" else prefix_database_name
-            ),
-            schema_name=(
-                schema_name if prefix_schema_name == "*" else prefix_schema_name
-            ),
-            table_name=(table_name if prefix_table_name == "*" else prefix_table_name),
-        )
-
-        table_entities = self.metadata.es_search_from_fqn(
-            entity_type=Table, fqn_search_string=table_fqn, size=1
-        )
-        if not table_entities:
-            logger.debug(f"Table not found in metadata: {table_fqn}")
-            return None
-
-        return table_entities[0]
 
     def yield_dashboard_chart(
         self, dashboard_details: MstrDashboardDetails

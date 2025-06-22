@@ -379,7 +379,11 @@ class MetabaseSource(DashboardServiceSource):
             ),
         )
 
-        if prefix_database_name.lower() not in ((database_name or "").lower(), "*"):
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
             logger.debug(
                 f"Database {database_name} does not match prefix {prefix_database_name}"
             )
@@ -389,13 +393,18 @@ class MetabaseSource(DashboardServiceSource):
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
 
-            if prefix_table_name.lower() not in ((table or "").lower(), "*"):
+            if (
+                prefix_table_name
+                and table
+                and prefix_table_name.lower() != table.lower()
+            ):
                 logger.debug(f"Table {table} does not match prefix {prefix_table_name}")
                 continue
 
-            if prefix_schema_name.lower() not in (
-                (database_schema_name or "").lower(),
-                "*",
+            if (
+                prefix_schema_name
+                and database_schema_name
+                and prefix_schema_name.lower() != database_schema_name.lower()
             ):
                 logger.debug(
                     f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
@@ -403,18 +412,10 @@ class MetabaseSource(DashboardServiceSource):
                 continue
 
             fqn_search_string = build_es_fqn_search_string(
-                database_name=(
-                    database_name
-                    if prefix_database_name == "*"
-                    else prefix_database_name
-                ),
-                schema_name=(
-                    database_schema_name
-                    if prefix_schema_name == "*"
-                    else prefix_schema_name
-                ),
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or database_schema_name,
                 service_name=prefix_service_name or "*",
-                table_name=(table if prefix_table_name == "*" else prefix_table_name),
+                table_name=prefix_table_name or table,
             )
             from_entities = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -458,19 +459,31 @@ class MetabaseSource(DashboardServiceSource):
 
         database_name = table.db.details.db if table.db and table.db.details else None
 
-        if prefix_table_name.lower() not in (table_name.lower(), "*"):
+        if (
+            prefix_table_name
+            and table_name
+            and prefix_table_name.lower() != table_name.lower()
+        ):
             logger.debug(
                 f"Table {table_name} does not match prefix {prefix_table_name}"
             )
             return
 
-        if prefix_schema_name.lower() not in ((table.table_schema or "").lower(), "*"):
+        if (
+            prefix_schema_name
+            and table.table_schema
+            and prefix_schema_name.lower() != table.table_schema.lower()
+        ):
             logger.debug(
                 f"Schema {table.table_schema} does not match prefix {prefix_schema_name}"
             )
             return
 
-        if prefix_database_name.lower() not in ((database_name or "").lower(), "*"):
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
             logger.debug(
                 f"Database {database_name} does not match prefix {prefix_database_name}"
             )
@@ -478,13 +491,9 @@ class MetabaseSource(DashboardServiceSource):
 
         fqn_search_string = build_es_fqn_search_string(
             service_name=prefix_service_name or "*",
-            database_name=(
-                database_name if prefix_database_name == "*" else prefix_database_name
-            ),
-            schema_name=(
-                table.table_schema if prefix_schema_name == "*" else prefix_schema_name
-            ),
-            table_name=(table_name if prefix_table_name == "*" else prefix_table_name),
+            database_name=prefix_database_name or database_name,
+            schema_name=prefix_schema_name or table.table_schema,
+            table_name=prefix_table_name or table_name,
         )
         from_entities = self.metadata.search_in_any_service(
             entity_type=Table,

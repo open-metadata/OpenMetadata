@@ -220,19 +220,31 @@ class SigmaSource(DashboardServiceSource):
             table_name = node.name
 
             # Validate prefix filters
-            if prefix_table_name.lower() not in (table_name, "*"):
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
                 logger.debug(
                     f"Table {table_name} does not match prefix {prefix_table_name}"
                 )
                 return None
 
-            if prefix_schema_name.lower() not in (schema_name, "*"):
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
                 logger.debug(
                     f"Schema {schema_name} does not match prefix {prefix_schema_name}"
                 )
                 return None
 
-            if prefix_database_name.lower() not in (database_name, "*"):
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
                 logger.debug(
                     f"Database {database_name} does not match prefix {prefix_database_name}"
                 )
@@ -241,17 +253,9 @@ class SigmaSource(DashboardServiceSource):
             try:
                 fqn_search_string = build_es_fqn_search_string(
                     service_name=prefix_service_name,
-                    database_name=(
-                        database_name
-                        if prefix_database_name == "*"
-                        else prefix_database_name
-                    ),
-                    schema_name=(
-                        schema_name if prefix_schema_name == "*" else prefix_schema_name
-                    ),
-                    table_name=(
-                        table_name if prefix_table_name == "*" else prefix_table_name
-                    ),
+                    database_name=prefix_database_name or database_name,
+                    schema_name=prefix_schema_name or schema_name,
+                    table_name=prefix_table_name or table_name,
                 )
                 return self.metadata.search_in_any_service(
                     entity_type=Table,

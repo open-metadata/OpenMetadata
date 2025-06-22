@@ -376,9 +376,9 @@ class LookerSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
             try:
-                all_lookml_models: Sequence[LookmlModel] = (
-                    self.client.all_lookml_models()
-                )
+                all_lookml_models: Sequence[
+                    LookmlModel
+                ] = self.client.all_lookml_models()
 
                 # Then, gather their information and build the parser
                 self.parser = all_lookml_models
@@ -497,9 +497,9 @@ class LookerSource(DashboardServiceSource):
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
-                self._explores_cache[explore_datamodel.name.root] = (
-                    self.context.get().dataModel
-                )  # This is the newly created explore
+                self._explores_cache[
+                    explore_datamodel.name.root
+                ] = self.context.get().dataModel  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -835,7 +835,7 @@ class LookerSource(DashboardServiceSource):
                     # View to the source is only there if we are informing the dbServiceNames
                     yield self.build_lineage_request(
                         source=source_table_name,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
@@ -893,17 +893,21 @@ class LookerSource(DashboardServiceSource):
                         ):
                             column_lineage.append(
                                 (
-                                    column_tuple[0].raw_name
-                                    if hasattr(column_tuple[0], "raw_name")
-                                    else column_tuple[0],
-                                    column_tuple[-1].raw_name
-                                    if hasattr(column_tuple[-1], "raw_name")
-                                    else column_tuple[-1],
+                                    (
+                                        column_tuple[0].raw_name
+                                        if hasattr(column_tuple[0], "raw_name")
+                                        else column_tuple[0]
+                                    ),
+                                    (
+                                        column_tuple[-1].raw_name
+                                        if hasattr(column_tuple[-1], "raw_name")
+                                        else column_tuple[-1]
+                                    ),
                                 )
                             )
                     yield self.build_lineage_request(
                         source=str(from_table_name),
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage if column_lineage else None,
                     )
@@ -1213,7 +1217,7 @@ class LookerSource(DashboardServiceSource):
     def build_lineage_request(
         self,
         source: str,
-        db_service_name: str,
+        db_service_prefix: str,
         to_entity: Union[Dashboard, DashboardDataModel],
         column_lineage: Optional[List[Tuple[Column, Column]]] = None,
     ) -> Optional[Either[AddLineageRequest]]:
@@ -1225,21 +1229,48 @@ class LookerSource(DashboardServiceSource):
 
         Args:
             source: table name from the source list
-            db_service_name: name of the service from the config
+            db_service_prefix: db service prefix from the config
             to_entity: Dashboard Entity being used
         """
         logger.debug(f"Building lineage request for {source} to {to_entity.name}")
 
         source_elements = fqn.split_table_name(table_name=source)
 
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         for database_name in [source_elements["database"], None]:
+            if (
+                (
+                    prefix_database_name
+                    and database_name
+                    and prefix_database_name.lower() != database_name.lower()
+                )
+                or (
+                    prefix_schema_name
+                    and source_elements["database_schema"]
+                    and prefix_schema_name.lower()
+                    != source_elements["database_schema"].lower()
+                )
+                or (
+                    prefix_table_name
+                    and source_elements["table"]
+                    and prefix_table_name.lower() != source_elements["table"].lower()
+                )
+            ):
+                continue
+
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
                 service_name=db_service_name,
-                database_name=database_name,
-                schema_name=source_elements["database_schema"],
-                table_name=source_elements["table"],
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or source_elements["database_schema"],
+                table_name=prefix_table_name or source_elements["table"],
             )
 
             from_entity: Table = self.metadata.get_by_name(

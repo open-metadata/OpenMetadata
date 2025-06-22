@@ -253,29 +253,22 @@ class QlikcloudSource(QliksenseSource):
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
-                    if prefix_table_name.lower() not in (
-                        (data_model_entity.displayName or "").lower(),
-                        "*",
+                    if (
+                        prefix_table_name
+                        and data_model_entity.displayName
+                        and prefix_table_name.lower()
+                        != data_model_entity.displayName.lower()
                     ):
                         logger.debug(
                             f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}"
                         )
                         continue
+
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=(
-                            None
-                            if prefix_database_name == "*"
-                            else prefix_database_name
-                        ),
-                        schema_name=(
-                            None if prefix_schema_name == "*" else prefix_schema_name
-                        ),
+                        database_name=prefix_database_name,
+                        schema_name=prefix_schema_name,
                         service_name=prefix_service_name or "*",
-                        table_name=(
-                            data_model_entity.displayName
-                            if prefix_table_name == "*"
-                            else prefix_table_name
-                        ),
+                        table_name=prefix_table_name or data_model_entity.displayName,
                     )
                     om_table = self.metadata.search_in_any_service(
                         entity_type=Table,
