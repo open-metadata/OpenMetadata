@@ -149,7 +149,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 3661000, expected: '1h 1m 1s' },
     { input: 86400000, expected: '1d' },
     { input: 90061000, expected: '1d 1h 1m 1s' },
-    { input: -1000, expected: '0s' },
+    { input: -1000, expected: '-1s' },
     { input: 1200, expected: '1s 200ms', showMilliseconds: true },
     {
       input: 90061560,
@@ -158,19 +158,40 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       showMilliseconds: true,
     },
     { input: 90061560, expected: '1d 1h', length: 2, showMilliseconds: true },
+    { input: -61000, expected: '-1m 1s' },
+    {
+      input: -3661000,
+      expected: 'Late by 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
+    { input: -86400000, expected: '-1d' },
+    {
+      input: -90061000,
+      expected: 'Late by 1d 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
   ];
 
-  testCases.forEach(({ input, expected, length, showMilliseconds }) => {
-    it(`should return "${expected}" for ${input} milliseconds`, () => {
-      expect(
-        convertMillisecondsToHumanReadableFormat(
-          input,
-          length,
-          showMilliseconds
-        )
-      ).toBe(expected);
-    });
-  });
+  testCases.forEach(
+    ({
+      input,
+      expected,
+      length,
+      showMilliseconds,
+      prependForNegativeValue,
+    }) => {
+      it(`should return "${expected}" for ${input} milliseconds`, () => {
+        expect(
+          convertMillisecondsToHumanReadableFormat(
+            input,
+            length,
+            showMilliseconds,
+            prependForNegativeValue
+          )
+        ).toBe(expected);
+      });
+    }
+  );
 
   const testCasesWithLength = [
     {
