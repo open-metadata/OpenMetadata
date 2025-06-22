@@ -17,8 +17,7 @@ import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class JsonParsingException extends WebServiceException {
-  private static final String MESSAGE =
-      "JSON parsing failed with message [%s].";
+  private static final String MESSAGE = "JSON parsing failed with message [%s].";
 
   public static final String JSON_PARSING_ERROR = "JSON_PARSING_EXCEPTION";
 
@@ -36,4 +35,4 @@ public class JsonParsingException extends WebServiceException {
         String.format(MESSAGE, exceptionMessage),
         cause);
   }
-} 
+}

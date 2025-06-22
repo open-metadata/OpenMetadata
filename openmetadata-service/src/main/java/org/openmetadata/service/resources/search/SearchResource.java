@@ -51,7 +51,6 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.security.Authorizer;
@@ -537,35 +536,5 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     return searchRepository.aggregate(aggregationRequest);
-  }
-
-  @GET
-  @Path("/mapping")
-  @Operation(
-      operationId = "mappingSearchRequest",
-      summary =
-          "Get mapping for an index. If `entityType` is omitted, it returns mapping for all entities.",
-      description =
-          "Get mapping for an index. If `entityType` is omitted, it returns mapping for all entities.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Mapping search request API",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = MappingMapper.class)))
-      })
-  public MappingMapper mappingSearchRequest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Entity type to get the mapping for. If omitted, returns mapping for all entities.",
-              required = false)
-          @QueryParam("entityType")
-          String entityType)
-      throws IOException {
-    return searchRepository.getMapping(entityType);
   }
 }

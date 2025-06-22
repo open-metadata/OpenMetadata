@@ -47,7 +47,6 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -76,7 +75,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
@@ -106,9 +104,7 @@ public final class JsonUtils {
     // Quoted "Z" to indicate UTC, no timezone offset
     DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-
   }
-
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -441,8 +437,7 @@ public final class JsonUtils {
     try {
       jsonSchemas = getJsonDataResources(Pattern.compile(".*json/schema/entity/.*\\.json$"));
     } catch (IOException e) {
-      throw new JsonParsingException(
-          "Failed to read JSON resources at .*json/schema/entity", e);
+      throw new JsonParsingException("Failed to read JSON resources at .*json/schema/entity", e);
     }
     for (String jsonSchema : jsonSchemas) {
       try {
@@ -742,34 +737,36 @@ public final class JsonUtils {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
     Set<String> classPathElements =
-            Arrays.stream(classPath.split(File.pathSeparator))
-                    .filter(jarName -> Stream.of("openmetadata", "collate").anyMatch(jarName.toLowerCase()::contains))
-                    .collect(Collectors.toSet());
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(
+                jarName ->
+                    Stream.of("openmetadata", "collate").anyMatch(jarName.toLowerCase()::contains))
+            .collect(Collectors.toSet());
 
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-              file.isDirectory()
-                      ? getResourcesFromDirectory(file, pattern)
-                      : getResourcesFromJarFile(file, pattern));
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
     }
     return resources;
   }
 
   private static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
-          throws IOException {
+      throws IOException {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
-              .filter(Files::isRegularFile)
-              .filter(path -> pattern.matcher(path.toString()).matches())
-              .map(
-                      path -> {
-                        String relativePath = root.relativize(path).toString();
-                        LOG.debug("Adding directory file {}", relativePath);
-                        return relativePath;
-                      })
-              .collect(Collectors.toSet());
+          .filter(Files::isRegularFile)
+          .filter(path -> pattern.matcher(path.toString()).matches())
+          .map(
+              path -> {
+                String relativePath = root.relativize(path).toString();
+                LOG.debug("Adding directory file {}", relativePath);
+                return relativePath;
+              })
+          .collect(Collectors.toSet());
     }
   }
 

@@ -49,6 +49,6 @@ public class IndexMapping {
   }
 
   public String getIndexMappingFile(String language) {
-    return String.format(indexMappingFile, language);
+    return String.format(indexMappingFile, language).replaceFirst("^/", "");
   }
 }

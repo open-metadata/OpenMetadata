@@ -121,7 +121,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -144,8 +143,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -154,7 +155,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -178,7 +178,6 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -1428,26 +1427,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public MappingMapper getMapping(IndexMapping indexMapping) throws IOException {
-    GetMappingsRequest request = new GetMappingsRequest();
-    if (indexMapping != null) {
-      request.indices(indexMapping.getIndexName(clusterAlias));
-    }
-    try {
-      GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-      MappingMapper mapper = new MappingMapper();
-      mapper.fromElasticsearch(response.mappings());
-      return mapper;
-    } catch (ElasticsearchStatusException e) {
-      LOG.error("Failed to get mapping for index: {}", indexMapping.getIndexName(), e);
-      throw new SearchException(
-          String.format(
-              "Failed to get mapping for index: %s, error: %s" + indexMapping.getIndexName(),
-              e.getMessage()));
-    }
-  }
-
-  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
@@ -2510,8 +2489,7 @@ public class ElasticSearchClient implements SearchClient {
       es.org.elasticsearch.client.Response catResponse =
           client.getLowLevelClient().performRequest(catRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode indices =
-          JsonUtils.readTree(responseBody);
+      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
       if (!indices.isArray()) {
         LOG.warn("No indices found matching pattern: {}", indexPattern);
         return;
@@ -2550,8 +2528,7 @@ public class ElasticSearchClient implements SearchClient {
       es.org.elasticsearch.client.Response getResponse =
           client.getLowLevelClient().performRequest(getRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode templateNode =
-          JsonUtils.readTree(responseBody);
+      com.fasterxml.jackson.databind.JsonNode templateNode = JsonUtils.readTree(responseBody);
 
       if (!templateNode.has("component_templates")
           || templateNode.get("component_templates").isEmpty()) {

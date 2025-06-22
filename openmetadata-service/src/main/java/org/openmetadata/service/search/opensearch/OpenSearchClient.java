@@ -60,7 +60,6 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -83,8 +82,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -93,14 +94,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
@@ -1508,26 +1507,6 @@ public class OpenSearchClient implements SearchClient {
     return jsonResponse.getJsonObject("aggregations");
   }
 
-  @Override
-  public MappingMapper getMapping(IndexMapping indexMapping) throws IOException {
-    GetMappingsRequest request = new GetMappingsRequest();
-    if (indexMapping.getIndexName() != null) {
-      request.indices(indexMapping.getIndexName(clusterAlias));
-    }
-    try {
-      GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-      MappingMapper mapper = new MappingMapper();
-      mapper.fromOpenSearch(response.mappings());
-      return mapper;
-    } catch (OpenSearchException e) {
-      LOG.error("Failed to get mapping for index: {}", indexMapping.getIndexName(), e);
-      throw new SearchException(
-          String.format(
-              "Failed to get mapping for index: %s, error: %s" + indexMapping.getIndexName(),
-              e.getMessage()));
-    }
-  }
-
   @SneakyThrows
   public void updateSearch(UpdateRequest updateRequest) {
     if (updateRequest != null) {
@@ -2630,8 +2609,7 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.client.Response catResponse =
           client.getLowLevelClient().performRequest(catRequest);
       String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode indices =
-          JsonUtils.readTree(responseBody);
+      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
       if (!indices.isArray()) {
         LOG.warn("No indices found matching pattern: {}", indexPattern);
         return;
