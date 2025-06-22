@@ -1,5 +1,5 @@
 ---
-title: Exasol
+title: Exasol Connector | OpenMetadata High-Performance Database
 slug: /connectors/database/exasol
 ---
 

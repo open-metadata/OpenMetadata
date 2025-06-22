@@ -1,5 +1,5 @@
 ---
-title: Enable Security
+title: Enable Security | OpenMetadata Deployment Security Guide
 slug: /deployment/bare-metal/security
 collate: false
 ---

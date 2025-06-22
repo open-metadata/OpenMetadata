@@ -1,5 +1,5 @@
 ---
-title: GCS
+title: GCS Storage | OpenMetadata Cloud Storage Integration
 slug: /connectors/storage/gcs
 ---
 
