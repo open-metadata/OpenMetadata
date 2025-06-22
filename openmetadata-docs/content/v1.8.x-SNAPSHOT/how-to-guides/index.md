@@ -1,5 +1,5 @@
 ---
-title: How-to Guides
+title: How-to Guides | OpenMetadata User Guides
 slug: /how-to-guides
 ---
 

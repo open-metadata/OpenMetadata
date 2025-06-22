@@ -40,7 +40,7 @@ from metadata.ingestion.connections.test_connections import (
     test_query,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import kill_active_connections
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
