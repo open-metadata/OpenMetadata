@@ -1705,7 +1705,6 @@
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "サービス内の全データアセットの説明カバレッジ。<0>詳細を見る。</0>",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
-    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Option to disable classifications, You won't be able to see associated tags within application",
     "disabled-classification-actions-message": "You can not perform this action on disabled classifications.",

@@ -1705,7 +1705,6 @@
     "derived-tag-warning": "این برچسب به طور خودکار مشتق شده است و فقط با حذف اصطلاح مربوطه از فرهنگ لغت قابل حذف است.",
     "description-coverage-widget-description": "پوشش توضیحات برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
     "destination-selection-warning": "لطفاً اطمینان حاصل کنید که \"{{subscriptionCategory}}\" تنظیمات \"{{subscriptionType}}\" را برای دریافت هشدارها پیکربندی کرده است.",
-    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "این عمل برنامه {{app}} را غیرفعال خواهد کرد.",
     "disable-classification-description": "با غیرفعال کردن طبقه‌بندی، دیگر قادر به جستجو یا اختصاص برچسب‌های مرتبط به هیچ موجودیتی نخواهید بود.",
     "disabled-classification-actions-message": "شما نمی‌توانید این عمل را روی طبقه‌بندی‌های غیرفعال انجام دهید.",

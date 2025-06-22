@@ -1705,7 +1705,6 @@
     "derived-tag-warning": "แท็กนี้ถูกสร้างขึ้นโดยอัตโนมัติและสามารถลบได้เฉพาะโดยการลบคำศัพท์ในสารานุกรมที่เกี่ยวข้อง",
     "description-coverage-widget-description": "ความครอบคลุมของคำอธิบายสำหรับสินทรัพย์ข้อมูลทั้งหมดในบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "destination-selection-warning": "โปรดตรวจสอบว่าหมวดหมู่ \"{{subscriptionCategory}}\" ได้กำหนดค่าประเภท \"{{subscriptionType}}\" เพื่อรับการแจ้งเตือนหรือไม่",
-    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "นี่จะทำให้แอปพลิเคชัน {{app}} ถูกปิดการใช้งาน",
     "disable-classification-description": "เมื่อปิดการใช้งานการจำแนกประเภท คุณจะไม่สามารถค้นหาหรือมอบหมายแท็กที่เกี่ยวข้องให้กับเอนทิตีใด ๆ ได้",
     "disabled-classification-actions-message": "คุณไม่สามารถดำเนินการนี้บนการจำแนกประเภทที่ถูกปิดการใช้งาน",

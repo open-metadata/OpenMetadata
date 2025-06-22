@@ -1705,7 +1705,6 @@
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "Покрытие описаниями для всех объектов данных в сервисе. <0>узнать больше.</0>",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
-    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Отключив классификацию, вы не сможете выполнять поиск или назначать связанные теги любому объекту.",
     "disabled-classification-actions-message": "Вы не можете выполнить это действие с отключенными классификациями.",

@@ -1705,7 +1705,6 @@
     "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "description-coverage-widget-description": "כיסוי תיאורים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "destination-selection-warning": "Please make sure if the \"{{subscriptionCategory}}\" have configured their \"{{subscriptionType}}\" to receive the alerts.",
-    "destination-status-display": "[{{statusCode}}] {{statusLabel}} ({{reason}})",
     "disable-app": "פעולה זו תבטל את היישום {{app}}.",
     "disable-classification-description": "פעולת ביטול הסיווג תמנע ממך לחפש לפיו או להקצות תגי קשר לישות.",
     "disabled-classification-actions-message": "לא ניתן לבצע פעולה זו על סיווגים מנוטרלים.",
