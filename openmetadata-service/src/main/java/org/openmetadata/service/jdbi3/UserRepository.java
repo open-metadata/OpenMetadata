@@ -616,7 +616,7 @@ public class UserRepository extends EntityRepository<User> {
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
         daoCollection
             .relationshipDAO()
-            .findToBatch(userIds, Relationship.OWNS.ordinal(), USER, null);
+            .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL);
 
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
@@ -656,8 +656,8 @@ public class UserRepository extends EntityRepository<User> {
       teamOwnsRecords =
           daoCollection
               .relationshipDAO()
-              .findToBatch(
-                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Entity.TEAM, null);
+              .findToBatchAllTypes(
+                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL);
     }
 
     // Map user to owned entities
@@ -717,7 +717,7 @@ public class UserRepository extends EntityRepository<User> {
     List<CollectionDAO.EntityRelationshipObject> followsRecords =
         daoCollection
             .relationshipDAO()
-            .findToBatch(userIds, Relationship.FOLLOWS.ordinal(), USER, null);
+            .findToBatchAllTypes(userIds, Relationship.FOLLOWS.ordinal(), Include.ALL);
 
     Map<UUID, List<EntityReference>> userToFollows = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : followsRecords) {

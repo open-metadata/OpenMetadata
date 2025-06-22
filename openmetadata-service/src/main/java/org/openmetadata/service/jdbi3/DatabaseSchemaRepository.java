@@ -232,15 +232,30 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             .findFromBatch(
                 entityListToStrings(schemas), Relationship.CONTAINS.ordinal(), Include.ALL);
 
+    // Collect all unique database IDs first
+    var databaseIds =
+        records.stream()
+            .filter(rec -> Entity.DATABASE.equals(rec.getFromEntity()))
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all database entity references
+    var databaseRefs = Entity.getEntityReferencesByIds(Entity.DATABASE, databaseIds, Include.ALL);
+    var databaseRefMap =
+        databaseRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map schemas to their databases
     records.forEach(
         record -> {
           // Only process records where the from entity is DATABASE
           if (Entity.DATABASE.equals(record.getFromEntity())) {
             var schemaId = UUID.fromString(record.getToId());
-            var databaseRef =
-                Entity.getEntityReferenceById(
-                    Entity.DATABASE, UUID.fromString(record.getFromId()), Include.ALL);
-            databaseMap.put(schemaId, databaseRef);
+            var databaseId = UUID.fromString(record.getFromId());
+            var databaseRef = databaseRefMap.get(databaseId);
+            if (databaseRef != null) {
+              databaseMap.put(schemaId, databaseRef);
+            }
           }
         });
 

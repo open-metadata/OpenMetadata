@@ -352,7 +352,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityListToStrings(dataProducts), Relationship.HAS.ordinal(), null);
+            .findToBatchAllTypes(
+                entityListToStrings(dataProducts), Relationship.HAS.ordinal(), Include.ALL);
 
     // Group assets by data product ID
     for (CollectionDAO.EntityRelationshipObject record : records) {

@@ -19,7 +19,6 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
@@ -33,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -345,20 +345,33 @@ public class DatabaseRepository extends EntityRepository<Database> {
     databases.forEach(database -> schemasMap.put(database.getId(), new ArrayList<>()));
 
     // Single batch query to get all schemas for all databases
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
     var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(
-                entityListToStrings(databases), Relationship.CONTAINS.ordinal(), DATABASE_SCHEMA);
+                entityListToStrings(databases),
+                Relationship.CONTAINS.ordinal(),
+                DATABASE_SCHEMA,
+                Include.ALL);
+
+    // Collect all unique schema IDs first
+    var schemaIds = records.stream().map(rec -> UUID.fromString(rec.getToId())).distinct().toList();
+
+    // Batch fetch all schema entity references
+    var schemaRefs = Entity.getEntityReferencesByIds(DATABASE_SCHEMA, schemaIds, Include.ALL);
+    var schemaRefMap =
+        schemaRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
 
     // Group schemas by database ID
     records.forEach(
         record -> {
           var databaseId = UUID.fromString(record.getFromId());
-          var schemaRef =
-              Entity.getEntityReferenceById(
-                  DATABASE_SCHEMA, UUID.fromString(record.getToId()), NON_DELETED);
-          schemasMap.get(databaseId).add(schemaRef);
+          var schemaId = UUID.fromString(record.getToId());
+          var schemaRef = schemaRefMap.get(schemaId);
+          if (schemaRef != null) {
+            schemasMap.get(databaseId).add(schemaRef);
+          }
         });
 
     return schemasMap;
@@ -417,18 +430,38 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     // Single batch query to get all services for all databases
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
     var records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(entityListToStrings(databases), Relationship.CONTAINS.ordinal());
+            .findFromBatch(
+                entityListToStrings(databases), Relationship.CONTAINS.ordinal(), Include.ALL);
 
+    // Collect all unique service IDs first
+    var serviceIds =
+        records.stream()
+            .filter(rec -> Entity.DATABASE_SERVICE.equals(rec.getFromEntity()))
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all service entity references
+    var serviceRefs =
+        Entity.getEntityReferencesByIds(Entity.DATABASE_SERVICE, serviceIds, Include.ALL);
+    var serviceRefMap =
+        serviceRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map databases to their services
     records.forEach(
         record -> {
-          var databaseId = UUID.fromString(record.getToId());
-          var serviceRef =
-              Entity.getEntityReferenceById(
-                  Entity.DATABASE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-          serviceMap.put(databaseId, serviceRef);
+          if (Entity.DATABASE_SERVICE.equals(record.getFromEntity())) {
+            var databaseId = UUID.fromString(record.getToId());
+            var serviceId = UUID.fromString(record.getFromId());
+            var serviceRef = serviceRefMap.get(serviceId);
+            if (serviceRef != null) {
+              serviceMap.put(databaseId, serviceRef);
+            }
+          }
         });
 
     return serviceMap;

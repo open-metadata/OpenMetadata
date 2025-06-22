@@ -316,7 +316,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
         daoCollection
             .relationshipDAO()
-            .findToBatch(teamIds, Relationship.OWNS.ordinal(), TEAM, null);
+            .findToBatchAllTypes(teamIds, Relationship.OWNS.ordinal(), Include.ALL);
 
     Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {

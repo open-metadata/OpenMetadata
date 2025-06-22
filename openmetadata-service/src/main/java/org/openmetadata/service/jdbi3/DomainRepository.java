@@ -360,7 +360,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityListToStrings(domains), Relationship.HAS.ordinal(), null);
+            .findToBatchAllTypes(
+                entityListToStrings(domains), Relationship.HAS.ordinal(), Include.ALL);
 
     // Group assets by domain ID
     records.forEach(

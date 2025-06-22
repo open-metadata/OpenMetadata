@@ -4434,21 +4434,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchOwners(List<T> entities) {
-    Map<UUID, List<EntityReference>> ownersMap = new HashMap<>();
+    var ownersMap = new HashMap<UUID, List<EntityReference>>();
 
     if (entities == null || entities.isEmpty()) {
       return ownersMap;
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal());
-    for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID toId = UUID.fromString(rec.getToId());
-      EntityReference ownerRef =
-          getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
-      ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
-    }
+            .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
+
+    // Group records by entity type to batch fetch entity references
+    var ownerIdsByType = new HashMap<String, List<UUID>>();
+    records.forEach(
+        rec -> {
+          var fromEntity = rec.getFromEntity();
+          var fromId = UUID.fromString(rec.getFromId());
+          ownerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+        });
+
+    // Batch fetch entity references for each entity type
+    var ownerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
+    ownerIdsByType.forEach(
+        (entityType, ownerIds) -> {
+          var ownerRefs = Entity.getEntityReferencesByIds(entityType, ownerIds, ALL);
+          var refMap =
+              ownerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+          ownerRefsByType.put(entityType, refMap);
+        });
+
+    // Map owners to entities
+    records.forEach(
+        rec -> {
+          var toId = UUID.fromString(rec.getToId());
+          var fromId = UUID.fromString(rec.getFromId());
+          var fromEntity = rec.getFromEntity();
+
+          var ownerRef = ownerRefsByType.get(fromEntity).get(fromId);
+          if (ownerRef != null) {
+            ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+          }
+        });
 
     return ownersMap;
   }
@@ -4473,51 +4500,93 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, EntityReference> batchFetchDomain(List<T> entities) {
-    Map<UUID, EntityReference> domainsMap = new HashMap<>();
+    var domainsMap = new HashMap<UUID, EntityReference>();
 
     if (entities == null || entities.isEmpty()) {
       return domainsMap;
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    // Also filter by DOMAIN entity type to avoid fetching unnecessary relationships
+    var records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(entityListToStrings(entities), Relationship.HAS.ordinal(), DOMAIN);
+            .findFromBatch(entityListToStrings(entities), Relationship.HAS.ordinal(), DOMAIN, ALL);
 
-    for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID toId = UUID.fromString(rec.getToId());
-      UUID fromId = UUID.fromString(rec.getFromId());
-      String fromEntity = rec.getFromEntity();
+    // Collect all unique domain IDs first
+    var domainIds =
+        records.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
 
-      EntityReference domainRef = getEntityReferenceById(fromEntity, fromId, ALL);
+    // Batch fetch all domain entity references
+    var domainRefs = Entity.getEntityReferencesByIds(DOMAIN, domainIds, ALL);
+    var domainRefMap =
+        domainRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
 
-      // Since each entity can have only one domain, we can directly put it in the map
-      if (domainsMap.containsKey(toId)) {
-        // Handle the case where an entity has multiple domains (which shouldn't happen)
-        throw new IllegalStateException(
-            String.format("Entity with ID %s has multiple domains", toId));
-      } else {
-        domainsMap.put(toId, domainRef);
-      }
-    }
+    // Map entities to their domains
+    records.forEach(
+        rec -> {
+          var toId = UUID.fromString(rec.getToId());
+          var fromId = UUID.fromString(rec.getFromId());
+          var domainRef = domainRefMap.get(fromId);
+
+          if (domainRef != null) {
+            // Since each entity can have only one domain, we can directly put it in the map
+            if (domainsMap.containsKey(toId)) {
+              // Handle the case where an entity has multiple domains (which shouldn't happen)
+              throw new IllegalStateException(
+                  String.format("Entity with ID %s has multiple domains", toId));
+            } else {
+              domainsMap.put(toId, domainRef);
+            }
+          }
+        });
 
     return domainsMap;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchReviewers(List<T> entities) {
-    List<CollectionDAO.EntityRelationshipObject> records =
+    if (entities == null || entities.isEmpty()) {
+      return new HashMap<>();
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(entities), entityType, Relationship.REVIEWS.ordinal());
+            .findFromBatch(entityListToStrings(entities), Relationship.REVIEWS.ordinal(), ALL);
 
-    Map<UUID, List<EntityReference>> reviewersMap = new HashMap<>();
+    var reviewersMap = new HashMap<UUID, List<EntityReference>>();
 
-    for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID entityId = UUID.fromString(rec.getToId());
-      EntityReference reviewerRef =
-          getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
-      reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
-    }
+    // Group records by entity type to batch fetch entity references
+    var reviewerIdsByType = new HashMap<String, List<UUID>>();
+    records.forEach(
+        rec -> {
+          var fromEntity = rec.getFromEntity();
+          var fromId = UUID.fromString(rec.getFromId());
+          reviewerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+        });
+
+    // Batch fetch entity references for each entity type
+    var reviewerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
+    reviewerIdsByType.forEach(
+        (entityType, reviewerIds) -> {
+          var reviewerRefs = Entity.getEntityReferencesByIds(entityType, reviewerIds, ALL);
+          var refMap =
+              reviewerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+          reviewerRefsByType.put(entityType, refMap);
+        });
+
+    // Map reviewers to entities
+    records.forEach(
+        rec -> {
+          var entityId = UUID.fromString(rec.getToId());
+          var fromId = UUID.fromString(rec.getFromId());
+          var fromEntity = rec.getFromEntity();
+
+          var reviewerRef = reviewerRefsByType.get(fromEntity).get(fromId);
+          if (reviewerRef != null) {
+            reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+          }
+        });
 
     return reviewersMap;
   }
@@ -4556,19 +4625,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchChildren(List<T> entities) {
-    List<CollectionDAO.EntityRelationshipObject> records =
+    if (entities == null || entities.isEmpty()) {
+      return new HashMap<>();
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(
-                entityListToStrings(entities), Relationship.CONTAINS.ordinal(), entityType);
+                entityListToStrings(entities), Relationship.CONTAINS.ordinal(), entityType, ALL);
 
-    Map<UUID, List<EntityReference>> childrenMap = new HashMap<>();
+    var childrenMap = new HashMap<UUID, List<EntityReference>>();
 
     if (CollectionUtils.isEmpty(records)) {
       return childrenMap;
     }
 
-    Map<String, EntityReference> idReferenceMap =
+    var idReferenceMap =
         Entity.getEntityReferencesByIds(
                 records.get(0).getToEntity(),
                 records.stream().map(e -> UUID.fromString(e.getToId())).distinct().toList(),
@@ -4576,11 +4650,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .stream()
             .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
 
-    for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID entityId = UUID.fromString(rec.getFromId());
-      EntityReference childrenRef = idReferenceMap.get(rec.getToId());
-      childrenMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(childrenRef);
-    }
+    records.forEach(
+        rec -> {
+          var entityId = UUID.fromString(rec.getFromId());
+          var childrenRef = idReferenceMap.get(rec.getToId());
+          if (childrenRef != null) {
+            childrenMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(childrenRef);
+          }
+        });
 
     return childrenMap;
   }
@@ -4663,51 +4740,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected Map<UUID, List<EntityReference>> batchFetchFromIdsManyToOne(
       List<T> entities, Relationship relationship, String toEntityType) {
-    Map<UUID, List<EntityReference>> resultMap = new HashMap<>();
+    var resultMap = new HashMap<UUID, List<EntityReference>>();
     if (entities == null || entities.isEmpty()) {
       return resultMap;
     }
 
-    List<CollectionDAO.EntityRelationshipObject> records =
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityListToStrings(entities), relationship.ordinal(), toEntityType);
+            .findToBatch(entityListToStrings(entities), relationship.ordinal(), toEntityType, ALL);
 
-    Map<String, EntityReference> idReferenceMap =
+    var idReferenceMap =
         Entity.getEntityReferencesByIds(
                 toEntityType,
                 records.stream().map(e -> UUID.fromString(e.getToId())).distinct().toList(),
-                NON_DELETED)
+                ALL)
             .stream()
             .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
 
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID entityId = UUID.fromString(record.getFromId());
-      EntityReference relatedRef = idReferenceMap.get(record.getToId());
-      if (relatedRef != null) {
-        resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
-      }
-    }
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getFromId());
+          var relatedRef = idReferenceMap.get(record.getToId());
+          if (relatedRef != null) {
+            resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+          }
+        });
 
     return resultMap;
   }
 
   protected Map<UUID, EntityReference> batchFetchFromIdsAndRelationSingleRelation(
       List<T> entities, Relationship relationship) {
-    Map<UUID, EntityReference> resultMap = new HashMap<>();
+    var resultMap = new HashMap<UUID, EntityReference>();
     if (entities == null || entities.isEmpty()) {
       return resultMap;
     }
 
-    List<CollectionDAO.EntityRelationshipObject> records =
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(entityListToStrings(entities), relationship.ordinal());
+            .findFromBatch(entityListToStrings(entities), relationship.ordinal(), ALL);
 
-    Map<String, EntityReference> idReferenceMap = new HashMap<>();
+    var idReferenceMap = new HashMap<String, EntityReference>();
 
     // Group by entity type to make efficient batch calls
-    Map<String, List<String>> entityTypeToIds =
+    var entityTypeToIds =
         records.stream()
             .collect(
                 Collectors.groupingBy(
@@ -4715,23 +4795,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     Collectors.mapping(
                         CollectionDAO.EntityRelationshipObject::getFromId, Collectors.toList())));
 
-    for (Map.Entry<String, List<String>> entry : entityTypeToIds.entrySet()) {
-      String entityType = entry.getKey();
-      List<UUID> ids = entry.getValue().stream().map(UUID::fromString).distinct().toList();
+    entityTypeToIds.forEach(
+        (entityType, idStrings) -> {
+          var ids = idStrings.stream().map(UUID::fromString).distinct().toList();
+          var refs = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+          refs.forEach(ref -> idReferenceMap.put(ref.getId().toString(), ref));
+        });
 
-      List<EntityReference> refs = Entity.getEntityReferencesByIds(entityType, ids, NON_DELETED);
-      for (EntityReference ref : refs) {
-        idReferenceMap.put(ref.getId().toString(), ref);
-      }
-    }
-
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID entityId = UUID.fromString(record.getToId());
-      EntityReference relatedRef = idReferenceMap.get(record.getFromId());
-      if (relatedRef != null) {
-        resultMap.put(entityId, relatedRef);
-      }
-    }
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getToId());
+          var relatedRef = idReferenceMap.get(record.getFromId());
+          if (relatedRef != null) {
+            resultMap.put(entityId, relatedRef);
+          }
+        });
 
     return resultMap;
   }
