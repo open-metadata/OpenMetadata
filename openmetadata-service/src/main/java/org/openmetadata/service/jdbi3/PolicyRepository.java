@@ -132,6 +132,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static List<String> filterRedundantResources(List<String> resources) {
+    // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
     boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
     return containsAllResources
         ? new ArrayList<>(List.of(ALL_RESOURCES))
