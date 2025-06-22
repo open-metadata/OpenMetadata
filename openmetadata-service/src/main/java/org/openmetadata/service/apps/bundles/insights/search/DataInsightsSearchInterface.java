@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public interface DataInsightsSearchInterface {

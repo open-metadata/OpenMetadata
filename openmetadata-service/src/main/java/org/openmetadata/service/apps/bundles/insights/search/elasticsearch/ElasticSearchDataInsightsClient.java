@@ -6,7 +6,7 @@ import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;

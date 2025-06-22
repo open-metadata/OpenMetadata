@@ -20,7 +20,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 
 public class LineageUtil {
 

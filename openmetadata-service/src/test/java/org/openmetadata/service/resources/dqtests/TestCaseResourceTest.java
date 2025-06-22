@@ -135,7 +135,7 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;

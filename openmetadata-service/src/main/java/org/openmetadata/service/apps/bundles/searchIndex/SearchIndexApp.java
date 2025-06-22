@@ -49,7 +49,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.schema.utils.JsonUtils;

@@ -3,7 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.RestClient;

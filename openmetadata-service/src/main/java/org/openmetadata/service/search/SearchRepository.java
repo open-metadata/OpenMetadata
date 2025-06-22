@@ -46,7 +46,7 @@ import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
-import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
+import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
@@ -104,7 +104,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;

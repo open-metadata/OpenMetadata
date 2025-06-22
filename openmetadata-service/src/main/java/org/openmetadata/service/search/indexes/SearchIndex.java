@@ -42,7 +42,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.schema.utils.JsonUtils;
 

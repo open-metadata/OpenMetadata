@@ -96,7 +96,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.RestUtil;

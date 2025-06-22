@@ -218,7 +218,7 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;

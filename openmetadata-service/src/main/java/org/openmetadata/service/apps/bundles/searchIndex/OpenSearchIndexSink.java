@@ -22,7 +22,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.schema.utils.JsonUtils;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.action.ActionListener;

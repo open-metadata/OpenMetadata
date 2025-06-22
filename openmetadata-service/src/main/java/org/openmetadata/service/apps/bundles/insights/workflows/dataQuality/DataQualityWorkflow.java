@@ -27,7 +27,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.util.ResultList;
