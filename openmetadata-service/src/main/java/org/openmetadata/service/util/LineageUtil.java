@@ -12,15 +12,15 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.search.IndexMapping;
 
 public class LineageUtil {
 

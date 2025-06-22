@@ -24,8 +24,8 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -268,8 +268,6 @@ public interface SearchClient {
 
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
-
-  MappingMapper getMapping(IndexMapping indexMapping) throws IOException;
 
   void createEntity(String indexName, String docId, String doc);
 

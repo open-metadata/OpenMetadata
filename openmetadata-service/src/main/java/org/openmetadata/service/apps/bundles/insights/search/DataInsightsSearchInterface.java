@@ -3,9 +3,9 @@ package org.openmetadata.service.apps.bundles.insights.search;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public interface DataInsightsSearchInterface {
   String DATA_INSIGHTS_SEARCH_CONFIG_PATH = "/dataInsights/config.json";

@@ -18,8 +18,8 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
-import org.openmetadata.service.Entity;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 public final class FeedUtil {
 

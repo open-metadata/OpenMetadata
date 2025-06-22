@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
@@ -29,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -44,10 +42,11 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.search.MappingMapper;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -180,19 +179,19 @@ public class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void testListMapping(TestInfo test) throws HttpResponseException {
-    WebTarget target = getResource("search/mapping").queryParam("entityType", "table");
-    MappingMapper response = TestUtils.get(target, MappingMapper.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(response);
-    Map<String, Map<String, Object>> map = response.getMapping();
-    assertEquals(1, map.size());
+  public void testListMapping(TestInfo test) {
+    IndexMappingLoader indexMappingLoader = IndexMappingLoader.getInstance();
+    Map<String, IndexMapping> indexMapping = indexMappingLoader.getIndexMapping();
 
-    // Should return all the mappings for all entity types
-    target = getResource("search/mapping");
-    response = TestUtils.get(target, MappingMapper.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(response);
-    map = response.getMapping();
-    assertTrue(map.size() > 1);
+    assertNotNull(indexMapping, "Index mapping should not be null");
+    IndexMapping tableIndexMapping = indexMapping.get("table");
+    assertNotNull(tableIndexMapping, "Table index mapping should not be null");
+
+    Map<String, Map<String, Object>> entityIndexMapping =
+        indexMappingLoader.getEntityIndexMapping();
+    assertNotNull(entityIndexMapping, "Entity index mapping should not be null");
+    Map<String, Object> tableMapping = entityIndexMapping.get("table");
+    assertNotNull(tableMapping, "Table mapping should not be null");
   }
 
   private Response searchWithQuery(String query, String index) {
