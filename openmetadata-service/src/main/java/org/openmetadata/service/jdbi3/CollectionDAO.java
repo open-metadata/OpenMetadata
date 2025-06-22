@@ -1223,6 +1223,29 @@ public interface CollectionDAO {
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatchWithCondition(
+        @BindList("toIds") List<String> toIds,
+        @Bind("relation") int relation,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findFromBatch(
+        List<String> toIds, int relation, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findFromBatchWithCondition(toIds, relation, condition);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)

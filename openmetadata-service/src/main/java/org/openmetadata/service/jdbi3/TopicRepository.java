@@ -144,9 +144,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     fetchAndSetFields(entities, fields);
     fetchAndSetTopicSpecificFields(entities, fields);
     setInheritedFields(entities, fields);
-    for (Topic entity : entities) {
-      clearFieldsInternal(entity, fields);
-    }
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
   private void fetchAndSetTopicSpecificFields(List<Topic> topics, Fields fields) {
@@ -463,18 +461,16 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchFollowers(List<Topic> topics) {
-    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+    var followersMap = new HashMap<UUID, List<EntityReference>>();
     if (topics == null || topics.isEmpty()) {
       return followersMap;
     }
 
     // Initialize empty lists for all topics
-    for (Topic topic : topics) {
-      followersMap.put(topic.getId(), new ArrayList<>());
-    }
+    topics.forEach(topic -> followersMap.put(topic.getId(), new ArrayList<>()));
 
     // Single batch query to get all followers for all topics
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
@@ -482,38 +478,40 @@ public class TopicRepository extends EntityRepository<Topic> {
                 org.openmetadata.schema.type.Relationship.FOLLOWS.ordinal());
 
     // Group followers by topic ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID topicId = UUID.fromString(record.getToId());
-      EntityReference followerRef =
-          Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
-      followersMap.get(topicId).add(followerRef);
-    }
+    records.forEach(
+        record -> {
+          var topicId = UUID.fromString(record.getToId());
+          var followerRef =
+              Entity.getEntityReferenceById(
+                  record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+          followersMap.get(topicId).add(followerRef);
+        });
 
     return followersMap;
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<Topic> topics) {
-    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    var serviceMap = new HashMap<UUID, EntityReference>();
     if (topics == null || topics.isEmpty()) {
       return serviceMap;
     }
 
     // Single batch query to get all services for all topics
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(topics),
                 org.openmetadata.schema.type.Relationship.CONTAINS.ordinal());
 
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID topicId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(topicId, serviceRef);
-    }
+    records.forEach(
+        record -> {
+          var topicId = UUID.fromString(record.getToId());
+          var serviceRef =
+              Entity.getEntityReferenceById(
+                  Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+          serviceMap.put(topicId, serviceRef);
+        });
 
     return serviceMap;
   }
@@ -524,12 +522,10 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     // Use the existing batch fetch method
-    Map<UUID, EntityReference> serviceMap = batchFetchServices(topics);
+    var serviceMap = batchFetchServices(topics);
 
     // Set service for all topics
-    for (Topic topic : topics) {
-      topic.setService(serviceMap.get(topic.getId()));
-    }
+    topics.forEach(topic -> topic.setService(serviceMap.get(topic.getId())));
   }
 
   public class TopicUpdater extends EntityUpdater {

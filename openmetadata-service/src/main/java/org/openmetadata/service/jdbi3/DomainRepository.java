@@ -81,9 +81,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   public void setFieldsInBulk(Fields fields, List<Domain> entities) {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
-    for (Domain entity : entities) {
-      clearFieldsInternal(entity, fields);
-    }
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
   // Individual field fetchers registered in constructor
@@ -350,81 +348,80 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
-    Map<UUID, List<EntityReference>> assetsMap = new HashMap<>();
+    var assetsMap = new HashMap<UUID, List<EntityReference>>();
     if (domains == null || domains.isEmpty()) {
       return assetsMap;
     }
 
     // Initialize empty lists for all domains
-    for (Domain domain : domains) {
-      assetsMap.put(domain.getId(), new ArrayList<>());
-    }
+    domains.forEach(domain -> assetsMap.put(domain.getId(), new ArrayList<>()));
 
     // Single batch query to get all assets for all domains
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(domains), Relationship.HAS.ordinal(), null);
 
     // Group assets by domain ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID domainId = UUID.fromString(record.getFromId());
-      EntityReference assetRef =
-          getEntityReferenceById(
-              record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
-      assetsMap.get(domainId).add(assetRef);
-    }
+    records.forEach(
+        record -> {
+          var domainId = UUID.fromString(record.getFromId());
+          var assetRef =
+              getEntityReferenceById(
+                  record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+          assetsMap.get(domainId).add(assetRef);
+        });
 
     return assetsMap;
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {
-    Map<UUID, EntityReference> parentsMap = new HashMap<>();
+    var parentsMap = new HashMap<UUID, EntityReference>();
     if (domains == null || domains.isEmpty()) {
       return parentsMap;
     }
 
     // Single batch query to get all parent relationships
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(domains), Relationship.CONTAINS.ordinal());
 
     // Map domain to its parent
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID domainId = UUID.fromString(record.getToId());
-      EntityReference parentRef =
-          getEntityReferenceById(DOMAIN, UUID.fromString(record.getFromId()), NON_DELETED);
-      parentsMap.put(domainId, parentRef);
-    }
+    records.forEach(
+        record -> {
+          var domainId = UUID.fromString(record.getToId());
+          var parentRef =
+              getEntityReferenceById(DOMAIN, UUID.fromString(record.getFromId()), NON_DELETED);
+          parentsMap.put(domainId, parentRef);
+        });
 
     return parentsMap;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<Domain> domains) {
-    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+    var expertsMap = new HashMap<UUID, List<EntityReference>>();
     if (domains == null || domains.isEmpty()) {
       return expertsMap;
     }
 
     // Initialize empty lists for all domains
-    for (Domain domain : domains) {
-      expertsMap.put(domain.getId(), new ArrayList<>());
-    }
+    domains.forEach(domain -> expertsMap.put(domain.getId(), new ArrayList<>()));
 
     // Single batch query to get all expert relationships
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(domains), Relationship.EXPERT.ordinal(), Entity.USER);
 
     // Group experts by domain ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID domainId = UUID.fromString(record.getFromId());
-      EntityReference expertRef =
-          getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
-      expertsMap.get(domainId).add(expertRef);
-    }
+    records.forEach(
+        record -> {
+          var domainId = UUID.fromString(record.getFromId());
+          var expertRef =
+              getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
+          expertsMap.get(domainId).add(expertRef);
+        });
 
     return expertsMap;
   }

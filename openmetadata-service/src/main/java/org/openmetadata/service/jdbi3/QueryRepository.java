@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -96,25 +95,25 @@ public class QueryRepository extends EntityRepository<Query> {
 
     // Many queries already have service set from when they were created
     // For those that don't, we need to fetch it
-    List<Query> queriesNeedingService =
-        queries.stream().filter(q -> q.getService() == null).collect(Collectors.toList());
+    var queriesNeedingService = queries.stream().filter(q -> q.getService() == null).toList();
 
     if (!queriesNeedingService.isEmpty()) {
       // For queries, service information is stored differently
       // Query doesn't have a direct CONTAINS relationship with service
       // Instead, it has the service reference stored in its JSON
-      for (Query query : queriesNeedingService) {
-        try {
-          // The service should already be set in setFields for individual entities
-          // This is a fallback for bulk operations
-          EntityReference service =
-              Entity.getEntityReferenceByName(
-                  Entity.DATABASE_SERVICE, query.getService().getName(), Include.NON_DELETED);
-          query.withService(service);
-        } catch (Exception e) {
-          LOG.warn("Could not fetch service for query: {}", query.getId(), e);
-        }
-      }
+      queriesNeedingService.forEach(
+          query -> {
+            try {
+              // The service should already be set in setFields for individual entities
+              // This is a fallback for bulk operations
+              var service =
+                  Entity.getEntityReferenceByName(
+                      Entity.DATABASE_SERVICE, query.getService().getName(), Include.NON_DELETED);
+              query.withService(service);
+            } catch (Exception e) {
+              LOG.warn("Could not fetch service for query: {}", query.getId(), e);
+            }
+          });
     }
   }
 

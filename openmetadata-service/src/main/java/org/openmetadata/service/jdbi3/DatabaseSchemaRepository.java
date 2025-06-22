@@ -28,10 +28,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -147,6 +150,123 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     EntityReference databaseRef = getContainer(schema.getId());
     Database database = Entity.getEntity(databaseRef, "", Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<DatabaseSchema> entities) {
+    // Bulk fetch and set default fields for all schemas
+    fetchAndSetDefaultFields(entities);
+
+    // Set other fields if requested
+    if (fields.contains("tables")) {
+      fetchAndSetTables(entities);
+    }
+
+    if (fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)) {
+      fetchAndSetDatabaseSchemaProfilerConfigs(entities);
+    }
+
+    if (fields.contains("usageSummary")) {
+      fetchAndSetUsageSummaries(entities);
+    }
+
+    // Inherit fields from parent
+    setInheritedFields(entities, fields);
+
+    // Clear fields not requested
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private void fetchAndSetDefaultFields(List<DatabaseSchema> schemas) {
+    if (schemas == null || schemas.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch database references for all schemas
+    var databaseRefsMap = batchFetchDatabases(schemas);
+
+    // Get unique database IDs and fetch them in batch
+    var uniqueDatabaseIds =
+        databaseRefsMap.values().stream().map(EntityReference::getId).distinct().toList();
+
+    // Bulk fetch all databases using the repository to ensure fields are properly set
+    var databaseRepository = (DatabaseRepository) Entity.getEntityRepository(Entity.DATABASE);
+
+    // Get all databases from database in bulk
+    var databasesList =
+        databaseRepository
+            .getDao()
+            .findEntitiesByIds(new ArrayList<>(uniqueDatabaseIds), Include.ALL);
+
+    // Use setFieldsInBulk to efficiently set all required fields including service
+    databaseRepository.setFieldsInBulk(Fields.EMPTY_FIELDS, databasesList);
+
+    var databases =
+        databasesList.stream().collect(Collectors.toMap(Database::getId, database -> database));
+
+    // Set fields for all schemas
+    schemas.forEach(
+        schema -> {
+          var databaseRef = databaseRefsMap.get(schema.getId());
+          if (databaseRef != null) {
+            var database = databases.get(databaseRef.getId());
+            if (database != null) {
+              schema.withDatabase(databaseRef).withService(database.getService());
+            }
+          }
+        });
+  }
+
+  private Map<UUID, EntityReference> batchFetchDatabases(List<DatabaseSchema> schemas) {
+    var databaseMap = new HashMap<UUID, EntityReference>();
+    if (schemas == null || schemas.isEmpty()) {
+      return databaseMap;
+    }
+
+    // Single batch query to get all databases for all schemas
+    // Database (from) -> CONTAINS -> DatabaseSchema (to)
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(schemas), Relationship.CONTAINS.ordinal(), Include.ALL);
+
+    records.forEach(
+        record -> {
+          // Only process records where the from entity is DATABASE
+          if (Entity.DATABASE.equals(record.getFromEntity())) {
+            var schemaId = UUID.fromString(record.getToId());
+            var databaseRef =
+                Entity.getEntityReferenceById(
+                    Entity.DATABASE, UUID.fromString(record.getFromId()), Include.ALL);
+            databaseMap.put(schemaId, databaseRef);
+          }
+        });
+
+    return databaseMap;
+  }
+
+  private void fetchAndSetTables(List<DatabaseSchema> schemas) {
+    // TODO: Implement bulk fetching of tables
+    schemas.forEach(schema -> schema.setTables(getTables(schema)));
+  }
+
+  private void fetchAndSetDatabaseSchemaProfilerConfigs(List<DatabaseSchema> schemas) {
+    // TODO: Implement bulk fetching of profiler configs
+    schemas.forEach(
+        schema -> schema.setDatabaseSchemaProfilerConfig(getDatabaseSchemaProfilerConfig(schema)));
+  }
+
+  private void fetchAndSetUsageSummaries(List<DatabaseSchema> schemas) {
+    if (schemas == null || schemas.isEmpty()) {
+      return;
+    }
+
+    var usageMap =
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(schemas));
+
+    schemas.forEach(schema -> schema.withUsageSummary(usageMap.get(schema.getId())));
   }
 
   @Override

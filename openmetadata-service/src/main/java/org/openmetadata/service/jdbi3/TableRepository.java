@@ -212,17 +212,18 @@ public class TableRepository extends EntityRepository<Table> {
     setInheritedFields(entities, fields);
 
     // Handle table-specific fields that aren't in fetchAndSetFields
-    for (Table table : entities) {
-      if (fields.contains(COLUMN_FIELD)) {
-        populateEntityFieldTags(
-            entityType,
-            table.getColumns(),
-            table.getFullyQualifiedName(),
-            fields.contains(FIELD_TAGS));
-      }
+    entities.forEach(
+        table -> {
+          if (fields.contains(COLUMN_FIELD)) {
+            populateEntityFieldTags(
+                entityType,
+                table.getColumns(),
+                table.getFullyQualifiedName(),
+                fields.contains(FIELD_TAGS));
+          }
 
-      clearFieldsInternal(table, fields);
-    }
+          clearFieldsInternal(table, fields);
+        });
   }
 
   // Individual field fetchers registered in constructor
@@ -321,7 +322,8 @@ public class TableRepository extends EntityRepository<Table> {
     table
         .withDatabaseSchema(schemaRef)
         .withDatabase(schema.getDatabase())
-        .withService(schema.getService());
+        .withService(schema.getService())
+        .withServiceType(schema.getServiceType());
   }
 
   private void fetchAndSetDefaultFields(List<Table> tables) {
@@ -329,54 +331,66 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
 
-    // Batch fetch schema references for all tables
-    Map<UUID, EntityReference> schemaRefs = batchFetchSchemas(tables);
+    var schemaRefsMap = batchFetchSchemas(tables);
+    var uniqueSchemaIds =
+        schemaRefsMap.values().stream().map(EntityReference::getId).distinct().toList();
 
-    // Get unique schema IDs and fetch them in batch
-    Set<UUID> uniqueSchemaIds =
-        schemaRefs.values().stream().map(EntityReference::getId).collect(Collectors.toSet());
-
-    Map<UUID, DatabaseSchema> schemas = new HashMap<>();
-    for (UUID schemaId : uniqueSchemaIds) {
-      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
-      schemas.put(schemaId, schema);
-    }
-
-    // Set fields for all tables
-    for (Table table : tables) {
-      EntityReference schemaRef = schemaRefs.get(table.getId());
-      if (schemaRef != null) {
-        DatabaseSchema schema = schemas.get(schemaRef.getId());
-        table
-            .withDatabaseSchema(schemaRef)
-            .withDatabase(schema.getDatabase())
-            .withService(schema.getService());
-      }
-    }
+    var schemaRepository = (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    var schemasList =
+        schemaRepository.getDao().findEntitiesByIds(new ArrayList<>(uniqueSchemaIds), ALL);
+    schemaRepository.setFieldsInBulk(Fields.EMPTY_FIELDS, schemasList);
+    var schemas =
+        schemasList.stream().collect(Collectors.toMap(DatabaseSchema::getId, schema -> schema));
+    tables.forEach(
+        table -> {
+          var schemaRef = schemaRefsMap.get(table.getId());
+          if (schemaRef != null) {
+            var schema = schemas.get(schemaRef.getId());
+            table
+                .withDatabaseSchema(schemaRef)
+                .withDatabase(schema.getDatabase())
+                .withService(schema.getService())
+                .withServiceType(schema.getServiceType());
+          }
+        });
   }
 
   private Map<UUID, EntityReference> batchFetchSchemas(List<Table> tables) {
-    Map<UUID, EntityReference> schemaMap = new HashMap<>();
+    var schemaMap = new HashMap<UUID, EntityReference>();
     if (tables == null || tables.isEmpty()) {
       return schemaMap;
     }
-
-    // Single batch query to get all schemas for all tables
-    List<CollectionDAO.EntityRelationshipObject> records =
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var relations =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal());
+            .findFromBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), ALL);
 
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID tableId = UUID.fromString(record.getToId());
-      if (DATABASE_SCHEMA.equals(record.getFromEntity())) {
-        EntityReference schemaRef =
-            Entity.getEntityReferenceById(
-                DATABASE_SCHEMA, UUID.fromString(record.getFromId()), NON_DELETED);
-        schemaMap.put(tableId, schemaRef);
-      }
-    }
+    // Collect all unique schema IDs first
+    var schemaIds =
+        relations.stream()
+            .filter(rel -> DATABASE_SCHEMA.equals(rel.getFromEntity()))
+            .map(rel -> UUID.fromString(rel.getFromId()))
+            .distinct()
+            .toList();
 
+    // Batch fetch all schema entity references
+    var schemaRefs = Entity.getEntityReferencesByIds(DATABASE_SCHEMA, schemaIds, ALL);
+    var schemaRefMap =
+        schemaRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map tables to their schema references
+    relations.forEach(
+        rel -> {
+          if (DATABASE_SCHEMA.equals(rel.getFromEntity())) {
+            var tableId = UUID.fromString(rel.getToId());
+            var schemaId = UUID.fromString(rel.getFromId());
+            var schemaRef = schemaRefMap.get(schemaId);
+            if (schemaRef != null) {
+              schemaMap.put(tableId, schemaRef);
+            }
+          }
+        });
     return schemaMap;
   }
 
@@ -809,12 +823,12 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-    if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
-      if (table.getDataModel() != null
-          && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
-        dataModel.setSql(table.getDataModel().getSql());
-      }
+    if ((dataModel.getSql() == null || dataModel.getSql().isBlank())
+        && table.getDataModel() != null
+        && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
+      dataModel.setSql(table.getDataModel().getSql());
     }
+
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty

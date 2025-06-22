@@ -208,9 +208,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     fetchAndSetDatabaseSpecificFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    for (Database entity : entities) {
-      clearFieldsInternal(entity, fields);
-    }
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
   private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
@@ -338,64 +336,64 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
-    Map<UUID, List<EntityReference>> schemasMap = new HashMap<>();
+    var schemasMap = new HashMap<UUID, List<EntityReference>>();
     if (databases == null || databases.isEmpty()) {
       return schemasMap;
     }
 
     // Initialize empty lists for all databases
-    for (Database database : databases) {
-      schemasMap.put(database.getId(), new ArrayList<>());
-    }
+    databases.forEach(database -> schemasMap.put(database.getId(), new ArrayList<>()));
 
     // Single batch query to get all schemas for all databases
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(databases), Relationship.CONTAINS.ordinal(), DATABASE_SCHEMA);
 
     // Group schemas by database ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID databaseId = UUID.fromString(record.getFromId());
-      EntityReference schemaRef =
-          Entity.getEntityReferenceById(
-              DATABASE_SCHEMA, UUID.fromString(record.getToId()), NON_DELETED);
-      schemasMap.get(databaseId).add(schemaRef);
-    }
+    records.forEach(
+        record -> {
+          var databaseId = UUID.fromString(record.getFromId());
+          var schemaRef =
+              Entity.getEntityReferenceById(
+                  DATABASE_SCHEMA, UUID.fromString(record.getToId()), NON_DELETED);
+          schemasMap.get(databaseId).add(schemaRef);
+        });
 
     return schemasMap;
   }
 
   private Map<UUID, DatabaseProfilerConfig> batchFetchDatabaseProfilerConfigs(
       List<Database> databases) {
-    Map<UUID, DatabaseProfilerConfig> configMap = new HashMap<>();
+    var configMap = new HashMap<UUID, DatabaseProfilerConfig>();
     if (databases == null || databases.isEmpty()) {
       return configMap;
     }
 
     // Use batch extension query for profiler configs
-    List<CollectionDAO.ExtensionRecordWithId> records =
+    var records =
         daoCollection
             .entityExtensionDAO()
             .getExtensionsBatch(entityListToStrings(databases), DATABASE_PROFILER_CONFIG_EXTENSION);
 
-    for (CollectionDAO.ExtensionRecordWithId record : records) {
-      try {
-        DatabaseProfilerConfig config =
-            JsonUtils.readValue(record.extensionJson(), DatabaseProfilerConfig.class);
-        configMap.put(record.id(), config);
-      } catch (Exception e) {
-        configMap.put(record.id(), null);
-      }
-    }
+    records.forEach(
+        record -> {
+          try {
+            var config = JsonUtils.readValue(record.extensionJson(), DatabaseProfilerConfig.class);
+            configMap.put(record.id(), config);
+          } catch (Exception e) {
+            configMap.put(record.id(), null);
+          }
+        });
 
     // Ensure all databases have an entry (null if no config found)
-    for (Database database : databases) {
-      if (!configMap.containsKey(database.getId())) {
-        configMap.put(database.getId(), null);
-      }
-    }
+    databases.forEach(
+        database -> {
+          if (!configMap.containsKey(database.getId())) {
+            configMap.put(database.getId(), null);
+          }
+        });
 
     return configMap;
   }
@@ -406,33 +404,32 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     // Batch fetch service references for all databases
-    Map<UUID, EntityReference> serviceMap = batchFetchServices(databases);
+    var serviceMap = batchFetchServices(databases);
 
     // Set service for all databases
-    for (Database database : databases) {
-      database.setService(serviceMap.get(database.getId()));
-    }
+    databases.forEach(database -> database.setService(serviceMap.get(database.getId())));
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<Database> databases) {
-    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    var serviceMap = new HashMap<UUID, EntityReference>();
     if (databases == null || databases.isEmpty()) {
       return serviceMap;
     }
 
     // Single batch query to get all services for all databases
-    List<CollectionDAO.EntityRelationshipObject> records =
+    var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(databases), Relationship.CONTAINS.ordinal());
 
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID databaseId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.DATABASE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(databaseId, serviceRef);
-    }
+    records.forEach(
+        record -> {
+          var databaseId = UUID.fromString(record.getToId());
+          var serviceRef =
+              Entity.getEntityReferenceById(
+                  Entity.DATABASE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+          serviceMap.put(databaseId, serviceRef);
+        });
 
     return serviceMap;
   }
