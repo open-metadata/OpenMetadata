@@ -27,7 +27,7 @@
       "properties": {
         "dbServicePrefixes": {
           "title": "Database Service Path Prefixes",
-          "description": "List of service path prefixes for lineage matching. Supported formats: <DBServiceName>, <DBServiceName>.<DatabaseName>, <DBServiceName>.<DatabaseName>.<SchemaName>, or <DBServiceName>.<DatabaseName>.<SchemaName>.<TableName>",
+          "description": "List of service path prefixes for lineage matching. Supported formats: DBServiceName, DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or DBServiceName.DatabaseName.SchemaName.TableName",
           "type": "array",
           "items": {
             "type": "string"

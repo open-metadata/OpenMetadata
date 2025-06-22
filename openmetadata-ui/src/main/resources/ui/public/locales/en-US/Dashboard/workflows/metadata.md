@@ -70,7 +70,11 @@ When processing Dashboards and Charts we can extract information on which tables
 
 In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
 
-List of service path prefixes for lineage matching. Supported formats: <DBServiceName>, <DBServiceName>.<DatabaseName>, <DBServiceName>.<DatabaseName>.<SchemaName>, or <DBServiceName>.<DatabaseName>.<SchemaName>.<TableName>
+List of service path prefixes for lineage matching. Supported formats: 
+- DBServiceName
+- DBServiceName.DatabaseName
+- DBServiceName.DatabaseName.SchemaName
+- DBServiceName.DatabaseName.SchemaName.TableName
 $$
 
 
