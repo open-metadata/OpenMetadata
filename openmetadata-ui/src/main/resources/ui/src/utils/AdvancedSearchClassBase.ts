@@ -44,6 +44,7 @@ import {
   getCustomPropertyAdvanceSearchEnumOptions,
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
+import { getEntityName } from './EntityUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
@@ -956,6 +957,7 @@ class AdvancedSearchClassBase {
 
   public getCustomPropertiesSubFields(field: CustomPropertySummary) {
     {
+      const label = getEntityName(field);
       switch (field.type) {
         case 'array<entityReference>':
         case 'entityReference':
@@ -963,7 +965,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name + `.displayName`,
             dataObject: {
               type: 'select',
-              label: field.name,
+              label,
               fieldSettings: {
                 asyncFetch: this.autocomplete({
                   searchIndex: (
@@ -981,6 +983,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'select',
+              label,
               operators: LIST_VALUE_OPERATORS,
               fieldSettings: {
                 listValues: getCustomPropertyAdvanceSearchEnumOptions(
@@ -998,6 +1001,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'date',
+              label,
               operators: RANGE_FIELD_OPERATORS,
             },
           };
@@ -1010,6 +1014,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'number',
+              label,
               operators: RANGE_FIELD_OPERATORS,
             },
           };
@@ -1020,6 +1025,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'text',
+              label,
               valueSources: ['value'],
               operators: TEXT_FIELD_OPERATORS,
             },
