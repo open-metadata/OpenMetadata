@@ -970,6 +970,7 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stack�
       ['Breaking changes']: `
 
 • **Java 21**: OpenMetadata Server upgraded to use Java 21
+• **CreateTestCase Model**: testSuite field from createTestCase models has been removed. 
 • **DropWizard 4.x**: OpenMetadata Server upgraded to use  latest DropWizard 4.x framework for serving APIs.`,
       ['Improvements']: `
 - Large column pagination to improve page loading in Tables and Dashboard Data Model
