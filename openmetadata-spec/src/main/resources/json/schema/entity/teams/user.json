@@ -155,30 +155,30 @@
     "lastLoginTime": {
       "description": "Last time the user logged in.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
-    }
-  },
-  "additionalProperties": false,
-  "required": ["id", "name", "email"],
-  "preferences": {
-    "type": "object",
-    "properties": {
-      "homeBannerBgColor": {
-        "description": "Background color of the home page banner.",
-        "type": "string",
-        "default": "linear-gradient(106.44deg, #1568DA 0.76%, rgba(33, 93, 243, 0.9) 47.51%, #2196F3 115.4%)"
-      },
-      "defaultPageSize": {
-        "description": "Default page size for the user.",
-        "type": "integer",
-        "default": 10
-      },
-      "tableSchemaColumns": {
-        "description": "List of columns to display in the table schema.",
-        "type": "array",
-        "items": {
-          "type": "string"
+    },
+    "preferences": {
+      "type": "object",
+      "properties": {
+        "homeBannerBgColor": {
+          "description": "Background color of the home page banner.",
+          "type": "string",
+          "default": "linear-gradient(106.44deg, #1568DA 0.76%, rgba(33, 93, 243, 0.9) 47.51%, #2196F3 115.4%)"
+        },
+        "defaultPageSize": {
+          "description": "Default page size for the user.",
+          "type": "integer",
+          "default": 10
+        },
+        "tableSchemaColumns": {
+          "description": "List of columns to display in the table schema.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
-  }
+  },
+  "additionalProperties": false,
+  "required": ["id", "name", "email"]
 }
