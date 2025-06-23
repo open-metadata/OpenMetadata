@@ -2138,8 +2138,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   /**
    * Helper method to initiate async move operation
    */
-  protected MoveEntityResponse moveEntityAsync(
-      UUID id, EntityReference newParent)
+  protected MoveEntityResponse moveEntityAsync(UUID id, EntityReference newParent)
       throws HttpResponseException {
     try {
       WebTarget target = getCollection().path(String.format("/%s/moveAsync", id));
@@ -2152,7 +2151,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
       LOG.info("Moving entity with id {}, target:{}", id, target);
       return TestUtils.put(
-          target, payload, MoveEntityResponse.class, Response.Status.ACCEPTED, TestUtils.ADMIN_AUTH_HEADERS);
+          target,
+          payload,
+          MoveEntityResponse.class,
+          Response.Status.ACCEPTED,
+          TestUtils.ADMIN_AUTH_HEADERS);
     } catch (HttpResponseException e) {
       LOG.error("Failed to move entity with id {}: {}", id, e.getMessage());
       throw e;
