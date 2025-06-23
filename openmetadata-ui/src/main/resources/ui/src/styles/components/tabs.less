@@ -90,7 +90,6 @@
     margin-top: @padding-sm;
     border-radius: @border-radius-sm;
     background-color: @white;
-    margin-bottom: @margin-md;
   }
 
   .ant-tabs-ink-bar {
@@ -100,8 +99,12 @@
   }
 }
 
-.glossary-details .ant-tabs.tabs-new {
-  .ant-tabs-tabpane {
-    background-color: @grey-9;
+.glossary-details,
+.entity-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      background-color: @grey-9;
+      margin-bottom: @margin-md;
+    }
   }
 }
