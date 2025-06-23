@@ -1,5 +1,5 @@
 ---
-title: DomoDatabase
+title: Domo Database Connector | OpenMetadata Integration Guide
 slug: /connectors/database/domo-database
 ---
 
