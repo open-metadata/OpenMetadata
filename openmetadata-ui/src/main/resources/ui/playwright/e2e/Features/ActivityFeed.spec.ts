@@ -906,7 +906,11 @@ base.describe('Activity feed with Data Consumer User', () => {
         await tagsTask.click();
         await entityPageTaskTab;
 
-        expect(page2.getByText('no diff available').first()).toBeVisible();
+        await page1.waitForLoadState('networkidle');
+
+        await expect(
+          page2.getByText('no diff available').first()
+        ).toBeVisible();
 
         // Should see the add_close dropdown and comment button
         await expect(
