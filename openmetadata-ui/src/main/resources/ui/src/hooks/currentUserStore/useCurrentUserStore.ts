@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useApplicationStore } from '../useApplicationStore';
+
 interface UserPreferences {
   isSidebarCollapsed: boolean;
 }

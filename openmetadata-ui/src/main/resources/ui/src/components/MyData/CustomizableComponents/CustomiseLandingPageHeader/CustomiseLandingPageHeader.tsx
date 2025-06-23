@@ -50,9 +50,13 @@ const CustomiseLandingPageHeader = ({
   const { document } = useCustomizeStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
 
-  const defaultBackgroundColor = document?.data?.pages?.find(
-    (item: Page) => item.pageType === PageType.LandingPage
-  )?.homePageBannerBackgroundColor;
+  const defaultBackgroundColor = useMemo(
+    () =>
+      document?.data?.pages?.find(
+        (item: Page) => item.pageType === PageType.LandingPage
+      )?.homePageBannerBackgroundColor,
+    [document]
+  );
 
   const bgColor =
     backgroundColor ?? defaultBackgroundColor ?? DEFAULT_HEADER_BG_COLOR;
