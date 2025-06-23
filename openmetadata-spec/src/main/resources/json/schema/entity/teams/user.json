@@ -148,7 +148,7 @@
       "description": "If the User has verified the mail",
       "type": "boolean"
     },
-    "domains" : {
+    "domains": {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -158,5 +158,27 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "email"]
+  "required": ["id", "name", "email"],
+  "preferences": {
+    "type": "object",
+    "properties": {
+      "homeBannerBgColor": {
+        "description": "Background color of the home page banner.",
+        "type": "string",
+        "default": "linear-gradient(106.44deg, #1568DA 0.76%, rgba(33, 93, 243, 0.9) 47.51%, #2196F3 115.4%)"
+      },
+      "defaultPageSize": {
+        "description": "Default page size for the user.",
+        "type": "integer",
+        "default": 10
+      },
+      "tableSchemaColumns": {
+        "description": "List of columns to display in the table schema.",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
 }
