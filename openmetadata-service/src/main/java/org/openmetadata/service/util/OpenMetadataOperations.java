@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -1204,6 +1205,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new SubstitutingSourceProvider(
                 new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
             configFilePath);
+    IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
