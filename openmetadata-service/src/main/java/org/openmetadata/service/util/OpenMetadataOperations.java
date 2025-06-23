@@ -744,25 +744,36 @@ public class OpenMetadataOperations implements Callable<Integer> {
           skipHierarchyCleanup);
       parseConfig();
 
-      // Step 1: Generic relationship cleanup
-      EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
-      EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(batchSize);
+      if (skipHierarchyCleanup) {
+        // Only perform relationship cleanup
+        LOG.info("=== Entity Relationship Cleanup Only ===");
+        EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+        EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(batchSize);
 
-      LOG.info("=== Entity Relationship Cleanup Summary ===");
-      LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
-      LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
-      LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+        LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+        LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+        LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
 
-      // Step 2: Service hierarchy cleanup
-      if (!skipHierarchyCleanup) {
-        LOG.info("=== Service Hierarchy Cleanup ===");
-        performServiceHierarchyCleanup(dryRun);
-      }
+        if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+          LOG.info("To actually delete these orphaned relationships, run with --delete");
+          return 1;
+        }
+      } else {
+        // Perform comprehensive cleanup (relationships + hierarchies)
+        EntityRelationshipCleanupUtil comprehensiveCleanup =
+            dryRun
+                ? EntityRelationshipCleanupUtil.forDryRun(collectionDAO, batchSize)
+                : EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, batchSize);
 
-      if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
-        LOG.info(
-            "To actually delete these orphaned relationships and broken entities, run with --delete");
-        return 1;
+        EntityRelationshipCleanupUtil.CleanupResult result =
+            comprehensiveCleanup.performComprehensiveCleanup();
+        comprehensiveCleanup.printComprehensiveResults(result);
+
+        if (dryRun && result.getTotalEntitiesDeleted() > 0) {
+          LOG.info(
+              "To actually delete these orphaned relationships and broken entities, run with --delete");
+          return 1;
+        }
       }
 
       return 0;
@@ -1356,125 +1367,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void performServiceHierarchyCleanup(boolean dryRun) {
-    LOG.info("Starting comprehensive service hierarchy cleanup for all service types");
-
-    // Define all service hierarchies based on OpenMetadata entity relationships
-    Map<String, List<ServiceHierarchy>> serviceHierarchies =
-        Map.of(
-            "Database Service",
-            List.of(
-                new ServiceHierarchy(Entity.DATABASE_SERVICE, Entity.DATABASE, "database_entity"),
-                new ServiceHierarchy(
-                    Entity.DATABASE, Entity.DATABASE_SCHEMA, "database_schema_entity"),
-                new ServiceHierarchy(Entity.DATABASE_SCHEMA, Entity.TABLE, "table_entity"),
-                new ServiceHierarchy(
-                    Entity.DATABASE_SCHEMA, Entity.STORED_PROCEDURE, "stored_procedure_entity")),
-            "Dashboard Service",
-            List.of(
-                new ServiceHierarchy(
-                    Entity.DASHBOARD_SERVICE, Entity.DASHBOARD, "dashboard_entity"),
-                new ServiceHierarchy(Entity.DASHBOARD, Entity.CHART, "chart_entity"),
-                new ServiceHierarchy(
-                    Entity.DASHBOARD_SERVICE,
-                    Entity.DASHBOARD_DATA_MODEL,
-                    "dashboard_data_model_entity")),
-            "API Service",
-            List.of(
-                new ServiceHierarchy(
-                    Entity.API_SERVICE, Entity.API_COLLCECTION, "api_collection_entity"),
-                new ServiceHierarchy(
-                    Entity.API_COLLCECTION, Entity.API_ENDPOINT, "api_endpoint_entity")),
-            "Messaging Service",
-            List.of(new ServiceHierarchy(Entity.MESSAGING_SERVICE, Entity.TOPIC, "topic_entity")),
-            "Pipeline Service",
-            List.of(
-                new ServiceHierarchy(Entity.PIPELINE_SERVICE, Entity.PIPELINE, "pipeline_entity")),
-            "Storage Service",
-            List.of(
-                new ServiceHierarchy(
-                    Entity.STORAGE_SERVICE, Entity.CONTAINER, "storage_container_entity")),
-            "ML Model Service",
-            List.of(
-                new ServiceHierarchy(Entity.MLMODEL_SERVICE, Entity.MLMODEL, "ml_model_entity")),
-            "Search Service",
-            List.of(
-                new ServiceHierarchy(
-                    Entity.SEARCH_SERVICE, Entity.SEARCH_INDEX, "search_index_entity")));
-
-    int totalBrokenFound = 0;
-    int totalBrokenDeleted = 0;
-
-    for (Map.Entry<String, List<ServiceHierarchy>> serviceEntry : serviceHierarchies.entrySet()) {
-      String serviceName = serviceEntry.getKey();
-      List<ServiceHierarchy> hierarchies = serviceEntry.getValue();
-
-      LOG.info("Processing {} hierarchies", serviceName);
-
-      for (ServiceHierarchy hierarchy : hierarchies) {
-        try {
-          List<String> brokenEntities =
-              collectionDAO
-                  .systemDAO()
-                  .getBrokenRelationFromParentToChild(
-                      hierarchy.tableName, hierarchy.parentEntityType, hierarchy.childEntityType);
-          totalBrokenFound += brokenEntities.size();
-
-          if (!brokenEntities.isEmpty()) {
-            LOG.info(
-                "Found {} broken {} entities", brokenEntities.size(), hierarchy.childEntityType);
-
-            List<String> hierarchyColumns =
-                List.of(String.format("%s (%d)", hierarchy.childEntityType, brokenEntities.size()));
-            List<List<String>> hierarchyRows = new ArrayList<>();
-            for (String entityName : brokenEntities) {
-              hierarchyRows.add(List.of(entityName));
-            }
-            printToAsciiTable(
-                hierarchyColumns,
-                hierarchyRows,
-                String.format("No broken %s entities", hierarchy.childEntityType));
-
-            if (!dryRun) {
-              int deletedCount =
-                  collectionDAO
-                      .systemDAO()
-                      .deleteBrokenRelationFromParentToChild(
-                          hierarchy.tableName,
-                          hierarchy.parentEntityType,
-                          hierarchy.childEntityType);
-              totalBrokenDeleted += deletedCount;
-              LOG.info("Deleted {} broken {} entities", deletedCount, hierarchy.childEntityType);
-            }
-          }
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to process hierarchy {}->{}: {}",
-              hierarchy.parentEntityType,
-              hierarchy.childEntityType,
-              e.getMessage());
-        }
-      }
-    }
-
-    LOG.info("=== Service Hierarchy Cleanup Summary ===");
-    LOG.info("Total broken entities found: {}", totalBrokenFound);
-    LOG.info("Total broken entities deleted: {}", totalBrokenDeleted);
-
-    if (dryRun && totalBrokenFound > 0) {
-      LOG.info("To actually delete broken entities, run with --delete");
-    }
-  }
-
-  private static class ServiceHierarchy {
-    final String parentEntityType;
-    final String childEntityType;
-    final String tableName;
-
-    ServiceHierarchy(String parentEntityType, String childEntityType, String tableName) {
-      this.parentEntityType = parentEntityType;
-      this.childEntityType = childEntityType;
-      this.tableName = tableName;
-    }
+    ServiceHierarchyCleanup hierarchyCleanup = new ServiceHierarchyCleanup(collectionDAO, dryRun);
+    ServiceHierarchyCleanup.HierarchyCleanupResult result =
+        hierarchyCleanup.performHierarchyCleanup();
+    hierarchyCleanup.printCleanupResults(result);
   }
 
   private void printChangeLog() {
