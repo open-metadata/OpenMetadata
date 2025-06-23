@@ -1331,28 +1331,27 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
    */
   public GlossaryTerm moveGlossaryTerm(UUID id, MoveGlossaryTermRequest moveRequest, String user) {
-    if (moveRequest == null
-        || (moveRequest.getParent() == null && moveRequest.getGlossary() == null)) {
+    if (moveRequest == null || moveRequest.getParent() == null) {
       return null; // Nothing to move
     }
     GlossaryTerm original = Entity.getEntity(GLOSSARY_TERM, id, "*", Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
 
-    // Set the new parent for the glossary term. If the parent is not passed,
-    // the term is being moved to the root of the glossary, and we set the parent to null.
-    if (moveRequest.getParent() != null) {
-      GlossaryTerm parentGlossaryTerm =
-          Entity.getEntity(GLOSSARY_TERM, moveRequest.getParent().getId(), "*", Include.ALL);
-      updated.setParent(parentGlossaryTerm.getEntityReference());
+    EntityReference parent = moveRequest.getParent();
+    if (parent.getType().equalsIgnoreCase("glossary")) {
+      // Move to root of the glossary
+      Glossary glossary = Entity.getEntity(GLOSSARY, parent.getId(), "*", Include.ALL);
+      updated.setParent(null);
+      updated.setGlossary(glossary.getEntityReference());
+    } else if (parent.getType().equalsIgnoreCase("glossaryTerm")) {
+      // Can be of same glossary or a different glossary
+      GlossaryTerm parentTerm = Entity.getEntity(GLOSSARY_TERM, parent.getId(), "*", Include.ALL);
+      updated.setParent(parentTerm.getEntityReference());
+      Glossary glossary =
+          Entity.getEntity(GLOSSARY, parentTerm.getGlossary().getId(), "*", Include.ALL);
+      updated.setGlossary(glossary.getEntityReference());
     } else {
-      updated.setParent(null); // No parent, so this becomes a root-level term
-    }
-
-    // Set the new glossary for the term. Glossary is always expected to avoid confusion
-    if (moveRequest.getGlossary() != null) {
-      Glossary parentGlossary =
-          Entity.getEntity(GLOSSARY, moveRequest.getGlossary().getId(), "*", Include.ALL);
-      updated.setGlossary(parentGlossary.getEntityReference());
+      throw new IllegalArgumentException("Invalid parent type: " + parent.getType());
     }
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());

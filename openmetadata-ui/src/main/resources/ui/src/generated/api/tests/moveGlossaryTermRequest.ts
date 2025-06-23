@@ -15,24 +15,20 @@
  */
 export interface MoveGlossaryTermRequest {
     /**
-     * The new glossary for the glossary term.
-     */
-    glossary?: EntityReference;
-    /**
-     * The new parent term for the glossary term. Can be null to move to root.
+     * The new parent for the glossary term. Can be a glossary to move to the glossary root or a
+     * glossary term to move under the term.
      */
     parent?: EntityReference;
 }
 
 /**
- * The new glossary for the glossary term.
+ * The new parent for the glossary term. Can be a glossary to move to the glossary root or a
+ * glossary term to move under the term.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * The new parent term for the glossary term. Can be null to move to root.
  */
 export interface EntityReference {
     /**

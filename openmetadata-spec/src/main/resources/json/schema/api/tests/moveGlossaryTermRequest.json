@@ -8,11 +8,7 @@
   "properties": {
     "parent": {
       "$ref": "../../type/entityReference.json",
-      "description": "The new parent term for the glossary term. Can be null to move to root."
-    },
-    "glossary": {
-      "$ref": "../../type/entityReference.json",
-      "description": "The new glossary for the glossary term."
+      "description": "The new parent for the glossary term. Can be a glossary to move to the glossary root or a glossary term to move under the term."
     }
   },
   "additionalProperties": false
