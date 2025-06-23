@@ -70,9 +70,9 @@ export const WhatsNewModalV1 = ({
   );
 
   useEffect(() => {
-    axios
+    const files = axios
       .get(
-        'http://localhost:8000/storage/6/c73fe184-5e6e-4404-8d81-aac9f1881a88.json'
+        'https://raw.githubusercontent.com/open-metadata/OpenMetadata/release-notes/release-1-8-0/manifest.json'
       )
       .then((response: { data: Record<string, unknown> }) => {
         setReleaseManifest(response.data);
