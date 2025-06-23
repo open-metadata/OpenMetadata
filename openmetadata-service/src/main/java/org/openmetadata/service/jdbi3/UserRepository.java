@@ -90,9 +90,9 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   private volatile EntityReference organization;
 
   public UserRepository() {
@@ -556,10 +556,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
-      teams =
-          teams.stream()
-              .filter(t -> !t.getId().equals(getOrganization().getId()))
-              .collect(Collectors.toList());
+      teams = teams.stream().filter(t -> !t.getId().equals(getOrganization().getId())).toList();
       user.setTeams(teams);
     }
   }
@@ -618,7 +615,7 @@ public class UserRepository extends EntityRepository<User> {
       addField(recordList, entity.getEmail());
       addField(recordList, entity.getTimezone());
       addField(recordList, entity.getIsAdmin());
-      addField(recordList, entity.getTeams().get(0).getFullyQualifiedName());
+      addField(recordList, entity.getTeams().getFirst().getFullyQualifiedName());
       addEntityReferences(recordList, entity.getRoles());
       addRecord(csvFile, recordList);
     }
@@ -723,6 +720,7 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
+      updatePersonaPreferences(original, updated);
       updateAuthenticationMechanism(original, updated);
     }
 
@@ -824,6 +822,35 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updatePersonaPreferences(User original, User updated) {
+      var updatedPreferences = updated.getPersonaPreferences();
+
+      if (updatedPreferences != null && !updatedPreferences.isEmpty()) {
+        var userPersonas = updated.getPersonas();
+        if (userPersonas == null || userPersonas.isEmpty()) {
+          throw new BadRequestException(
+              "User has no personas assigned. Cannot set persona preferences.");
+        }
+        var assignedPersonaIds =
+            userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet());
+        for (var pref : updatedPreferences) {
+          if (!assignedPersonaIds.contains(pref.getPersonaId())) {
+            throw new BadRequestException(
+                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+          }
+          if (pref.getLandingPageSettings() != null) {
+            UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());
+          }
+        }
+      }
+
+      recordChange(
+          "personaPreferences",
+          original.getPersonaPreferences(),
+          updated.getPersonaPreferences(),
+          true);
     }
 
     private void updateAuthenticationMechanism(User original, User updated) {
