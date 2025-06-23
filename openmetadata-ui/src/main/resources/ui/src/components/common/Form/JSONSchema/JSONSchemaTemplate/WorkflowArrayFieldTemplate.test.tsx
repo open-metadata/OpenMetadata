@@ -12,8 +12,7 @@
  */
 
 import { FieldProps, IdSchema, Registry } from '@rjsf/utils';
-import { fireEvent, render, screen } from '@testing-library/react';
-
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE } from '../../../../../mocks/Templates.mock';
 import WorkflowArrayFieldTemplate from './WorkflowArrayFieldTemplate';
 
@@ -144,5 +143,67 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       .querySelector('span.ant-select-selection-placeholder');
 
     expect(placeholderText).toHaveTextContent('');
+  });
+
+  it('Should call onChange with correct value when comma seperated values are entered', async () => {
+    render(
+      <WorkflowArrayFieldTemplate
+        {...mockWorkflowArrayFieldTemplateProps}
+        formData={[]}
+      />
+    );
+
+    const select = screen.getByTestId('workflow-array-field-template');
+    const input = within(select).getByRole('combobox');
+
+    // Test basic comma-separated values
+    fireEvent.change(input, { target: { value: 'value1,value2,value3' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'value1',
+      'value2',
+      'value3',
+    ]);
+
+    // Test values with spaces
+    fireEvent.change(input, {
+      target: { value: 'value 1, value 2 , value 3 ' },
+    });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'value 1',
+      'value 2',
+      'value 3',
+    ]);
+
+    // Test empty values
+    fireEvent.change(input, { target: { value: 'value1,,value3' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'value1',
+      '',
+      'value3',
+    ]);
+
+    // Test value with comma
+    fireEvent.change(input, { target: { value: 'value1,"value,e3"' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'value1',
+      'value,e3',
+    ]);
+
+    // Test value which has double quotes in the middle
+    fireEvent.change(input, { target: { value: `Test1,"random,\\"abc\\""` } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockWorkflowArrayFieldTemplateProps.onChange).toHaveBeenCalledWith([
+      'Test1',
+      'random,"abc"',
+    ]);
   });
 });

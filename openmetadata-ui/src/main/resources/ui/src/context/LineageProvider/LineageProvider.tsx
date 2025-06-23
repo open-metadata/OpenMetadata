@@ -599,6 +599,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           centerNode: false,
           isFirstTime: false,
         });
+
+        // Update only the edges in lineageData. These edges are further used in
+        // processing the nodes when node is expanded.
+        setLineageData((prev) => {
+          return {
+            nodes: prev?.nodes ?? {},
+            downstreamEdges: concatenatedLineageData.downstreamEdges,
+            upstreamEdges: concatenatedLineageData.upstreamEdges,
+          };
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,

@@ -12,10 +12,11 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { searchQuery } from '../../../rest/searchAPI';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
@@ -95,7 +96,19 @@ jest.mock(
 );
 
 jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
-  return jest.fn().mockReturnValue(<p>AssetsTabs</p>);
+  return jest.fn().mockImplementation((props) => {
+    React.useEffect(() => {
+      if (props.queryFilter === 'my-data') {
+        searchQuery({
+          searchIndex: ['all'] as any,
+          query: '*',
+          filters: props.queryFilter,
+        });
+      }
+    }, [props.queryFilter]);
+
+    return <p>AssetsTabs</p>;
+  });
 });
 
 jest.mock(
@@ -199,6 +212,16 @@ jest.mock('../../ProfileCard/ProfileSectionUserDetailsCard.component', () => {
     </div>
   ));
 });
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [],
+      total: { value: 0 },
+    },
+    aggregations: {},
+  }),
+}));
 
 describe('Test User Component', () => {
   it('Should render user component', async () => {
@@ -351,5 +374,20 @@ describe('Test User Component', () => {
     expect(
       (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
     ).toHaveClass('ant-tabs-tab-disabled');
+  });
+
+  it('MyData tab should make query call only once on initial load', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
+
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+    const assetComponent = await screen.findByText('AssetsTabs');
+
+    expect(assetComponent).toBeInTheDocument();
+
+    expect(searchQuery).toHaveBeenCalledTimes(1);
   });
 });

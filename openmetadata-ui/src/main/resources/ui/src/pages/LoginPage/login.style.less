@@ -190,33 +190,34 @@
   }
 }
 
-.slick-slide {
-  > div {
-    height: 80vh !important;
+.login-carousel {
+  .slick-slide {
+    > div {
+      height: 80vh !important;
 
-    .slider-container {
-      max-width: 80%;
-      margin: 0 auto;
-      text-align: center;
-      display: flex !important;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      height: 100%;
-    }
+      .slider-container {
+        max-width: 100%;
+        text-align: center;
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
 
-    .image-container {
-      position: relative;
-      width: 100%;
-      min-height: 420px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+        .text-container {
+          max-width: 80%;
+          margin: 0 auto;
+          padding-bottom: 2rem;
+        }
+      }
 
-    .main-image {
-      max-height: 90%;
-      border-radius: 18px;
+      .main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 18px;
+        overflow: hidden;
+      }
     }
   }
 }

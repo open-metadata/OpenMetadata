@@ -138,6 +138,9 @@ const AssetsTabs = forwardRef(
     const [quickFilterQuery, setQuickFilterQuery] =
       useState<QueryFilterInterface>();
     const { t } = useTranslation();
+    const [totalAssetCount, setTotalAssetCount] = useState<number>(
+      assetCount ?? 0
+    );
 
     const {
       currentPage,
@@ -240,6 +243,9 @@ const AssetsTabs = forwardRef(
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
+          if (assetCount === undefined) {
+            setTotalAssetCount(res.hits.total.value ?? 0);
+          }
           hits[0] && setSelectedCard(hits[0]._source);
         } catch {
           // Nothing here
@@ -247,7 +253,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [currentPage, pageSize, searchValue, queryParam]
+      [currentPage, pageSize, searchValue, queryParam, assetCount]
     );
 
     const hideNotification = () => {
@@ -796,10 +802,10 @@ const AssetsTabs = forwardRef(
           id="asset-tab">
           <Row
             className={classNames('filters-row gap-2 p-md', {
-              'h-full': assetCount === 0,
+              'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
-            {assetCount > 0 && (
+            {totalAssetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
                   <Dropdown
@@ -880,7 +886,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && assetCount > 0 && (
+        {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,
