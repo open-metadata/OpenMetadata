@@ -81,8 +81,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       isDraggable={false}
       isResizable={false}
       margin={[16, 16]}
-      rowHeight={100}
-      style={{ height: 'auto' }}>
+      rowHeight={100}>
       {widgets}
     </ReactGridLayout>
   );
