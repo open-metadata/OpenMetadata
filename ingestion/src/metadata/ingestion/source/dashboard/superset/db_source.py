@@ -160,10 +160,10 @@ class SupersetDBSource(SupersetSourceMixin):
             )
 
     def _get_datasource_fqn_for_lineage(
-        self, chart_json: FetchChart, db_service_name: Optional[str]
+        self, chart_json: FetchChart, db_service_prefix: Optional[str]
     ):
         return (
-            self._get_datasource_fqn(db_service_name, chart_json)
+            self._get_datasource_fqn(db_service_prefix, chart_json)
             if chart_json.table_name
             else None
         )
@@ -186,9 +186,11 @@ class SupersetDBSource(SupersetSourceMixin):
                 chart = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=Markdown(chart_json.description)
-                    if chart_json.description
-                    else None,
+                    description=(
+                        Markdown(chart_json.description)
+                        if chart_json.description
+                        else None
+                    ),
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}"
@@ -216,9 +218,16 @@ class SupersetDBSource(SupersetSourceMixin):
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
-        self, db_service_name: Optional[str], chart_json: FetchChart
+        self, db_service_prefix: Optional[str], chart_json: FetchChart
     ) -> Optional[str]:
         try:
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
+
             database_name = None
             if db_service_name:
                 db_service_entity = self.metadata.get_by_name(
@@ -227,11 +236,42 @@ class SupersetDBSource(SupersetSourceMixin):
                 database_name = self._get_database_name(
                     chart_json.sqlalchemy_uri, db_service_entity
                 )
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {database_name} does not match prefix {prefix_database_name}"
+                )
+                return None
+
+            if (
+                prefix_schema_name
+                and chart_json.table_schema
+                and prefix_schema_name.lower() != chart_json.table_schema.lower()
+            ):
+                logger.debug(
+                    f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}"
+                )
+                return None
+
+            if (
+                prefix_table_name
+                and chart_json.table_name
+                and prefix_table_name.lower() != chart_json.table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {chart_json.table_name} does not match prefix {prefix_table_name}"
+                )
+                return None
+
             return build_es_fqn_search_string(
-                database_name=database_name,
-                schema_name=chart_json.table_schema,
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or chart_json.table_schema,
                 service_name=db_service_name or "*",
-                table_name=chart_json.table_name,
+                table_name=prefix_table_name or chart_json.table_name,
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
