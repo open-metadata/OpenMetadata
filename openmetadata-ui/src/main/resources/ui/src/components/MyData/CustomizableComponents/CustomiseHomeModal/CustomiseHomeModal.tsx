@@ -15,7 +15,6 @@ import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
-import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
 import './customise-home-modal.less';
@@ -73,36 +72,25 @@ const CustomiseHomeModal = ({
     <Modal
       centered
       className="customise-home-modal"
-      closable={false}
       footer={null}
       open={open}
-      width={1800}
-      onCancel={onClose}>
-      <Row className="customise-home-modal-header">
-        <Col>
+      title={
+        <div className="customise-home-modal-header p-box d-flex items-center gap-3">
           <Icon className="add-icon" component={AddIcon} />
-        </Col>
-        <Col>
-          <Typography.Text className="customise-home-modal-title">
+          <Typography.Text className="text-xl font-semibold text-white">
             {t('label.customize-entity', {
               entity: t('label.home'),
             })}
           </Typography.Text>
-        </Col>
-        <Col className="close-icon-container">
-          <Icon
-            className="close-icon"
-            component={CloseIcon}
-            data-testid="close-btn"
-            onClick={onClose}
-          />
-        </Col>
-      </Row>
-      <Row className="customise-home-modal-body">
-        <Col className="sidebar">
+        </div>
+      }
+      width={1800}
+      onCancel={onClose}>
+      <Row className="customise-home-modal-body d-flex gap-1">
+        <Col className="sidebar p-box sticky top-0 self-start">
           {customiseOptions.map((item) => (
             <div
-              className={`sidebar-option ${
+              className={`sidebar-option text-md font-semibold border-radius-xs cursor-pointer ${
                 selectedKey === item.key ? 'active' : ''
               }`}
               data-testid={`sidebar-option-${item.key}`}
@@ -112,19 +100,22 @@ const CustomiseHomeModal = ({
             </div>
           ))}
         </Col>
-        <Divider className="customise-home-modal-divider" type="vertical" />
-        <Col className="content">{selectedComponent}</Col>
+        <Divider
+          className="customise-home-modal-divider h-auto self-stretch"
+          type="vertical"
+        />
+        <Col className="content p-box">{selectedComponent}</Col>
       </Row>
-      <Row className="customise-home-modal-footer">
+      <Row className="customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0">
         <Col className="d-flex items-center gap-4">
           <Button
-            className="cancel-btn"
+            className="cancel-btn border-radius-xs font-medium text-md bg-white"
             data-testid="cancel-btn"
             onClick={onClose}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="apply-btn"
+            className="apply-btn border-radius-xs font-semibold text-white text-md"
             data-testid="apply-btn"
             type="primary"
             onClick={handleApply}>

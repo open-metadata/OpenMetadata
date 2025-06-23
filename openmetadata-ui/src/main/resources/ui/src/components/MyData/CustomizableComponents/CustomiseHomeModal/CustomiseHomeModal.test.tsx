@@ -71,20 +71,12 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       expect(screen.getByTestId('modal')).toBeInTheDocument();
-      expect(screen.getByText('label.customize-entity')).toBeInTheDocument();
     });
 
     it('should not render modal when open is false', () => {
       render(<CustomiseHomeModal {...defaultProps} open={false} />);
 
       expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
-    });
-
-    it('should render modal header with correct elements', () => {
-      render(<CustomiseHomeModal {...defaultProps} />);
-
-      expect(screen.getByText('label.customize-entity')).toBeInTheDocument();
-      expect(screen.getByTestId('close-btn')).toBeInTheDocument();
     });
 
     it('should render modal footer with action buttons', () => {
@@ -201,15 +193,6 @@ describe('CustomiseHomeModal Component', () => {
   });
 
   describe('Modal Actions', () => {
-    it('should call onClose when close icon is clicked', () => {
-      render(<CustomiseHomeModal {...defaultProps} />);
-
-      const closeButton = screen.getByTestId('close-btn');
-      fireEvent.click(closeButton);
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-    });
-
     it('should call onClose when cancel button is clicked', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 

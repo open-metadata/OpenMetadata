@@ -31,40 +31,42 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
 
   return (
     <div className="header-theme-settings">
-      <Typography.Title className="header-theme-title">
+      <Typography.Title className="header-theme-title display-xs font-semibold">
         {t('label.preview-header')}
       </Typography.Title>
-      <div className="header-theme-container">
+      <div className="header-theme-container p-box bg-white">
         <CustomiseLandingPageHeader
           hideCustomiseButton
           backgroundColor={selectedColor}
         />
       </div>
       <div className="select-background-container">
-        <Typography.Text className="select-background-text">
+        <Typography.Text className="display-xs font-semibold">
           {t('label.select-background')}
         </Typography.Text>
-        <div className="select-background-options ">
-          <div className="background-preview">
+        <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">
+          <div className="d-flex flex-wrap items-center gap-3">
             <Typography.Text className="text-sm font-semibold">
               {t('label.custom')}
             </Typography.Text>
             <div
-              className="color-preview"
+              className="color-preview p-xss"
               style={{
                 borderColor: selectedColor,
               }}>
               <div
-                className="color-preview-inner"
+                className="color-preview-inner w-full h-full"
                 style={{ backgroundColor: selectedColor }}
               />
             </div>
-            <div className="color-hex-code">{selectedColor}</div>
+            <div className="color-hex-code p-xs text-md font-regular border-radius-xs">
+              {selectedColor}
+            </div>
           </div>
-          <div className="background-options">
+          <div className="d-flex flex-wrap items-center gap-2">
             {headerBackgroundColors.map((value) => (
               <div
-                className="option-color"
+                className="option-color cursor-pointer"
                 key={value.color}
                 style={{
                   borderColor: value.color,
