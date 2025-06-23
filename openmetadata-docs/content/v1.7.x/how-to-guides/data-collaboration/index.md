@@ -1,5 +1,5 @@
 ---
-title: Data Collaboration
+title: Data Collaboration | OpenMetadata Collaboration Features
 slug: /how-to-guides/data-collaboration
 ---
 

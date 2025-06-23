@@ -1,5 +1,5 @@
 ---
-title: Kinesis
+title: Kinesis Connector | OpenMetadata Streaming Integration
 slug: /connectors/messaging/kinesis
 ---
 

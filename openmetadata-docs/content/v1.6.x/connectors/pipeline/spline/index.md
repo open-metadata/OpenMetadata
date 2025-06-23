@@ -1,5 +1,5 @@
 ---
-title: Spline
+title: Spline Connector | OpenMetadata Data Lineage Integration
 slug: /connectors/pipeline/spline
 ---
 

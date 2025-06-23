@@ -1,5 +1,5 @@
 ---
-title: Metabase
+title: Metabase Connector | OpenMetadata Dashboard Integration
 slug: /connectors/dashboard/metabase
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Apache Flink
+title: Apache Flink Connector | OpenMetadata Streaming Guide
 slug: /connectors/pipeline/flink
 ---
 
