@@ -270,4 +270,38 @@ public class WebsocketNotificationHandler {
           .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
     }
   }
+
+  public static void sendMoveOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    MoveEntityMessage message = new MoveEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncMove] Move operation completed successfully - jobId: {}, userId:{}, entity: {}, ",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendMoveOperationFailedNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+    MoveEntityMessage message = new MoveEntityMessage(jobId, "FAILED", entity.getName(), error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncMove] Move operation failed - jobId: {}, userId:{} ,entity: {}, error: {}",
+        jobId,
+        userId,
+        entity.getName(),
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.MOVE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
 }

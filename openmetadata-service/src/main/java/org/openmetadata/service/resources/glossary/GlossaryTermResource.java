@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -81,10 +82,13 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.MoveEntityResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/glossaryTerms")
 @Tag(
@@ -652,7 +656,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @PUT
-  @Path("/{id}/move")
+  @Path("/{id}/moveAsync")
   @Operation(
       operationId = "moveGlossaryTerm",
       summary = "Move a glossary term to a new parent or glossary",
@@ -688,9 +692,32 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm movedGlossaryTerm =
-        repository.moveGlossaryTerm(id, moveRequest, securityContext.getUserPrincipal().getName());
-    return Response.ok(movedGlossaryTerm).build();
+
+    String jobId = UUID.randomUUID().toString();
+    GlossaryTerm glossaryTerm =
+        repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            GlossaryTerm movedGlossaryTerm = repository.moveGlossaryTerm(id, moveRequest, userName);
+            WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                jobId, securityContext, movedGlossaryTerm);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                jobId, securityContext, glossaryTerm, e.getMessage());
+          }
+        });
+
+    return Response.accepted()
+        .entity(
+            new MoveEntityResponse(
+                jobId,
+                "Move operation initiated for " + glossaryTerm.getName(),
+                glossaryTerm.getName()))
+        .build();
   }
 
   @DELETE
