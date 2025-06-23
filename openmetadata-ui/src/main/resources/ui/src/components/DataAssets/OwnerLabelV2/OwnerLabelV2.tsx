@@ -49,7 +49,7 @@ export const OwnerLabelV2 = <
         <Typography.Text className="text-sm font-medium">
           {t('label.owner-plural')}
         </Typography.Text>
-        {(permissions.EditOwners || permissions.EditAll) && (
+        {!isVersionView && (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList
             hasPermission={permissions.EditOwners || permissions.EditAll}
             listHeight={200}
