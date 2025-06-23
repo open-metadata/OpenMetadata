@@ -1,5 +1,5 @@
 ---
-title: Custom Connectors
+title: Custom Connectors | Build & Extend OpenMetadata Easily
 slug: /connectors/custom-connectors
 ---
 
