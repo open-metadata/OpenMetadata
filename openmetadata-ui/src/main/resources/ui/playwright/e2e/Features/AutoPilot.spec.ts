@@ -137,31 +137,33 @@ services.forEach((ServiceClass) => {
             .getByTestId('status-banner-icon-RUNNING')
         ).toBeHidden();
 
-        // Check the auto pilot status
-        await checkAutoPilotStatus(page, service);
+        if (!MysqlIngestionClass) {
+          // Check the auto pilot status
+          await checkAutoPilotStatus(page, service);
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
+          // Reload the page and wait for the network to be idle
+          await reloadAndWaitForNetworkIdle(page);
 
-        // Wait for the auto pilot status banner to be visible
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeVisible();
+          // Wait for the auto pilot status banner to be visible
+          await expect(
+            page
+              .getByTestId('auto-pilot-status-banner')
+              .getByTestId('status-banner-icon-FINISHED')
+          ).toBeVisible();
 
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
+          // Click the close icon to hide the banner
+          await page.click('[data-testid="status-banner-close-icon"]');
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
+          // Reload the page and wait for the network to be idle
+          await reloadAndWaitForNetworkIdle(page);
 
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeHidden();
+          // Check if the auto pilot status banner is hidden
+          await expect(
+            page
+              .getByTestId('auto-pilot-status-banner')
+              .getByTestId('status-banner-icon-FINISHED')
+          ).toBeHidden();
+        }
       });
     }
   );

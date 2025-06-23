@@ -26,7 +26,7 @@ class MlFlowIngestionClass extends ServiceBaseClass {
     shouldAddDefaultFilters?: boolean;
   }) {
     const {
-      shouldTestConnection = false,
+      shouldTestConnection = true,
       shouldAddIngestion = false,
       shouldAddDefaultFilters = false,
     } = extraParams ?? {};
