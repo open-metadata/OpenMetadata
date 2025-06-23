@@ -203,6 +203,17 @@ function CustomizeMyData({
     });
   };
 
+  const handleBackgroundColorUpdate = async (color: string) => {
+    await onSaveLayout({
+      ...(initialPageData ??
+        ({
+          pageType: PageType.LandingPage,
+        } as Page)),
+      layout: getUniqueFilteredLayout(layout),
+      homePageBannerBackgroundColor: color,
+    } as Page);
+  };
+
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
@@ -219,7 +230,10 @@ function CustomizeMyData({
           onSave={handleSave}
         />
         <div className="grid-wrapper">
-          <CustomiseLandingPageHeader />
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          />
           <ReactGridLayout
             className="grid-container"
             cols={3}

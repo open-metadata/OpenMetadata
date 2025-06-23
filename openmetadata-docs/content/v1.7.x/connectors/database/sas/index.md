@@ -1,5 +1,5 @@
 ---
-title: SAS
+title: SAS Connector | OpenMetadata Analytics Integration Guide
 slug: /connectors/database/sas
 ---
 

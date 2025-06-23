@@ -1,5 +1,5 @@
 ---
-title: SQLite
+title: SQLite Connector | OpenMetadata Lightweight DB Integration
 slug: /connectors/database/sqlite
 ---
 

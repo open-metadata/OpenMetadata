@@ -1,5 +1,5 @@
 ---
-title: Sagemaker
+title: Sagemaker Connector | OpenMetadata ML Model Services
 slug: /connectors/ml-model/sagemaker
 ---
 

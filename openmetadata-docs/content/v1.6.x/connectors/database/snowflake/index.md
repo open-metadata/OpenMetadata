@@ -1,5 +1,5 @@
 ---
-title: Snowflake
+title: Snowflake Connector | OpenMetadata Cloud Data Warehouse
 slug: /connectors/database/snowflake
 ---
 

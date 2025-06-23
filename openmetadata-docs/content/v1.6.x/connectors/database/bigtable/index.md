@@ -1,5 +1,5 @@
 ---
-title: BigTable
+title: BigTable Connector | OpenMetadata Database Integration
 slug: /connectors/database/bigtable
 ---
 

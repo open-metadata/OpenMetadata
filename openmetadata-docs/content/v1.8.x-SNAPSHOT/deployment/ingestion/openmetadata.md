@@ -311,7 +311,7 @@ Please update it accordingly.
 
 ## Git Sync?
 
-One recurrent question when setting up Airflow is the possibility of using [git-sync](https://airflow.apache.org/docs/helm-chart/stable/manage-dags-files.html#mounting-dags-from-a-private-github-repo-using-git-sync-sidecar)
+One recurrent question when setting up Airflow is the possibility of using [git-sync](https://airflow.apache.org/docs/helm-chart/1.7.0/manage-dags-files.html#mounting-dags-from-a-private-github-repo-using-git-sync-sidecar)
 to manage the ingestion DAGs.
 
 Let's remark the differences between `git-sync` and what we want to achieve by installing our custom API plugins:

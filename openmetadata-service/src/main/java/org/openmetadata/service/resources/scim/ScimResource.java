@@ -136,7 +136,7 @@ public class ScimResource {
       summary = "Delete SCIM user",
       description = "Deletes a SCIM user identified by ID.",
       responses = {
-        @ApiResponse(responseCode = "200", description = "User deleted"),
+        @ApiResponse(responseCode = "204", description = "User deleted"),
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public Response deleteUser(
@@ -277,7 +277,7 @@ public class ScimResource {
       summary = "Patch SCIM group",
       description = "Patch updates to a SCIM group identified by ID.",
       responses = {
-        @ApiResponse(responseCode = "200", description = "Group patched"),
+        @ApiResponse(responseCode = "204", description = "Group patched"),
         @ApiResponse(responseCode = "404", description = "Group not found")
       })
   public Response patchGroup(
@@ -299,7 +299,7 @@ public class ScimResource {
       summary = "Delete SCIM group",
       description = "Deletes a SCIM group identified by ID.",
       responses = {
-        @ApiResponse(responseCode = "200", description = "Group deleted"),
+        @ApiResponse(responseCode = "204", description = "Group deleted"),
         @ApiResponse(responseCode = "404", description = "Group not found")
       })
   public Response deleteGroup(

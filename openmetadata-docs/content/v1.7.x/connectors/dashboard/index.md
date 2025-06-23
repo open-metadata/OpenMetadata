@@ -1,5 +1,5 @@
 ---
-title: Dashboard Services
+title: Dashboard Services | Connect BI Tools with OpenMetadata
 slug: /connectors/dashboard
 ---
 

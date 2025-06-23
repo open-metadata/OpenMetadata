@@ -1,5 +1,5 @@
 ---
-title: S3 Storage
+title: S3 Storage | OpenMetadata Cloud Storage Integration
 slug: /connectors/storage/s3
 ---
 

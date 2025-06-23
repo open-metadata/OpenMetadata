@@ -1,5 +1,5 @@
 ---
-title: Alation Sink
+title: Alation Sink | OpenMetadata Metadata Integration
 slug: /connectors/metadata/alationsink
 ---
 

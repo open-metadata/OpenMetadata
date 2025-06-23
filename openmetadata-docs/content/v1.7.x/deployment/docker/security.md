@@ -1,5 +1,5 @@
 ---
-title: Enable Security
+title: Enable Security (Docker) | OpenMetadata Docker Security
 slug: /deployment/docker/security
 collate: false
 ---

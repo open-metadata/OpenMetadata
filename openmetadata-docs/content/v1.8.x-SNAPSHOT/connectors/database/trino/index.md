@@ -1,5 +1,5 @@
 ---
-title: Trino
+title: Trino Connector | OpenMetadata Distributed SQL Integration
 slug: /connectors/database/trino
 ---
 

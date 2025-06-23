@@ -1,5 +1,5 @@
 ---
-title: Ingestion Framework
+title: Ingestion Framework | OpenMetadata Developer Guide
 slug: /developers/contribute/build-code-and-run-tests/ingestion-framework
 ---
 

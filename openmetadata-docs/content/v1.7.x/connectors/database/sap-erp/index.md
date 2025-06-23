@@ -1,5 +1,5 @@
 ---
-title: SAP ERP
+title: SAP ERP Connector | OpenMetadata Enterprise Integration
 slug: /connectors/database/sap-erp
 ---
 

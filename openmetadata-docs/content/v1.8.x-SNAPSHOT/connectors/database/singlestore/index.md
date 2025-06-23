@@ -1,5 +1,5 @@
 ---
-title: SingleStore
+title: SingleStore Connector | OpenMetadata Scalable DB Guide
 slug: /connectors/database/singlestore
 ---
 

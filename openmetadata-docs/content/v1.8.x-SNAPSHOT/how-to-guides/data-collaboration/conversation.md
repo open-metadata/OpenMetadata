@@ -1,5 +1,5 @@
 ---
-title: Conversation Threads
+title: Conversation Threads | OpenMetadata Collaboration Guide
 slug: /how-to-guides/data-collaboration/conversation
 ---
 

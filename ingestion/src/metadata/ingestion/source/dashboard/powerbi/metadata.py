@@ -455,7 +455,7 @@ class PowerbiSource(DashboardServiceSource):
                 measures.append(Column(**parsed_measure.model_dump()))
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing datamodel nested measure: {err}")
+                logger.debug(f"Error processing datamodel nested measure: {err}")
         return measures
 
     def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
@@ -631,20 +631,26 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=report_fqn,
             )
-            datamodel_fqn = fqn.build(
-                self.metadata,
-                entity_type=DashboardDataModel,
-                service_name=self.context.get().dashboard_service,
-                data_model_name=dashboard_details.datasetId,
-            )
-            datamodel_entity = self.metadata.get_by_name(
-                entity=DashboardDataModel,
-                fqn=datamodel_fqn,
-            )
+            if dashboard_details.datasetId:
+                datamodel_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=dashboard_details.datasetId,
+                )
+                datamodel_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=datamodel_fqn,
+                )
 
-            if datamodel_entity and report_entity:
-                yield self._get_add_lineage_request(
-                    to_entity=report_entity, from_entity=datamodel_entity
+                if datamodel_entity and report_entity:
+                    yield self._get_add_lineage_request(
+                        to_entity=report_entity, from_entity=datamodel_entity
+                    )
+            else:
+                logger.debug(
+                    f"Skipping datamodel and report lineage for"
+                    f" {dashboard_details.id} as datasetId is not found"
                 )
 
         except Exception as exc:  # pylint: disable=broad-except
@@ -1184,6 +1190,12 @@ class PowerbiSource(DashboardServiceSource):
         Method to process the dashboard owners
         """
         try:
+            if not self.source_config.includeOwners:
+                logger.debug(
+                    f"Skipping owner processing for {dashboard_details.id} "
+                    f"as includeOwners is False"
+                )
+                return None
             owner_ref_list = []  # to assign multiple owners to entity if they exist
             for owner in dashboard_details.users or []:
                 owner_ref = None
@@ -1198,7 +1210,7 @@ class PowerbiSource(DashboardServiceSource):
                     access_right = owner.dashboardUserAccessRight
 
                 if owner.userType != "Member":
-                    logger.warning(
+                    logger.debug(
                         f"User is not a member of {dashboard_details.id}:"
                         f" ({owner.displayName}, {owner.email})"
                     )
@@ -1211,7 +1223,7 @@ class PowerbiSource(DashboardServiceSource):
                         try:
                             owner_email = EmailStr._validate(owner.email)
                         except PydanticCustomError:
-                            logger.warning(f"Invalid email for owner: {owner.email}")
+                            logger.debug(f"Invalid email for owner: {owner.email}")
                             owner_email = None
                         if owner_email:
                             try:
@@ -1219,7 +1231,7 @@ class PowerbiSource(DashboardServiceSource):
                                     owner_email.lower()
                                 )
                             except Exception as err:
-                                logger.warning(
+                                logger.debug(
                                     f"Could not process owner data with email"
                                     f" {owner.email} in {dashboard_details.id}: {err}"
                                 )
@@ -1229,14 +1241,14 @@ class PowerbiSource(DashboardServiceSource):
                                 name=owner.displayName
                             )
                         except Exception as err:
-                            logger.warning(
+                            logger.debug(
                                 f"Could not process owner data with name"
                                 f" {owner.displayName} in {dashboard_details.id}: {err}"
                             )
                     if owner_ref:
                         owner_ref_list.append(owner_ref.root[0])
                 else:
-                    logger.warning(
+                    logger.debug(
                         f"User does not have owner, admin or write access to"
                         f" {dashboard_details.id}: ({owner.displayName}, {owner.email})"
                     )
@@ -1254,7 +1266,7 @@ class PowerbiSource(DashboardServiceSource):
                     if owner_ref and owner_ref.root[0] not in owner_ref_list:
                         owner_ref_list.append(owner_ref.root[0])
                 except Exception as err:
-                    logger.warning(f"Could not fetch owner data due to {err}")
+                    logger.debug(f"Could not fetch current active user due to {err}")
             if len(owner_ref_list) > 0:
                 logger.debug(
                     f"Successfully fetched owners data for {dashboard_details.id}"

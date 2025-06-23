@@ -1,5 +1,5 @@
 ---
-title: Basic Authentication
+title: Basic Authentication | OpenMetadata Security Setup
 slug: /deployment/security/basic-auth
 collate: false
 ---

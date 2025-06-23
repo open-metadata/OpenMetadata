@@ -1,5 +1,5 @@
 ---
-title: BigQuery
+title: BigQuery | OpenMetadata Connector Setup & Integration Guide
 slug: /connectors/database/bigquery
 ---
 

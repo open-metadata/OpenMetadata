@@ -1,5 +1,5 @@
 ---
-title: Looker
+title: Looker Connector | Integrate BI with OpenMetadata Docs
 slug: /connectors/dashboard/looker
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Databricks Pipeline
+title: Databricks Pipeline | OpenMetadata Integration Guide
 slug: /connectors/pipeline/databricks-pipeline
 ---
 

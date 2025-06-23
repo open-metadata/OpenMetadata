@@ -1,5 +1,5 @@
 ---
-title: Deployment
+title: Deployment | OpenMetadata Installation & Setup Guide
 slug: /deployment
 collate: false
 ---

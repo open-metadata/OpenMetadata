@@ -1,5 +1,5 @@
 ---
-title: Backup Metadata
+title: Backup Metadata | OpenMetadata Deployment Guide
 slug: /deployment/backup-restore-metadata
 collate: false
 ---

@@ -1,5 +1,5 @@
 ---
-title: Redpanda
+title: Redpanda Connector | OpenMetadata Messaging Services
 slug: /connectors/messaging/redpanda
 ---
 

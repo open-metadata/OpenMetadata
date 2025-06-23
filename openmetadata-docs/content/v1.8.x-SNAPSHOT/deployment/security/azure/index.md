@@ -1,5 +1,5 @@
 ---
-title: Azure SSO
+title: Azure SSO | OpenMetadata Authentication Integration
 slug: /deployment/security/azure
 collate: false
 ---

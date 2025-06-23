@@ -1,5 +1,5 @@
 ---
-title: PinotDB
+title: PinotDB Connector | OpenMetadata Real-Time Analytics Guide
 slug: /connectors/database/pinotdb
 ---
 

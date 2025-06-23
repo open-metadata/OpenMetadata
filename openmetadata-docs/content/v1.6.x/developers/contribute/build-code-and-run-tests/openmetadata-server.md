@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata Server
+title: OpenMetadata Server | Developer Guide & Setup
 slug: /developers/contribute/build-code-and-run-tests/openmetadata-server
 ---
 

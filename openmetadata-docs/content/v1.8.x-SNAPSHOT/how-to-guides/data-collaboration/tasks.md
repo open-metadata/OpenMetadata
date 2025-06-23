@@ -1,5 +1,5 @@
 ---
-title: Create Tasks
+title: Create Tasks | OpenMetadata Collaboration Workflow
 slug: /how-to-guides/data-collaboration/tasks
 ---
 

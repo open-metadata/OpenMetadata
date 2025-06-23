@@ -1,5 +1,5 @@
 ---
-title: Admin Guide
+title: Admin Guide | OpenMetadata Administration Documentation
 slug: /how-to-guides/admin-guide
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Docker Deployment
+title: Docker Deployment | OpenMetadata Container Setup
 slug: /deployment/docker
 collate: false
 ---

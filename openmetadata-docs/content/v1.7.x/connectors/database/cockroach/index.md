@@ -1,5 +1,5 @@
 ---
-title: Cockroach
+title: CockroachDB Connector | OpenMetadata Integration Guide
 slug: /connectors/database/cockroach
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Classification
+title: Classification | OpenMetadata Data Classification Guide
 slug: /how-to-guides/data-governance/classification
 ---
 

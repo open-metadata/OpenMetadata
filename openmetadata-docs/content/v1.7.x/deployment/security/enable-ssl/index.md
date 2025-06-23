@@ -1,5 +1,5 @@
 ---
-title: Enable SSL
+title: Enable SSL | OpenMetadata Security Configuration
 slug: /deployment/security/enable-ssl
 collate: false
 ---

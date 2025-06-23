@@ -1,5 +1,5 @@
 ---
-title: Druid
+title: Druid Connector | OpenMetadata Real-Time Analytics Guide
 slug: /connectors/database/druid
 ---
 

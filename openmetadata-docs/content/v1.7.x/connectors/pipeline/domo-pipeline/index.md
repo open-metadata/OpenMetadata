@@ -1,5 +1,5 @@
 ---
-title: Domo-Pipeline
+title: Domo Pipeline | OpenMetadata Data Pipeline Services
 slug: /connectors/pipeline/domo-pipeline
 ---
 

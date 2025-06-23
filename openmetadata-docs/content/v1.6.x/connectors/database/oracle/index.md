@@ -1,5 +1,5 @@
 ---
-title: Oracle
+title: Oracle Connector | OpenMetadata Enterprise Database Guide
 slug: /connectors/database/oracle
 ---
 

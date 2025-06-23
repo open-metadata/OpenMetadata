@@ -1,5 +1,5 @@
 ---
-title: Domo Dashboard
+title: Domo Dashboard | OpenMetadata Connector Setup Guide
 slug: /connectors/dashboard/domo-dashboard
 ---
 
