@@ -46,7 +46,7 @@ public class QueryCostRecordsAggregator {
     // Create query groups aggregation with size 10 and order by total_cost
     TermsAggregationBuilder queryGroupsAgg =
         AggregationBuilders.terms("query_groups")
-            .field("query.query")
+            .field("query.checksum.keyword")
             .size(10)
             .order(BucketOrder.aggregation("total_cost", false));
 
@@ -130,7 +130,7 @@ public class QueryCostRecordsAggregator {
 
     // Process each query group
     for (Terms.Bucket bucket : queryGroupsAgg.getBuckets()) {
-      String queryText = bucket.getKeyAsString();
+      String queryText = null;
 
       // Get users
       Terms usersAgg = bucket.getAggregations().get("users");
@@ -172,6 +172,9 @@ public class QueryCostRecordsAggregator {
         // Add all properties from queryMap to the Query__1 object as additional properties
         for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
           query.withAdditionalProperty(entry.getKey(), entry.getValue());
+          if (entry.getKey().equals("query")) {
+            queryText = entry.getValue().toString();
+          }
         }
 
         queryDetails.withQuery(query);
