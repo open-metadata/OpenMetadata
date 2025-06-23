@@ -1059,11 +1059,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
      */
     @Transaction
     public void moveAndStore() {
-      boolean consolidateChanges = consolidateChanges(original, updated, operation);
       incrementalChange();
-      if (consolidateChanges) {
-        revert();
-      }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
       validateParent();
