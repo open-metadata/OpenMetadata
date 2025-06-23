@@ -14,8 +14,9 @@
 /* eslint-disable max-len */
 
 import collateIcon from '../../../assets/svg/ic-collate.svg';
+import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_7_5'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -123,7 +124,7 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
         isImage: false,
         path: '',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Backward Incompatible Changes']: `
 
@@ -267,7 +268,7 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
         isImage: false,
         path: '',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Backward Incompatible Changes']: `
 
@@ -703,7 +704,7 @@ This seamless, two-way metadata synchronization enables powerful governance use-
         isImage: false,
         path: 'https://www.youtube.com/embed/EWYDfhCgW8k',
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Breaking changes']: `### Removing Support for Python 3.8
 
@@ -965,7 +966,7 @@ With MCP, every data consumer—from analysts in a BI tool to autonomous agents 
 Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stack—letting security teams sleep easy while data users get frictionless access.`,
         isImage: false,
       },
-    ],
+    ] as CarousalData[],
     changeLogs: {
       ['Breaking changes']: `
 
