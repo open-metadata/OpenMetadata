@@ -1,5 +1,5 @@
 ---
-title: How to Add a Team
+title: How to Add a Team | OpenMetadata Admin Guide
 slug: /how-to-guides/admin-guide/teams-and-users/add-team
 ---
 

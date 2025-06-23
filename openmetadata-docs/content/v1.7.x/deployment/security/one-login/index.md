@@ -1,5 +1,5 @@
 ---
-title: OneLogin SSO
+title: OneLogin SSO | OpenMetadata Authentication Setup
 slug: /deployment/security/one-login
 collate: false
 ---
