@@ -974,6 +974,7 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
       ['Improvements']: `
 - Large column pagination to improve page loading in Tables and Dashboard Data Model
 - Ownership functionality for Classification
+- Support Certifications for Data assets
        `,
     },
   },
