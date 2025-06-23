@@ -46,7 +46,7 @@ public class QueryCostRecordsAggregator {
     // Create query groups aggregation with size 10 and order by total_cost
     TermsAggregationBuilder queryGroupsAgg =
         AggregationBuilders.terms("query_groups")
-            .field("query.query")
+            .field("query.checksum.keyword")
             .size(10)
             .order(BucketOrder.aggregation("total_cost", false));
 
