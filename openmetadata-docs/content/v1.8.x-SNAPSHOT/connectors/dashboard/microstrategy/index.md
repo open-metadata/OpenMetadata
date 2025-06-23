@@ -1,5 +1,5 @@
 ---
-title: MicroStrategy
+title: MicroStrategy Connector | OpenMetadata Integration Guide
 slug: /connectors/dashboard/microstrategy
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Iceberg
+title: Iceberg Connector | OpenMetadata Data Lake Integration Guide
 slug: /connectors/database/iceberg
 ---
 

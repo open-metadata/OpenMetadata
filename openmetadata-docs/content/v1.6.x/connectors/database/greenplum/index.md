@@ -1,5 +1,5 @@
 ---
-title: Greenplum
+title: Greenplum Connector | OpenMetadata Database Integration Guide
 slug: /connectors/database/greenplum
 ---
 
