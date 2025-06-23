@@ -41,11 +41,26 @@ public class IndexMappingLoader {
     loadEntityIndexMapping();
   }
 
+  private IndexMappingLoader()
+          throws IOException {
+    this.searchIndexMappingLanguage = "en";
+    loadIndexMapping();
+    loadEntityIndexMapping();
+  }
+
   public static void init(ElasticSearchConfiguration elasticSearchConfiguration)
       throws IOException {
     synchronized (IndexMappingLoader.class) {
       if (instance == null) {
         instance = new IndexMappingLoader(elasticSearchConfiguration);
+      }
+    }
+  }
+
+  public static void init() throws IOException {
+    synchronized (IndexMappingLoader.class) {
+      if (instance == null) {
+        instance = new IndexMappingLoader();
       }
     }
   }
