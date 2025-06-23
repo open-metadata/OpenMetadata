@@ -1,5 +1,5 @@
 ---
-title: Nifi
+title: Nifi Connector | OpenMetadata Data Pipeline Integration
 slug: /connectors/pipeline/nifi
 ---
 
@@ -7,8 +7,8 @@ slug: /connectors/pipeline/nifi
 name="NiFi"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Usage"]
-unavailableFeatures=["Pipeline Status", "Owners", "Tags", "Lineage"]
+availableFeatures=["Pipelines", "Usage", "Lineage"]
+unavailableFeatures=["Pipeline Status", "Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the NiFi connector.

@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -146,6 +146,7 @@ base_requirements = {
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
+    "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
@@ -157,6 +158,7 @@ base_requirements = {
     "setuptools~=70.0",
     "shapely",
     "collate-data-diff",
+    "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
@@ -377,7 +379,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -396,7 +398,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",

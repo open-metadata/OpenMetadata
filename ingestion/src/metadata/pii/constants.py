@@ -12,6 +12,8 @@
 PII constants
 """
 
+PII = "PII"
+
 # Constants for Presidio
 PRESIDIO_LOGGER = "presidio-analyzer"
 SPACY_EN_MODEL = "en_core_web_md"

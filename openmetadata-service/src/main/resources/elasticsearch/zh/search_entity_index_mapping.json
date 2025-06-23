@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -106,7 +110,8 @@
             "type": "text",
             "index_options": "docs",
             "analyzer": "om_analyzer",
-            "norms": false
+            "norms": false,
+            "term_vector": "with_positions_offsets"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -351,7 +356,7 @@
       "deleted": {
         "type": "boolean"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -500,8 +505,8 @@
         }
       },
       "indexType": {
-       "type": "text"
-    }
+        "type": "text"
+      }
     }
   }
 }

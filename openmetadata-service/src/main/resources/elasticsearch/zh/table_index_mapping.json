@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -103,7 +107,7 @@
         "type": "object"
       },
       "entityRelationship": {
-        "type" : "object"
+        "type": "object"
       },
       "tableType": {
         "type": "keyword"
@@ -368,7 +372,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -610,7 +614,6 @@
       "descriptionStatus": {
         "type": "keyword"
       },
-
       "columnDescriptionStatus": {
         "type": "keyword"
       },

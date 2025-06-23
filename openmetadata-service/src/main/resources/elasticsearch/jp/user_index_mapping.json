@@ -1,42 +1,43 @@
-{"settings": {
-  "analysis": {
-    "normalizer": {
-      "lowercase_normalizer": {
-        "type": "custom",
-        "char_filter": [],
-        "filter": [
-          "lowercase"
-        ]
-      }
-    },
-    "analyzer": {
-      "om_analyzer_jp" : {
-        "tokenizer" : "kuromoji_tokenizer",
-        "type" : "custom",
-        "filter" : [
-          "kuromoji_baseform",
-          "kuromoji_part_of_speech",
-          "kuromoji_number",
-          "kuromoji_stemmer"
-        ]
+{
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
       },
-      "om_ngram": {
-        "tokenizer": "ngram",
-        "min_gram": 1,
-        "max_gram": 2,
-        "filter": [
-          "lowercase"
-        ]
-      }
-    },
-    "filter": {
-      "om_stemmer": {
-        "type": "stemmer",
-        "name": "english"
+      "analyzer": {
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
       }
     }
-  }
-},
+  },
   "mappings": {
     "properties": {
       "id": {
@@ -49,6 +50,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -91,8 +96,7 @@
       "isAdmin": {
         "type": "text"
       },
-
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -260,7 +264,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
