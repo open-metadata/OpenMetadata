@@ -3126,7 +3126,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       postUpdate(original, updated);
     }
 
-    void incrementalChange() {
+    private void incrementalChange() {
       changeDescription = new ChangeDescription();
       updateInternal(false);
       incrementalChangeDescription = changeDescription;
@@ -3183,7 +3183,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     @Transaction
-    void revert() {
+    private void revert() {
       // Revert from current version to previous version to go back to the previous version
       // set changeDescription to null
       T updatedOld = updated;

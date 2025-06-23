@@ -34,6 +34,7 @@ import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
@@ -1059,13 +1060,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
      */
     @Transaction
     public void moveAndStore() {
-      incrementalChange();
+      updateChangeDescriptionForMove();
       // Now updated from previous/original to updated one
-      changeDescription = new ChangeDescription();
       validateParent();
       updateParent(original, updated); // Only update parent/glossary and FQN/relationships
       storeUpdate();
       postUpdate(original, updated);
+    }
+
+    private void updateChangeDescriptionForMove() {
+      ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
+      if (!Objects.equals(original.getParent(), updated.getParent())) {
+        fieldUpdated(change, "parent", original.getParent(), updated.getParent());
+      }
+      if (!Objects.equals(original.getGlossary(), updated.getGlossary())) {
+        fieldUpdated(change, "glossary", original.getGlossary(), updated.getGlossary());
+      }
+      updated.setIncrementalChangeDescription(change);
+      updated.setChangeDescription(change);
+      this.changeDescription = change;
     }
 
     private boolean validateIfTagsAreEqual(
