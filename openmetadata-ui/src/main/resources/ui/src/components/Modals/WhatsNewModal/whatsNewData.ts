@@ -976,7 +976,32 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Large column pagination to improve page loading in Tables and Dashboard Data Model
 - Ownership functionality for Classification
 - Support Certifications for Data assets
-       `,
+- Export PDF for custom dashboards improvements ${CollateIconWithLinkMD}
+- Support for running application under sub path (#1558)`,
+      ['Fixes']: `- Explore page deleted filter, shows Knowledge page articles
+- Add support for trino reverse metadata (#1707)
+- Automator for empty description entities & children (#1714)
+- List all incidents column & tables (#1691)
+- Review activity handling (#1654)
+- Clean description from WAII (#1652)
+- Auto Tier w/ followers serialization (#1649)
+- Import failing on database service due to double encoding (#1642)
+- Handled spaces in database, schema, table, and column names across all connectors for reverse metadata 
+- Collate AI Doc to check description root (#1599)
+- Toggle Ingestion Runner postgres SQL (#1596)
+- Permission placeholders for knowledge center (#1585)
+- Clean fqn or search or hash params from Pendo location (#1569)
+- Data asset widget add UI / UX improvement (#1579)
+- Styles for add automator form (#1578)
+- Fix app config handling (#1572)
+- Knowledge center card in entity page not containing data (#1564)
+- Improve handling of app resource init for preview apps (#1521)
+- Tree dropdown for glossary terms inside quick link form (#1561)
+- Stitch Validation Error (#1553)
+- Trigger argo workflows with ad-hoc config (#1345)
+- Query card styles for query page (#1518)
+- Port raiseOnError to Collate (#1509)
+- Handle logging and exception handling for hybrid (#1514)`,
     },
   },
 ];
