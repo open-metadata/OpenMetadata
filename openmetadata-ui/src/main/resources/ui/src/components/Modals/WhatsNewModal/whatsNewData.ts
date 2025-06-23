@@ -972,8 +972,8 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stack�
 • **Java 21**: OpenMetadata Server upgraded to use Java 21
 • **DropWizard 4.x**: OpenMetadata Server upgraded to use  latest DropWizard 4.x framework for serving APIs.`,
       ['Improvements']: `
-      - Large column pagination to improve page loading in Tables and Dashboard Data Model
-      - Ownership functionality for Classification
+- Large column pagination to improve page loading in Tables and Dashboard Data Model
+- Ownership functionality for Classification
        `,
     },
   },
