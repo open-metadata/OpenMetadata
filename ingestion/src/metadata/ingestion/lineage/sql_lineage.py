@@ -381,7 +381,6 @@ def get_table_entities_from_query(
 
     database_query, schema_query, table = get_table_fqn_from_query_name(table_name)
 
-    # Strategy 1: Use parsed components from table name if available
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
@@ -392,59 +391,6 @@ def get_table_entities_from_query(
 
     if table_entities:
         return table_entities
-
-    # Strategy 2: If table name had schema prefix but wasn't found, try with original schema from query log
-    # This handles cases where table name is "schema.table_test" but the actual schema is different
-    if schema_query and schema_query != database_schema:
-        table_entities = search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_name,
-            database_schema=database_schema,
-            table=table,
-        )
-        
-        if table_entities:
-            return table_entities
-
-    # Strategy 3: Try with the full table name as-is (in case the dot is part of the table name)
-    if "." in table_name:
-        table_entities = search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_name,
-            database_schema=database_schema,
-            table=table_name,
-        )
-        
-        if table_entities:
-            return table_entities
-
-    # Strategy 4: Try case variations for the parsed table name
-    if table and table != table.upper():
-        table_entities = search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_query if database_query else database_name,
-            database_schema=schema_query if schema_query else database_schema,
-            table=table.upper(),
-        )
-        
-        if table_entities:
-            return table_entities
-
-    # Strategy 5: Try case variations for the original table name
-    if table_name != table_name.upper():
-        table_entities = search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_name,
-            database_schema=database_schema,
-            table=table_name.upper(),
-        )
-        
-        if table_entities:
-            return table_entities
 
     return None
 
@@ -594,9 +540,7 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                logger.warning(
-                    f"Table entity [{table_name}] not found in OpenMetadata"
-                )
+                logger.warning(f"Table entity [{table_name}] not found in OpenMetadata")
         if graph is not None and (not from_table_entities or not to_table_entities):
             # Add nodes and edges with minimal data
             graph.add_node(
