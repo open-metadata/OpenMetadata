@@ -24,6 +24,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -342,7 +343,9 @@ export const verifyTagPageUI = async (
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
-  await expect(page.getByText(tag.data.description)).toBeVisible();
+  await expect(page.locator(descriptionBoxReadOnly)).toContainText(
+    tag.data.description
+  );
 
   await expect(
     page.getByTestId('data-classification-add-button')
