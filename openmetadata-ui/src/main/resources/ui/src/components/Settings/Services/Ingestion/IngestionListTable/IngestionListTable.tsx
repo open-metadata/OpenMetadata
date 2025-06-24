@@ -55,7 +55,10 @@ import {
   renderStatusField,
   renderTypeField,
 } from '../../../../../utils/IngestionListTableUtils';
-import { getErrorPlaceHolder } from '../../../../../utils/IngestionUtils';
+import {
+  extractPipelineStatusSummary,
+  getErrorPlaceHolder,
+} from '../../../../../utils/IngestionUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -132,7 +135,7 @@ function IngestionListTable({
     () =>
       ingestionData.map((item) => ({
         ...item,
-        runStatus: recentRunStatuses?.[item.name]?.[0]?.status?.[0],
+        runStatus: extractPipelineStatusSummary(recentRunStatuses?.[item.name]),
         runId: recentRunStatuses?.[item.name]?.[0]?.runId,
       })),
     [ingestionData, recentRunStatuses]

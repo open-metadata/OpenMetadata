@@ -44,6 +44,7 @@ import { HiveMetastoreConnectionDetails as Connection } from '../generated/entit
 import {
   IngestionPipeline,
   PipelineState,
+  PipelineStatus,
   StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
@@ -473,3 +474,45 @@ export const getIngestionStatusCountData = (summary?: StepSummary) => [
     type: 'warning',
   },
 ];
+
+/**
+ * Extracts pipeline status summary with fallback logic
+ * @param pipelineStatuses Array of pipeline statuses from recent runs
+ * @returns StepSummary with aggregated counts or undefined if no valid data
+ */
+export const extractPipelineStatusSummary = (
+  pipelineStatuses?: PipelineStatus[]
+): StepSummary | undefined => {
+  if (!pipelineStatuses || pipelineStatuses.length === 0) {
+    return undefined;
+  }
+
+  // Get the most recent pipeline status
+  const latestStatus = pipelineStatuses[0];
+
+  if (!latestStatus?.status || latestStatus.status.length === 0) {
+    return undefined;
+  }
+
+  // Aggregate counts from all steps in the latest run
+  const aggregatedSummary = latestStatus.status.reduce(
+    (acc: StepSummary, step: StepSummary) => ({
+      name: 'aggregated',
+      records: (acc.records || 0) + (step.records || 0),
+      errors: (acc.errors || 0) + (step.errors || 0),
+      warnings: (acc.warnings || 0) + (step.warnings || 0),
+      filtered: (acc.filtered || 0) + (step.filtered || 0),
+      updated_records: (acc.updated_records || 0) + (step.updated_records || 0),
+    }),
+    {
+      name: 'aggregated',
+      records: 0,
+      errors: 0,
+      warnings: 0,
+      filtered: 0,
+      updated_records: 0,
+    } as StepSummary
+  );
+
+  return aggregatedSummary;
+};
