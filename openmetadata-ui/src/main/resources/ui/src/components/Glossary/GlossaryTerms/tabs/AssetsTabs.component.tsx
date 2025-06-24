@@ -792,6 +792,12 @@ const AssetsTabs = forwardRef(
       }
     }, [isSummaryPanelOpen]);
 
+    useEffect(() => {
+      if (assetCount !== undefined) {
+        setTotalAssetCount(assetCount);
+      }
+    }, [assetCount]);
+
     return (
       <>
         <div

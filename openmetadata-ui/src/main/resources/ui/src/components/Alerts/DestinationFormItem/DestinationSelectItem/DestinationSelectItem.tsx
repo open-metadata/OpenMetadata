@@ -346,7 +346,7 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {statusLabel}
+                          {`${destinationStatusDetails?.statusCode} ${statusLabel} ${destinationStatusDetails?.reason}`}
                         </Typography.Text>
                       </>
                     }
