@@ -387,6 +387,7 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
+        defaultField: EntityReferenceFields.OWNERS,
         renderButton: renderJSONLogicQueryBuilderButtons,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,

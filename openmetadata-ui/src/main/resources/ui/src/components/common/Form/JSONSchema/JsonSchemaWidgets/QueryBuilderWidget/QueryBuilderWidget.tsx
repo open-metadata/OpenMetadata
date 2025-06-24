@@ -45,10 +45,7 @@ import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEmptyJsonTree } from '../../../../../../utils/AdvancedSearchUtils';
-import {
-  elasticSearchFormat,
-  elasticSearchFormatForJSONLogic,
-} from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
+import { elasticSearchFormatForJSONLogic } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
   elasticsearchToJsonLogic,
@@ -148,7 +145,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
-      const data = elasticSearchFormat(nTree, config) ?? '';
+      const data = QbUtils.elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };

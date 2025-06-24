@@ -19,7 +19,7 @@ import {
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
-import { isUndefined } from 'lodash';
+import { isBoolean, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -94,7 +94,9 @@ export const getSelectEqualsNotEqualsProperties = (
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
   const valueType = isEqualNotEqualOp
-    ? ['text']
+    ? isBoolean(value)
+      ? ['boolean']
+      : ['text']
     : Array.isArray(value)
     ? ['multiselect']
     : ['select'];

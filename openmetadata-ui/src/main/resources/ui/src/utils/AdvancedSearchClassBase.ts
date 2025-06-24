@@ -584,6 +584,7 @@ class AdvancedSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
+        defaultField: EntityFields.OWNERS,
         renderButton: isExplorePage
           ? renderAdvanceSearchButtons
           : renderQueryBuilderFilterButtons,

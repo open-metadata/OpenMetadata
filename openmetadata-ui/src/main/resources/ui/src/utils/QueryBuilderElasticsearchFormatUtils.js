@@ -1,18 +1,4 @@
 /* eslint-disable no-undef */
-/*
- *  Copyright 2022 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
-import { formatQueryValueBasedOnType } from './AdvancedSearchUtils';
 
 /*
  * This script is a modified version of https://github.com/ukrbublik/react-awesome-query-builder/blob/5.1.2/modules/export/elasticSearch.js
@@ -317,67 +303,6 @@ function buildEsGroup(children, conjunction, properties, recursiveFxn, config) {
       [occurrence]: resultFlat,
     },
   };
-}
-
-export function elasticSearchFormat(tree, config) {
-  try {
-    // -- format the es dsl here
-    if (!tree) {
-      return undefined;
-    }
-    const type = tree.get('type');
-    const properties = tree.get('properties') || new Map();
-
-    if (type === 'rule' && properties.get('field')) {
-      // -- field is null when a new blank rule is added
-      const operator = properties.get('operator');
-      const field = properties.get('field');
-      const value = properties.get('value').toJS();
-      const _valueType = properties.get('valueType')?.get(0);
-      const valueSrc = properties.get('valueSrc')?.get(0);
-
-      if (valueSrc === 'func') {
-        // -- elastic search doesn't support functions (that is post processing)
-        return;
-      }
-
-      if (value && Array.isArray(value[0])) {
-        return {
-          bool: {
-            should: value[0].map((val) =>
-              buildEsRule(field, [val], operator, config, valueSrc)
-            ),
-          },
-        };
-      } else {
-        return buildEsRule(
-          field,
-          formatQueryValueBasedOnType(value, field, _valueType),
-          operator,
-          config,
-          valueSrc
-        );
-      }
-    }
-
-    if (type === 'group' || type === 'rule_group') {
-      let conjunction = properties.get('conjunction');
-      if (!conjunction) {
-        conjunction = defaultConjunction(config);
-      }
-      const children = tree.get('children1');
-
-      return buildEsGroup(
-        children,
-        conjunction,
-        properties,
-        elasticSearchFormat,
-        config
-      );
-    }
-  } catch {
-    return {};
-  }
 }
 
 export function elasticSearchFormatForJSONLogic(tree, config) {
