@@ -96,7 +96,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         key: 'owner',
         render: (owner: string) =>
           owner ? (
-            <UserPopOverCard showUserName profileWidth={36} userName={owner} />
+            <UserPopOverCard showUserName profileWidth={24} userName={owner} />
           ) : (
             <Typography.Text>--</Typography.Text>
           ),

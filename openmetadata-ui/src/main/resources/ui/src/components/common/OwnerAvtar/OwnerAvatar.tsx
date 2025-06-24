@@ -86,9 +86,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
-        <Typography.Text
-          className="text-sm"
-          ellipsis={{ tooltip: displayName }}>
+        <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
           {displayName}
         </Typography.Text>
       )}

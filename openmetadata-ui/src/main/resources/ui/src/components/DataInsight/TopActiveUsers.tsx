@@ -74,7 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
-          <UserPopOverCard showUserName profileWidth={36} userName={userName} />
+          <UserPopOverCard showUserName profileWidth={24} userName={userName} />
         ),
       },
       {
