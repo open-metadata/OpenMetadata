@@ -391,7 +391,6 @@ const IncidentManager = ({
             <Link
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
-              style={{ maxWidth: 280 }}
               to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
@@ -451,7 +450,7 @@ const IncidentManager = ({
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 100,
+        width: 120,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -475,7 +474,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 100,
+        width: 120,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -501,11 +500,6 @@ const IncidentManager = ({
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
         width: 150,
-        onCell: () => ({
-          style: {
-            maxWidth: 150, // Ensures content respects width
-          },
-        }),
         render: (value?: Assigned) => (
           <OwnerLabel
             owners={value?.assignee ? [value.assignee] : []}
@@ -618,7 +612,7 @@ const IncidentManager = ({
           pagination={false}
           rowKey="id"
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />
