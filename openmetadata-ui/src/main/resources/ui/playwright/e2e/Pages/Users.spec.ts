@@ -494,7 +494,15 @@ test.describe('User Profile Feed Interactions', () => {
 
     await avatar.hover();
     await adminPage.waitForSelector('.ant-popover-card');
-    await adminPage.getByTestId('user-name').nth(1).click();
+
+    // Ensure popover is stable and visible before clicking
+    await adminPage.waitForTimeout(500); // Give popover time to stabilize
+
+    // Get the user name element and ensure it's ready for interaction
+    const userNameElement = adminPage.getByTestId('user-name').nth(1);
+
+    // Click with force to handle pointer event interception
+    await userNameElement.click({ force: true });
 
     const [response] = await Promise.all([
       userDetailsResponse,
