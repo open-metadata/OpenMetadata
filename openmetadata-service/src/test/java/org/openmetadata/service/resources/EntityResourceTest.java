@@ -1966,10 +1966,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Updating non-empty description and non-empty displayName is ignored for bot users
-    request.withDescription("updatedDescription2").withDisplayName("updatedDisplayName2");
+    // Updating non-empty description is ignored for bot users
+    request.withDescription("updatedDescription2");
     change = getChangeDescription(entity, NO_CHANGE);
     updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, change);
+
+    // Updating non-empty display name is allowed for bot users
+    // revert to the last committed description, so only displayName is new
+    request.withDescription("updatedDescription").withDisplayName("updatedDisplayName2");
+    change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldUpdated(change, "displayName", "updatedDisplayName", "updatedDisplayName2");
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

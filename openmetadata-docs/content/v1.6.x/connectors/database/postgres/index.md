@@ -1,5 +1,5 @@
 ---
-title: PostgreSQL
+title: PostgreSQL Connector | OpenMetadata Database Integration
 slug: /connectors/database/postgres
 ---
 
