@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Popover, Typography } from 'antd';
+import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import moment from 'moment';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
@@ -87,6 +88,38 @@ const ProfileSectionUserDetailsCard = ({
     () => isAuthProviderBasic && hasEditPermission,
     [isAuthProviderBasic, hasEditPermission]
   );
+
+  const onlineStatus = useMemo(() => {
+    // Don't show online status for bots
+    if (userData.isBot) {
+      return null;
+    }
+
+    // Use lastActivityTime if available, otherwise fall back to lastLoginTime
+    const activityTime = userData.lastActivityTime || userData.lastLoginTime;
+
+    if (!activityTime) {
+      return null;
+    }
+
+    const lastActivityMoment = moment(activityTime);
+    const now = moment();
+    const diffMinutes = now.diff(lastActivityMoment, 'minutes');
+
+    if (diffMinutes <= 5) {
+      return {
+        status: 'success' as const,
+        text: t('label.online-now'),
+      };
+    } else if (diffMinutes <= 60) {
+      return {
+        status: 'success' as const,
+        text: t('label.active-recently'),
+      };
+    }
+
+    return null;
+  }, [userData.lastActivityTime, userData.lastLoginTime, userData.isBot, t]);
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
@@ -251,11 +284,20 @@ const ProfileSectionUserDetailsCard = ({
           </div>
         </UserPopOverCard>
       </div>
-      <div>
+      <div className="d-flex flex-col items-center">
         <p className="profile-details-title" data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
+        {onlineStatus && (
+          <div className="m-t-sm">
+            <Badge
+              data-testid="user-online-status"
+              status={onlineStatus.status}
+              text={onlineStatus.text}
+            />
+          </div>
+        )}
       </div>
       {showChangePasswordComponent && (
         <ChangePasswordForm

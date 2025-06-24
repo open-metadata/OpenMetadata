@@ -75,6 +75,10 @@ const GlobalSettingCategoryPage = () => {
         history.push(getTeamsWithFqnPath(TeamType.Organization));
 
         break;
+      case GlobalSettingOptions.ONLINE_USERS:
+        history.push(getSettingPath(category, option));
+
+        break;
       case GlobalSettingOptions.SEARCH:
         if (category === GlobalSettingsMenuCategory.PREFERENCES) {
           history.push(

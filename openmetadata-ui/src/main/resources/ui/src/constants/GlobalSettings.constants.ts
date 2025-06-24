@@ -27,6 +27,7 @@ export enum GlobalSettingsMenuCategory {
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
+  ONLINE_USERS = 'online-users',
   TEAMS = 'teams',
   PERSONA = 'persona',
   ROLES = 'roles',
