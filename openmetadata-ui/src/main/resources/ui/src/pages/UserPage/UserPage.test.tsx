@@ -220,3 +220,54 @@ describe.skip('Test the User Page', () => {
     expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
   });
 });
+
+describe('UserPage - Activity Time Fields', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('Should fetch lastActivityTime and lastLoginTime fields', async () => {
+    render(<UserPage />, { wrapper: MemoryRouter });
+
+    expect(getUserByName).toHaveBeenCalledWith('xyz', {
+      fields: [
+        'profile',
+        'roles',
+        'teams',
+        'personas',
+        'lastActivityTime',
+        'lastLoginTime',
+        'defaultPersona',
+        'domains',
+      ],
+      include: 'all',
+    });
+  });
+
+  it('Should pass user data with activity times to Users component', async () => {
+    const userDataWithActivityTime = {
+      ...USER_DATA,
+      lastActivityTime: 1234567890,
+      lastLoginTime: 1234567880,
+    };
+
+    (getUserByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(userDataWithActivityTime)
+    );
+
+    (Users as jest.Mock).mockImplementationOnce(({ userData }) => (
+      <div data-testid="user-data">{JSON.stringify(userData)}</div>
+    ));
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    const userData = JSON.parse(
+      screen.getByTestId('user-data').textContent || '{}'
+    );
+
+    expect(userData.lastActivityTime).toBe(1234567890);
+    expect(userData.lastLoginTime).toBe(1234567880);
+  });
+});
