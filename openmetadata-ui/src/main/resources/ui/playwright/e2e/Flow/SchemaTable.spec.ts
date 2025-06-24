@@ -142,8 +142,6 @@ test('Schema Table Pagination should work Properly', async ({ page }) => {
 
   await expect(page.getByTestId('next')).not.toBeDisabled();
 
-  await page.waitForLoadState('networkidle');
-
   const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
   await page.getByTestId('next').click();
   await tableResponse2;
