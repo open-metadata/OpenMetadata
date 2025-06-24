@@ -46,26 +46,10 @@ export const getElementWithPagination = async (
       return;
     }
 
-    // Check if next button exists on the page
     const nextBtn = page.locator('[data-testid="next"]');
-    const nextBtnExists = (await nextBtn.count()) > 0;
-
-    if (!nextBtnExists) {
-      throw new Error('Element not found and no pagination available.');
-    }
-
-    // Wait for next button to be visible and check if it's enabled
     await nextBtn.waitFor({ state: 'visible' });
-    const isDisabled = await nextBtn.getAttribute('disabled');
 
-    if (isDisabled !== null) {
-      throw new Error('Element not found and no more pages available.');
-    }
-
-    // Navigate to next page
     await nextBtn.click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   }
-
-  throw new Error(`Element not found after ${maxPages} pages.`);
 };
