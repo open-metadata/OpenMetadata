@@ -283,7 +283,7 @@ public class WebsocketNotificationHandler {
         entity.getName());
     if (userId != null) {
       WebSocketManager.getInstance()
-          .sendToOne(userId, WebSocketManager.MOVE_ENTITY_CHANNEL, jsonMessage);
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
     }
   }
 
@@ -301,7 +301,7 @@ public class WebsocketNotificationHandler {
         error);
     if (userId != null) {
       WebSocketManager.getInstance()
-          .sendToOne(userId, WebSocketManager.MOVE_ENTITY_CHANNEL, jsonMessage);
+          .sendToOne(userId, WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL, jsonMessage);
     }
   }
 }

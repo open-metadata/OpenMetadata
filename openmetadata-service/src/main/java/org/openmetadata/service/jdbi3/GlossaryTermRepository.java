@@ -1334,21 +1334,33 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (moveRequest == null || moveRequest.getParent() == null) {
       return null; // Nothing to move
     }
-    GlossaryTerm original = Entity.getEntity(GLOSSARY_TERM, id, "*", Include.ALL);
+    GlossaryTerm original =
+        Entity.getEntity(
+            GLOSSARY_TERM,
+            id,
+            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,status",
+            Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
 
     EntityReference parent = moveRequest.getParent();
     if (parent.getType().equalsIgnoreCase("glossary")) {
       // Move to root of the glossary
-      Glossary glossary = Entity.getEntity(GLOSSARY, parent.getId(), "*", Include.ALL);
+      Glossary glossary =
+          Entity.getEntity(GLOSSARY, parent.getId(), "id,name,fullyQualifiedName", Include.ALL);
       updated.setParent(null);
       updated.setGlossary(glossary.getEntityReference());
     } else if (parent.getType().equalsIgnoreCase("glossaryTerm")) {
       // Can be of same glossary or a different glossary
-      GlossaryTerm parentTerm = Entity.getEntity(GLOSSARY_TERM, parent.getId(), "*", Include.ALL);
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
       updated.setParent(parentTerm.getEntityReference());
       Glossary glossary =
-          Entity.getEntity(GLOSSARY, parentTerm.getGlossary().getId(), "*", Include.ALL);
+          Entity.getEntity(
+              GLOSSARY,
+              parentTerm.getGlossary().getId(),
+              "id,name,fullyQualifiedName",
+              Include.ALL);
       updated.setGlossary(glossary.getEntityReference());
     } else {
       throw new IllegalArgumentException("Invalid parent type: " + parent.getType());

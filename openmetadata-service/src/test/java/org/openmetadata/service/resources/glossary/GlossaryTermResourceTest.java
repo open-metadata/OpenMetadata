@@ -2093,7 +2093,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
               connectLatch.countDown();
             })
         .on(
-            WebSocketManager.MOVE_ENTITY_CHANNEL,
+            WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL,
             args -> {
               receivedMessage[0] = (String) args[0];
               LOG.info("Received move message: {}", receivedMessage[0]);
