@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Form, Modal, Select } from 'antd';
+import { Checkbox, Form, Modal } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import { TagSource } from '../../../generated/entity/data/container';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { Status } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTerms } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
@@ -40,7 +44,6 @@ const ChangeParentHierarchy = ({
     isFetching: true,
   });
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
-
   const [options, setOptions] = useState<SelectOptions[]>([]);
 
   const hasReviewers = Boolean(
@@ -61,12 +64,30 @@ const ChangeParentHierarchy = ({
           .map((item) => ({
             label: getEntityName(item),
             value: item.fullyQualifiedName ?? '',
+            data: item,
           }))
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setLoadingState((prev) => ({ ...prev, isFetching: false }));
+    }
+  };
+
+  const handleTagSelection = (
+    option: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    // Handle both single option and array of options
+    const tags = Array.isArray(option) ? option : [option];
+
+    if (tags.length > 0) {
+      const newTags = tags.map((tag) => ({
+        tagFQN: tag.value as string,
+        source: TagSource.Glossary,
+      }));
+      form.setFieldsValue({ parent: newTags[0].tagFQN });
+    } else {
+      form.setFieldsValue({ parent: undefined });
     }
   };
 
@@ -111,17 +132,18 @@ const ChangeParentHierarchy = ({
               }),
             },
           ]}>
-          <Select
-            showSearch
+          <TreeAsyncSelectList
+            isParentSelectable
+            activeGlossary={selectedData.glossary as Glossary}
             data-testid="change-parent-select"
-            filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-            }
-            loading={loadingState.isFetching}
-            options={options}
+            initialOptions={options}
+            isMultiSelect={false}
+            isSubmitLoading={loadingState.isFetching}
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
+            tagType={TagSource.Glossary}
+            onChange={handleTagSelection}
           />
         </Form.Item>
 
