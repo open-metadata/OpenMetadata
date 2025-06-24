@@ -311,15 +311,14 @@ export class EntityClass {
     tag1: string,
     tag2: string,
     entity: EntityClass,
-    endpoint: string,
     tag2Fqn?: string
   ) {
-    await assignTag(page, tag1, 'Add', endpoint, 'KnowledgePanel.Tags');
+    await assignTag(page, tag1, 'Add', entity.endpoint, 'KnowledgePanel.Tags');
     await assignTag(
       page,
       tag2,
       'Edit',
-      endpoint,
+      entity.endpoint,
       'KnowledgePanel.Tags',
       tag2Fqn
     );

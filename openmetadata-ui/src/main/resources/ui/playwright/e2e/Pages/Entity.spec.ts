@@ -247,7 +247,6 @@ entities.forEach((EntityClass) => {
         'PersonalData.Personal',
         EntityDataClass.tag1.responseData.displayName,
         entity,
-        entity.endpoint,
         EntityDataClass.tag1.responseData.fullyQualifiedName
       );
     });
