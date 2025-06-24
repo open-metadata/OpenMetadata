@@ -1,5 +1,5 @@
 ---
-title: Custom OIDC SSO
+title: Custom OIDC SSO | OpenMetadata Security Integration
 slug: /deployment/security/custom-oidc
 collate: false
 ---

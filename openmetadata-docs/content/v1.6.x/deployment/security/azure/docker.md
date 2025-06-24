@@ -1,5 +1,5 @@
 ---
-title: Azure SSO for Docker
+title: Azure SSO for Docker | OpenMetadata Deployment Guide
 slug: /deployment/security/azure/docker
 collate: false
 ---

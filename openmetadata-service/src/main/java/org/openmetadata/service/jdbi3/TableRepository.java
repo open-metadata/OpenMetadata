@@ -863,6 +863,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // More fields that should be empty for columns
     addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // certification (empty for columns)
     addField(recordList, ""); // retentionPeriod (empty for columns)
     addField(recordList, ""); // sourceUrl (empty for columns)
     addField(recordList, ""); // domain (empty for columns)
@@ -1680,12 +1681,8 @@ public class TableRepository extends EntityRepository<Table> {
                         && column.getName().toLowerCase().contains(searchTerm)) {
                       return true;
                     }
-                    if (column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    return column.getDescription() != null
-                        && column.getDescription().toLowerCase().contains(searchTerm);
+                    return column.getDisplayName() != null
+                        && column.getDisplayName().toLowerCase().contains(searchTerm);
                   })
               .toList();
     }
