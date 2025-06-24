@@ -98,3 +98,54 @@ class PIIProcessor(AutoClassificationProcessor):
         winner = get_top_classes(scores, 1, self.confidence_threshold)
         tag_labels = [self.build_tag_label(tag) for tag in winner]
         return tag_labels
+
+    def close(self) -> None:
+        """Clean up resources to prevent memory leaks"""
+        try:
+            # Clean up the classifier and its resources
+            if hasattr(self, "_classifier") and self._classifier:
+                # Handle PIISensitiveClassifier which wraps HeuristicPIIClassifier
+                if hasattr(self._classifier, "classifier"):
+                    nested_classifier = getattr(self._classifier, "classifier")
+
+                    # Clean up Presidio analyzer resources
+                    if hasattr(nested_classifier, "_presidio_analyzer"):
+                        analyzer = getattr(nested_classifier, "_presidio_analyzer")
+
+                        # Clear recognizers registry
+                        if hasattr(analyzer, "registry") and hasattr(
+                            analyzer.registry, "recognizers"
+                        ):
+                            getattr(analyzer.registry, "recognizers").clear()
+
+                        # Clear NLP engine models cache
+                        if hasattr(analyzer, "nlp_engine"):
+                            nlp_engine = getattr(analyzer, "nlp_engine")
+                            if hasattr(nlp_engine, "_models"):
+                                getattr(nlp_engine, "_models").clear()
+
+                        # Remove analyzer reference
+                        setattr(nested_classifier, "_presidio_analyzer", None)
+
+                    # Clear column name patterns cache
+                    if hasattr(nested_classifier, "_column_name_patterns"):
+                        patterns_dict = getattr(
+                            nested_classifier, "_column_name_patterns"
+                        )
+                        if hasattr(patterns_dict, "clear"):
+                            patterns_dict.clear()
+
+                # Clear the main classifier reference
+                delattr(self, "_classifier")
+
+            # Clear global Presidio caches to free memory
+            from metadata.pii.algorithms.presidio_utils import (
+                clear_presidio_caches,  # pylint: disable=import-outside-toplevel
+            )
+
+            clear_presidio_caches()
+
+        except Exception as err:
+            logger.warning(f"Error during PIIProcessor cleanup: {err}")
+
+        super().close()

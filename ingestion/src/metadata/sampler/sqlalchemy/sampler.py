@@ -13,6 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 import hashlib
+from contextlib import contextmanager
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
@@ -76,10 +77,22 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     def raw_dataset(self):
         return self._table
 
+    @contextmanager
     def get_client(self):
-        """Build the SQA Client"""
+        """Build the SQA Client with proper context management"""
         session_factory = create_and_bind_thread_safe_session(self.connection)
-        return session_factory()
+        session = session_factory()
+        try:
+            yield session
+        except Exception as exc:
+            session.rollback()
+            logger.error(f"Database session error: {exc}")
+            raise
+        finally:
+            try:
+                session.close()
+            except Exception as cleanup_err:
+                logger.warning(f"Error closing database session: {cleanup_err}")
 
     def set_tablesample(self, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
@@ -87,6 +100,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             selectable (Table): a selectable table
         """
         return selectable
+
+    def _get_client_session(self):
+        """Get a raw client session (non-context manager)"""
+        session_factory = create_and_bind_thread_safe_session(self.connection)
+        return session_factory()
 
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
@@ -99,7 +117,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
         selectable = self.set_tablesample(self.raw_dataset.__table__)
-        client = self.get_client()
+        client = self._get_client_session()
 
         entity = selectable if column is None else selectable.c.get(column.key)
         if label is not None:
@@ -263,6 +281,25 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         return list(inspect(self.raw_dataset).c)
 
     def close(self):
-        """Close the connection"""
-        self.get_client().close()
-        self.connection.pool.dispose()
+        """Close the connection and clean up resources"""
+        try:
+            # Close any open sessions
+            with self.get_client() as client:
+                pass  # Context manager will handle cleanup
+
+            # Dispose of connection pool to prevent leaks
+            if hasattr(self, "connection") and self.connection:
+                if hasattr(self.connection, "pool") and self.connection.pool:
+                    self.connection.pool.dispose()
+                elif hasattr(self.connection, "dispose"):
+                    self.connection.dispose()
+
+            # Clear ORM table reference
+            if hasattr(self, "_table"):
+                self._table = None
+
+        except Exception as err:
+            logger.warning(f"Error during SQLAlchemy sampler cleanup: {err}")
+
+        # Call parent cleanup
+        super().close()

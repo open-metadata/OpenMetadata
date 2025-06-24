@@ -13,6 +13,7 @@ Interface for sampler
 """
 import traceback
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import List, Optional, Set, Union
 
 from metadata.generated.schema.entity.data.database import Database
@@ -251,5 +252,46 @@ class SamplerInterface(ABC):
             logger.warning(f"Error fetching sample data: {err}")
             raise err
 
+    @contextmanager
+    def get_connection(self):
+        """Context manager for database connections to ensure proper cleanup"""
+        connection = None
+        try:
+            connection = get_ssl_connection(self.service_connection_config)
+            yield connection
+        except Exception as exc:
+            logger.error(f"Database connection error: {exc}")
+            raise
+        finally:
+            if connection:
+                try:
+                    # Try to close connection if it has close method
+                    if hasattr(connection, "close"):
+                        connection.close()
+                    # For SQLAlchemy engines, dispose of connection pool
+                    elif hasattr(connection, "dispose"):
+                        connection.dispose()
+                except Exception as cleanup_err:
+                    logger.warning(f"Error during connection cleanup: {cleanup_err}")
+
     def close(self):
-        """Default noop"""
+        """Clean up sampler resources"""
+        try:
+            # Close the main connection if it exists
+            if hasattr(self, "connection") and self.connection:
+                if hasattr(self.connection, "close"):
+                    self.connection.close()
+                elif hasattr(self.connection, "dispose"):
+                    self.connection.dispose()
+                self.connection = None
+
+            # Clear column cache
+            if hasattr(self, "_columns"):
+                self._columns.clear()
+
+            # Clear sample cache
+            if hasattr(self, "_sample"):
+                self._sample = None
+
+        except Exception as err:
+            logger.warning(f"Error during sampler cleanup: {err}")
