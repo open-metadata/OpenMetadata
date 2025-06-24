@@ -40,10 +40,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
-    LOG.debug(
-        "Search index handler: Creating search index for entity {} {}",
-        entity.getEntityReference().getType(),
-        entity.getId());
+    if (entity == null) {
+      LOG.warn("Received null entity in onEntityCreated");
+      return;
+    }
 
     try {
       searchRepository.createEntityIndex(entity);
@@ -63,10 +63,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   @Override
   public void onEntityUpdated(
       EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
-    LOG.debug(
-        "Search index handler: Updating search index for entity {} {}",
-        entity.getEntityReference().getType(),
-        entity.getId());
+    if (entity == null) {
+      LOG.warn("Received null entity in onEntityUpdated");
+      return;
+    }
 
     try {
       searchRepository.updateEntityIndex(entity);
@@ -85,10 +85,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntityUpdated(EntityReference entityRef, SubjectContext subjectContext) {
-    LOG.debug(
-        "Search index handler: Updating search index for entity {} {}",
-        entityRef.getType(),
-        entityRef.getId());
+    if (entityRef == null) {
+      LOG.warn("Received null entity in onEntityUpdated");
+      return;
+    }
 
     try {
       searchRepository.updateEntity(entityRef);
@@ -107,10 +107,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
-    LOG.debug(
-        "Search index handler: Deleting search index for entity {} {}",
-        entity.getEntityReference().getType(),
-        entity.getId());
+    if (entity == null) {
+      LOG.warn("Received null entity in onEntityDeleted");
+      return;
+    }
 
     try {
       searchRepository.deleteEntityIndex(entity);
@@ -130,12 +130,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   @Override
   public void onEntitySoftDeletedOrRestored(
       EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
-    LOG.debug(
-        "Search index handler: {} search index for entity {} {}",
-        isDeleted ? "Soft deleting" : "Restoring",
-        entity.getEntityReference().getType(),
-        entity.getId());
-
+    if (entity == null) {
+      LOG.warn("Received null entity in onEntitySoftDeletedOrRestored");
+      return;
+    }
     try {
       searchRepository.softDeleteOrRestoreEntityIndex(entity, isDeleted);
       LOG.debug(
@@ -177,6 +175,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
    */
   public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {
+      LOG.warn("Received null entities in onEntitiesCreated");
       return;
     }
 

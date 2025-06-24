@@ -344,29 +344,32 @@ public class SearchRepository {
    * This method is used by SearchIndexHandler.
    */
   public void createEntityIndex(EntityInterface entity) {
+    if (entity == null) {
+      LOG.warn("Entity is null, cannot create index.");
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
 
-    if (entity != null) {
-      String entityId = entity.getId().toString();
-      String entityType = entity.getEntityReference().getType();
-      try {
-        IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-        searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
-      } catch (Exception ie) {
-        LOG.error(
-            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-            entityId,
-            entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
-      }
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    try {
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+      String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+      searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
+    } catch (Exception ie) {
+      LOG.error(
+          "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityId,
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
@@ -464,54 +467,56 @@ public class SearchRepository {
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
+    if (entity == null) {
+      LOG.warn("Entity is null, cannot update index.");
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
 
-    if (entity != null) {
-      String entityType = entity.getEntityReference().getType();
-      String entityId = entity.getId().toString();
-      try {
-        IndexMapping indexMapping = entityIndexMap.get(entityType);
-        String scriptTxt = DEFAULT_UPDATE_SCRIPT;
-        Map<String, Object> doc = new HashMap<>();
+    String entityType = entity.getEntityReference().getType();
+    String entityId = entity.getId().toString();
+    try {
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      String scriptTxt = DEFAULT_UPDATE_SCRIPT;
+      Map<String, Object> doc = new HashMap<>();
 
-        ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
-        ChangeDescription changeDescription;
+      ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+      ChangeDescription changeDescription;
 
-        if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
-          changeDescription = incrementalChangeDescription;
-        } else {
-          changeDescription = entity.getChangeDescription();
-        }
-
-        if (changeDescription != null
-            && entity.getChangeDescription() != null
-            && Objects.equals(
-                entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
-          scriptTxt = getScriptWithParams(entity, doc, changeDescription);
-        } else {
-          SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = elasticSearchIndex.buildSearchIndexDoc();
-        }
-        searchClient.updateEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-        propagateInheritedFieldsToChildren(
-            entityType, entityId, changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
-      } catch (Exception ie) {
-        LOG.error(
-            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-            entityId,
-            entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+      if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
+        changeDescription = incrementalChangeDescription;
+      } else {
+        changeDescription = entity.getChangeDescription();
       }
+
+      if (changeDescription != null
+          && entity.getChangeDescription() != null
+          && Objects.equals(
+              entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
+        scriptTxt = getScriptWithParams(entity, doc, changeDescription);
+      } else {
+        SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
+        doc = elasticSearchIndex.buildSearchIndexDoc();
+      }
+      searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
+      propagateInheritedFieldsToChildren(
+          entityType, entityId, changeDescription, indexMapping, entity);
+      propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+      propagateCertificationTags(entityType, entity, changeDescription);
+      propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+    } catch (Exception ie) {
+      LOG.error(
+          "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityId,
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
