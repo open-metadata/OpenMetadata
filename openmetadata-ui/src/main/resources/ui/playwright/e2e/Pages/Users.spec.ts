@@ -496,9 +496,10 @@ test.describe('User Profile Feed Interactions', () => {
     await adminPage.waitForSelector('.ant-popover-card');
     await adminPage.getByTestId('user-name').nth(1).click();
 
-    await userDetailsResponse;
-    await userFeedResponse;
-    const response = await userDetailsResponse;
+    const [response] = await Promise.all([
+      userDetailsResponse,
+      userFeedResponse,
+    ]);
     const { fullyQualifiedName } = await response.json();
 
     await expect(
