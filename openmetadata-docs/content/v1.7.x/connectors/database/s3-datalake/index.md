@@ -1,5 +1,5 @@
 ---
-title: S3 Datalake
+title: S3 Datalake Connector | OpenMetadata Cloud Storage Guide
 slug: /connectors/database/s3-datalake
 ---
 

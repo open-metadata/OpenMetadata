@@ -1,5 +1,5 @@
 ---
-title: Ldap Authentication
+title: LDAP Authentication | OpenMetadata Security Setup
 slug: /deployment/security/ldap
 collate: false
 ---

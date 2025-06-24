@@ -1,5 +1,5 @@
 ---
-title: Upgrade on Docker
+title: Upgrade on Docker | OpenMetadata Deployment Upgrade Guide
 slug: /deployment/upgrade/docker
 collate: false
 ---
