@@ -310,11 +310,19 @@ export class EntityClass {
     page: Page,
     tag1: string,
     tag2: string,
-    tag2Fqn?: string,
-    entity?: EntityClass
+    entity: EntityClass,
+    endpoint: string,
+    tag2Fqn?: string
   ) {
-    await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    await assignTag(page, tag1, 'Add', endpoint, 'KnowledgePanel.Tags');
+    await assignTag(
+      page,
+      tag2,
+      'Edit',
+      endpoint,
+      'KnowledgePanel.Tags',
+      tag2Fqn
+    );
     if (entity && tag2Fqn) {
       await checkExploreSearchFilter(
         page,

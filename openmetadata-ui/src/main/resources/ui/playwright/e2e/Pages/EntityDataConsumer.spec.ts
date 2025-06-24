@@ -112,7 +112,13 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(
+        page,
+        'PersonalData.Personal',
+        'PII.None',
+        entity,
+        entity.endpoint
+      );
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
