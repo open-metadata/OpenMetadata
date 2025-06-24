@@ -121,4 +121,8 @@ jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
  */
 jest.mock('./utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+  columnFilterIcon: jest.fn(),
 }));
