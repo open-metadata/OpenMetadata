@@ -196,7 +196,7 @@ function IngestionListTable({
     try {
       setIsIngestionRunsLoading(true);
       const queryParams = {
-        startTs: getEpochMillisForPastDays(1),
+        startTs: getEpochMillisForPastDays(7),
         endTs: getCurrentMillis(),
       };
       const permissionPromises = ingestionData.map((item) =>
@@ -227,7 +227,6 @@ function IngestionListTable({
 
           if (cv.status === 'fulfilled') {
             const runs = cv.value.data ?? [];
-
             const ingestion = ingestionData[index];
 
             value =
@@ -267,6 +266,12 @@ function IngestionListTable({
   useEffect(() => {
     if (!isEmpty(ingestionData)) {
       fetchIngestionPipelineExtraDetails();
+
+      const refreshInterval = setInterval(() => {
+        fetchIngestionPipelineExtraDetails();
+      }, 30000);
+
+      return () => clearInterval(refreshInterval);
     }
   }, [ingestionData]);
 
@@ -277,6 +282,28 @@ function IngestionListTable({
       );
     }
   }, [ingestionPagingInfo?.paging]);
+
+  const handlePipelineTrigger = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        if (triggerIngestion) {
+          await triggerIngestion(id, displayName);
+          setTimeout(() => {
+            fetchIngestionPipelineExtraDetails();
+          }, 2000);
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.ingestion-workflow-operation-error', {
+            operation: t('label.triggering-lowercase'),
+            displayName,
+          })
+        );
+      }
+    },
+    [triggerIngestion, fetchIngestionPipelineExtraDetails]
+  );
 
   const renderActionsField = useCallback(
     (_: string, record: IngestionPipeline) => {
@@ -299,7 +326,7 @@ function IngestionListTable({
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
-          triggerIngestion={triggerIngestion}
+          triggerIngestion={handlePipelineTrigger}
           onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
         />
       );
@@ -314,7 +341,7 @@ function IngestionListTable({
       ingestionPipelinePermissions,
       serviceCategory,
       serviceName,
-      triggerIngestion,
+      handlePipelineTrigger,
       onIngestionWorkflowsUpdate,
       handleEditClick,
     ]

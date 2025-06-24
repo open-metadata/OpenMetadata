@@ -476,6 +476,12 @@ export const getIngestionStatusCountData = (summary?: StepSummary) => [
 ];
 
 /**
+ * Helper function to safely handle numeric values that might be undefined or null
+ */
+const safeNumber = (value: number | undefined | null): number =>
+  typeof value === 'number' ? value : 0;
+
+/**
  * Extracts pipeline status summary with fallback logic
  * @param pipelineStatuses Array of pipeline statuses from recent runs
  * @returns StepSummary with aggregated counts or undefined if no valid data
@@ -483,35 +489,39 @@ export const getIngestionStatusCountData = (summary?: StepSummary) => [
 export const extractPipelineStatusSummary = (
   pipelineStatuses?: PipelineStatus[]
 ): StepSummary | undefined => {
-  if (!pipelineStatuses || pipelineStatuses.length === 0) {
+  if (!pipelineStatuses?.length) {
     return undefined;
   }
 
   // Get the most recent pipeline status
   const latestStatus = pipelineStatuses[0];
 
-  if (!latestStatus?.status || latestStatus.status.length === 0) {
+  if (!latestStatus?.status?.length) {
     return undefined;
   }
 
-  // Aggregate counts from all steps in the latest run
+  // Initialize with safe defaults
+  const defaultSummary: StepSummary = {
+    name: 'aggregated',
+    records: 0,
+    errors: 0,
+    warnings: 0,
+    filtered: 0,
+    updated_records: 0,
+  };
+
+  // Aggregate counts from all steps in the latest run with safe number handling
   const aggregatedSummary = latestStatus.status.reduce(
     (acc: StepSummary, step: StepSummary) => ({
       name: 'aggregated',
-      records: (acc.records || 0) + (step.records || 0),
-      errors: (acc.errors || 0) + (step.errors || 0),
-      warnings: (acc.warnings || 0) + (step.warnings || 0),
-      filtered: (acc.filtered || 0) + (step.filtered || 0),
-      updated_records: (acc.updated_records || 0) + (step.updated_records || 0),
+      records: safeNumber(acc.records) + safeNumber(step.records),
+      errors: safeNumber(acc.errors) + safeNumber(step.errors),
+      warnings: safeNumber(acc.warnings) + safeNumber(step.warnings),
+      filtered: safeNumber(acc.filtered) + safeNumber(step.filtered),
+      updated_records:
+        safeNumber(acc.updated_records) + safeNumber(step.updated_records),
     }),
-    {
-      name: 'aggregated',
-      records: 0,
-      errors: 0,
-      warnings: 0,
-      filtered: 0,
-      updated_records: 0,
-    } as StepSummary
+    defaultSummary
   );
 
   return aggregatedSummary;
