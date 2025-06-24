@@ -56,9 +56,9 @@ export const getElementWithPagination = async (
 
     // Wait for next button to be visible and check if it's enabled
     await nextBtn.waitFor({ state: 'visible' });
-    const isDisabled = (await nextBtn.getAttribute('disabled')) !== null;
+    const isDisabled = await nextBtn.getAttribute('disabled');
 
-    if (isDisabled) {
+    if (isDisabled !== null) {
       throw new Error('Element not found and no more pages available.');
     }
 
