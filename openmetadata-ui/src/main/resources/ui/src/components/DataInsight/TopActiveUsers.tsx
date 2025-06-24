@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -26,9 +26,8 @@ import {
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
 import { getColumnSorter } from '../../utils/EntityUtils';
-import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
@@ -75,16 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
-          <div className="d-flex gap-2 w-max-full">
-            <ProfilePicture name={userName} width="24" />
-            <Tooltip title={userName}>
-              <Typography.Link
-                className="w-full truncate"
-                href={getUserPath(userName)}>
-                {userName}
-              </Typography.Link>
-            </Tooltip>
-          </div>
+          <UserPopOverCard showUserName profileWidth={36} userName={userName} />
         ),
       },
       {

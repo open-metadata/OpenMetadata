@@ -44,11 +44,6 @@ export const ownerTableObject = <
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
     width: 180,
-    onCell: () => ({
-      style: {
-        maxWidth: 180,
-      },
-    }),
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
       <OwnerLabel

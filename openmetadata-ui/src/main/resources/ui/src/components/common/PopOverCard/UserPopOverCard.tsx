@@ -245,12 +245,14 @@ const UserPopOverCard: FC<Props> = ({
   profileWidth = 24,
 }) => {
   const profilePicture = (
-    <ProfilePicture
-      avatarType="outlined"
-      isTeam={type === OwnerType.TEAM}
-      name={userName}
-      width={`${profileWidth}`}
-    />
+    <div>
+      <ProfilePicture
+        avatarType="outlined"
+        isTeam={type === OwnerType.TEAM}
+        name={userName}
+        width={`${profileWidth}`}
+      />
+    </div>
   );
 
   return (
@@ -283,7 +285,9 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span>{displayName ?? userName}</span> : null}
+          {showUserName ? (
+            <span className="truncate">{displayName ?? userName}</span>
+          ) : null}
         </Link>
       )}
     </Popover>

@@ -354,7 +354,7 @@ export const TestSuites = () => {
           }}
           pagination={false}
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />
