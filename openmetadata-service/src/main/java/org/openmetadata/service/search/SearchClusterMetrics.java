@@ -50,19 +50,23 @@ public class SearchClusterMetrics {
       Map<String, Object> nodesStats = osClient.nodesStats();
       Map<String, Object> clusterSettings = osClient.clusterSettings();
 
+      // Debug logging for API responses
+      LOG.debug("ClusterStats response: {}", clusterStats);
+      LOG.debug("NodesStats response: {}", nodesStats);
+
       Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = ((Number) nodes.get("count")).intValue();
+      int totalNodes = extractIntValue(nodes, "count", 1);
 
       Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
       Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
-      int totalShards = ((Number) shards.get("total")).intValue();
+      int totalShards = extractIntValue(shards, "total", 0);
 
       Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
       Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();
 
       Map<String, Object> os = (Map<String, Object>) firstNode.get("os");
       Map<String, Object> cpu = (Map<String, Object>) os.get("cpu");
-      double cpuUsagePercent = ((Number) cpu.get("percent")).doubleValue();
+      double cpuUsagePercent = extractCpuPercent(cpu);
 
       Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
       Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
@@ -82,7 +86,7 @@ public class SearchClusterMetrics {
           totalEntities);
 
     } catch (Exception e) {
-      LOG.warn("Failed to fetch OpenSearch cluster metrics: {}", e.getMessage());
+      LOG.warn("Failed to fetch OpenSearch cluster metrics: {}", e.getMessage(), e);
       return getConservativeDefaults(totalEntities);
     }
   }
@@ -96,18 +100,18 @@ public class SearchClusterMetrics {
       Map<String, Object> clusterSettings = client.clusterSettings();
 
       Map<String, Object> nodes = (Map<String, Object>) clusterStats.get("nodes");
-      int totalNodes = ((Number) nodes.get("count")).intValue();
+      int totalNodes = extractIntValue(nodes, "count", 1);
 
       Map<String, Object> indices = (Map<String, Object>) clusterStats.get("indices");
       Map<String, Object> shards = (Map<String, Object>) indices.get("shards");
-      int totalShards = ((Number) shards.get("total")).intValue();
+      int totalShards = extractIntValue(shards, "total", 0);
 
       Map<String, Object> nodesMap = (Map<String, Object>) nodesStats.get("nodes");
       Map<String, Object> firstNode = (Map<String, Object>) nodesMap.values().iterator().next();
 
       Map<String, Object> os = (Map<String, Object>) firstNode.get("os");
       Map<String, Object> cpu = (Map<String, Object>) os.get("cpu");
-      double cpuUsagePercent = ((Number) cpu.get("percent")).doubleValue();
+      double cpuUsagePercent = extractCpuPercent(cpu);
 
       Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
       Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
@@ -127,7 +131,7 @@ public class SearchClusterMetrics {
           totalEntities);
 
     } catch (Exception e) {
-      LOG.warn("Failed to fetch ElasticSearch cluster metrics: {}", e.getMessage());
+      LOG.warn("Failed to fetch ElasticSearch cluster metrics: {}", e.getMessage(), e);
       return getConservativeDefaults(totalEntities);
     }
   }
@@ -248,20 +252,69 @@ public class SearchClusterMetrics {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private static double extractCpuPercent(Map<String, Object> cpu) {
+    Object percentValue = cpu.get("percent");
+
+    // Handle different formats of CPU percent from various OpenSearch versions
+    if (percentValue instanceof Number) {
+      // OpenSearch < 2.19 format: direct numeric value
+      return ((Number) percentValue).doubleValue();
+    } else if (percentValue instanceof Map) {
+      // OpenSearch 2.19+ format: might be a map with detailed CPU info
+      Map<String, Object> percentMap = (Map<String, Object>) percentValue;
+      // Try to find the actual percent value in the map
+      for (String key : new String[] {"value", "percent", "usage", "total"}) {
+        if (percentMap.containsKey(key) && percentMap.get(key) instanceof Number) {
+          return ((Number) percentMap.get(key)).doubleValue();
+        }
+      }
+    }
+
+    // Fallback: return default 50% if unable to extract
+    LOG.warn("Unable to extract CPU percent from response, using default 50%");
+    return 50.0;
+  }
+
+  private static long extractLongValue(Map<String, Object> map, String key, long defaultValue) {
+    Object value = map.get(key);
+    if (value instanceof Number) {
+      return ((Number) value).longValue();
+    }
+    LOG.debug("Unable to extract long value for key '{}', using default: {}", key, defaultValue);
+    return defaultValue;
+  }
+
+  private static int extractIntValue(Map<String, Object> map, String key, int defaultValue) {
+    Object value = map.get(key);
+    if (value instanceof Number) {
+      return ((Number) value).intValue();
+    }
+    LOG.debug("Unable to extract int value for key '{}', using default: {}", key, defaultValue);
+    return defaultValue;
+  }
+
   private static SearchClusterMetrics getConservativeDefaults(long totalEntities) {
     int conservativeBatchSize = totalEntities > 100000 ? 200 : 100;
     // More aggressive defaults with virtual threads - they're lightweight
     int conservativeThreads = totalEntities > 500000 ? 20 : 10; // Increased from 3:2 to 20:10
     int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50; // Doubled
 
+    // Use JVM runtime values as conservative defaults for heap
+    long maxHeap = Runtime.getRuntime().maxMemory();
+    long totalHeap = Runtime.getRuntime().totalMemory();
+    long freeHeap = Runtime.getRuntime().freeMemory();
+    long usedHeap = totalHeap - freeHeap;
+    double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
+
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
-        .heapSizeBytes(0L)
-        .availableMemoryBytes(0L)
+        .heapSizeBytes(maxHeap)
+        .availableMemoryBytes(maxHeap - usedHeap)
         .totalShards(0)
         .totalNodes(1)
         .cpuUsagePercent(50.0)
-        .memoryUsagePercent(50.0)
+        .memoryUsagePercent(heapUsagePercent)
         .maxPayloadSizeBytes(50 * 1024 * 1024L) // Conservative 50MB
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
