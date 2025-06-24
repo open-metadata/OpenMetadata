@@ -81,6 +81,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -1339,5 +1341,15 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationship(entityRelationshipRequest);
   }
 }

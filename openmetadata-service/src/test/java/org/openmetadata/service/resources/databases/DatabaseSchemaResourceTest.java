@@ -17,6 +17,7 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -33,9 +34,11 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.pac4j.core.util.CommonHelper.assertTrue;
 
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.SneakyThrows;
@@ -49,6 +52,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -264,6 +268,186 @@ public class DatabaseSchemaResourceTest
         updated.getColumns().stream()
             .anyMatch(c -> "Updated Column Description".equals(c.getDescription())),
         "At least one column should have updated description");
+  }
+
+  @Test
+  void test_entityRelationshipWithDirection() throws IOException {
+    // Test entity relationship direction API endpoint
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    // Test upstream direction - using correct path
+    WebTarget upstreamTarget = getResource("databaseSchemas/entityRelationship/upstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      upstreamTarget = upstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult upstreamResult =
+        TestUtils.get(upstreamTarget, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(upstreamResult);
+    assertNotNull(upstreamResult.getNodes());
+
+    // Test downstream direction - using correct path
+    WebTarget downstreamTarget = getResource("databaseSchemas/entityRelationship/downstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      downstreamTarget = downstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult downstreamResult =
+        TestUtils.get(downstreamTarget, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(downstreamResult);
+    assertNotNull(downstreamResult.getNodes());
+  }
+
+  @Test
+  void test_entityRelationshipBothDirections() throws IOException {
+    // Test entity relationship API for both directions
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    // Test both directions - using correct path for new API
+    WebTarget target = getResource("databaseSchemas/getEntityRelationship");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult result =
+        TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertNotNull(result.getNodes());
+    assertNotNull(result.getUpstreamEdges());
+    assertNotNull(result.getDownstreamEdges());
+  }
+
+  @Test
+  void test_entityRelationshipWithQueryFilter() throws IOException {
+    // Test entity relationship API with query filter
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+    queryParams.put("query", "test");
+
+    // Test with query filter - using correct path
+    WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult result =
+        TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertNotNull(result.getNodes());
+  }
+
+  @Test
+  void test_entityRelationshipWithInvalidDirection() {
+    // Test entity relationship API with invalid direction
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    // Test invalid direction - should return 404
+    assertThrows(
+        HttpResponseException.class,
+        () -> {
+          WebTarget target = getResource("databaseSchemas/entityRelationship/invalid");
+          for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+            target = target.queryParam(entry.getKey(), entry.getValue());
+          }
+          TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+        });
+  }
+
+  @Test
+  void test_entityRelationshipWithMissingFQN() {
+    // Test entity relationship API with missing FQN parameter
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    // Test missing FQN - should return 400
+    assertThrows(
+        HttpResponseException.class,
+        () -> {
+          WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
+          for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+            target = target.queryParam(entry.getKey(), entry.getValue());
+          }
+          TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+        });
+  }
+
+  @Test
+  void test_entityRelationshipWithIncludeSourceFields() throws IOException {
+    // Test entity relationship API with includeSourceFields parameter
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+    queryParams.put("includeSourceFields", "true");
+
+    // Test with includeSourceFields - using correct path
+    WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult result =
+        TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertNotNull(result.getNodes());
+  }
+
+  @Test
+  void test_entityRelationshipPaginationAndDepth() throws IOException {
+    // Test entity relationship API with different depth values
+    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+
+    // Test with depth 2
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("upstreamDepth", "2");
+    queryParams.put("downstreamDepth", "2");
+
+    WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult result =
+        TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertNotNull(result.getNodes());
+
+    // Test with depth 0 (should return immediate relationships only)
+    queryParams.put("upstreamDepth", "0");
+    queryParams.put("downstreamDepth", "0");
+
+    WebTarget immediateTarget = getResource("databaseSchemas/entityRelationship/upstream");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      immediateTarget = immediateTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchEntityRelationshipResult immediateResult =
+        TestUtils.get(immediateTarget, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(immediateResult);
+    assertNotNull(immediateResult.getNodes());
   }
 
   @Override

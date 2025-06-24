@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -134,6 +136,9 @@ public interface SearchClient {
 
   String ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY =
       "entityRelationship.relatedEntity.fqnHash.keyword";
+
+  // Add new constants for upstream entity relationship storage pattern
+  String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
 
   Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
       Set.of(
@@ -440,4 +445,10 @@ public interface SearchClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
+
+  SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 }

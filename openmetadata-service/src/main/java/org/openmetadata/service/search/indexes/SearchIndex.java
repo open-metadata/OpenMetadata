@@ -24,8 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
@@ -42,7 +40,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -192,11 +189,19 @@ public interface SearchIndex {
     return data;
   }
 
-  private static void processConstraints(
-      Table entity,
-      Table relatedEntity,
-      List<Map<String, Object>> constraints,
-      Boolean updateForeignTableIndex) {
+  static List<Map<String, Object>> populateUpstreamEntityRelationshipData(Table entity) {
+    List<Map<String, Object>> upstreamRelationships = new ArrayList<>();
+
+    // Only process constraints where this entity is the downstream (has foreign keys pointing to
+    // other tables)
+    // Following lineage pattern: store only upstream relationships
+    processUpstreamConstraints(entity, upstreamRelationships);
+
+    return upstreamRelationships;
+  }
+
+  private static void processUpstreamConstraints(
+      Table entity, List<Map<String, Object>> upstreamRelationships) {
     for (TableConstraint tableConstraint : listOrEmpty(entity.getTableConstraints())) {
       if (!tableConstraint
           .getConstraintType()
@@ -204,142 +209,61 @@ public interface SearchIndex {
           .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
         continue;
       }
+
       int columnIndex = 0;
       for (String referredColumn : listOrEmpty(tableConstraint.getReferredColumns())) {
         String relatedEntityFQN = getParentFQN(referredColumn);
-        String destinationIndexName = null;
         try {
-          if (updateForeignTableIndex) {
-            relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
-            IndexMapping destinationIndexMapping =
-                Entity.getSearchRepository()
-                    .getIndexMapping(relatedEntity.getEntityReference().getType());
-            destinationIndexName =
-                destinationIndexMapping.getIndexName(
-                    Entity.getSearchRepository().getClusterAlias());
-          }
-          Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
-          int relatedEntityIndex =
-              checkRelatedEntity(
+          Table relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
+
+          // Following lineage pattern: store only upstream relationship where relatedEntity is
+          // upstream
+          // Current entity depends on relatedEntity (relatedEntity -> current entity)
+          Map<String, Object> relationshipMap =
+              buildUpstreamRelationshipMap(
+                  entity, relatedEntity, tableConstraint, referredColumn, columnIndex);
+
+          int existingIndex =
+              checkUpstreamRelationship(
                   entity.getFullyQualifiedName(),
                   relatedEntity.getFullyQualifiedName(),
-                  constraints);
-          if (relatedEntityIndex >= 0) {
-            updateExistingConstraint(
+                  upstreamRelationships);
+
+          if (existingIndex >= 0) {
+            updateExistingUpstreamRelationship(
                 entity,
                 tableConstraint,
-                constraints.get(relatedEntityIndex),
-                destinationIndexName,
-                relatedEntity,
+                upstreamRelationships.get(existingIndex),
                 referredColumn,
-                columnIndex,
-                updateForeignTableIndex);
+                columnIndex);
           } else {
-            addNewConstraint(
-                entity,
-                tableConstraint,
-                constraints,
-                relationshipsMap,
-                destinationIndexName,
-                relatedEntity,
-                referredColumn,
-                columnIndex,
-                updateForeignTableIndex);
+            upstreamRelationships.add(relationshipMap);
           }
+
           columnIndex++;
         } catch (EntityNotFoundException ex) {
+          // Skip if related entity not found
         }
       }
     }
   }
 
-  static List<Map<String, Object>> populateEntityRelationshipData(Table entity) {
-    List<Map<String, Object>> constraints = new ArrayList<>();
-    processConstraints(entity, null, constraints, true);
-
-    // We need to query the table_entity table to find the references this current table
-    // has with other tables. We pick this info from the ES however in case of re-indexing this info
-    // needs to be picked from the db
-    List<CollectionDAO.EntityRelationshipRecord> relatedTables =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findFrom(entity.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
-
-    for (CollectionDAO.EntityRelationshipRecord table : relatedTables) {
-      Table foreignTable = Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", ALL);
-      processConstraints(foreignTable, entity, constraints, false);
-    }
-    return constraints;
-  }
-
-  static int checkRelatedEntity(
-      String entityFQN, String relatedEntityFQN, List<Map<String, Object>> constraints) {
-    int index = 0;
-    for (Map<String, Object> constraint : constraints) {
-      Map<String, Object> relatedConstraintEntity =
-          (Map<String, Object>) constraint.get("relatedEntity");
-      Map<String, Object> constraintEntity = (Map<String, Object>) constraint.get("entity");
-      if (relatedConstraintEntity.get("fqn").equals(relatedEntityFQN)
-          && constraintEntity.get("fqn").equals(entityFQN)) {
-        return index;
-      }
-      index++;
-    }
-    return -1;
-  }
-
-  private static Map<String, Object> buildRelationshipsMap(
-      EntityInterface entity, Table relatedEntity) {
-    Map<String, Object> relationshipsMap = new HashMap<>();
-    relationshipsMap.put("entity", buildEntityRefMap(entity.getEntityReference()));
-    relationshipsMap.put("relatedEntity", buildEntityRefMap(relatedEntity.getEntityReference()));
-    relationshipsMap.put(
-        "docId", entity.getId().toString() + "-" + relatedEntity.getId().toString());
-    return relationshipsMap;
-  }
-
-  private static void updateRelatedEntityIndex(
-      String destinationIndexName, Table relatedEntity, Map<String, Object> constraint) {
-    Pair<String, String> to = new ImmutablePair<>("_id", relatedEntity.getId().toString());
-    searchClient.updateEntityRelationship(destinationIndexName, to, constraint);
-  }
-
-  private static void updateExistingConstraint(
+  private static Map<String, Object> buildUpstreamRelationshipMap(
       EntityInterface entity,
-      TableConstraint tableConstraint,
-      Map<String, Object> presentConstraint,
-      String destinationIndexName,
       Table relatedEntity,
-      String referredColumn,
-      int columnIndex,
-      Boolean updateForeignTableIndex) {
-    String columnFQN =
-        FullyQualifiedName.add(
-            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
-
-    Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", referredColumn);
-    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-
-    List<Map<String, Object>> presentColumns =
-        (List<Map<String, Object>>) presentConstraint.get("columns");
-    presentColumns.add(columnMap);
-    if (updateForeignTableIndex) {
-      updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
-    }
-  }
-
-  private static void addNewConstraint(
-      EntityInterface entity,
       TableConstraint tableConstraint,
-      List<Map<String, Object>> constraints,
-      Map<String, Object> relationshipsMap,
-      String destinationIndexName,
-      Table relatedEntity,
       String referredColumn,
-      int columnIndex,
-      Boolean updateForeignTableIndex) {
+      int columnIndex) {
+    Map<String, Object> relationshipMap = new HashMap<>();
+
+    // Following lineage pattern: store only entity field (upstream entity)
+    // relatedEntity is the upstream entity that the current entity depends on
+    relationshipMap.put(
+        "entity", buildEntityRefMap(relatedEntity.getEntityReference())); // upstream entity only
+    relationshipMap.put(
+        "docId", relatedEntity.getId().toString() + "-" + entity.getId().toString());
+
+    // Add column mapping
     List<Map<String, Object>> columns = new ArrayList<>();
     String columnFQN =
         FullyQualifiedName.add(
@@ -350,11 +274,43 @@ public interface SearchIndex {
     columnMap.put("relatedColumnFQN", referredColumn);
     columnMap.put("relationshipType", tableConstraint.getRelationshipType());
     columns.add(columnMap);
-    relationshipsMap.put("columns", columns);
-    constraints.add(JsonUtils.getMap(relationshipsMap));
-    if (updateForeignTableIndex) {
-      updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
+
+    relationshipMap.put("columns", columns);
+    return relationshipMap;
+  }
+
+  static int checkUpstreamRelationship(
+      String entityFQN, String relatedEntityFQN, List<Map<String, Object>> relationships) {
+    int index = 0;
+    for (Map<String, Object> relationship : relationships) {
+      Map<String, Object> upstreamEntity = (Map<String, Object>) relationship.get("entity");
+      // Check if this upstream entity relationship already exists
+      if (upstreamEntity.get("fqn").equals(relatedEntityFQN)) {
+        return index;
+      }
+      index++;
     }
+    return -1;
+  }
+
+  private static void updateExistingUpstreamRelationship(
+      EntityInterface entity,
+      TableConstraint tableConstraint,
+      Map<String, Object> existingRelationship,
+      String referredColumn,
+      int columnIndex) {
+    String columnFQN =
+        FullyQualifiedName.add(
+            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
+
+    Map<String, Object> columnMap = new HashMap<>();
+    columnMap.put("columnFQN", columnFQN);
+    columnMap.put("relatedColumnFQN", referredColumn);
+    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+
+    List<Map<String, Object>> existingColumns =
+        (List<Map<String, Object>>) existingRelationship.get("columns");
+    existingColumns.add(columnMap);
   }
 
   static Map<String, Object> buildEntityRefMap(EntityReference entityRef) {

@@ -23,6 +23,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
@@ -60,6 +61,8 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -217,6 +220,7 @@ public class OpenSearchClient implements SearchClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   private final OSLineageGraphBuilder lineageGraphBuilder;
+  private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
 
@@ -256,6 +260,7 @@ public class OpenSearchClient implements SearchClient {
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
+    entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
   }
 
   @Override
@@ -2680,6 +2685,81 @@ public class OpenSearchClient implements SearchClient {
     } catch (Exception e) {
       LOG.error("Failed to fetch cluster settings", e);
       throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
+    int downstreamDepth = entityRelationshipRequest.getDownstreamDepth();
+    SearchEntityRelationshipResult result =
+        entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .DOWNSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .DOWNSTREAM,
+                        false)));
+    SearchEntityRelationshipResult upstreamResult =
+        entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .UPSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .UPSTREAM,
+                        false)));
+
+    // Merge the results
+    result.getNodes().putAll(upstreamResult.getNodes());
+    result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    return result;
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    boolean isConnectedVia = false;
+    Set<String> directionValue =
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection(), isConnectedVia);
+    entityRelationshipRequest.setDirectionValue(directionValue);
+
+    if (entityRelationshipRequest.getDirection()
+        == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {
+      return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+          entityRelationshipRequest);
+    } else {
+      directionValue =
+          getEntityRelationshipDirection(entityRelationshipRequest.getDirection(), isConnectedVia);
+      entityRelationshipRequest.setDirectionValue(directionValue);
+      return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+          entityRelationshipRequest);
     }
   }
 }

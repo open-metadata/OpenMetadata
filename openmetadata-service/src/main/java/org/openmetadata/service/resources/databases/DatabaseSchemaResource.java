@@ -47,10 +47,14 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -856,5 +860,140 @@ public class DatabaseSchemaResource
 
     return Entity.getSearchRepository()
         .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  @GET
+  @Path("/entityRelationship/{direction}")
+  @Operation(
+      operationId = "searchEntityRelationshipWithDirection",
+      summary = "Search entity relationship with Direction",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
+      })
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
+          @PathParam("direction")
+          EntityRelationshipDirection direction,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
+          int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+    // Validate required FQN parameter
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationshipWithDirection(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withDirection(direction)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  @GET
+  @Path("/getEntityRelationship")
+  @Operation(
+      operationId = "searchEntityRelationship",
+      summary = "Search entity relationship",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
+      })
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
+          int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+    // Validate required FQN parameter
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationship(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  private Set<String> getRequiredEntityRelationshipFields(String includeSourceFields) {
+    if (includeSourceFields.equals("*")) {
+      return Set.of("*");
+    }
+    return Set.of(includeSourceFields.split(","));
   }
 }

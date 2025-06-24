@@ -18,6 +18,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
@@ -36,6 +37,8 @@ public final class SearchUtils {
   public static final String LINEAGE_AGGREGATION = "matchesPerKey";
   public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
   public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
+  public static final String ENTITY_RELATIONSHIP_AGGREGATION = "entityRelationshipAggregation";
+  public static final String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
 
   private SearchUtils() {}
 
@@ -179,5 +182,69 @@ public final class SearchUtils {
           .collect(Collectors.toList());
     }
     return Collections.emptyList();
+  }
+
+  public static Set<String> getEntityRelationshipDirection(
+      EntityRelationshipDirection direction, boolean isConnectedVia) {
+    Set<String> directionValue = new HashSet<>();
+    if (isConnectedVia) {
+      directionValue.add("entityRelationship.entity.fqnHash.keyword");
+    } else {
+      directionValue.add(
+          direction == EntityRelationshipDirection.UPSTREAM
+              ? "entityRelationship.entity.fqnHash.keyword"
+              : "entityRelationship.relatedEntity.fqnHash.keyword");
+    }
+    return directionValue;
+  }
+
+  public static String getEntityRelationshipDirectionAggregationField(
+      EntityRelationshipDirection direction) {
+    return direction == EntityRelationshipDirection.UPSTREAM
+        ? "upstreamEntityRelationship.entity.fqnHash.keyword"
+        : "upstreamEntityRelationship.relatedEntity.fqnHash.keyword";
+  }
+
+  public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+      getUpstreamEntityRelationshipListIfExist(Map<String, Object> esDoc) {
+    if (esDoc.containsKey(UPSTREAM_ENTITY_RELATIONSHIP_FIELD)) {
+      return JsonUtils.readOrConvertValues(
+          esDoc.get(UPSTREAM_ENTITY_RELATIONSHIP_FIELD),
+          org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData.class);
+    }
+    return Collections.emptyList();
+  }
+
+  public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+      paginateUpstreamEntityRelationships(
+          List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+              upstreamEntities,
+          int from,
+          int size) {
+    if (nullOrEmpty(upstreamEntities)) {
+      return Collections.emptyList();
+    }
+
+    int totalLength = upstreamEntities.size();
+
+    if (from >= totalLength) {
+      return Collections.emptyList();
+    }
+
+    // Calculate the end index
+    int to = Math.min(from + size, totalLength);
+
+    // Return the sublist
+    return upstreamEntities.subList(from, to);
+  }
+
+  public static org.openmetadata.schema.api.entityRelationship.RelationshipRef
+      getEntityRelationshipRef(Map<String, Object> entityMap) {
+    // This assumes these keys exists in the map, use it with caution
+    return new org.openmetadata.schema.api.entityRelationship.RelationshipRef()
+        .withId(UUID.fromString(entityMap.get("id").toString()))
+        .withType(entityMap.get("entityType").toString())
+        .withFullyQualifiedName(entityMap.get("fullyQualifiedName").toString())
+        .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
   }
 }

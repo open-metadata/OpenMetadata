@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/entityRelationshipDirection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityRelationshipDirection",
+  "description": "Entity Relationship Direction Schema.",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection",
+  "type": "string",
+  "enum": ["Upstream", "Downstream"]
+} 
