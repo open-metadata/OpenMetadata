@@ -100,6 +100,8 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
@@ -161,6 +163,23 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+
+    // Register the search index handler as the primary handler for search operations
+    registerSearchIndexHandler();
+  }
+
+  /**
+   * Register the SearchIndexHandler as the primary handler for search indexing operations.
+   * This handler will handle the actual search indexing when entities are created/updated/deleted.
+   */
+  private void registerSearchIndexHandler() {
+    try {
+      SearchIndexHandler searchHandler = new SearchIndexHandler(this);
+      EntityLifecycleEventDispatcher.getInstance().registerHandler(searchHandler);
+      LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
+    } catch (Exception e) {
+      LOG.error("Failed to register SearchIndexHandler", e);
+    }
   }
 
   public SearchClient getSearchClient() {
@@ -320,7 +339,17 @@ public class SearchRepository {
     return null;
   }
 
-  public void createEntity(EntityInterface entity) {
+  /**
+   * Create search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void createEntityIndex(EntityInterface entity) {
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
     if (entity != null) {
       String entityId = entity.getId().toString();
       String entityType = entity.getEntityReference().getType();
@@ -341,7 +370,11 @@ public class SearchRepository {
     }
   }
 
-  public void createEntities(List<EntityInterface> entities) {
+  /**
+   * Create search indexes for multiple entities only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void createEntitiesIndex(List<EntityInterface> entities) {
     if (!nullOrEmpty(entities)) {
       // All entities in the list are of the same type
       String entityType = entities.get(0).getEntityReference().getType();
@@ -364,6 +397,16 @@ public class SearchRepository {
             ExceptionUtils.getStackTrace(ie));
       }
     }
+  }
+
+  /**
+   * Create search indexes for multiple entities and dispatch lifecycle events.
+   * This method maintains backward compatibility.
+   */
+  public void createEntities(List<EntityInterface> entities) {
+    // For backward compatibility, just call the index-only method
+    // EntityRepository now handles lifecycle event dispatching
+    createEntitiesIndex(entities);
   }
 
   public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
@@ -416,7 +459,17 @@ public class SearchRepository {
     }
   }
 
-  public void updateEntity(EntityInterface entity) {
+  /**
+   * Update search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void updateEntityIndex(EntityInterface entity) {
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       String entityId = entity.getId().toString();
@@ -467,7 +520,16 @@ public class SearchRepository {
     EntityInterface entity =
         entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
     // Update Entity
-    updateEntity(entity);
+    updateEntityIndex(entity);
+  }
+
+  public boolean checkIfIndexingIsSupported(String entityType) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null) {
+      LOG.debug("Index mapping is not supported for entity type: {}", entityType);
+      return false;
+    }
+    return true;
   }
 
   public void propagateInheritedFieldsToChildren(
@@ -842,23 +904,36 @@ public class SearchRepository {
     }
   }
 
-  public void deleteEntity(EntityInterface entity) {
-    if (entity != null) {
-      String entityId = entity.getId().toString();
-      String entityType = entity.getEntityReference().getType();
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      try {
-        searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
-        deleteOrUpdateChildren(entity, indexMapping);
-      } catch (Exception ie) {
-        LOG.error(
-            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-            entityId,
-            entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
-      }
+  /**
+   * Delete search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void deleteEntityIndex(EntityInterface entity) {
+    if (entity == null) {
+      LOG.debug("Entity or EntityReference is null, cannot perform delete.");
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    try {
+      searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
+      deleteOrUpdateChildren(entity, indexMapping);
+    } catch (Exception ie) {
+      LOG.error(
+          "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityId,
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
@@ -900,25 +975,38 @@ public class SearchRepository {
     }
   }
 
-  public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
-    if (entity != null) {
-      String entityId = entity.getId().toString();
-      String entityType = entity.getEntityReference().getType();
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
-      try {
-        searchClient.softDeleteOrRestoreEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
-        softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
-      } catch (Exception ie) {
-        LOG.error(
-            "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-            entityId,
-            entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
-      }
+  /**
+   * Soft delete or restore search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void softDeleteOrRestoreEntityIndex(EntityInterface entity, boolean delete) {
+    if (entity == null) {
+      LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    try {
+      searchClient.softDeleteOrRestoreEntity(
+          indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
+      softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+    } catch (Exception ie) {
+      LOG.error(
+          "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityId,
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
