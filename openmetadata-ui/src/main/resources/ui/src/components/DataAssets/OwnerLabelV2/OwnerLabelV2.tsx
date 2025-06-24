@@ -78,7 +78,7 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [data, permissions, handleUpdatedOwner]
+    [data, permissions, handleUpdatedOwner, isVersionView]
   );
 
   return (
