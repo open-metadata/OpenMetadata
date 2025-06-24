@@ -84,6 +84,10 @@ export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
+export const AIRFLOW_HYBRID = 'Hybrid';
+export const COLLATE_SAAS = 'CollateSaaS';
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+export const RUNNER = 'ingestionRunner';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -248,8 +252,12 @@ export const ROUTES = {
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
-  INCIDENT_MANAGER_DETAILS: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}`,
-  INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  // test case
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_FQN}`,
+  TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -362,6 +370,10 @@ export const VALIDATION_MESSAGES = {
       min: '${min}',
       max: '${max}',
     }),
+    min: i18n.t('message.entity-size-less-than', {
+      entity: '${label}',
+      min: '${min}',
+    }),
   },
 };
 
@@ -420,3 +432,6 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
+export const ONE_HOUR_MS = 60 * 60 * 1000;

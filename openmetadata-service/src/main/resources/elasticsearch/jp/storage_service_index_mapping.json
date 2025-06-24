@@ -11,10 +11,10 @@
         }
       },
       "analyzer": {
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
             "kuromoji_baseform",
             "kuromoji_part_of_speech",
             "kuromoji_number",
@@ -50,6 +50,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -63,6 +67,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -111,6 +119,31 @@
           },
           "href": {
             "type": "text"
+          }
+        }
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
@@ -250,7 +283,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -301,7 +334,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
@@ -309,5 +342,4 @@
       }
     }
   }
-
 }

@@ -85,7 +85,7 @@ import {
   getVersionPath,
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -355,8 +355,7 @@ const DatabaseDetails: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -517,6 +516,21 @@ const DatabaseDetails: FunctionComponent = () => {
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (database) {
+        const certificationTag: Database['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...database,
+          certification: certificationTag,
+        };
+
+        await settingsUpdateHandler(updatedTableDetails as Database);
+      }
+    },
+    [settingsUpdateHandler, database]
+  );
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
@@ -528,7 +542,15 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!(databasePermission.ViewAll || databasePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.database'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -552,6 +574,7 @@ const DatabaseDetails: FunctionComponent = () => {
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}

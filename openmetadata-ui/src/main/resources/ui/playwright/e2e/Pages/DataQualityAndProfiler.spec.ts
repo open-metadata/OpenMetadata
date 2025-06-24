@@ -50,7 +50,6 @@ test.beforeAll(async ({ browser }) => {
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
     testDefinition: 'columnValuesToBeInSet',
-    testSuite: testSuiteData?.['fullyQualifiedName'],
   });
   await afterAction();
 });
@@ -268,7 +267,7 @@ test(
     ).toContainText(DATA_QUALITY_TABLE.term);
 
     const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/*/tableProfile/latest`
+      `/api/v1/tables/*/tableProfile/latest?includeColumnProfile=false`
     );
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
@@ -302,7 +301,7 @@ test(
       '/api/v1/dataQuality/testCases/name/*?fields=*'
     );
     const getTestResult = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/*/testCaseResult?*'
+      '/api/v1/dataQuality/testCases/testCaseResults/*?*'
     );
     await page
       .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
@@ -724,7 +723,6 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const testCase2 = await filterTable1.createTestCase(apiContext, {
       name: smilerNameTestCase[i],
       entityLink: `<#E::table::${filterTable2Response?.['fullyQualifiedName']}>`,
-      testSuite: testSuite2Response?.['fullyQualifiedName'],
     });
     await filterTable1.addTestCaseResult(
       apiContext,

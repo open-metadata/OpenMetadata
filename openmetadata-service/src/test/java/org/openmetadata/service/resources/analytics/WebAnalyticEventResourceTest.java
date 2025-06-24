@@ -1,8 +1,8 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -12,12 +12,12 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -59,12 +59,12 @@ public class WebAnalyticEventResourceTest
     assertResponseContains(
         () -> createEntity(createRequest(test).withEventType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "eventType must not be null");
+        "query param eventType must not be null");
 
     assertResponseContains(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name must not be null");
+        "query param name must not be null");
   }
 
   @Test

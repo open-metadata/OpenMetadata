@@ -122,9 +122,6 @@ test.describe('Bulk Edit Entity', () => {
       );
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -137,6 +134,9 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
       // Click on first cell and edit
 
@@ -194,20 +194,10 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user1.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
       ).toBeVisible();
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user2.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -270,9 +260,6 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -285,6 +272,9 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
       // click on last row first cell
       await page.click(
@@ -420,9 +410,6 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(
         page.locator('.InovuaReactDataGrid__header-layout')
@@ -431,6 +418,9 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
       // Click on first cell and edit
       await page.click(
@@ -522,7 +512,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow();
+    test.slow(true);
 
     const tableEntity = new TableClass();
 
@@ -534,9 +524,6 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(
         page.locator('.InovuaReactDataGrid__header-layout')
@@ -545,6 +532,9 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
       // click on row first cell
       await page.click(
@@ -588,10 +578,10 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await updateButtonResponse;
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
-      await updateButtonResponse;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -633,9 +623,6 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(
         page.locator('.InovuaReactDataGrid__header-layout')
@@ -644,6 +631,9 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
       // Click on first cell and edit
       await page.click(
@@ -692,6 +682,10 @@ test.describe('Bulk Edit Entity', () => {
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await toastNotification(
         page,

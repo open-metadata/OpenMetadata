@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -106,7 +110,8 @@
             "type": "text",
             "index_options": "docs",
             "analyzer": "om_analyzer",
-            "norms": false
+            "norms": false,
+            "term_vector": "with_positions_offsets"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -271,8 +276,8 @@
       "entityType": {
         "type": "keyword"
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "owners": {
         "properties": {
@@ -351,7 +356,7 @@
       "deleted": {
         "type": "boolean"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -456,9 +461,6 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
       },
@@ -503,8 +505,8 @@
         }
       },
       "indexType": {
-       "type": "text"
-    }
+        "type": "text"
+      }
     }
   }
 }

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.charts;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -70,7 +70,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test

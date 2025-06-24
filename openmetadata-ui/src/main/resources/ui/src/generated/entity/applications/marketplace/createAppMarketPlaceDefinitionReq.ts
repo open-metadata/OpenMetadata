@@ -248,6 +248,11 @@ export interface CollateAIAppConfig {
      */
     active?: boolean;
     /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
@@ -549,6 +554,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -965,6 +971,10 @@ export interface Webhook {
      */
     httpMethod?: HTTPMethod;
     /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
+    /**
      * List of receivers to send mail to
      */
     receivers?: string[];
@@ -1180,9 +1190,11 @@ export enum PrefixCondition {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1249,6 +1261,7 @@ export interface ExecutionContext {
 export enum ScheduleType {
     Live = "Live",
     NoSchedule = "NoSchedule",
+    OnlyManual = "OnlyManual",
     Scheduled = "Scheduled",
     ScheduledOrManual = "ScheduledOrManual",
 }

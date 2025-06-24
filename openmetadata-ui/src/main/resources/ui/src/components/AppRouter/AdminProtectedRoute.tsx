@@ -12,24 +12,31 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
-
 interface AdminProtectedRouteProps extends RouteProps {
   hasPermission?: boolean;
 }
 
 const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
+  const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const hasPermission = Boolean(routeProps.hasPermission);
 
   if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
   } else if (!hasPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }

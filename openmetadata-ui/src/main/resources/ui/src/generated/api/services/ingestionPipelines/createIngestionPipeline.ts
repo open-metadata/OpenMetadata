@@ -40,6 +40,7 @@ export interface CreateIngestionPipeline {
      */
     owners?:      EntityReference[];
     pipelineType: PipelineType;
+    provider?:    ProviderType;
     /**
      * Control if we want to flag the workflow as failed if we encounter any processing errors.
      */
@@ -201,6 +202,18 @@ export enum PipelineType {
     Profiler = "profiler",
     TestSuite = "TestSuite",
     Usage = "usage",
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**
@@ -670,9 +683,13 @@ export interface Pipeline {
      */
     searchAcrossDatabases?: boolean;
     /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
      * Application configuration
      */
-    appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application private configuration
      */
@@ -742,6 +759,8 @@ export interface Pipeline {
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -869,6 +888,11 @@ export interface CollateAIAppConfig {
      */
     active?: boolean;
     /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
      */
@@ -877,6 +901,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1111,6 +1136,7 @@ export interface TagLabel {
 export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -1390,19 +1416,20 @@ export interface PrivateConfig {
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
      */
-    collateURL: string;
+    collateURL?: string;
     /**
      * Limits for the CollateAI Application.
      */
-    limits: AppLimitsConfig;
+    limits?: AppLimitsConfig;
     /**
      * WAII API Token
      */
-    token: string;
+    token?: string;
     /**
      * WAII API host URL
      */
-    waiiInstance: string;
+    waiiInstance?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2032,6 +2059,8 @@ export interface ServiceConnection {
  *
  * Wherescape Metadata Database Connection Config
  *
+ * SSIS Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -2195,7 +2224,7 @@ export interface ConfigClass {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -2518,7 +2547,7 @@ export interface ConfigClass {
      */
     connection?: ConfigConnection;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
      *
@@ -2536,10 +2565,6 @@ export interface ConfigClass {
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
@@ -2551,10 +2576,6 @@ export interface ConfigClass {
      * Tableau Site Name.
      */
     siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?: string;
     /**
      * SSL Configuration details.
      *
@@ -2665,6 +2686,10 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -2850,6 +2875,10 @@ export interface ConfigClass {
      */
     queryHistoryTable?: string;
     /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -2892,6 +2921,10 @@ export interface ConfigClass {
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -3325,6 +3358,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -4292,6 +4329,10 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
      */
@@ -4791,6 +4832,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -4867,6 +4912,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -5067,6 +5143,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -5337,6 +5414,7 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",

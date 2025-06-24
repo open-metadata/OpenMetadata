@@ -64,7 +64,13 @@ const GlobalSettingPage = () => {
   }, []);
 
   if (isEmpty(settingItems)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        permissionValue={t('label.setting-plural')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

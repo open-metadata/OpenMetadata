@@ -73,7 +73,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const ContainerPage = () => {
@@ -385,8 +385,7 @@ const ContainerPage = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.container'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -442,6 +441,27 @@ const ContainerPage = () => {
     }
   };
 
+  const onContainerUpdateCertification = async (
+    updatedContainer: Container,
+    key?: keyof Container
+  ) => {
+    try {
+      const response = await handleUpdateContainerData(updatedContainer);
+      setContainerData((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          version: response.version,
+          ...(key ? { [key]: response[key] } : response),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -518,6 +538,24 @@ const ContainerPage = () => {
     [tabs[0], tab]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (containerData) {
+        const certificationTag: Container['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...containerData,
+          certification: certificationTag,
+        };
+
+        await onContainerUpdateCertification(
+          updatedTableDetails,
+          'certification'
+        );
+      }
+    },
+    [containerData, handleContainerUpdate]
+  );
   // Rendering
   if (isLoading || loading) {
     return <Loader />;
@@ -532,7 +570,15 @@ const ContainerPage = () => {
   }
 
   if (!viewBasicPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.container'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!containerData) {
@@ -555,6 +601,7 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             openTaskCount={feedCount.openTaskCount}
             permissions={containerPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}

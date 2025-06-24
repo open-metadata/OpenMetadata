@@ -12,14 +12,8 @@
 Workflow definition for the profiler
 """
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.api.steps import Processor, Sink
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
@@ -40,12 +34,6 @@ class ProfilerWorkflow(IngestionWorkflow):
     this workflow. No need to do anything here if this does not pass
     """
 
-    def __init__(self, config: OpenMetadataWorkflowConfig):
-        super().__init__(config)
-
-        # Validate that we can properly reach the source database
-        self.test_connection()
-
     def _get_source_class(self):
         if self.config.source.serviceName:
             self.import_source_class()
@@ -58,6 +46,15 @@ class ProfilerWorkflow(IngestionWorkflow):
         return OpenMetadataSourceExt
 
     def set_steps(self):
+        # TODO: Clean after https://github.com/open-metadata/OpenMetadata/issues/21259
+        # We are forcing the secret evaluation to "ignore" null secrets down the line
+        # Remove this when the issue above is fixed and empty secrets migrated
+        source_config_class = type(self.config.source.serviceConnection.root.config)
+        dumped_config = self.config.source.serviceConnection.root.config.model_dump()
+        self.config.source.serviceConnection.root.config = (
+            source_config_class.model_validate(dumped_config)
+        )
+
         # NOTE: Call test_connection to update host value before creating the source class
         self.test_connection()
 
@@ -75,9 +72,7 @@ class ProfilerWorkflow(IngestionWorkflow):
             service_config = self.config.source.serviceConnection.root.config
             conn = get_ssl_connection(service_config)
 
-            test_connection_fn = get_test_connection_fn(service_config)
-            result = test_connection_fn(self.metadata, conn, service_config)
-            raise_test_connection_exception(result)
+            test_connection_common(self.metadata, conn, service_config)
 
         return main(self)
 

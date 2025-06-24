@@ -123,6 +123,10 @@ export interface Table {
      */
     profile?: TableProfile;
     /**
+     * List of queries that are used to create this table.
+     */
+    queries?: string[];
+    /**
      * Retention period of the data in the table. Period is expressed as duration in ISO 8601
      * format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from
      * the parent database schema, if it exists.
@@ -259,6 +263,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -869,10 +874,6 @@ export enum FileFormat {
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
     Parquet = "parquet",
-    ParquetPq = "pq",
-    ParquetPqt = "pqt",
-    ParquetParq = "parq",
-    ParquetSnappy = "parquet.snappy",
     Tsv = "tsv",
 }
 

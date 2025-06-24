@@ -1,5 +1,5 @@
 ---
-title: MariaDB
+title: MariaDB Connector | OpenMetadata Database Integration Guide
 slug: /connectors/database/mariadb
 ---
 

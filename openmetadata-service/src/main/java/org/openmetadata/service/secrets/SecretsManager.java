@@ -16,6 +16,7 @@ package org.openmetadata.service.secrets;
 import static java.util.Objects.isNull;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,7 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
@@ -356,10 +356,12 @@ public abstract class SecretsManager {
       }
       return toEncryptObject;
     } catch (Exception e) {
-      throw new SecretsManagerException(
+      String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage()));
+              secretId, e.getMessage());
+      LOG.error(msg);
+      throw new SecretsManagerException(msg);
     }
   }
 
@@ -390,6 +392,7 @@ public abstract class SecretsManager {
               });
       return toDecryptObject;
     } catch (Exception e) {
+      LOG.error("Error trying to decrypt object due to [{}]", e.getMessage());
       throw new SecretsManagerException(
           String.format(
               "Error trying to decrypt object [%s] due to [%s]",

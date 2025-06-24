@@ -128,6 +128,8 @@ export interface TestServiceConnectionRequest {
     connectionType?: string;
     /**
      * Optional value of the ingestion runner name responsible for running the test
+     *
+     * Optional value of the ingestion runner name responsible for running the workflow
      */
     ingestionRunner?: string;
     /**
@@ -317,6 +319,8 @@ export interface RequestConnection {
  *
  * Wherescape Metadata Database Connection Config
  *
+ * SSIS Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -445,6 +449,10 @@ export interface ConfigClass {
      */
     type?: RESTType;
     /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -532,7 +540,7 @@ export interface ConfigClass {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -906,6 +914,10 @@ export interface ConfigClass {
      */
     queryHistoryTable?: string;
     /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -962,6 +974,10 @@ export interface ConfigClass {
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1273,7 +1289,7 @@ export interface ConfigClass {
      */
     redashVersion?: string;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
      *
@@ -1283,17 +1299,9 @@ export interface ConfigClass {
      */
     apiVersion?: string;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Tableau Site Name.
      */
     siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?: string;
     /**
      * Access Token Password for Mode Dashboard
      */
@@ -1445,6 +1453,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -1790,9 +1802,9 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex exclude pipelines.
  *
- * Regex to only fetch MlModels with names matching the pattern.
- *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  */
@@ -2825,6 +2837,10 @@ export interface ConfigConnection {
      */
     databaseName?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -3319,6 +3335,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -3395,6 +3415,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -3608,6 +3659,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -3878,6 +3930,7 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
@@ -4004,6 +4057,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

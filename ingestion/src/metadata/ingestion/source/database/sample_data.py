@@ -890,6 +890,7 @@ class SampleDataSource(
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
                 sourceUrl=table.get("sourceUrl"),
+                tablePartition=table.get("tablePartition"),
             )
 
             yield Either(right=table_and_db)
@@ -1602,7 +1603,6 @@ class SampleDataSource(
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=suite.fullyQualifiedName.root,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]

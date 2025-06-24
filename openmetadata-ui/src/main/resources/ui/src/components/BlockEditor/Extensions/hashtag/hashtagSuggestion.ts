@@ -60,6 +60,11 @@ export const hashtagSuggestion = () => ({
 
     return {
       onStart: (props: SuggestionProps) => {
+        // Check if editor is in preview mode
+        if (props.editor.isEditable === false) {
+          return;
+        }
+
         component = new ReactRenderer(HashList, {
           props,
           editor: props.editor,

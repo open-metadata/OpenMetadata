@@ -16,6 +16,7 @@ from typing import Iterable, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -32,16 +33,14 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
 from metadata.ingestion.source.database.unitycatalog.models import LineageTableStreams
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
@@ -175,20 +174,49 @@ class UnitycatalogLineageSource(Source):
         for database in self.metadata.list_all_entities(
             entity=Database, params={"service": self.config.serviceName}
         ):
-            for table in self.metadata.list_all_entities(
-                entity=Table, params={"database": database.fullyQualifiedName.root}
+            if filter_by_database(
+                self.source_config.databaseFilterPattern, database.name.root
             ):
-                databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
-                table_streams: LineageTableStreams = self.client.get_table_lineage(
-                    databricks_table_fqn
+                self.status.filter(
+                    database.fullyQualifiedName.root,
+                    "Catalog Filtered Out",
                 )
-                yield from self._handle_upstream_table(
-                    table_streams, table, databricks_table_fqn
-                )
+                continue
+            for schema in self.metadata.list_all_entities(
+                entity=DatabaseSchema,
+                params={"database": database.fullyQualifiedName.root},
+            ):
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema.name.root
+                ):
+                    self.status.filter(
+                        schema.fullyQualifiedName.root,
+                        "Schema Filtered Out",
+                    )
+                    continue
+                for table in self.metadata.list_all_entities(
+                    entity=Table,
+                    params={"databaseSchema": schema.fullyQualifiedName.root},
+                ):
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern, table.name.root
+                    ):
+                        self.status.filter(
+                            table.fullyQualifiedName.root,
+                            "Table Filtered Out",
+                        )
+                        continue
+
+                    databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
+                    logger.debug(f"Processing table: {databricks_table_fqn}")
+                    table_streams: LineageTableStreams = self.client.get_table_lineage(
+                        databricks_table_fqn
+                    )
+                    yield from self._handle_upstream_table(
+                        table_streams, table, databricks_table_fqn
+                    )
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)

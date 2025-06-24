@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,8 +32,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -355,6 +355,8 @@ public final class UserUtil {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()))
+        .withExternalId(create.getExternalId())
+        .withScimUserName(create.getScimUserName());
   }
 }

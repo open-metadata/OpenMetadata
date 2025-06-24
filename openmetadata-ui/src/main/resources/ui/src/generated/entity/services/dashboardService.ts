@@ -257,7 +257,7 @@ export interface Connection {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -346,7 +346,7 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
      */
@@ -356,21 +356,13 @@ export interface Connection {
      */
     authType?: AuthenticationTypeForTableau;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
     paginationLimit?: number;
     /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:   string;
+    siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
     verifySSL?: VerifySSL;
     /**
@@ -719,6 +711,10 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -1209,6 +1205,7 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -1384,6 +1381,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
