@@ -500,11 +500,14 @@ test.describe('User Profile Feed Interactions', () => {
       userDetailsResponse,
       userFeedResponse,
     ]);
-    const { fullyQualifiedName } = await response.json();
+    const { name, displayName } = await response.json();
+
+    // The UI shows displayName if available, otherwise falls back to name
+    const expectedText = displayName ?? name;
 
     await expect(
       adminPage.locator('[data-testid="user-display-name"]')
-    ).toHaveText(fullyQualifiedName);
+    ).toHaveText(expectedText);
   });
 
   test('Close the profile dropdown after redirecting to user profile page', async ({
