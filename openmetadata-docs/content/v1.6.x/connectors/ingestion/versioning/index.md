@@ -1,5 +1,5 @@
 ---
-title: Metadata Versioning
+title: Metadata Versioning | OpenMetadata Data History Management
 slug: /connectors/ingestion/versioning
 ---
 

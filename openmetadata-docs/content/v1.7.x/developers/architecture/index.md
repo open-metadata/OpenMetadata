@@ -1,5 +1,5 @@
 ---
-title: Architecture
+title: OpenMetadata System Architecture | Developer Guide
 slug: /developers/architecture
 ---
 

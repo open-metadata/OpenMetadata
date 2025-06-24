@@ -1,5 +1,5 @@
 ---
-title: Enable JWT Tokens
+title: Enable JWT Tokens | OpenMetadata Security Features
 slug: /deployment/security/enable-jwt-tokens
 collate: false
 ---
