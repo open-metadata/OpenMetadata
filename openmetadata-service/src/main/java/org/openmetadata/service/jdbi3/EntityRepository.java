@@ -681,7 +681,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -756,7 +758,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
