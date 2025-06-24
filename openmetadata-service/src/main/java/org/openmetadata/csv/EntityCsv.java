@@ -72,6 +72,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
@@ -916,9 +917,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update =
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null
+                || (entity instanceof GlossaryTerm glossaryTerm
+                    && Entity.getCollectionDAO()
+                            .glossaryTermDAO()
+                            .getGlossaryTermCountIgnoreCase(
+                                glossaryTerm.getGlossary().getFullyQualifiedName(),
+                                entity.getName())
+                        > 0);
+        repository.prepareInternal(entity, update);
         PutResponse<EntityInterface> response =
             repository.createOrUpdateForImport(null, entity, importedBy);
         responseStatus = response.getStatus();
@@ -936,6 +944,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
           repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
               ? Response.Status.CREATED
               : Response.Status.OK;
+      // Glossary term's parent can change causing fqn to change, so we need to fetch by name to
+      // ensure
+      if (responseStatus.equals(Response.Status.CREATED) && entity instanceof GlossaryTerm) {
+        responseStatus =
+            Entity.getCollectionDAO()
+                        .glossaryTermDAO()
+                        .getGlossaryTermCountIgnoreCase(
+                            ((GlossaryTerm) entity).getGlossary().getFullyQualifiedName(),
+                            entity.getName())
+                    > 0
+                ? Response.Status.OK
+                : Response.Status.CREATED;
+      }
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }
 
