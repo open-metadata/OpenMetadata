@@ -1,5 +1,5 @@
 ---
-title: SSL Troubleshooting
+title: SSL Troubleshooting | OpenMetadata Security Guide
 slug: /deployment/security/enable-ssl/ssl-troubleshooting
 collate: false
 ---

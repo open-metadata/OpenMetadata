@@ -1,5 +1,5 @@
 ---
-title: DynamoDB
+title: DynamoDB Connector | OpenMetadata NoSQL Database Integration
 slug: /connectors/database/dynamodb
 ---
 
