@@ -11,8 +11,8 @@
         "enum": ["Spark"],
         "default": "Spark"
       },
-      "master": {
-        "description": "Spark Master URL (e.g. yarn, ,spark://host:port, local[*], etc.)",
+      "remote": {
+        "description": "Spark Connect Remote URL.",
         "type": "string"
       },
       "config": {
@@ -20,7 +20,7 @@
         "$ref": "../../type/basic.json#/definitions/map"
       }
     },
-    "required": ["type", "master"],
+    "required": ["type", "remote"],
     "additionalProperties": false
   }
   
