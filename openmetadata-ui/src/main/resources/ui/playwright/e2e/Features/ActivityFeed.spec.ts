@@ -906,7 +906,7 @@ base.describe('Activity feed with Data Consumer User', () => {
         await tagsTask.click();
         await entityPageTaskTab;
 
-        await page1.waitForLoadState('networkidle');
+        await page2.waitForLoadState('networkidle');
 
         await expect(
           page2.getByText('no diff available').first()
