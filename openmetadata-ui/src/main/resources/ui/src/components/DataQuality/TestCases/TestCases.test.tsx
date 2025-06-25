@@ -142,7 +142,7 @@ describe('TestCases component', () => {
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: undefined,
       testCaseStatus: undefined,
@@ -160,7 +160,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: '*sale*',
       testCaseStatus: undefined,
