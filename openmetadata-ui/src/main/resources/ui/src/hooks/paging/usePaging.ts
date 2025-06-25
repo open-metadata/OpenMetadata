@@ -35,7 +35,7 @@ interface PagingUrlParams {
   cursorType?: CursorType;
   cursorValue?: string;
   currentPage?: string;
-  pageSize?: string;
+  pageSize?: number;
 }
 
 export interface UsePagingInterface {
@@ -76,13 +76,14 @@ export const usePaging = (
       cursorType: urlParams.cursorType,
       cursorValue: urlParams.cursorValue,
       currentPage: urlParams.currentPage,
-      pageSize: urlParams.pageSize,
+      pageSize: Number(urlParams.pageSize) || defaultPageSize,
     }),
     [
       urlParams.cursorType,
       urlParams.cursorValue,
       urlParams.currentPage,
       urlParams.pageSize,
+      defaultPageSize,
     ]
   );
 
@@ -124,7 +125,7 @@ export const usePaging = (
       }
 
       if (pageSize) {
-        urlUpdate.pageSize = String(pageSize);
+        urlUpdate.pageSize = pageSize;
       }
 
       updateUrlParams(urlUpdate as any);
