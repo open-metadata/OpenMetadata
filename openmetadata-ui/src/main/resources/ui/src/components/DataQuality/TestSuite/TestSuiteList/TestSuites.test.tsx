@@ -138,6 +138,18 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
     ));
 });
 
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
+    },
+  ]),
+}));
+
 describe('TestSuites component', () => {
   it('component should render', async () => {
     render(<TestSuites />);
