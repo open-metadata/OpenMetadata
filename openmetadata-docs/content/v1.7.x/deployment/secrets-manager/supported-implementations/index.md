@@ -1,5 +1,5 @@
 ---
-title: Secrets Manager
+title: Secrets Manager | OpenMetadata Deployment Integration
 slug: /deployment/secrets-manager/supported-implementations
 collate: false
 ---
