@@ -200,7 +200,7 @@
             }
           },
           "query": {
-            "type": "keyword",
+            "type": "text",
             "index": false,
             "doc_values": false
           },
