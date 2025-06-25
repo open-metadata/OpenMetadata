@@ -16,7 +16,6 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +54,7 @@ import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
-  patchGlossaryTerm,
+  moveGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import {
@@ -69,7 +68,7 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -269,21 +268,16 @@ const GlossaryHeader = ({
     setIsStyleEditing(false);
   };
 
-  const onChangeParentSave = async (parentFQN: string) => {
-    const newTermData = {
-      ...selectedData,
-      parent: {
-        fullyQualifiedName: parentFQN,
-      },
-    };
-    const jsonPatch = compare(selectedData, newTermData);
-
+  const onChangeParentSave = async (parent: Glossary | GlossaryTerm) => {
     try {
-      const { fullyQualifiedName, name } = await patchGlossaryTerm(
-        selectedData.id,
-        jsonPatch
-      );
-      history.push(getGlossaryPath(fullyQualifiedName ?? name));
+      const response = await moveGlossaryTerm(selectedData.id, {
+        id: parent.id,
+        type: (parent as GlossaryTerm)?.glossary
+          ? EntityType.GLOSSARY_TERM
+          : EntityType.GLOSSARY,
+        fullyQualifiedName: parent?.fullyQualifiedName ?? '',
+      });
+      showSuccessToast(response?.message);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

@@ -89,7 +89,7 @@ import {
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -394,6 +394,26 @@ const NavBar = () => {
           handleDeleteEntityWebsocketResponse(deleteResponseData);
         }
       });
+
+      socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
+        if (moveResponse) {
+          const moveResponseData = JSON.parse(moveResponse);
+          if (moveResponseData.status === 'COMPLETED') {
+            showSuccessToast(
+              t('message.entity-moved-successfully', {
+                entity: moveResponseData.entityName,
+              })
+            );
+          } else {
+            showErrorToast(
+              moveResponseData.result?.message ??
+                t('server.entity-updating-error', {
+                  entity: moveResponseData.entityName,
+                })
+            );
+          }
+        }
+      });
     }
 
     return () => {
@@ -403,6 +423,7 @@ const NavBar = () => {
         socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
         socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
         socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+        socket.off(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL);
       }
     };
   }, [socket, onUpdateCSVExportJob]);

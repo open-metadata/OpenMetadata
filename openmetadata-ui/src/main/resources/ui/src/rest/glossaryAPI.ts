@@ -22,6 +22,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
@@ -34,6 +35,10 @@ import APIClient from './index';
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
   parent?: string;
+};
+
+export type MoveGlossaryTermResponse = {
+  message: string;
 };
 
 const BASE_URL = '/glossaries';
@@ -159,6 +164,17 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
     Operation[],
     AxiosResponse<GlossaryTerm>
   >(`/glossaryTerms/${id}`, patch);
+
+  return response.data;
+};
+
+export const moveGlossaryTerm = async (id: string, parent: EntityReference) => {
+  const response = await APIClient.put<
+    MoveGlossaryTermRequest,
+    AxiosResponse<MoveGlossaryTermResponse>
+  >(`/glossaryTerms/${id}/moveAsync`, {
+    parent,
+  });
 
   return response.data;
 };

@@ -13,24 +13,20 @@
 
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { Status } from '../../../generated/entity/data/glossaryTerm';
-import { getGlossaryTerms } from '../../../rest/glossaryAPI';
+import {
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { StatusClass } from '../../../utils/GlossaryUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import {
-  ChangeParentHierarchyProps,
-  SelectOptions,
-} from './ChangeParentHierarchy.interface';
+import { ChangeParentHierarchyProps } from './ChangeParentHierarchy.interface';
 
 const ChangeParentHierarchy = ({
   selectedData,
@@ -41,38 +37,14 @@ const ChangeParentHierarchy = ({
   const [form] = Form.useForm();
   const [loadingState, setLoadingState] = useState({
     isSaving: false,
-    isFetching: true,
   });
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
-  const [options, setOptions] = useState<SelectOptions[]>([]);
+  const [selectedParent, setSelectedParent] =
+    useState<DefaultOptionType | null>(null);
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
   );
-
-  const fetchGlossaryTerm = async () => {
-    setLoadingState((prev) => ({ ...prev, isFetching: true }));
-    try {
-      const { data } = await getGlossaryTerms({
-        glossary: selectedData.glossary.id,
-        limit: API_RES_MAX_SIZE,
-      });
-
-      setOptions(
-        data
-          .filter((item) => item.id !== selectedData.id)
-          .map((item) => ({
-            label: getEntityName(item),
-            value: item.fullyQualifiedName ?? '',
-            data: item,
-          }))
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoadingState((prev) => ({ ...prev, isFetching: false }));
-    }
-  };
 
   const handleTagSelection = (
     option: DefaultOptionType | DefaultOptionType[]
@@ -81,25 +53,20 @@ const ChangeParentHierarchy = ({
     const tags = Array.isArray(option) ? option : [option];
 
     if (tags.length > 0) {
-      const newTags = tags.map((tag) => ({
-        tagFQN: tag.value as string,
-        source: TagSource.Glossary,
-      }));
-      form.setFieldsValue({ parent: newTags[0].tagFQN });
+      const selectedOption = tags[0];
+      setSelectedParent(selectedOption);
+      form.setFieldsValue({ parent: selectedOption.value as string });
     } else {
+      setSelectedParent(null);
       form.setFieldsValue({ parent: undefined });
     }
   };
 
-  const handleSubmit = async (value: { parent: string }) => {
+  const handleSubmit = async () => {
     setLoadingState((prev) => ({ ...prev, isSaving: true }));
-    await onSubmit(value.parent);
+    await onSubmit(selectedParent?.data as Glossary | GlossaryTerm);
     setLoadingState((prev) => ({ ...prev, isSaving: false }));
   };
-
-  useEffect(() => {
-    fetchGlossaryTerm();
-  }, []);
 
   return (
     <Modal
@@ -134,11 +101,10 @@ const ChangeParentHierarchy = ({
           ]}>
           <TreeAsyncSelectList
             isParentSelectable
-            activeGlossary={selectedData.glossary as Glossary}
             data-testid="change-parent-select"
-            initialOptions={options}
+            filterOptions={[selectedData.fullyQualifiedName ?? '']}
             isMultiSelect={false}
-            isSubmitLoading={loadingState.isFetching}
+            open={false}
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
