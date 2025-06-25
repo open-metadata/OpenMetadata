@@ -65,6 +65,8 @@ export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
+export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
@@ -432,6 +434,3 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
-
-export const VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const ONE_HOUR_MS = 60 * 60 * 1000;
