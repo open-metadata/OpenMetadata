@@ -825,7 +825,10 @@ class TableauSource(DashboardServiceSource):
             )
             if table_entity:
                 return [TableAndQuery(table=table_entity)]
+
             # fallback to fullName if schema name is not appropriate
+            # TODO: We should make this a primary approach for lineage instead
+            # using this strategy as a fallback.
             if not table.fullName:
                 logger.debug(
                     "No table entity found for lineage using GraphQL APIs."
