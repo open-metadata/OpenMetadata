@@ -4,7 +4,8 @@ source:
   serviceConnection:
     config:
       username: $E2E_SNOWFLAKE_USERNAME
-      password: $E2E_SNOWFLAKE_PASSWORD
+      privateKey: $E2E_SNOWFLAKE_PASSWORD
+      privateKeyPassphrase: $E2E_SNOWFLAKE_PASSPHRASE
       account: $E2E_SNOWFLAKE_ACCOUNT
       warehouse: $E2E_SNOWFLAKE_WAREHOUSE
       database: $E2E_SNOWFLAKE_DATABASE

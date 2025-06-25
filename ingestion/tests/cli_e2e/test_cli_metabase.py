@@ -79,7 +79,3 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 0
-
-    @pytest.mark.order(11)
-    def test_lineage(self) -> None:
-        pytest.skip("Lineage not configured. Skipping Test")
