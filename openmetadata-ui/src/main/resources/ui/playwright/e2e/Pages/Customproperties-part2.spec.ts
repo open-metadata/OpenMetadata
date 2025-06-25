@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
+import { capitalize } from 'lodash';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
+  verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -51,6 +53,18 @@ test.describe('Custom properties with custom property config', () => {
 
         await editCreatedProperty(page, propertyName, 'Enum');
 
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          capitalize(entity.name)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
+
         await deleteCreatedProperty(page, propertyName);
       });
     });
@@ -78,6 +92,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName, 'Table');
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          capitalize(entity.name)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });
@@ -110,6 +136,18 @@ test.describe('Custom properties with custom property config', () => {
           });
 
           await editCreatedProperty(page, propertyName, 'Entity Reference');
+
+          await verifyCustomPropertyInAdvancedSearch(
+            page,
+            propertyName.toUpperCase(), // displayName is in uppercase
+            capitalize(entity.name)
+          );
+
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await deleteCreatedProperty(page, propertyName);
         });
@@ -146,6 +184,18 @@ test.describe('Custom properties with custom property config', () => {
             page,
             propertyName,
             'Entity Reference List'
+          );
+
+          await verifyCustomPropertyInAdvancedSearch(
+            page,
+            propertyName.toUpperCase(), // displayName is in uppercase
+            capitalize(entity.name)
+          );
+
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
           );
 
           await deleteCreatedProperty(page, propertyName);
@@ -205,6 +255,18 @@ test.describe('Custom properties with custom property config', () => {
 
         await editCreatedProperty(page, propertyName);
 
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          capitalize(entity.name)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
+
         await deleteCreatedProperty(page, propertyName);
       });
     });
@@ -234,6 +296,18 @@ test.describe('Custom properties with custom property config', () => {
         });
 
         await editCreatedProperty(page, propertyName);
+
+        await verifyCustomPropertyInAdvancedSearch(
+          page,
+          propertyName.toUpperCase(), // displayName is in uppercase
+          capitalize(entity.name)
+        );
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
 
         await deleteCreatedProperty(page, propertyName);
       });

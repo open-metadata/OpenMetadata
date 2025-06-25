@@ -250,11 +250,10 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   let isNestedExtensionField = false;
   let entityType = null;
 
-  // Handle nested extension fields (e.g., extension.table.version -> extension.version + entityType filter)
-  if (fieldName.startsWith('extension.') && fieldName.split('.').length === 3) {
+  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
     const parts = fieldName.split('.');
-    entityType = parts[1]; // Extract entity type (e.g., 'table')
-    actualFieldName = `${parts[0]}.${parts[2]}`; // extension.propertyName
+    entityType = parts[1];
+    actualFieldName = `${parts[0]}.${parts.slice(2).join('.')}`;
     isNestedExtensionField = true;
   }
 

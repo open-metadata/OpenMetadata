@@ -956,81 +956,77 @@ class AdvancedSearchClassBase {
   };
 
   public getCustomPropertiesSubFields(field: CustomPropertySummary) {
-    {
-      const label = getEntityName(field);
-      switch (field.type) {
-        case 'array<entityReference>':
-        case 'entityReference':
-          return {
-            subfieldsKey: field.name + `.displayName`,
-            dataObject: {
-              type: 'select',
-              label,
-              fieldSettings: {
-                asyncFetch: this.autocomplete({
-                  searchIndex: (
-                    (field.customPropertyConfig?.config ?? []) as string[]
-                  ).join(',') as SearchIndex,
-                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-                }),
-                useAsyncSearch: true,
-              },
+    const label = getEntityName(field);
+    switch (field.type) {
+      case 'array<entityReference>':
+      case 'entityReference':
+        return {
+          subfieldsKey: field.name + `.displayName`,
+          dataObject: {
+            type: 'select',
+            label,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: (
+                  (field.customPropertyConfig?.config ?? []) as string[]
+                ).join(',') as SearchIndex,
+                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+              }),
+              useAsyncSearch: true,
             },
-          };
+          },
+        };
 
-        case 'enum':
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'select',
-              label,
-              operators: LIST_VALUE_OPERATORS,
-              fieldSettings: {
-                listValues: getCustomPropertyAdvanceSearchEnumOptions(
-                  (
-                    field.customPropertyConfig
-                      ?.config as CustomPropertyEnumConfig
-                  ).values
-                ),
-              },
+      case 'enum':
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'select',
+            label,
+            operators: LIST_VALUE_OPERATORS,
+            fieldSettings: {
+              listValues: getCustomPropertyAdvanceSearchEnumOptions(
+                (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
+                  .values
+              ),
             },
-          };
+          },
+        };
 
-        case 'date-cp': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'date',
-              label,
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-
-        case 'timestamp':
-        case 'integer':
-        case 'number': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'number',
-              label,
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-
-        default:
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'text',
-              label,
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
-            },
-          };
+      case 'date-cp': {
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'date',
+            label,
+            operators: RANGE_FIELD_OPERATORS,
+          },
+        };
       }
+
+      case 'timestamp':
+      case 'integer':
+      case 'number': {
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'number',
+            label,
+            operators: RANGE_FIELD_OPERATORS,
+          },
+        };
+      }
+
+      default:
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'text',
+            label,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        };
     }
   }
 }
