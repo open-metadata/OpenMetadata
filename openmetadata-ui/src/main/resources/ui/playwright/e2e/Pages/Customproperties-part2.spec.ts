@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
-import { capitalize } from 'lodash';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
@@ -56,7 +55,7 @@ test.describe('Custom properties with custom property config', () => {
         await verifyCustomPropertyInAdvancedSearch(
           page,
           propertyName.toUpperCase(), // displayName is in uppercase
-          capitalize(entity.name)
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
 
         await settingClick(
@@ -96,7 +95,7 @@ test.describe('Custom properties with custom property config', () => {
         await verifyCustomPropertyInAdvancedSearch(
           page,
           propertyName.toUpperCase(), // displayName is in uppercase
-          capitalize(entity.name)
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
 
         await settingClick(
@@ -140,7 +139,7 @@ test.describe('Custom properties with custom property config', () => {
           await verifyCustomPropertyInAdvancedSearch(
             page,
             propertyName.toUpperCase(), // displayName is in uppercase
-            capitalize(entity.name)
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
           );
 
           await settingClick(
@@ -189,7 +188,7 @@ test.describe('Custom properties with custom property config', () => {
           await verifyCustomPropertyInAdvancedSearch(
             page,
             propertyName.toUpperCase(), // displayName is in uppercase
-            capitalize(entity.name)
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
           );
 
           await settingClick(
@@ -258,7 +257,7 @@ test.describe('Custom properties with custom property config', () => {
         await verifyCustomPropertyInAdvancedSearch(
           page,
           propertyName.toUpperCase(), // displayName is in uppercase
-          capitalize(entity.name)
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
 
         await settingClick(
@@ -300,7 +299,7 @@ test.describe('Custom properties with custom property config', () => {
         await verifyCustomPropertyInAdvancedSearch(
           page,
           propertyName.toUpperCase(), // displayName is in uppercase
-          capitalize(entity.name)
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
 
         await settingClick(
