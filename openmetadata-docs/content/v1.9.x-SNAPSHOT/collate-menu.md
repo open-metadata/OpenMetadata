@@ -769,6 +769,8 @@ site_menu:
     url: /how-to-guides/admin-guide/teams-and-users/add-users
   - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Change the Team Type
     url: /how-to-guides/admin-guide/teams-and-users/change-team-type
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / SCIM Provisioning Guide
+    url: /how-to-guides/admin-guide/teams-and-users/scim-provisioning-guide
   - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies
     url: /how-to-guides/admin-guide/roles-policies
   - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
