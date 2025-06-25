@@ -181,12 +181,44 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   openLinksInNewWindow: true,
   emoji: true,
   underline: true,
+  backslashEscapesHTMLTags: false, // Allow HTML tags to pass through
 });
 
 export const getHtmlStringFromMarkdownString = (content: string) => {
-  return isHTMLString(content)
-    ? content
-    : _convertMarkdownStringToHtmlString.makeHtml(content);
+  // First, convert YouTube components to iframe format that YouTubeEmbed extension expects
+  let processedContent = content;
+  const youtubeRegex = /<YouTube\s+videoId=["']([^"']+)["']\s*\/?>/gi;
+  processedContent = processedContent.replace(
+    youtubeRegex,
+    (_match, videoId) => {
+      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+
+      return `<iframe src="${embedUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`;
+    }
+  );
+
+  // Convert markdown to HTML using Showdown
+  const markdownHtml =
+    _convertMarkdownStringToHtmlString.makeHtml(processedContent);
+
+  return markdownHtml;
+};
+
+// Helper function to convert YouTube URLs to embed format
+export const convertYouTubeUrlToEmbed = (url: string): string => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+
+  if (match && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+
+  return url;
+};
+
+// Helper function to check if a URL is a YouTube URL
+export const isYouTubeUrl = (url: string): boolean => {
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url);
 };
 
 /**
@@ -195,7 +227,7 @@ export const getHtmlStringFromMarkdownString = (content: string) => {
  * @param newContent The new content to set
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
-  // Convert the markdown string to an HTML string
+  // Convert the content to HTML (including YouTube component conversion)
   const htmlString = getHtmlStringFromMarkdownString(newContent);
 
   editor.commands.setContent(htmlString);

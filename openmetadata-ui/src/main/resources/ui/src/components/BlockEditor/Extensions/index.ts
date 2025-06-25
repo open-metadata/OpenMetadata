@@ -37,6 +37,7 @@ import { getSuggestionItems } from './slash-command/items';
 import renderItems from './slash-command/renderItems';
 import TextHighlightView from './text-highlight-view';
 import { TrailingNode } from './trailing-node';
+import { YouTubeEmbed } from './YouTubeEmbed';
 
 export const extensions = [
   StarterKit.configure({
@@ -155,4 +156,5 @@ export const extensions = [
       FileType.AUDIO,
     ],
   }),
+  YouTubeEmbed,
 ];

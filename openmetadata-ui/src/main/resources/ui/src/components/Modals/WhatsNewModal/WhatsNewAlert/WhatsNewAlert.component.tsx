@@ -22,37 +22,33 @@ import { useAuth } from '../../../../hooks/authHooks';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
 
 const cookieStorage = new CookieStorage();
+
+const COOKIE_VERSION = 'VERSION_1_8_0';
 
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const { isFirstTimeUser } = useAuth();
   const [showWhatsNew, setShowWhatsNew] = useState({
-    alert: false,
+    alert: true,
     modal: false,
   });
 
-  const latestVersion = useMemo(
-    () => WHATS_NEW[WHATS_NEW.length - 1], // latest version will be last in the array
-    [WHATS_NEW]
-  );
+  const latestVersion = useMemo(() => ({ version: 'v1.8.0' }), []);
   const isHomePage = useMemo(
     () => location.pathname.includes(ROUTES.MY_DATA),
     [location.pathname]
   );
 
-  const onAlertCardClick = useCallback(
-    () =>
-      setShowWhatsNew({
-        alert: false,
-        modal: true,
-      }),
-    []
-  );
+  const onAlertCardClick = useCallback(() => {
+    setShowWhatsNew({
+      alert: false,
+      modal: true,
+    });
+  }, [setShowWhatsNew]);
 
   const onModalCancel = useCallback(
     () =>

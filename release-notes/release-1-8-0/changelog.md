@@ -1,0 +1,4 @@
+- Lineage expand collapse nodes.
+- Default boost score and improve fqn parsing.
+- OpenSearch by default limits the number of characters, if the field is very large then the limit gets exceeded.
+- Handled spaces in database, schema, table, and column names across all connectors for reverse metadata.

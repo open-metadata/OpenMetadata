@@ -30,6 +30,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   applicationConfig: {
     customTheme: getThemeConfig(),
   } as UIThemePreference,
+  appVersion: undefined,
   currentUser: undefined,
   newUser: undefined,
   isAuthenticated: Boolean(getOidcToken()),
@@ -148,5 +149,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setAppVersion: (version: string) => {
+    set({ appVersion: version });
   },
 }));
