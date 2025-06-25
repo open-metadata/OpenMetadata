@@ -79,6 +79,7 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
     { state: 'detached' }
@@ -360,7 +361,7 @@ export const verifyTagPageUI = async (
     `/api/v1/classifications/name/*`
   );
   await page.getByRole('link', { name: classificationName }).click();
-  classificationTable;
+  await classificationTable;
 
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
