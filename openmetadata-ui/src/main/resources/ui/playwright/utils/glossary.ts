@@ -821,7 +821,8 @@ export const confirmationDragAndDropGlossary = async (
 export const changeTermHierarchyFromModal = async (
   page: Page,
   entityDisplayName: string,
-  entityFqn: string
+  entityFqn: string,
+  isGlossaryTerm = true
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
@@ -833,9 +834,11 @@ export const changeTermHierarchyFromModal = async (
     state: 'visible',
   });
 
-  const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-  await page.getByLabel('Select Parent').fill(entityDisplayName);
-  await searchRes;
+  if (isGlossaryTerm) {
+    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await searchRes;
+  }
 
   await page.getByTestId(`tag-${entityFqn}`).click();
 

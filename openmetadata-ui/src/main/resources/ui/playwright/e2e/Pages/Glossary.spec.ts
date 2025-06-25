@@ -988,9 +988,11 @@ test.describe('Glossary tests', () => {
       await changeTermHierarchyFromModal(
         page,
         glossary2.responseData.displayName,
-        glossary2.responseData.fullyQualifiedName
+        glossary2.responseData.fullyQualifiedName,
+        false
       );
 
+      // Verify the term is no longer in the source glossary (glossary1)
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
@@ -1000,9 +1002,11 @@ test.describe('Glossary tests', () => {
         })
       ).not.toBeVisible();
 
+      await selectActiveGlossary(page, glossary2.data.displayName);
+
       const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
 
-      // verify the term is moved under the parent term
+      // verify the term is moved to the destination glossary
       await page.getByTestId('expand-collapse-all-button').click();
       await termRes;
 
