@@ -3773,6 +3773,35 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
   }
 
+  @Test
+  void test_columnTestCaseValidation(TestInfo testInfo) throws IOException {
+    CreateTestCase create = createRequest(testInfo);
+    String invalidFieldNameLink =
+        "<#E::table::" + TEST_TABLE1.getFullyQualifiedName() + "::invalidField::columnName>";
+    create
+        .withEntityLink(invalidFieldNameLink)
+        .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+            "Invalid field name '%s' for column test case. It should be 'columns'."
+                + " e.g. <#E::table::{entityFqn}::columns::{columnName}>");
+
+    String missingFieldNameLink = "<#E::table::" + TEST_TABLE1.getFullyQualifiedName() + ">";
+    create.setEntityLink(missingFieldNameLink);
+
+    exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+            "Column test case must have a field name and an array field name in the entity link."
+                + " e.g. <#E::table::{entityFqn}::columns::{columnName}>");
+  }
+
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
     assertEquals(sql, putResponse.getInspectionQuery());
