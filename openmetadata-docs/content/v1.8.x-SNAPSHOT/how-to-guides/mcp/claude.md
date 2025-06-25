@@ -5,7 +5,7 @@ slug: /how-to-guides/mcp/claude
 
 # Getting Started with Claude Desktop
 
-Configure OpenMetadata's MCP Server to interact with Antrophic's AI assistant platform. 
+Configure OpenMetadata's MCP Server to interact with Anthropic's AI assistant platform. 
 
 ## Prerequisites
 For this guide, you will need:
@@ -14,7 +14,7 @@ For this guide, you will need:
 - [Claude Desktop](https://claude.ai/download)
 
 ## Add MCP App to OpenMetadata
-OpenMetadata has a variety of applications improve your data such as MetaPilot, Data Insights, Search Indexing, and MCP.
+OpenMetadata has a variety of applications to improve your data such as MetaPilot, Data Insights, Search Indexing, and MCP.
 
 - Go to <YOUR-OpenMetadata-SERVER>/marketplace/apps/McpApplication and select *Install*
 
@@ -95,7 +95,7 @@ This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 
         "Authorization:${AUTH_HEADER}"
       ],
       "env": {
-        "AUTH_HEADER": "Bearer <YOUR-OpenMetadata-PAT>
+        "AUTH_HEADER": "Bearer <YOUR-OpenMetadata-PAT>"
       }
     }
   }
