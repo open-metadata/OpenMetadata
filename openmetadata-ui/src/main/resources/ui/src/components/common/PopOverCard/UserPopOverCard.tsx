@@ -245,14 +245,12 @@ const UserPopOverCard: FC<Props> = ({
   profileWidth = 24,
 }) => {
   const profilePicture = (
-    <div>
-      <ProfilePicture
-        avatarType="outlined"
-        isTeam={type === OwnerType.TEAM}
-        name={userName}
-        width={`${profileWidth}`}
-      />
-    </div>
+    <ProfilePicture
+      avatarType="outlined"
+      isTeam={type === OwnerType.TEAM}
+      name={userName}
+      width={`${profileWidth}`}
+    />
   );
 
   return (
