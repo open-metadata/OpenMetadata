@@ -1283,3 +1283,737 @@ test('Table Column Name To Exist', async ({ page }) => {
     await afterAction();
   }
 });
+
+test('Table Row Count To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const TABLE_ROW_COUNT_BETWEEN_TEST_CASE = {
+    name: 'table_row_count_to_be_between_test',
+    displayName: 'Table Row Count To Be Between Test',
+    type: 'tableRowCountToBeBetween',
+    description: 'Test case to verify table row count is within range',
+    minValue: '10',
+    maxValue: '1000',
+  };
+  await table.create(apiContext);
+
+  await table.visitEntityPage(page);
+  const profileResponse = page.waitForResponse(
+    `/api/v1/tables/${encodeURIComponent(
+      table.entityResponseData?.['fullyQualifiedName']
+    )}/tableProfile/latest?includeColumnProfile=false`
+  );
+  await page.getByText('Data Observability').click();
+  await profileResponse;
+  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+
+  try {
+    await test.step('Create', async () => {
+      await page.getByTestId('profiler-add-table-test-btn').click();
+      await page.getByTestId('test-case').click();
+      await page.getByTestId('test-case-name').fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name);
+      await page.getByTestId('test-type').click();
+      await page.getByTestId(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.type).click();
+      
+      await page.locator(descriptionBox).fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.description);
+      await page.fill('#tableTestForm_params_minValue', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.maxValue);
+      
+      const createTestCaseResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases`
+      );
+      await page.getByTestId('submit-test').click();
+      await createTestCaseResponse;
+      const tableTestResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
+      );
+      await page.getByTestId('view-service-button').click();
+      await tableTestResponse;
+    });
+
+    await test.step('Edit', async () => {
+      await expect(
+        page.getByTestId(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name).getByRole('link')
+      ).toBeVisible();
+
+      await page.getByTestId(`edit-${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`);
+
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '5');
+      await page.fill('#tableTestForm_params_maxValue', '2000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Table Column Count To Equal', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const TABLE_COLUMN_COUNT_EQUAL_TEST_CASE = {
+    name: 'table_column_count_to_equal_test',
+    displayName: 'Table Column Count To Equal Test',
+    type: 'tableColumnCountToEqual',
+    description: 'Test case to verify table has exact number of columns',
+    columnCount: '5',
+  };
+  await table.create(apiContext);
+
+  await table.visitEntityPage(page);
+  const profileResponse = page.waitForResponse(
+    `/api/v1/tables/${encodeURIComponent(
+      table.entityResponseData?.['fullyQualifiedName']
+    )}/tableProfile/latest?includeColumnProfile=false`
+  );
+  await page.getByText('Data Observability').click();
+  await profileResponse;
+  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+
+  try {
+    await test.step('Create', async () => {
+      await page.getByTestId('profiler-add-table-test-btn').click();
+      await page.getByTestId('test-case').click();
+      await page.getByTestId('test-case-name').fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name);
+      await page.getByTestId('test-type').click();
+      await page.getByTestId(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.type).click();
+      
+      await page.locator(descriptionBox).fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.description);
+      await page.fill('#tableTestForm_params_columnCount', TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.columnCount);
+      
+      const createTestCaseResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases`
+      );
+      await page.getByTestId('submit-test').click();
+      await createTestCaseResponse;
+      const tableTestResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
+      );
+      await page.getByTestId('view-service-button').click();
+      await tableTestResponse;
+    });
+
+    await test.step('Edit', async () => {
+      await expect(
+        page.getByTestId(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name).getByRole('link')
+      ).toBeVisible();
+
+      await page.getByTestId(`edit-${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`);
+
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_columnCount', '10');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Value Max To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_MAX_TEST_CASE = {
+    name: 'column_value_max_to_be_between_test',
+    displayName: 'Column Value Max To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValueMaxToBeBetween',
+    description: 'Test case to verify column maximum value is within range',
+    minValue: '100',
+    maxValue: '10000',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_MAX_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_MAX_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_MAX_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_MAX_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_MAX_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_MAX_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_MAX_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MAX_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_MAX_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MAX_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_MAX_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '200');
+      await page.fill('#tableTestForm_params_maxValue', '20000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_MAX_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Value Min To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_MIN_TEST_CASE = {
+    name: 'column_value_min_to_be_between_test',
+    displayName: 'Column Value Min To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValueMinToBeBetween',
+    description: 'Test case to verify column minimum value is within range',
+    minValue: '0',
+    maxValue: '100',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_MIN_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_MIN_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_MIN_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_MIN_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_MIN_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_MIN_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_MIN_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MIN_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_MIN_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MIN_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_MIN_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '1');
+      await page.fill('#tableTestForm_params_maxValue', '200');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_MIN_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Value Mean To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_MEAN_TEST_CASE = {
+    name: 'column_value_mean_to_be_between_test',
+    displayName: 'Column Value Mean To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValueMeanToBeBetween',
+    description: 'Test case to verify column mean value is within range',
+    minValue: '10',
+    maxValue: '1000',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_MEAN_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_MEAN_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_MEAN_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_MEAN_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_MEAN_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_MEAN_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_MEAN_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MEAN_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_MEAN_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MEAN_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_MEAN_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '20');
+      await page.fill('#tableTestForm_params_maxValue', '2000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_MEAN_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Value Median To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_MEDIAN_TEST_CASE = {
+    name: 'column_value_median_to_be_between_test',
+    displayName: 'Column Value Median To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValueMedianToBeBetween',
+    description: 'Test case to verify column median value is within range',
+    minValue: '5',
+    maxValue: '500',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_MEDIAN_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_MEDIAN_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_MEDIAN_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_MEDIAN_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_MEDIAN_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_MEDIAN_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_MEDIAN_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MEDIAN_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_MEDIAN_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MEDIAN_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_MEDIAN_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '10');
+      await page.fill('#tableTestForm_params_maxValue', '1000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_MEDIAN_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Value Standard Deviation To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_STDDEV_TEST_CASE = {
+    name: 'column_value_stddev_to_be_between_test',
+    displayName: 'Column Value StdDev To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValueStdDevToBeBetween',
+    description: 'Test case to verify column standard deviation value is within range',
+    minValue: '0',
+    maxValue: '1000',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_STDDEV_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_STDDEV_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_STDDEV_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_STDDEV_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_STDDEV_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_STDDEV_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_STDDEV_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_STDDEV_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_STDDEV_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_STDDEV_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_STDDEV_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '1');
+      await page.fill('#tableTestForm_params_maxValue', '2000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_STDDEV_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Values Sum To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_SUM_TEST_CASE = {
+    name: 'column_values_sum_to_be_between_test',
+    displayName: 'Column Values Sum To Be Between Test',
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
+    type: 'columnValuesSumToBeBetween',
+    description: 'Test case to verify column sum value is within range',
+    minValue: '1000',
+    maxValue: '100000',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_SUM_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_SUM_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_SUM_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_SUM_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_SUM_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minValue', COLUMN_SUM_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxValue', COLUMN_SUM_TEST_CASE.maxValue);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_SUM_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_SUM_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_SUM_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_SUM_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minValue', '2000');
+      await page.fill('#tableTestForm_params_maxValue', '200000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_SUM_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Values Lengths To Be Between', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_LENGTHS_TEST_CASE = {
+    name: 'column_values_lengths_to_be_between_test',
+    displayName: 'Column Values Lengths To Be Between Test',
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
+    type: 'columnValueLengthsToBeBetween',
+    description: 'Test case to verify column value lengths are within range',
+    minLength: '3',
+    maxLength: '50',
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_LENGTHS_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_LENGTHS_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_LENGTHS_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_LENGTHS_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_LENGTHS_TEST_CASE.description);
+
+      await page.fill('#tableTestForm_params_minLength', COLUMN_LENGTHS_TEST_CASE.minLength);
+      await page.fill('#tableTestForm_params_maxLength', COLUMN_LENGTHS_TEST_CASE.maxLength);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_LENGTHS_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_LENGTHS_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_LENGTHS_TEST_CASE.name}`);
+      
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_LENGTHS_TEST_CASE.displayName);
+      await page.fill('#tableTestForm_params_minLength', '5');
+      await page.fill('#tableTestForm_params_maxLength', '100');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_LENGTHS_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Values To Not Match Regex', async ({ page }) => {
+  test.slow();
+
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const COLUMN_NOT_MATCH_REGEX_TEST_CASE = {
+    name: 'column_values_to_not_match_regex_test',
+    displayName: 'Column Values To Not Match Regex Test',
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
+    type: 'columnValuesToNotMatchRegex',
+    description: 'Test case to verify column values do not match forbidden regex pattern',
+    forbiddenRegex: '^\\d+$', // Should not be only digits
+  };
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(`[title="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.column}"]`);
+      await testDefinitionResponse;
+      await page.fill('#tableTestForm_testName', COLUMN_NOT_MATCH_REGEX_TEST_CASE.name);
+      await page.fill('#tableTestForm_testTypeId', COLUMN_NOT_MATCH_REGEX_TEST_CASE.type);
+      await page.click(`[data-testid="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.type}"]`);
+      await page.locator(descriptionBox).fill(COLUMN_NOT_MATCH_REGEX_TEST_CASE.description);
+
+      // Fill forbidden regex pattern
+      await page.fill('#tableTestForm_params_forbiddenRegex', COLUMN_NOT_MATCH_REGEX_TEST_CASE.forbiddenRegex);
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}"]`)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page.getByTestId(`edit-${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`).click();
+      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`);
+
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill('#tableTestForm_displayName', COLUMN_NOT_MATCH_REGEX_TEST_CASE.displayName);
+      
+      // Update forbidden regex pattern
+      await page.fill('#tableTestForm_params_forbiddenRegex', '^[0-9]*$');
+      
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await toastNotification(page, 'Test case updated successfully.');
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, COLUMN_NOT_MATCH_REGEX_TEST_CASE.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
