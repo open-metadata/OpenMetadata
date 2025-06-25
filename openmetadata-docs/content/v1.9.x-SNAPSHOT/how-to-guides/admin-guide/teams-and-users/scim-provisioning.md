@@ -1,4 +1,9 @@
-# Collate SCIM Provisioning Guide
+---
+title: SCIM Provisioning Guide
+slug: /how-to-guides/admin-guide/teams-and-users/scim-provisioning-guide
+collate: true
+---
+# SCIM Provisioning Guide
 
 ## Prerequisites
 
