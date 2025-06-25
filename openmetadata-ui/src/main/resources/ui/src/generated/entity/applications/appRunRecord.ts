@@ -197,6 +197,7 @@ export enum Status {
     Pending = "pending",
     Running = "running",
     Started = "started",
+    StopInProgress = "stopInProgress",
     Stopped = "stopped",
     Success = "success",
 }

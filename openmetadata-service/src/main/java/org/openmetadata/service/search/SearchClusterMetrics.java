@@ -31,20 +31,22 @@ public class SearchClusterMetrics {
     try {
       if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
         return fetchOpenSearchMetrics(
-            (OpenSearchClient) searchRepository.getSearchClient(), totalEntities);
+            searchRepository, (OpenSearchClient) searchRepository.getSearchClient(), totalEntities);
       } else {
         return fetchElasticSearchMetrics(
-            (ElasticSearchClient) searchRepository.getSearchClient(), totalEntities);
+            searchRepository,
+            (ElasticSearchClient) searchRepository.getSearchClient(),
+            totalEntities);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch cluster metrics, using conservative defaults: {}", e.getMessage());
-      return getConservativeDefaults(totalEntities);
+      return getConservativeDefaults(searchRepository, totalEntities);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchOpenSearchMetrics(
-      OpenSearchClient osClient, long totalEntities) {
+      SearchRepository searchRepository, OpenSearchClient osClient, long totalEntities) {
     try {
       Map<String, Object> clusterStats = osClient.clusterStats();
       Map<String, Object> nodesStats = osClient.nodesStats();
@@ -87,13 +89,13 @@ public class SearchClusterMetrics {
 
     } catch (Exception e) {
       LOG.warn("Failed to fetch OpenSearch cluster metrics: {}", e.getMessage(), e);
-      return getConservativeDefaults(totalEntities);
+      return getConservativeDefaults(searchRepository, totalEntities);
     }
   }
 
   @SuppressWarnings("unchecked")
   private static SearchClusterMetrics fetchElasticSearchMetrics(
-      ElasticSearchClient client, long totalEntities) {
+      SearchRepository searchRepository, ElasticSearchClient client, long totalEntities) {
     try {
       Map<String, Object> clusterStats = client.clusterStats();
       Map<String, Object> nodesStats = client.nodesStats();
@@ -131,8 +133,20 @@ public class SearchClusterMetrics {
           totalEntities);
 
     } catch (Exception e) {
-      LOG.warn("Failed to fetch ElasticSearch cluster metrics: {}", e.getMessage(), e);
-      return getConservativeDefaults(totalEntities);
+      LOG.warn(
+          "Failed to fetch ElasticSearch cluster metrics ({}): {}",
+          e.getClass().getSimpleName(),
+          e.getMessage(),
+          e);
+      LOG.info("Using conservative defaults for {} total entities", totalEntities);
+      SearchClusterMetrics defaults = getConservativeDefaults(searchRepository, totalEntities);
+      LOG.info(
+          "Conservative defaults: Batch size={}, Producer threads={}, Concurrent requests={}, Max payload={} MB",
+          defaults.getRecommendedBatchSize(),
+          defaults.getRecommendedProducerThreads(),
+          defaults.getRecommendedConcurrentRequests(),
+          defaults.getMaxPayloadSizeBytes() / (1024 * 1024));
+      return defaults;
     }
   }
 
@@ -170,13 +184,20 @@ public class SearchClusterMetrics {
         Math.min(heapBasedPayloadSize, effectiveMaxContentLength * 8 / 10); // Use 80% for safety
 
     int avgEntitySizeKB = 2; // Assume 2KB average entity size (uncompressed)
-    int recommendedBatchSize = (int) Math.min(2000, maxPayloadSize / (avgEntitySizeKB * 1024L));
-    recommendedBatchSize = Math.max(100, recommendedBatchSize);
+    int recommendedBatchSize = (int) Math.min(3000, maxPayloadSize / (avgEntitySizeKB * 1024L));
+    recommendedBatchSize = Math.max(200, recommendedBatchSize); // Minimum 200 for performance
 
+    // Scale batch size based on dataset size for better performance
     if (totalEntities > 1000000) {
-      recommendedBatchSize = Math.max(500, recommendedBatchSize);
+      recommendedBatchSize = Math.max(1500, recommendedBatchSize);
       recommendedProducerThreads =
-          Math.min(50, recommendedProducerThreads); // Increased from 10 to 50
+          Math.min(50, recommendedProducerThreads); // Capped by connection pool
+    } else if (totalEntities > 500000) {
+      recommendedBatchSize = Math.max(1000, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(40, recommendedProducerThreads);
+    } else if (totalEntities > 100000) {
+      recommendedBatchSize = Math.max(500, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
     }
 
     return SearchClusterMetrics.builder()
@@ -294,11 +315,41 @@ public class SearchClusterMetrics {
     return defaultValue;
   }
 
-  private static SearchClusterMetrics getConservativeDefaults(long totalEntities) {
-    int conservativeBatchSize = totalEntities > 100000 ? 200 : 100;
-    // More aggressive defaults with virtual threads - they're lightweight
-    int conservativeThreads = totalEntities > 500000 ? 20 : 10; // Increased from 3:2 to 20:10
-    int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50; // Doubled
+  private static SearchClusterMetrics getConservativeDefaults(
+      SearchRepository searchRepository, long totalEntities) {
+    // More aggressive batch sizes for better performance
+    // These are still conservative but avoid the 10x performance penalty
+    int conservativeBatchSize;
+    if (totalEntities > 1000000) {
+      conservativeBatchSize = 1500; // Large datasets need bigger batches
+    } else if (totalEntities > 500000) {
+      conservativeBatchSize = 1000;
+    } else if (totalEntities > 250000) {
+      conservativeBatchSize = 800;
+    } else if (totalEntities > 100000) {
+      conservativeBatchSize = 500;
+    } else if (totalEntities > 50000) {
+      conservativeBatchSize = 300;
+    } else {
+      conservativeBatchSize = 200;
+    }
+
+    // Scale producer threads based on dataset size and available processors
+    // Still capped by MAX_CONCURRENT_TASKS (50) in the application
+    int availableProcessors = Runtime.getRuntime().availableProcessors();
+    int conservativeThreads;
+    if (totalEntities > 1000000) {
+      conservativeThreads = Math.min(50, availableProcessors * 4);
+    } else if (totalEntities > 500000) {
+      conservativeThreads = Math.min(40, availableProcessors * 3);
+    } else if (totalEntities > 100000) {
+      conservativeThreads = Math.min(30, availableProcessors * 2);
+    } else {
+      conservativeThreads = Math.min(20, Math.max(10, availableProcessors));
+    }
+
+    // Concurrent requests should consider connection pool limits
+    int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50;
 
     // Use JVM runtime values as conservative defaults for heap
     long maxHeap = Runtime.getRuntime().maxMemory();
@@ -306,6 +357,37 @@ public class SearchClusterMetrics {
     long freeHeap = Runtime.getRuntime().freeMemory();
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
+
+    // Try to get the actual max content length from cluster settings
+    long maxPayloadSize = 100 * 1024 * 1024L; // Default 100MB
+    try {
+      if (searchRepository != null) {
+        SearchClient searchClient = searchRepository.getSearchClient();
+        Map<String, Object> clusterSettings = null;
+
+        // Get cluster settings based on search client type
+        if (searchClient instanceof OpenSearchClient) {
+          clusterSettings = ((OpenSearchClient) searchClient).clusterSettings();
+        } else if (searchClient instanceof ElasticSearchClient) {
+          clusterSettings = ((ElasticSearchClient) searchClient).clusterSettings();
+        }
+
+        if (clusterSettings != null) {
+          long maxContentLength = extractMaxContentLength(clusterSettings);
+          // With compression, we can send ~4x the max content length
+          double compressionRatio = 0.25;
+          long effectiveMaxContentLength = (long) (maxContentLength / compressionRatio);
+          maxPayloadSize = effectiveMaxContentLength * 8 / 10; // Use 80% for safety
+          LOG.debug(
+              "Detected max content length: {} MB, effective payload size: {} MB",
+              maxContentLength / (1024 * 1024),
+              maxPayloadSize / (1024 * 1024));
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not fetch max content length from cluster, using default: {}", e.getMessage());
+    }
 
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
@@ -315,7 +397,7 @@ public class SearchClusterMetrics {
         .totalNodes(1)
         .cpuUsagePercent(50.0)
         .memoryUsagePercent(heapUsagePercent)
-        .maxPayloadSizeBytes(50 * 1024 * 1024L) // Conservative 50MB
+        .maxPayloadSizeBytes(maxPayloadSize)
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)
