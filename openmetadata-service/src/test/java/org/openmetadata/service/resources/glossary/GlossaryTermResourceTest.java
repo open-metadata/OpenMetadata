@@ -122,8 +122,8 @@ import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.MoveEntityMessage;
-import org.openmetadata.service.util.MoveEntityResponse;
+import org.openmetadata.service.util.MoveGlossaryTermMessage;
+import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -1959,7 +1959,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 1: Move childTerm1 from term1 to term2 within the same glossary
     EntityReference parentTerm2Ref =
         new EntityReference().withId(term2.getId()).withType("glossaryTerm");
-    MoveEntityMessage moveMessage1 = receiveMoveEntityMessage(childTerm1.getId(), parentTerm2Ref);
+    MoveGlossaryTermMessage moveMessage1 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm2Ref);
     assertEquals("COMPLETED", moveMessage1.getStatus());
     assertEquals(childTerm1.getName(), moveMessage1.getEntityName());
     assertNull(moveMessage1.getError());
@@ -1980,7 +1981,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 2: Move childTerm1 to root of glossary1 (no parent)
     EntityReference glossary1Ref =
         new EntityReference().withId(glossary1.getId()).withType("glossary");
-    MoveEntityMessage moveMessage2 = receiveMoveEntityMessage(childTerm1.getId(), glossary1Ref);
+    MoveGlossaryTermMessage moveMessage2 =
+        receiveMoveEntityMessage(childTerm1.getId(), glossary1Ref);
     assertEquals("COMPLETED", moveMessage2.getStatus());
     assertEquals(childTerm1.getName(), moveMessage2.getEntityName());
     assertNull(moveMessage2.getError());
@@ -1997,7 +1999,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 3: Move childTerm1 to a different glossary (glossary2) under term3
     EntityReference parentTerm3Ref =
         new EntityReference().withId(term3.getId()).withType("glossaryTerm");
-    MoveEntityMessage moveMessage3 = receiveMoveEntityMessage(childTerm1.getId(), parentTerm3Ref);
+    MoveGlossaryTermMessage moveMessage3 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm3Ref);
     assertEquals("COMPLETED", moveMessage3.getStatus());
     assertEquals(childTerm1.getName(), moveMessage3.getEntityName());
     assertNull(moveMessage3.getError());
@@ -2014,7 +2017,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 4: Move childTerm1 to root of glossary2 (no parent)
     EntityReference glossary2Ref =
         new EntityReference().withId(glossary2.getId()).withType("glossary");
-    MoveEntityMessage moveMessage4 = receiveMoveEntityMessage(childTerm1.getId(), glossary2Ref);
+    MoveGlossaryTermMessage moveMessage4 =
+        receiveMoveEntityMessage(childTerm1.getId(), glossary2Ref);
     assertEquals("COMPLETED", moveMessage4.getStatus());
     assertEquals(childTerm1.getName(), moveMessage4.getEntityName());
     assertNull(moveMessage4.getError());
@@ -2031,7 +2035,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 5: Move back to glossary1 under term1
     EntityReference parentTerm1Ref =
         new EntityReference().withId(term1.getId()).withType("glossaryTerm");
-    MoveEntityMessage moveMessage5 = receiveMoveEntityMessage(childTerm1.getId(), parentTerm1Ref);
+    MoveGlossaryTermMessage moveMessage5 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm1Ref);
     assertEquals("COMPLETED", moveMessage5.getStatus());
     assertEquals(childTerm1.getName(), moveMessage5.getEntityName());
     assertNull(moveMessage5.getError());
@@ -2046,7 +2051,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Test Scenario 6: Try to move a term to its own child (should fail)
     EntityReference childTerm1Ref =
         new EntityReference().withId(childTerm1.getId()).withType("glossaryTerm");
-    MoveEntityMessage failedMoveMessage = receiveMoveEntityMessage(term1.getId(), childTerm1Ref);
+    MoveGlossaryTermMessage failedMoveMessage =
+        receiveMoveEntityMessage(term1.getId(), childTerm1Ref);
     assertEquals("FAILED", failedMoveMessage.getStatus());
     assertEquals(term1.getName(), failedMoveMessage.getEntityName());
     assertNotNull(failedMoveMessage.getError());
@@ -2067,7 +2073,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   /**
    * Helper method to receive move entity message via WebSocket
    */
-  protected MoveEntityMessage receiveMoveEntityMessage(UUID id, EntityReference newParent)
+  protected MoveGlossaryTermMessage receiveMoveEntityMessage(UUID id, EntityReference newParent)
       throws Exception {
     UUID userId = getAdminUserId();
     String uri = String.format("http://localhost:%d", APP.getLocalPort());
@@ -2119,7 +2125,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
 
     // Initiate the move operation after connection is established
-    MoveEntityResponse moveResponse = moveEntityAsync(id, newParent);
+    MoveGlossaryTermResponse moveResponse = moveEntityAsync(id, newParent);
     assertNotNull(moveResponse.getJobId());
     assertTrue(moveResponse.getMessage().contains("Move operation initiated"));
 
@@ -2132,13 +2138,13 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       fail("Received message is null.");
     }
 
-    return JsonUtils.readValue(receivedJson, MoveEntityMessage.class);
+    return JsonUtils.readValue(receivedJson, MoveGlossaryTermMessage.class);
   }
 
   /**
    * Helper method to initiate async move operation
    */
-  protected MoveEntityResponse moveEntityAsync(UUID id, EntityReference newParent)
+  protected MoveGlossaryTermResponse moveEntityAsync(UUID id, EntityReference newParent)
       throws HttpResponseException {
     try {
       WebTarget target = getCollection().path(String.format("/%s/moveAsync", id));
@@ -2153,7 +2159,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       return TestUtils.put(
           target,
           payload,
-          MoveEntityResponse.class,
+          MoveGlossaryTermResponse.class,
           Response.Status.ACCEPTED,
           TestUtils.ADMIN_AUTH_HEADERS);
     } catch (HttpResponseException e) {
