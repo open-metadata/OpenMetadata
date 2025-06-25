@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.util.ArrayList;
@@ -229,7 +230,7 @@ public class EntityRelationshipCleanup {
         LOG.debug("No repository found for entity type: {}", entityType);
         return false;
       }
-      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS);
+      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return true;
     } catch (EntityNotFoundException e) {
       LOG.debug("Entity {}:{} not found", entityType, entityId);
