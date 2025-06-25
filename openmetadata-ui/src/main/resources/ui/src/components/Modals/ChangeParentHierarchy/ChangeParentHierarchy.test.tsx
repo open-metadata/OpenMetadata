@@ -116,7 +116,7 @@ describe('Test ChangeParentHierarchy modal component', () => {
 
     // Component should set up websocket listeners
     expect(mockSocket.on).toHaveBeenCalledWith(
-      'moveGlossaryTermJob',
+      'moveGlossaryTermChannel',
       expect.any(Function)
     );
   });

@@ -16,6 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -30,6 +31,7 @@ import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { StatusClass } from '../../../utils/GlossaryUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
@@ -43,6 +45,7 @@ const ChangeParentHierarchy = ({
   onCancel,
 }: ChangeParentHierarchyProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [form] = Form.useForm();
   const { socket } = useWebSocketConnector();
   const [loadingState, setLoadingState] = useState({
@@ -73,18 +76,34 @@ const ChangeParentHierarchy = ({
     }
   };
 
-  const handleMoveSuccess = useCallback(() => {
-    setLoadingState((prev) => ({ ...prev, isSaving: false }));
-    setMoveJob(undefined);
-    onCancel();
-  }, [onCancel]);
+  const handleTreeAsyncSelectCancel = () => {
+    // Reset the selected parent when user cancels the tree selection
+    setSelectedParent(null);
+    form.setFieldsValue({ parent: undefined });
+  };
+
+  const handleMoveSuccess = useCallback(
+    (response: MoveGlossaryTermWebsocketResponse) => {
+      setLoadingState((prev) => ({ ...prev, isSaving: false }));
+      setMoveJob(undefined);
+
+      // Redirect to the new fully qualified name path if available
+      if (response.fullyQualifiedName) {
+        const glossaryPath = getGlossaryPath(response.fullyQualifiedName);
+        history.replace(glossaryPath);
+      } else {
+        onCancel();
+      }
+    },
+    [onCancel, history]
+  );
 
   const handleMoveJobUpdate = useCallback(
     (response: MoveGlossaryTermWebsocketResponse) => {
       setMoveJob(response);
 
       if (response.status === 'COMPLETED') {
-        handleMoveSuccess();
+        handleMoveSuccess(response);
       } else if (response.status === 'FAILED') {
         showErrorToast(response.error ?? t('label.failed'));
         setLoadingState((prev) => ({ ...prev, isSaving: false }));
@@ -145,6 +164,7 @@ const ChangeParentHierarchy = ({
       open
       cancelText={t('label.cancel')}
       closable={false}
+      data-testid="change-parent-hierarchy-modal"
       maskClosable={false}
       okButtonProps={{
         form: 'change-parent-hierarchy-modal',
@@ -161,7 +181,7 @@ const ChangeParentHierarchy = ({
         layout="vertical"
         onFinish={handleSubmit}>
         {moveJob?.jobId && (
-          <div className="m-t-md">
+          <div className="m-b-md">
             <Banner
               className="border-radius"
               isLoading={loadingState.isSaving}
@@ -184,6 +204,7 @@ const ChangeParentHierarchy = ({
             },
           ]}>
           <TreeAsyncSelectList
+            hasNoActionButtons
             isParentSelectable
             data-testid="change-parent-select"
             filterOptions={[selectedData.fullyQualifiedName ?? '']}
@@ -193,6 +214,7 @@ const ChangeParentHierarchy = ({
               field: t('label.parent'),
             })}
             tagType={TagSource.Glossary}
+            onCancel={handleTreeAsyncSelectCancel}
             onChange={handleTagSelection}
           />
         </Form.Item>

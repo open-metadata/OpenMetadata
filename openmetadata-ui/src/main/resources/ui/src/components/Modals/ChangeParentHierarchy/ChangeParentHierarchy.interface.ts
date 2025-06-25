@@ -24,4 +24,5 @@ export interface MoveGlossaryTermWebsocketResponse {
   data?: string;
   error?: string;
   message: string;
+  fullyQualifiedName?: string;
 }
