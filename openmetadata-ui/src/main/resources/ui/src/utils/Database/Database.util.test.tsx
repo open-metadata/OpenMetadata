@@ -43,6 +43,26 @@ jest.mock('react-router-dom', () => ({
   useNavigate: mockNavigate,
 }));
 
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      filterIcon: () => <div>FilterIcon</div>,
+      render: () => (
+        <OwnerLabel
+          isCompactView={false}
+          maxVisibleOwners={4}
+          owners={[{ id: '1', name: 'John Doe', type: 'user' }]}
+          showLabel={false}
+        />
+      ),
+    },
+  ]),
+}));
+
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {
     it('should return the correct query filter', () => {
