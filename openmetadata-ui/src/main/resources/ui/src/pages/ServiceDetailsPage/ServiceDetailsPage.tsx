@@ -185,12 +185,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     try {
       const { status, data } = await getPipelineServiceHostIp();
       if (status === 200) {
-        setHostIp(data?.ip || '[unknown]');
-      } else {
-        setHostIp(undefined);
+        setHostIp(data?.ip);
       }
     } catch {
-      setHostIp('[error - unknown]');
+      setHostIp(undefined);
     }
   };
 

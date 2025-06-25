@@ -328,12 +328,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(
-            t('message.test-connection-taking-too-long', {
-              service_type: serviceType,
+          let message = t('message.test-connection-taking-too-long.default', {
+            service_type: serviceType,
+          });
+          if (hostIp) {
+            message += t('message.test-connection-taking-too-long.withIp', {
               ip: hostIp,
-            })
-          );
+            });
+          }
+          setMessage(message);
           setIsConnectionTimeout(true);
         }
 
