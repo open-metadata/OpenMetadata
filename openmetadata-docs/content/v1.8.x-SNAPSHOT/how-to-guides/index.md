@@ -7,6 +7,17 @@ slug: /how-to-guides
 
 The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
 
+## Agentic Metadata Management
+Use LLMs and GenAI agents for automation and intelligent data management within OpenMetadata
+
+{% tilesContainer %}
+{% tile
+    title="MCP Server"
+    description="Enable AI agent communication with metadata to add context and take intelligent and automated action"
+    link="/how-to-guides/mcp"
+    icon="discovery"
+/%}
+{% /tilesContainer %}
 ## Features in OpenMetadata
 
 OpenMetadata is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around reliable data, and build a documentation-first data culture in the organization.
