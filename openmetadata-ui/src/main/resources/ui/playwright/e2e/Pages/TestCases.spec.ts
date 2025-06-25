@@ -135,9 +135,7 @@ test('Table difference test case', async ({ page }) => {
         '#tableTestForm_params_keyColumns_1_value',
         table1.entity?.columns[3].name
       );
-      await
-        .getByTitle(table1.entity?.columns[3].name, { exact: true })
-        .click();
+      await page.getByTitle(table1.entity?.columns[3].name, { exact: true }).click();
 
       await page
         .locator('label')
@@ -200,7 +198,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
       await
-        .getByTestId('code-mirror-container')
+        page.getByTestId('code-mirror-container')
         .getByRole('textbox')
         .fill(testCase.sqlQuery);
       await page.getByLabel('Strategy').click();
@@ -239,10 +237,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.fill('#tableTestForm_displayName', testCase.displayName);
 
       await page.locator('.CodeMirror-scroll').click();
-      await
-        .getByTestId('code-mirror-container')
-        .getByRole('textbox')
-        .fill(' update');
+      await page.getByTestId('code-mirror-container').getByRole('textbox').fill(' update');
       await page.getByText('ROWS').click();
       await page.getByTitle('COUNT').click();
       await page.getByPlaceholder('Enter a Threshold').clear();
