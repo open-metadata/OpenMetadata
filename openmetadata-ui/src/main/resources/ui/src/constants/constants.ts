@@ -16,7 +16,6 @@ import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -65,8 +64,8 @@ export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';

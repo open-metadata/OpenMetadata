@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,30 @@
  *  limitations under the License.
  */
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
+export interface ExternalVersionData {
+  version: string;
+  date: string;
+  hasFeatures: boolean;
+  note?: string;
+}
+
+export interface VersionContent {
+  version?: string;
+  date: string;
+  hasFeatures: boolean;
+  note?: string;
+  markdown: string;
+  features: string[];
+  changelog: string;
+}
+
+export interface WhatsNewModalProps {
   visible: boolean;
-};
+  onCancel: () => void;
+  header: string;
+}
 
 export enum ToggleType {
-  FEATURES = 'features',
-  CHANGE_LOG = 'change-log',
+  FEATURES = 'Features',
+  CHANGE_LOG = 'ChangeLogs',
 }

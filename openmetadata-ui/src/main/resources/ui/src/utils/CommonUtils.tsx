@@ -54,6 +54,7 @@ import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
@@ -250,7 +251,8 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
+  const appVersion = useApplicationStore.getState().appVersion;
+  reactLocalStorage.setObject(`${LOCALSTORAGE_RECENTLY_VIEWED}_${appVersion}`, {
     data: recentData,
   });
 };
@@ -258,9 +260,13 @@ export const setRecentlyViewedData = (
 export const setRecentlySearchedData = (
   recentData: Array<RecentlySearchedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
-    data: recentData,
-  });
+  const appVersion = useApplicationStore.getState().appVersion;
+  reactLocalStorage.setObject(
+    `${LOCALSTORAGE_RECENTLY_SEARCHED}_${appVersion}`,
+    {
+      data: recentData,
+    }
+  );
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {

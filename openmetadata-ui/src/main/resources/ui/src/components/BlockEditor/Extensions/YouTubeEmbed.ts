@@ -43,6 +43,7 @@ export const YouTubeEmbed = Node.create<YouTubeEmbedOptions>({
 
   addAttributes() {
     return {
+      allowFullScreen: true,
       src: {
         default: null,
         parseHTML: (element) => element.getAttribute('src'),
@@ -57,7 +58,7 @@ export const YouTubeEmbed = Node.create<YouTubeEmbedOptions>({
         },
       },
       width: {
-        default: '100%',
+        default: '80%',
         parseHTML: (element) => element.getAttribute('width'),
         renderHTML: (attributes) => {
           if (!attributes.width) {

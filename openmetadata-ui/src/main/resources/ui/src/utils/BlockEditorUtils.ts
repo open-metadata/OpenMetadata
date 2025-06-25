@@ -130,7 +130,7 @@ export const formatValueBasedOnContent = (value: string) =>
 export const isHTMLString = (content: string) => {
   // Quick check for common HTML tags
   const commonHtmlTags =
-    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre|iframe)[>\s]/i;
+    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
 
   // If content doesn't have any HTML-like structure, return false early
   if (!commonHtmlTags.test(content)) {
@@ -185,37 +185,21 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
 });
 
 export const getHtmlStringFromMarkdownString = (content: string) => {
-  // First convert any markdown to HTML
-  const markdownHtml = _convertMarkdownStringToHtmlString.makeHtml(content);
+  // First, convert YouTube components to iframe format that YouTubeEmbed extension expects
+  let processedContent = content;
+  const youtubeRegex = /<YouTube\s+videoId=["']([^"']+)["']\s*\/?>/gi;
+  processedContent = processedContent.replace(
+    youtubeRegex,
+    (_match, videoId) => {
+      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 
-  // If the content contains iframes or other HTML elements, preserve them
-  if (content.includes('<iframe') || isHTMLString(content)) {
-    // Create a temporary div to parse the content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = markdownHtml;
+      return `<iframe src="${embedUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`;
+    }
+  );
 
-    // Find all iframes in the original content
-    const iframeRegex = /<iframe[^>]*>.*?<\/iframe>/gi;
-    const iframes = content.match(iframeRegex) || [];
-
-    // Replace any iframes in the markdown HTML with the original iframes
-    iframes.forEach((iframe) => {
-      const placeholder = document.createElement('div');
-      placeholder.innerHTML = iframe;
-      const iframeElement = placeholder.firstChild as HTMLElement;
-
-      // Find the corresponding iframe in the markdown HTML and replace it
-      const existingIframes = tempDiv.getElementsByTagName('iframe');
-      if (existingIframes.length > 0) {
-        existingIframes[0].replaceWith(iframeElement);
-      } else {
-        // If no iframe found, append it to the end
-        tempDiv.appendChild(iframeElement);
-      }
-    });
-
-    return tempDiv.innerHTML;
-  }
+  // Convert markdown to HTML using Showdown
+  const markdownHtml =
+    _convertMarkdownStringToHtmlString.makeHtml(processedContent);
 
   return markdownHtml;
 };
@@ -243,7 +227,7 @@ export const isYouTubeUrl = (url: string): boolean => {
  * @param newContent The new content to set
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
-  // Convert the markdown string to an HTML string
+  // Convert the content to HTML (including YouTube component conversion)
   const htmlString = getHtmlStringFromMarkdownString(newContent);
 
   editor.commands.setContent(htmlString);
