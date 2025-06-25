@@ -183,20 +183,22 @@ public class SearchClusterMetrics {
     long maxPayloadSize =
         Math.min(heapBasedPayloadSize, effectiveMaxContentLength * 8 / 10); // Use 80% for safety
 
-    int avgEntitySizeKB = 2; // Assume 2KB average entity size (uncompressed)
-    int recommendedBatchSize = (int) Math.min(3000, maxPayloadSize / (avgEntitySizeKB * 1024L));
-    recommendedBatchSize = Math.max(200, recommendedBatchSize); // Minimum 200 for performance
+    // Be more conservative with batch size to handle large documents (some can be 30KB+)
+    int avgEntitySizeKB = 10; // More realistic average including large documents
+    int recommendedBatchSize = (int) Math.min(500, maxPayloadSize / (avgEntitySizeKB * 1024L));
+    recommendedBatchSize =
+        Math.max(50, recommendedBatchSize); // Lower minimum to avoid timeout with large docs
 
-    // Scale batch size based on dataset size for better performance
+    // Scale batch size based on dataset size but be conservative to avoid timeouts
     if (totalEntities > 1000000) {
-      recommendedBatchSize = Math.max(1500, recommendedBatchSize);
+      recommendedBatchSize = Math.min(500, recommendedBatchSize); // Cap at 500
       recommendedProducerThreads =
           Math.min(50, recommendedProducerThreads); // Capped by connection pool
     } else if (totalEntities > 500000) {
-      recommendedBatchSize = Math.max(1000, recommendedBatchSize);
+      recommendedBatchSize = Math.min(400, recommendedBatchSize); // Cap at 400
       recommendedProducerThreads = Math.min(40, recommendedProducerThreads);
     } else if (totalEntities > 100000) {
-      recommendedBatchSize = Math.max(500, recommendedBatchSize);
+      recommendedBatchSize = Math.min(300, recommendedBatchSize); // Cap at 300
       recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
     }
 
@@ -317,21 +319,19 @@ public class SearchClusterMetrics {
 
   private static SearchClusterMetrics getConservativeDefaults(
       SearchRepository searchRepository, long totalEntities) {
-    // More aggressive batch sizes for better performance
-    // These are still conservative but avoid the 10x performance penalty
     int conservativeBatchSize;
     if (totalEntities > 1000000) {
-      conservativeBatchSize = 1500; // Large datasets need bigger batches
-    } else if (totalEntities > 500000) {
-      conservativeBatchSize = 1000;
-    } else if (totalEntities > 250000) {
-      conservativeBatchSize = 800;
-    } else if (totalEntities > 100000) {
       conservativeBatchSize = 500;
-    } else if (totalEntities > 50000) {
+    } else if (totalEntities > 500000) {
+      conservativeBatchSize = 400;
+    } else if (totalEntities > 250000) {
       conservativeBatchSize = 300;
-    } else {
+    } else if (totalEntities > 100000) {
       conservativeBatchSize = 200;
+    } else if (totalEntities > 50000) {
+      conservativeBatchSize = 150;
+    } else {
+      conservativeBatchSize = 100;
     }
 
     // Scale producer threads based on dataset size and available processors
@@ -348,17 +348,14 @@ public class SearchClusterMetrics {
       conservativeThreads = Math.min(20, Math.max(10, availableProcessors));
     }
 
-    // Concurrent requests should consider connection pool limits
-    int conservativeConcurrentRequests = totalEntities > 100000 ? 100 : 50;
+    int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
 
-    // Use JVM runtime values as conservative defaults for heap
     long maxHeap = Runtime.getRuntime().maxMemory();
     long totalHeap = Runtime.getRuntime().totalMemory();
     long freeHeap = Runtime.getRuntime().freeMemory();
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
-    // Try to get the actual max content length from cluster settings
     long maxPayloadSize = 100 * 1024 * 1024L; // Default 100MB
     try {
       if (searchRepository != null) {

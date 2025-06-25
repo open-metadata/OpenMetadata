@@ -24,6 +24,7 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.index.IndexRequest;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.HttpAsyncResponseConsumerFactory;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.common.unit.ByteSizeUnit;
@@ -39,8 +40,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private final OpenSearchClient searchClient;
   private final SearchRepository searchRepository;
-  private final BulkProcessor bulkProcessor;
+  private volatile BulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
+  private volatile long currentPayloadSize = 0;
+  private final Object payloadSizeLock = new Object();
 
   // Track metrics
   private final AtomicLong totalSubmitted = new AtomicLong(0);
@@ -51,6 +54,7 @@ public class OpenSearchBulkSink implements BulkSink {
   private volatile int batchSize;
   private volatile int maxConcurrentRequests;
   private final long maxPayloadSizeBytes;
+  private volatile BulkProcessor currentBulkProcessor;
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -68,20 +72,36 @@ public class OpenSearchBulkSink implements BulkSink {
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
 
     // Create bulk processor
-    this.bulkProcessor = createBulkProcessor();
+    this.bulkProcessor = createBulkProcessor(batchSize, maxConcurrentRequests);
+    this.currentBulkProcessor = this.bulkProcessor;
   }
 
-  private BulkProcessor createBulkProcessor() {
+  private BulkProcessor createBulkProcessor(int bulkActions, int concurrentRequests) {
     RestHighLevelClient client = searchClient.getClient();
 
+    // Create custom request options with larger buffer for big responses
+    RequestOptions.Builder optionsBuilder = RequestOptions.DEFAULT.toBuilder();
+    optionsBuilder.setHttpAsyncResponseConsumerFactory(
+        new HttpAsyncResponseConsumerFactory.HeapBufferedResponseConsumerFactory(
+            100 * 1024 * 1024)); // 100MB buffer
+    RequestOptions requestOptions = optionsBuilder.build();
+
+    LOG.info(
+        "Creating BulkProcessor with batch size {} and {} concurrent requests",
+        bulkActions,
+        concurrentRequests);
+
     return BulkProcessor.builder(
-            (request, bulkListener) ->
-                client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+            (request, bulkListener) -> client.bulkAsync(request, requestOptions, bulkListener),
             new BulkProcessor.Listener() {
               @Override
               public void beforeBulk(long executionId, BulkRequest request) {
                 int numberOfActions = request.numberOfActions();
                 totalSubmitted.addAndGet(numberOfActions);
+                // Reset payload size counter after flush
+                synchronized (payloadSizeLock) {
+                  currentPayloadSize = 0;
+                }
                 LOG.debug(
                     "Executing bulk request {} with {} actions", executionId, numberOfActions);
               }
@@ -143,11 +163,14 @@ public class OpenSearchBulkSink implements BulkSink {
                 updateStats();
               }
             })
-        .setBulkActions(batchSize)
+        .setBulkActions(bulkActions)
         .setBulkSize(new ByteSizeValue(maxPayloadSizeBytes, ByteSizeUnit.BYTES))
-        .setFlushInterval(TimeValue.timeValueSeconds(5))
-        .setConcurrentRequests(maxConcurrentRequests)
-        .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
+        .setFlushInterval(TimeValue.timeValueSeconds(10)) // Increased from 5s
+        .setConcurrentRequests(concurrentRequests)
+        .setBackoffPolicy(
+            BackoffPolicy.exponentialBackoff(
+                TimeValue.timeValueMillis(1000),
+                3)) // More aggressive backoff: 1s initial, 3 retries
         .build();
   }
 
@@ -209,7 +232,8 @@ public class OpenSearchBulkSink implements BulkSink {
     updateRequest.doc(json, XContentType.JSON);
     updateRequest.docAsUpsert(true);
 
-    bulkProcessor.add(updateRequest);
+    // Add to bulk processor with size checking
+    addRequestWithSizeCheck(updateRequest, json.getBytes().length);
   }
 
   private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName)
@@ -220,18 +244,96 @@ public class OpenSearchBulkSink implements BulkSink {
     IndexRequest indexRequest =
         new IndexRequest(indexName).id(docId).source(json, XContentType.JSON);
 
-    bulkProcessor.add(indexRequest);
+    // Add to bulk processor with size checking
+    addRequestWithSizeCheck(indexRequest, json.getBytes().length);
   }
 
-  private void handleBackpressure() {
-    // Reduce batch size on backpressure
-    int newBatchSize = Math.max(50, batchSize / 2);
-    if (newBatchSize < batchSize) {
-      LOG.warn("Detected backpressure, reducing batch size from {} to {}", batchSize, newBatchSize);
-      batchSize = newBatchSize;
+  /**
+   * Adds a request to the bulk processor, checking payload size and flushing if needed.
+   * This centralizes the logic for managing payload size limits.
+   */
+  private void addRequestWithSizeCheck(Object request, long uncompressedSize) {
+    synchronized (payloadSizeLock) {
+      // Estimate compressed size (compression typically reduces JSON to ~25% of original size)
+      // This matches the auto-tuning assumption of "~75% size reduction"
+      long estimatedCompressedSize = uncompressedSize / 4;
 
-      // Note: We can't update the existing bulk processor's batch size
-      // It would require recreating the processor
+      // Check if adding this request would exceed the payload size limit
+      if (currentPayloadSize > 0
+          && currentPayloadSize + estimatedCompressedSize > maxPayloadSizeBytes) {
+        // Flush current batch before adding this request
+        LOG.info(
+            "Flushing bulk processor due to payload size limit. Current: {} MB compressed, Request: {} KB uncompressed ({} KB compressed), Max: {} MB",
+            currentPayloadSize / (1024.0 * 1024.0),
+            uncompressedSize / 1024.0,
+            estimatedCompressedSize / 1024.0,
+            maxPayloadSizeBytes / (1024.0 * 1024.0));
+        bulkProcessor.flush();
+        currentPayloadSize = 0;
+      }
+
+      // Add the request
+      if (request instanceof UpdateRequest) {
+        bulkProcessor.add((UpdateRequest) request);
+      } else if (request instanceof IndexRequest) {
+        bulkProcessor.add((IndexRequest) request);
+      }
+
+      // Update current payload size with estimated compressed size
+      currentPayloadSize += estimatedCompressedSize;
+
+      // Warn about large documents (using uncompressed size for clarity)
+      if (uncompressedSize > 1024 * 1024) {
+        LOG.warn(
+            "Large document detected: {} MB uncompressed, ~{} MB compressed",
+            uncompressedSize / (1024.0 * 1024.0),
+            estimatedCompressedSize / (1024.0 * 1024.0));
+      }
+    }
+  }
+
+  private synchronized void handleBackpressure() {
+    // Reduce batch size and concurrent requests on backpressure
+    int newBatchSize = Math.max(50, batchSize / 2);
+    int newConcurrentRequests = Math.max(1, maxConcurrentRequests / 2);
+
+    if (newBatchSize < batchSize || newConcurrentRequests < maxConcurrentRequests) {
+      LOG.warn(
+          "Detected backpressure, reducing batch size from {} to {} and concurrent requests from {} to {}",
+          batchSize,
+          newBatchSize,
+          maxConcurrentRequests,
+          newConcurrentRequests);
+
+      batchSize = newBatchSize;
+      maxConcurrentRequests = newConcurrentRequests;
+
+      // Recreate the bulk processor with new settings
+      recreateBulkProcessor();
+    }
+  }
+
+  private synchronized void recreateBulkProcessor() {
+    try {
+      // Close the old processor
+      if (currentBulkProcessor != null) {
+        currentBulkProcessor.flush();
+        boolean terminated = currentBulkProcessor.awaitClose(30, TimeUnit.SECONDS);
+        if (!terminated) {
+          LOG.warn("Old bulk processor did not terminate gracefully");
+        }
+      }
+
+      // Create new processor with updated settings
+      currentBulkProcessor = createBulkProcessor(batchSize, maxConcurrentRequests);
+      this.bulkProcessor = currentBulkProcessor;
+      LOG.info(
+          "Recreated bulk processor with batch size {} and {} concurrent requests",
+          batchSize,
+          maxConcurrentRequests);
+
+    } catch (Exception e) {
+      LOG.error("Failed to recreate bulk processor", e);
     }
   }
 
@@ -259,12 +361,14 @@ public class OpenSearchBulkSink implements BulkSink {
   public void close() throws IOException {
     try {
       // Flush any pending requests
-      bulkProcessor.flush();
+      if (currentBulkProcessor != null) {
+        currentBulkProcessor.flush();
 
-      // Wait for completion
-      boolean terminated = bulkProcessor.awaitClose(60, TimeUnit.SECONDS);
-      if (!terminated) {
-        LOG.warn("Bulk processor did not terminate within timeout");
+        // Wait for completion
+        boolean terminated = currentBulkProcessor.awaitClose(60, TimeUnit.SECONDS);
+        if (!terminated) {
+          LOG.warn("Bulk processor did not terminate within timeout");
+        }
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
@@ -275,18 +379,20 @@ public class OpenSearchBulkSink implements BulkSink {
   /**
    * Update batch size dynamically
    */
-  public void updateBatchSize(int newBatchSize) {
-    this.batchSize = newBatchSize;
-    // Note: The existing bulk processor will continue with old settings
-    // New settings would apply if we recreate the processor
+  public synchronized void updateBatchSize(int newBatchSize) {
+    if (this.batchSize != newBatchSize) {
+      this.batchSize = newBatchSize;
+      recreateBulkProcessor();
+    }
   }
 
   /**
    * Update concurrent requests dynamically
    */
-  public void updateConcurrentRequests(int concurrentRequests) {
-    this.maxConcurrentRequests = concurrentRequests;
-    // Note: The existing bulk processor will continue with old settings
-    // New settings would apply if we recreate the processor
+  public synchronized void updateConcurrentRequests(int concurrentRequests) {
+    if (this.maxConcurrentRequests != concurrentRequests) {
+      this.maxConcurrentRequests = concurrentRequests;
+      recreateBulkProcessor();
+    }
   }
 }
