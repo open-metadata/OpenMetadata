@@ -413,6 +413,9 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
+    // check initial replies count
+    await expect(page.getByTestId('replies-count')).not.toBeVisible();
+
     for (let i = 0; i < 10; i++) {
       const commentInput = page.locator('[data-testid="comments-input-field"]');
       commentInput.click();
@@ -439,6 +442,9 @@ test.describe('Activity feed', () => {
         page.locator('.right-container [data-testid="feed-replies"]')
       ).toContainText(`Reply message ${i}`);
     }
+
+    // check replies count in feed card
+    await expect(page.getByTestId('replies-count')).toHaveText('10 Replies');
   });
 
   test('Open and Closed Task Tab with approve from Task Feed Card', async ({
