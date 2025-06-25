@@ -18,7 +18,6 @@ Use LLMs and GenAI agents for automation and intelligent data management within 
     icon="discovery"
 /%}
 {% /tilesContainer %}
-
 ## Features in OpenMetadata
 
 OpenMetadata is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around reliable data, and build a documentation-first data culture in the organization.
