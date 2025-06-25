@@ -129,7 +129,8 @@ public class OpenSearchBulkSink implements BulkSink {
                   // Check for rejected execution exceptions
                   String failureMessage = response.buildFailureMessage();
                   if (failureMessage.contains("rejected_execution_exception")) {
-                    handleBackpressure();
+                    LOG.warn(
+                        "Detected backpressure from OpenSearch cluster (rejected_execution_exception). The BulkProcessor will handle retry with exponential backoff.");
                   }
                 } else {
                   totalSuccess.addAndGet(numberOfActions);
@@ -155,7 +156,8 @@ public class OpenSearchBulkSink implements BulkSink {
 
                 if (failure.getMessage() != null
                     && failure.getMessage().contains("rejected_execution_exception")) {
-                  handleBackpressure();
+                  LOG.warn(
+                      "Detected backpressure from OpenSearch cluster (rejected_execution_exception). The BulkProcessor will handle retry with exponential backoff.");
                 }
 
                 updateStats();
@@ -289,66 +291,9 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void handleBackpressure() {
-    int newBatchSize;
-    int newConcurrentRequests;
-
-    synchronized (this) {
-      // Reduce batch size and concurrent requests on backpressure
-      newBatchSize = Math.max(50, batchSize / 2);
-      newConcurrentRequests = Math.max(1, maxConcurrentRequests / 2);
-
-      if (newBatchSize < batchSize || newConcurrentRequests < maxConcurrentRequests) {
-        LOG.warn(
-            "Detected backpressure, reducing batch size from {} to {} and concurrent requests from {} to {}",
-            batchSize,
-            newBatchSize,
-            maxConcurrentRequests,
-            newConcurrentRequests);
-
-        batchSize = newBatchSize;
-        maxConcurrentRequests = newConcurrentRequests;
-      } else {
-        return; // No change needed
-      }
-    }
-
-    // Recreate the bulk processor with new settings outside synchronized block
-    recreateBulkProcessor();
-  }
-
-  private void recreateBulkProcessor() {
-    BulkProcessor oldProcessor = null;
-
-    synchronized (this) {
-      // Store reference to old processor and create new one
-      oldProcessor = currentBulkProcessor;
-
-      // Create new processor with updated settings
-      currentBulkProcessor = createBulkProcessor(batchSize, maxConcurrentRequests);
-      this.bulkProcessor = currentBulkProcessor;
-      LOG.info(
-          "Created new bulk processor with batch size {} and {} concurrent requests",
-          batchSize,
-          maxConcurrentRequests);
-    }
-
-    // Close old processor outside synchronized block to avoid deadlock
-    if (oldProcessor != null) {
-      try {
-        oldProcessor.flush();
-        boolean terminated = oldProcessor.awaitClose(30, TimeUnit.SECONDS);
-        if (!terminated) {
-          LOG.warn("Old bulk processor did not terminate gracefully");
-        }
-      } catch (Exception e) {
-        LOG.error("Failed to close old bulk processor", e);
-      }
-    }
-
-    // Reset payload size
-    currentPayloadSize = 0;
-  }
+  // Removed handleBackpressure() and recreateBulkProcessor() methods
+  // The BulkProcessor already handles backpressure internally with exponential backoff.
+  // Dynamic recreation of BulkProcessor was causing deadlocks in production.
 
   private void updateStats() {
     stats.setTotalRecords((int) totalSubmitted.get());
@@ -390,32 +335,38 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   /**
-   * Update batch size dynamically
+   * Get current batch size
    */
-  public void updateBatchSize(int newBatchSize) {
-    synchronized (this) {
-      if (this.batchSize != newBatchSize) {
-        this.batchSize = newBatchSize;
-      } else {
-        return; // No change needed
-      }
-    }
-    // Recreate processor outside synchronized block
-    recreateBulkProcessor();
+  public int getBatchSize() {
+    return batchSize;
   }
 
   /**
-   * Update concurrent requests dynamically
+   * Get current concurrent requests
+   */
+  public int getConcurrentRequests() {
+    return maxConcurrentRequests;
+  }
+
+  /**
+   * Update batch size - Note: This only updates the value for future processor creation
+   * The current BulkProcessor continues with its original settings to avoid deadlocks
+   */
+  public void updateBatchSize(int newBatchSize) {
+    this.batchSize = newBatchSize;
+    LOG.info(
+        "Batch size updated to: {}. This will take effect when a new processor is created.",
+        newBatchSize);
+  }
+
+  /**
+   * Update concurrent requests - Note: This only updates the value for future processor creation
+   * The current BulkProcessor continues with its original settings to avoid deadlocks
    */
   public void updateConcurrentRequests(int concurrentRequests) {
-    synchronized (this) {
-      if (this.maxConcurrentRequests != concurrentRequests) {
-        this.maxConcurrentRequests = concurrentRequests;
-      } else {
-        return; // No change needed
-      }
-    }
-    // Recreate processor outside synchronized block
-    recreateBulkProcessor();
+    this.maxConcurrentRequests = concurrentRequests;
+    LOG.info(
+        "Concurrent requests updated to: {}. This will take effect when a new processor is created.",
+        concurrentRequests);
   }
 }

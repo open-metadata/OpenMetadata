@@ -386,6 +386,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
                             return;
                           }
 
+                          // Apply natural throttling if we're experiencing backpressure
+                          long backpressureDelay = getBackpressureDelay();
+                          if (backpressureDelay > 0) {
+                            LOG.debug("Applying backpressure delay of {} ms", backpressureDelay);
+                            try {
+                              TimeUnit.MILLISECONDS.sleep(backpressureDelay);
+                            } catch (InterruptedException ie) {
+                              Thread.currentThread().interrupt();
+                              LOG.debug("Backpressure delay interrupted");
+                              return;
+                            }
+                          }
+
                           LOG.debug(
                               "Virtual thread processing offset: {}, remaining batches: {}",
                               currentOffset,
@@ -497,21 +510,36 @@ public class SearchIndexApp extends AbstractNativeApplication {
           }
         }
 
-        // Wait a bit to let the cluster recover
-        try {
-          LOG.info(
-              "Pausing for {} seconds to let OpenSearch recover from backpressure",
-              BACKPRESSURE_WAIT_MS / 1000);
-          Thread.sleep(BACKPRESSURE_WAIT_MS);
-          consecutiveErrors = 0; // Reset counter after waiting
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOG.debug("Backpressure wait interrupted");
-        }
+        // Don't use Thread.sleep - instead, record the time and let the system naturally throttle
+        LOG.info(
+            "Detected severe backpressure. Will naturally throttle operations for {} seconds",
+            BACKPRESSURE_WAIT_MS / 1000);
 
+        consecutiveErrors = 0; // Reset counter after adjustment
         lastBackpressureTime = System.currentTimeMillis();
       }
     }
+  }
+
+  /**
+   * Check if we should slow down due to recent backpressure.
+   * This provides natural throttling without blocking threads.
+   * @return suggested delay in milliseconds, or 0 if no throttling needed
+   */
+  private long getBackpressureDelay() {
+    if (lastBackpressureTime == 0) {
+      return 0;
+    }
+
+    long timeSinceBackpressure = System.currentTimeMillis() - lastBackpressureTime;
+    if (timeSinceBackpressure >= BACKPRESSURE_WAIT_MS) {
+      return 0; // Cooldown period has passed
+    }
+
+    // Return a delay proportional to how recently we saw backpressure
+    // More recent = longer delay (max 500ms, min 50ms)
+    long remainingCooldown = BACKPRESSURE_WAIT_MS - timeSinceBackpressure;
+    return Math.min(500, Math.max(50, remainingCooldown / 10));
   }
 
   private void handleJobFailure(Exception ex) {
