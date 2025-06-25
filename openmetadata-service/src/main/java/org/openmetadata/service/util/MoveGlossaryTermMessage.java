@@ -5,22 +5,25 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @NoArgsConstructor
-public class MoveEntityMessage {
+public class MoveGlossaryTermMessage {
   @Getter @Setter private String jobId;
   @Getter @Setter private String status;
   @Getter @Setter private String entityName;
   @Getter @Setter private String error;
+  @Getter @Setter private String fullyQualifiedName;
 
-  public MoveEntityMessage(String jobId, String status, String error) {
+  public MoveGlossaryTermMessage(String jobId, String status, String error) {
     this.jobId = jobId;
     this.status = status;
     this.error = error;
   }
 
-  public MoveEntityMessage(String jobId, String status, String entityName, String error) {
+  public MoveGlossaryTermMessage(
+      String jobId, String status, String entityName, String fullyQualifiedName, String error) {
     this.jobId = jobId;
     this.status = status;
     this.entityName = entityName;
     this.error = error;
+    this.fullyQualifiedName = fullyQualifiedName;
   }
 }

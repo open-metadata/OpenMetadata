@@ -85,7 +85,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.MoveEntityResponse;
+import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -713,7 +713,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     return Response.accepted()
         .entity(
-            new MoveEntityResponse(
+            new MoveGlossaryTermResponse(
                 jobId,
                 "Move operation initiated for " + glossaryTerm.getName(),
                 glossaryTerm.getName()))

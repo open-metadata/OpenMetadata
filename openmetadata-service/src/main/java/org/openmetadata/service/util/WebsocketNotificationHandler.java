@@ -273,7 +273,9 @@ public class WebsocketNotificationHandler {
 
   public static void sendMoveOperationCompleteNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity) {
-    MoveEntityMessage message = new MoveEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "COMPLETED", entity.getName(), entity.getFullyQualifiedName(), null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     LOG.info(
@@ -289,7 +291,9 @@ public class WebsocketNotificationHandler {
 
   public static void sendMoveOperationFailedNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
-    MoveEntityMessage message = new MoveEntityMessage(jobId, "FAILED", entity.getName(), error);
+    MoveGlossaryTermMessage message =
+        new MoveGlossaryTermMessage(
+            jobId, "FAILED", entity.getName(), entity.getFullyQualifiedName(), error);
     String jsonMessage = JsonUtils.pojoToJson(message);
 
     UUID userId = getUserIdFromSecurityContext(securityContext);
