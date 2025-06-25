@@ -120,22 +120,6 @@ button {
   border: 1px solid @grey-300;
   background-color: @white;
 
-  &.ant-btn-sm {
-    width: 20px;
-    height: 20px;
-    border-radius: @border-radius-base;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-
-    svg {
-      width: 12px;
-      height: 12px;
-      vertical-align: middle;
-    }
-  }
   &.ant-btn-default {
     width: 30px;
     height: 30px;
@@ -149,6 +133,23 @@ button {
     svg {
       width: 16px;
       height: 16px;
+      vertical-align: middle;
+    }
+  }
+
+  &.ant-btn-sm {
+    width: 20px;
+    height: 20px;
+    border-radius: @border-radius-base;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+
+    svg {
+      width: 12px;
+      height: 12px;
       vertical-align: middle;
     }
   }
