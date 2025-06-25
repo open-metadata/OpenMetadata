@@ -13,34 +13,45 @@
 
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import React, { useState } from 'react';
+import { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { SOCKET_EVENTS } from '../../../constants/constants';
+import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { EntityType } from '../../../enums/entity.enum';
 import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { StatusClass } from '../../../utils/GlossaryUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner from '../../common/Banner/Banner';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import { ChangeParentHierarchyProps } from './ChangeParentHierarchy.interface';
+import {
+  ChangeParentHierarchyProps,
+  MoveGlossaryTermWebsocketResponse,
+} from './ChangeParentHierarchy.interface';
 
 const ChangeParentHierarchy = ({
   selectedData,
   onCancel,
-  onSubmit,
 }: ChangeParentHierarchyProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { socket } = useWebSocketConnector();
   const [loadingState, setLoadingState] = useState({
     isSaving: false,
   });
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [selectedParent, setSelectedParent] =
     useState<DefaultOptionType | null>(null);
+  const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -62,16 +73,79 @@ const ChangeParentHierarchy = ({
     }
   };
 
-  const handleSubmit = async () => {
-    setLoadingState((prev) => ({ ...prev, isSaving: true }));
-    await onSubmit(selectedParent?.data as Glossary | GlossaryTerm);
+  const handleMoveSuccess = useCallback(() => {
     setLoadingState((prev) => ({ ...prev, isSaving: false }));
+    setMoveJob(undefined);
+    onCancel();
+  }, [onCancel]);
+
+  const handleMoveJobUpdate = useCallback(
+    (response: MoveGlossaryTermWebsocketResponse) => {
+      setMoveJob(response);
+
+      if (response.status === 'COMPLETED') {
+        handleMoveSuccess();
+      } else if (response.status === 'FAILED') {
+        showErrorToast(response.error ?? t('label.failed'));
+        setLoadingState((prev) => ({ ...prev, isSaving: false }));
+      }
+    },
+    [handleMoveSuccess]
+  );
+
+  const handleSubmit = async () => {
+    if (!selectedParent?.data) {
+      return;
+    }
+
+    try {
+      setLoadingState((prev) => ({ ...prev, isSaving: true }));
+      const parent = selectedParent.data as Glossary | GlossaryTerm;
+      const response = await moveGlossaryTerm(selectedData.id, {
+        id: parent.id,
+        type: (parent as GlossaryTerm).glossary
+          ? EntityType.GLOSSARY_TERM
+          : EntityType.GLOSSARY,
+        fullyQualifiedName: parent.fullyQualifiedName,
+      });
+
+      const jobData: MoveGlossaryTermWebsocketResponse = {
+        jobId: response.jobId,
+        message: response.message,
+        status: 'COMPLETED',
+      };
+
+      setMoveJob(jobData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setLoadingState((prev) => ({ ...prev, isSaving: false }));
+    }
   };
+
+  // WebSocket listener for move job updates
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
+        if (moveResponse) {
+          const moveResponseData = JSON.parse(moveResponse);
+          handleMoveJobUpdate(moveResponseData);
+        }
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL);
+      }
+    };
+  }, [socket, handleMoveJobUpdate]);
 
   return (
     <Modal
       open
       cancelText={t('label.cancel')}
+      closable={false}
+      maskClosable={false}
       okButtonProps={{
         form: 'change-parent-hierarchy-modal',
         htmlType: 'submit',
@@ -86,6 +160,16 @@ const ChangeParentHierarchy = ({
         id="change-parent-hierarchy-modal"
         layout="vertical"
         onFinish={handleSubmit}>
+        {moveJob?.jobId && (
+          <div className="m-t-md">
+            <Banner
+              className="border-radius"
+              isLoading={loadingState.isSaving}
+              message={moveJob.error ?? moveJob.message ?? ''}
+              type={moveJob.error ? 'error' : 'success'}
+            />
+          </div>
+        )}
         <Form.Item
           label={t('label.select-field', {
             field: t('label.parent'),

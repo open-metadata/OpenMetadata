@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 
 export interface ChangeParentHierarchyProps {
   selectedData: GlossaryTerm;
   onCancel: () => void;
-  onSubmit: (parent: Glossary | GlossaryTerm) => Promise<void>;
+}
+
+export interface MoveGlossaryTermWebsocketResponse {
+  jobId: string;
+  status: 'COMPLETED' | 'FAILED';
+  data?: string;
+  error?: string;
+  message: string;
 }

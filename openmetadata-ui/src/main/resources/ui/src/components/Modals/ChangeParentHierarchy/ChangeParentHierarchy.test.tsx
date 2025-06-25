@@ -23,17 +23,29 @@ import React from 'react';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
 
-const mockOnSubmit = jest.fn();
 const mockOnCancel = jest.fn();
 
 const mockProps = {
   selectedData: mockedGlossaryTerms[0],
   onCancel: mockOnCancel,
-  onSubmit: mockOnSubmit,
 };
 
+const mockSocket = {
+  on: jest.fn(),
+  off: jest.fn(),
+};
+
+jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
+  useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
+}));
+
 jest.mock('../../../rest/glossaryAPI', () => ({
-  moveGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  moveGlossaryTerm: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      jobId: 'test-job-id',
+      message: 'Move operation started',
+    })
+  ),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -46,6 +58,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 describe('Test ChangeParentHierarchy modal component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render glossary selection dropdown', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
@@ -89,8 +105,19 @@ describe('Test ChangeParentHierarchy modal component', () => {
 
     expect(submitButton).toBeInTheDocument();
 
-    // The TreeAsyncSelectList will handle the selection logic internally
-    // and the form submission will be handled by the parent component
+    // The component now handles API calls internally
     expect(submitButton).toBeInTheDocument();
+  });
+
+  it('should set up websocket listener when move job is created', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    // Component should set up websocket listeners
+    expect(mockSocket.on).toHaveBeenCalledWith(
+      'moveGlossaryTermJob',
+      expect.any(Function)
+    );
   });
 });
