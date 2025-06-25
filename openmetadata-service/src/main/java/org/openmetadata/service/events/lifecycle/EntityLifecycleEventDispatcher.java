@@ -39,13 +39,7 @@ public class EntityLifecycleEventDispatcher {
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
-    this.asyncExecutor =
-        Executors.newCachedThreadPool(
-            r -> {
-              Thread t = new Thread(r, "entity-lifecycle-handler");
-              t.setDaemon(true);
-              return t;
-            });
+    this.asyncExecutor = Executors.newFixedThreadPool(50, Thread.ofVirtual().factory());
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {
