@@ -2652,8 +2652,7 @@ public class ElasticSearchClient implements SearchClient {
                             .api
                             .entityRelationship
                             .EntityRelationshipDirection
-                            .DOWNSTREAM,
-                        false)));
+                            .DOWNSTREAM)));
     SearchEntityRelationshipResult upstreamResult =
         entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
             entityRelationshipRequest
@@ -2673,8 +2672,7 @@ public class ElasticSearchClient implements SearchClient {
                             .api
                             .entityRelationship
                             .EntityRelationshipDirection
-                            .UPSTREAM,
-                        false)));
+                            .UPSTREAM)));
 
     // Merge the results
     result.getNodes().putAll(upstreamResult.getNodes());
@@ -2685,9 +2683,8 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
-    boolean isConnectedVia = false;
     Set<String> directionValue =
-        getEntityRelationshipDirection(entityRelationshipRequest.getDirection(), isConnectedVia);
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
     entityRelationshipRequest.setDirectionValue(directionValue);
 
     if (entityRelationshipRequest.getDirection()
@@ -2695,8 +2692,7 @@ public class ElasticSearchClient implements SearchClient {
       return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
           entityRelationshipRequest);
     } else {
-      directionValue =
-          getEntityRelationshipDirection(entityRelationshipRequest.getDirection(), isConnectedVia);
+      directionValue = getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
       entityRelationshipRequest.setDirectionValue(directionValue);
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);

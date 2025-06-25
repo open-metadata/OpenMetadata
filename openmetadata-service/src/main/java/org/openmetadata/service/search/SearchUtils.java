@@ -39,6 +39,8 @@ public final class SearchUtils {
   public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
   public static final String ENTITY_RELATIONSHIP_AGGREGATION = "entityRelationshipAggregation";
   public static final String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
+  public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
+      "upstreamEntityRelationship.entity.fqnHash.keyword";
 
   private SearchUtils() {}
 
@@ -184,25 +186,19 @@ public final class SearchUtils {
     return Collections.emptyList();
   }
 
-  public static Set<String> getEntityRelationshipDirection(
-      EntityRelationshipDirection direction, boolean isConnectedVia) {
-    Set<String> directionValue = new HashSet<>();
-    if (isConnectedVia) {
-      directionValue.add("entityRelationship.entity.fqnHash.keyword");
-    } else {
-      directionValue.add(
-          direction == EntityRelationshipDirection.UPSTREAM
-              ? "entityRelationship.entity.fqnHash.keyword"
-              : "entityRelationship.relatedEntity.fqnHash.keyword");
-    }
-    return directionValue;
+  public static Set<String> getEntityRelationshipDirection(EntityRelationshipDirection direction) {
+    return new HashSet<>(
+        Set.of(
+            direction == EntityRelationshipDirection.UPSTREAM
+                ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+                : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY));
   }
 
   public static String getEntityRelationshipDirectionAggregationField(
       EntityRelationshipDirection direction) {
     return direction == EntityRelationshipDirection.UPSTREAM
-        ? "upstreamEntityRelationship.entity.fqnHash.keyword"
-        : "upstreamEntityRelationship.relatedEntity.fqnHash.keyword";
+        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+        : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
   }
 
   public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
