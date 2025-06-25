@@ -158,7 +158,11 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        post_process=[
+            "mark_schema_as_deleted",
+            "mark_tables_as_deleted",
+            "mark_stored_procedures_as_deleted",
+        ],
         threads=True,
     )
     table: Annotated[
@@ -536,6 +540,36 @@ class DatabaseServiceSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return None
+
+    def mark_schema_as_deleted(self):
+        """
+        Use the current inspector to mark schema as deleted
+
+        It uses the same flag as table deletion `markDeletedTables`.
+        """
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the schema deletion."
+            )
+
+        if self.source_config.markDeletedTables:
+            logger.info(
+                f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
+                " for schema deletion"
+            )
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                entity_source_state=list(schema_fqn_list),
+                mark_deleted_entity=self.source_config.markDeletedTables,
+                params={
+                    "database": f"{self.context.get().database_service}.{self.context.get().database}"
+                },
+            )
 
     def mark_tables_as_deleted(self):
         """
