@@ -71,7 +71,7 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
-import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
+import { SummaryPanel } from '../../SummaryPannel/SummaryPanel.component';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
@@ -352,15 +352,15 @@ export const TestSuites = () => {
       </Col>
 
       <Col span={24}>
-        {/* <SummaryPanel
+        <SummaryPanel
           showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
-        /> */}
-        <PieChartSummaryPanel
+        />
+        {/* <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
-        />
+        /> */}
       </Col>
       <Col span={24}>
         <Row gutter={[16, 16]}>

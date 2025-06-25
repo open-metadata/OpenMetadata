@@ -11,34 +11,9 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../styles/variables.less';
+@import (reference) '../../../../styles/variables.less';
 
 .pie-chart-summary-panel {
-  .summary-icon {
-    font-size: 28px;
-
-    &.total-tests-icon {
-      color: #3b82f6;
-      background: #eff6ff;
-      padding: 8px;
-      border-radius: 6px;
-    }
-
-    &.healthy-icon {
-      color: @green-3;
-      background: #f0fdf4;
-      padding: 8px;
-      border-radius: 6px;
-    }
-
-    &.coverage-icon {
-      color: @blue-2;
-      background: #e0f2fe;
-      padding: 8px;
-      border-radius: 6px;
-    }
-  }
-
   .summary-title {
     font-size: 16px;
     color: @text-color;
@@ -54,26 +29,8 @@
     margin-top: 8px;
   }
 
-  .percentage-change {
-    font-size: 12px;
-    font-weight: 500;
-
-    &.positive {
-      color: @green-3;
-    }
-
-    &.negative {
-      color: @red-3;
-    }
-  }
-
   .chart-container {
     position: relative;
-  }
-
-  .title-value-section {
-    flex-shrink: 0;
-    margin-right: auto;
   }
 
   .chart-center-text {
@@ -87,10 +44,5 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
-  }
-
-  .legend-text {
-    font-size: 12px;
-    color: @text-grey-muted;
   }
 }

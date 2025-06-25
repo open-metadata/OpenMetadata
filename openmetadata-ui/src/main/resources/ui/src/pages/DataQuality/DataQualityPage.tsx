@@ -112,7 +112,7 @@ const DataQualityPage = () => {
         <Col span={24}>
           <Tabs
             activeKey={activeTab}
-            className="tabs-new data-quality-page-tabs"
+            className="tabs-new data-quality-page-tabs tab-bg-blank"
             data-testid="tabs"
             items={menuItems}
             onChange={handleTabChange}
