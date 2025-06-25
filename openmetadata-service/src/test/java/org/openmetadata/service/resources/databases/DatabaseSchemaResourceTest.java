@@ -52,12 +52,16 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -272,48 +276,216 @@ public class DatabaseSchemaResourceTest
 
   @Test
   void test_entityRelationshipWithDirection() throws IOException {
-    // Test entity relationship direction API endpoint
-    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = createRequest("er_test_schema_direction");
+    DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqn", databaseSchemaFQN);
-    queryParams.put("upstreamDepth", "1");
-    queryParams.put("downstreamDepth", "1");
+    // Create tables and columns for FK relationships
+    TableResourceTest tableTest = new TableResourceTest();
+    Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
+    Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
 
-    // Test upstream direction - using correct path
+    Table upstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_upstream_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
+
+    // This table will have a FK to tableInSchema2, so create it first without the constraint
+    CreateTable createDownstream =
+        tableTest
+            .createRequest("er_downstream_fk")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableConstraints(null)
+            .withColumns(List.of(new Column().withName("c2_fk").withDataType(ColumnDataType.INT)));
+    Table downstreamTable = tableTest.createEntity(createDownstream, ADMIN_AUTH_HEADERS);
+
+    // This table has a FK to upstreamTable, create it without constraint first
+    CreateTable createTableInSchema1 =
+        tableTest
+            .createRequest("er_table1_fk")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableConstraints(null)
+            .withColumns(List.of(new Column().withName("c1_fk").withDataType(ColumnDataType.INT)));
+    Table tableInSchema1 = tableTest.createEntity(createTableInSchema1, ADMIN_AUTH_HEADERS);
+
+    Table tableInSchema2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_table2_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c2)),
+            ADMIN_AUTH_HEADERS);
+
+    // Now, add the constraints via update
+    createTableInSchema1.withTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("c1_fk"))
+                .withReferredColumns(
+                    List.of(upstreamTable.getColumns().getFirst().getFullyQualifiedName()))));
+    tableTest.updateEntity(createTableInSchema1, Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    createDownstream.withTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("c2_fk"))
+                .withReferredColumns(
+                    List.of(tableInSchema2.getColumns().getFirst().getFullyQualifiedName()))));
+    tableTest.updateEntity(createDownstream, Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Test UPSTREAM direction for the schema
+    Map<String, String> queryParamsUpstream = new HashMap<>();
+    queryParamsUpstream.put("fqn", schema.getFullyQualifiedName());
+    queryParamsUpstream.put("upstreamDepth", "1");
+    queryParamsUpstream.put("downstreamDepth", "0"); // We only want upstream
+
     WebTarget upstreamTarget = getResource("databaseSchemas/entityRelationship/upstream");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+    for (Map.Entry<String, String> entry : queryParamsUpstream.entrySet()) {
       upstreamTarget = upstreamTarget.queryParam(entry.getKey(), entry.getValue());
     }
     SearchEntityRelationshipResult upstreamResult =
         TestUtils.get(upstreamTarget, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
 
+    // Assertions for upstream: should find upstreamTable -> tableInSchema1
     assertNotNull(upstreamResult);
-    assertNotNull(upstreamResult.getNodes());
+    assertEquals(4, upstreamResult.getNodes().size());
+    Assertions.assertTrue(
+        upstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        upstreamResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        upstreamResult.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        upstreamResult.getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
 
-    // Test downstream direction - using correct path
+    assertEquals(2, upstreamResult.getUpstreamEdges().size());
+    Assertions.assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test DOWNSTREAM direction for the schema
+    Map<String, String> queryParamsDownstream = new HashMap<>();
+    queryParamsDownstream.put("fqn", schema.getFullyQualifiedName());
+    queryParamsDownstream.put("upstreamDepth", "0");
+    queryParamsDownstream.put("downstreamDepth", "1"); // We only want downstream
+
     WebTarget downstreamTarget = getResource("databaseSchemas/entityRelationship/downstream");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+    for (Map.Entry<String, String> entry : queryParamsDownstream.entrySet()) {
       downstreamTarget = downstreamTarget.queryParam(entry.getKey(), entry.getValue());
     }
     SearchEntityRelationshipResult downstreamResult =
         TestUtils.get(downstreamTarget, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
 
+    // Assertions for downstream: should find tableInSchema2 -> downstreamTable
     assertNotNull(downstreamResult);
-    assertNotNull(downstreamResult.getNodes());
+    assertEquals(4, downstreamResult.getNodes().size());
+    Assertions.assertTrue(
+        downstreamResult.getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        downstreamResult.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    Assertions.assertTrue(
+        downstreamResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+
+    assertEquals(2, downstreamResult.getDownstreamEdges().size());
+    Assertions.assertTrue(downstreamResult.getUpstreamEdges().isEmpty());
   }
 
   @Test
   void test_entityRelationshipBothDirections() throws IOException {
-    // Test entity relationship API for both directions
-    String databaseSchemaFQN = DATABASE_SCHEMA.getFullyQualifiedName();
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = createRequest("er_both_dir_schema_fk");
+    DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
+    // Create tables and columns for FK relationships
+    TableResourceTest tableTest = new TableResourceTest();
+    Column cUp = new Column().withName("c_up").withDataType(ColumnDataType.INT);
+    Column cMain = new Column().withName("c_main").withDataType(ColumnDataType.INT);
+    Column cMainFk = new Column().withName("c_main_fk").withDataType(ColumnDataType.INT);
+    Column cDownFk = new Column().withName("c_down_fk").withDataType(ColumnDataType.INT);
+
+    // Ensure all tables are created in the same schema for this test
+    String testSchemaFqn = schema.getFullyQualifiedName();
+
+    // Step 1: Create all tables with columns, but no constraints
+    Table upstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_both_upstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cUp)),
+            ADMIN_AUTH_HEADERS);
+
+    Table downstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_both_downstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cDownFk)),
+            ADMIN_AUTH_HEADERS);
+
+    Table tableInSchema =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_both_table_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cMain, cMainFk)),
+            ADMIN_AUTH_HEADERS);
+
+    // Step 2: Retrieve the tables to get columns with FQN
+    upstreamTable =
+        tableTest.getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    downstreamTable =
+        tableTest.getEntityByName(downstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    tableInSchema =
+        tableTest.getEntityByName(tableInSchema.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Step 3: Patch constraints using the correct FQN columns
+    CreateTable updateTableInSchema =
+        tableTest
+            .createRequest("er_both_table_fk")
+            .withDatabaseSchema(testSchemaFqn)
+            .withColumns(List.of(cMain, cMainFk))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of(cMainFk.getName()))
+                        .withReferredColumns(
+                            List.of(
+                                upstreamTable.getColumns().getFirst().getFullyQualifiedName()))));
+    tableTest.updateEntity(updateTableInSchema, Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    CreateTable updateDownstream =
+        tableTest
+            .createRequest("er_both_downstream_fk")
+            .withDatabaseSchema(testSchemaFqn)
+            .withColumns(List.of(cDownFk))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of(cDownFk.getName()))
+                        .withReferredColumns(
+                            List.of(
+                                tableInSchema.getColumns().getFirst().getFullyQualifiedName()))));
+    tableTest.updateEntity(updateDownstream, Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Test both directions
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqn", databaseSchemaFQN);
+    queryParams.put("fqn", schema.getFullyQualifiedName());
     queryParams.put("upstreamDepth", "1");
     queryParams.put("downstreamDepth", "1");
 
-    // Test both directions - using correct path for new API
     WebTarget target = getResource("databaseSchemas/entityRelationship");
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
@@ -321,10 +493,29 @@ public class DatabaseSchemaResourceTest
     SearchEntityRelationshipResult result =
         TestUtils.get(target, SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
 
+    // Assertions
     assertNotNull(result);
-    assertNotNull(result.getNodes());
-    assertNotNull(result.getUpstreamEdges());
-    assertNotNull(result.getDownstreamEdges());
+    // Nodes should be tableInSchema, upstreamTable, downstreamTable
+    assertEquals(3, result.getNodes().size());
+    Assertions.assertTrue(result.getNodes().containsKey(tableInSchema.getFullyQualifiedName()));
+    Assertions.assertTrue(result.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    Assertions.assertTrue(result.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+
+    // 1 upstream edge, 1 downstream edge
+    System.out.println("Upstream edges: " + result.getUpstreamEdges());
+    System.out.println("Downstream edges: " + result.getDownstreamEdges());
+    assertEquals(1, result.getUpstreamEdges().size());
+    assertEquals(1, result.getDownstreamEdges().size());
+
+    // Check upstream edge: upstreamTable -> tableInSchema
+    EsEntityRelationshipData upEdge = result.getUpstreamEdges().values().iterator().next();
+    assertEquals(upstreamTable.getId(), upEdge.getEntity().getId());
+    assertEquals(tableInSchema.getId(), upEdge.getRelatedEntity().getId());
+
+    // Check downstream edge: tableInSchema -> downstreamTable
+    EsEntityRelationshipData downEdge = result.getDownstreamEdges().values().iterator().next();
+    assertEquals(tableInSchema.getId(), downEdge.getEntity().getId());
+    assertEquals(downstreamTable.getId(), downEdge.getRelatedEntity().getId());
   }
 
   @Test

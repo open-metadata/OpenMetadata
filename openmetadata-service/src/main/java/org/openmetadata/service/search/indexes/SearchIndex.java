@@ -317,7 +317,7 @@ public interface SearchIndex {
     Map<String, Object> details = new HashMap<>();
     details.put("id", entityRef.getId().toString());
     details.put("type", entityRef.getType());
-    details.put("fqn", entityRef.getFullyQualifiedName());
+    details.put("fullyQualifiedName", entityRef.getFullyQualifiedName());
     details.put("fqnHash", FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
     return details;
   }

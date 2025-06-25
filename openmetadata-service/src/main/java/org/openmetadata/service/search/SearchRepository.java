@@ -88,6 +88,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -99,6 +100,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -120,6 +122,12 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+
+  @FunctionalInterface
+  private interface RelationshipSearcher {
+    SearchEntityRelationshipResult search(SearchEntityRelationshipRequest request)
+        throws IOException;
+  }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
@@ -1343,13 +1351,61 @@ public class SearchRepository {
     }
   }
 
+  private SearchEntityRelationshipResult searchRelationshipsForSchema(
+      SearchEntityRelationshipRequest request, RelationshipSearcher searcher) throws IOException {
+
+    DatabaseSchema schema =
+        Entity.getEntityByName(
+            Entity.DATABASE_SCHEMA, request.getFqn(), "tables", Include.NON_DELETED);
+
+    SearchEntityRelationshipResult finalResult =
+        new SearchEntityRelationshipResult()
+            .withNodes(new HashMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>());
+
+    List<EntityReference> tables = schema.getTables();
+    if (tables != null) {
+      for (EntityReference tableRef : tables) {
+        SearchEntityRelationshipRequest tableRequest =
+            new SearchEntityRelationshipRequest()
+                .withFqn(tableRef.getFullyQualifiedName())
+                .withUpstreamDepth(request.getUpstreamDepth())
+                .withDownstreamDepth(request.getDownstreamDepth())
+                .withQueryFilter(request.getQueryFilter())
+                .withIncludeDeleted(request.getIncludeDeleted())
+                .withDirection(request.getDirection())
+                .withLayerFrom(request.getLayerFrom())
+                .withLayerSize(request.getLayerSize())
+                .withIncludeSourceFields(request.getIncludeSourceFields());
+
+        SearchEntityRelationshipResult tableResult = searcher.search(tableRequest);
+
+        if (tableResult != null) {
+          if (tableResult.getNodes() != null) {
+            finalResult.getNodes().putAll(tableResult.getNodes());
+          }
+          if (tableResult.getUpstreamEdges() != null) {
+            finalResult.getUpstreamEdges().putAll(tableResult.getUpstreamEdges());
+          }
+          if (tableResult.getDownstreamEdges() != null) {
+            finalResult.getDownstreamEdges().putAll(tableResult.getDownstreamEdges());
+          }
+        }
+      }
+    }
+    return finalResult;
+  }
+
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
-    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
+    return searchRelationshipsForSchema(
+        entityRelationshipRequest, searchClient::searchEntityRelationshipWithDirection);
   }
 
   public SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
-    return searchClient.searchEntityRelationship(entityRelationshipRequest);
+    return searchRelationshipsForSchema(
+        entityRelationshipRequest, searchClient::searchEntityRelationship);
   }
 }

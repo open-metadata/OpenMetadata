@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.ENTITY_RELATIONSHIP_AGGREGATION;
@@ -10,6 +11,7 @@ import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntity
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.elasticsearch.EsUtils.getSearchRequest;
 
+import com.nimbusds.jose.util.Pair;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestHighLevelClient;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.api.entityRelationship.RelationshipRef;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -68,6 +71,9 @@ public class ESEntityRelationshipGraphBuilder {
       return result;
     }
 
+    // Add the first downstream entity node
+    addFirstDownstreamEntity(request, result);
+
     fetchDownstreamNodesRecursively(
         request,
         result,
@@ -97,7 +103,7 @@ public class ESEntityRelationshipGraphBuilder {
         buildDirectionToFqnSet(entityRelationshipRequest.getDirectionValue(), hasToFqnMap.keySet());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            null,
+            (EntityRelationshipDirection) null,
             GLOBAL_SEARCH_ALIAS,
             entityRelationshipRequest.getQueryFilter(),
             ENTITY_RELATIONSHIP_AGGREGATION,
@@ -161,7 +167,7 @@ public class ESEntityRelationshipGraphBuilder {
         buildDirectionToFqnSet(entityRelationshipRequest.getDirectionValue(), hasToFqnMap.keySet());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            null,
+            (EntityRelationshipDirection) null,
             GLOBAL_SEARCH_ALIAS,
             entityRelationshipRequest.getQueryFilter(),
             ENTITY_RELATIONSHIP_AGGREGATION,
@@ -201,8 +207,9 @@ public class ESEntityRelationshipGraphBuilder {
                 entityRelationshipRequest.getLayerFrom(),
                 entityRelationshipRequest.getLayerSize());
         for (EsEntityRelationshipData data : paginatedDownstreamEntities) {
-          result.getDownstreamEdges().putIfAbsent(data.getDocId(), data.withEntity(fromEntity));
-          String toFqn = data.getRelatedEntity().getFullyQualifiedName();
+          EsEntityRelationshipData newEdge = data.withRelatedEntity(fromEntity);
+          result.getDownstreamEdges().putIfAbsent(data.getDocId(), newEdge);
+          String toFqn = newEdge.getRelatedEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(toFqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(toFqn), toFqn);
           }
@@ -212,5 +219,24 @@ public class ESEntityRelationshipGraphBuilder {
 
     fetchDownstreamNodesRecursively(
         entityRelationshipRequest, result, hasToFqnMapForLayer, depth - 1);
+  }
+
+  private void addFirstDownstreamEntity(
+      SearchEntityRelationshipRequest request, SearchEntityRelationshipResult result)
+      throws IOException {
+    Map<String, Object> entityMap =
+        EsUtils.searchEREntityByKey(
+            request.getDirection(),
+            GLOBAL_SEARCH_ALIAS,
+            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+            Pair.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
+            SOURCE_FIELDS_TO_EXCLUDE);
+    result
+        .getNodes()
+        .putIfAbsent(
+            entityMap.get(FQN_FIELD).toString(),
+            new NodeInformation()
+                .withEntity(entityMap)
+                .withPaging(new LayerPaging().withEntityDownstreamCount(0)));
   }
 }

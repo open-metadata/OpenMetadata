@@ -201,8 +201,9 @@ public class OSEntityRelationshipGraphBuilder {
                 entityRelationshipRequest.getLayerFrom(),
                 entityRelationshipRequest.getLayerSize());
         for (EsEntityRelationshipData data : paginatedDownstreamEntities) {
-          result.getDownstreamEdges().putIfAbsent(data.getDocId(), data.withEntity(fromEntity));
-          String toFqn = data.getRelatedEntity().getFullyQualifiedName();
+          EsEntityRelationshipData newEdge = data.withRelatedEntity(fromEntity);
+          result.getDownstreamEdges().putIfAbsent(data.getDocId(), newEdge);
+          String toFqn = newEdge.getRelatedEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(toFqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(toFqn), toFqn);
           }
