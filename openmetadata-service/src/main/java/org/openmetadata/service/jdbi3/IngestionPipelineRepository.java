@@ -253,7 +253,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setPipelineStatuses(pipelineStatus);
 
     // Update ES Indexes
-    searchRepository.updateEntity(ingestionPipeline);
+    searchRepository.updateEntityIndex(ingestionPipeline);
 
     ChangeEvent changeEvent =
         getChangeEvent(
