@@ -2131,7 +2131,7 @@
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
     "test-connection-taking-too-long": {
-      "default": "请确保您已配置 {{service_type}} 以允许连接",
+      "default": "请确保 {{service_type}} 已配置为允许连接",
       "withIp": " 来自 {{ip}}"
     },
     "test-your-connection-before-creating-service": "在创建服务之前测试您的连接",

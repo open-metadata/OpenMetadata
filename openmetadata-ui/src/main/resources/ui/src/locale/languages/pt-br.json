@@ -2131,7 +2131,7 @@
     "test-case-schedule-description": "Os testes de qualidade de dados podem ser programados para serem executados na frequência desejada. O fuso horário está em UTC.",
     "test-connection-cannot-be-triggered": "Não é possível acionar o teste de conexão.",
     "test-connection-taking-too-long": {
-      "default": "Por favor, verifique se você configurou {{service_type}} para permitir conexões",
+      "default": "Por favor, certifique‑se de que o {{service_type}} está configurado para permitir conexões",
       "withIp": " de {{ip}}"
     },
     "test-your-connection-before-creating-service": "Teste suas conexões antes de criar o serviço",

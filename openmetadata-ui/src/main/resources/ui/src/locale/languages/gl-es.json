@@ -2131,8 +2131,8 @@
     "test-case-schedule-description": "As probas de calidade de datos poden programarse para executarse coa frecuencia desexada. A zona horaria está en UTC.",
     "test-connection-cannot-be-triggered": "Non se pode iniciar a conexión de proba.",
     "test-connection-taking-too-long": {
-      "default": "Por favor, asegúrate de que {{service_type}} esté configurado para permitir conexiones",
-      "withIp": " desde {{ip}}"
+      "default": "Asegúrese de que {{service_type}} estea configurado para permitir conexións",
+      "withIp": " dende {{ip}}"
     },
     "test-your-connection-before-creating-service": "Proba as túas conexións antes de crear o servizo",
     "testing-your-connection-may-take-two-minutes": "A proba das túas conexións pode levar ata 2 minutos",

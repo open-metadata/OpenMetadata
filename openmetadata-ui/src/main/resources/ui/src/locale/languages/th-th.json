@@ -2131,8 +2131,8 @@
     "test-case-schedule-description": "การทดสอบคุณภาพข้อมูลสามารถกำหนดเวลาให้ดำเนินการในความถี่ที่ต้องการ เขตเวลาคือ UTC",
     "test-connection-cannot-be-triggered": "ไม่สามารถกระตุ้นการทดสอบการเชื่อมต่อได้",
     "test-connection-taking-too-long": {
-      "default": "{{service_type}} ต้องการการตั้งค่าให้อนุญาตการเชื่อมต่อจาก",
-      "withIp": "{{ip}}"
+      "default": "โปรดตรวจสอบว่าได้กำหนดค่าของ {{service_type}} ให้อนุญาตการเชื่อมต่อแล้ว",
+      "withIp": " จาก {{ip}}"
     },
     "test-your-connection-before-creating-service": "ทดสอบการเชื่อมต่อของคุณก่อนที่จะสร้างบริการ",
     "testing-your-connection-may-take-two-minutes": "การทดสอบการเชื่อมต่ออาจใช้เวลาถึง 2 นาที",
