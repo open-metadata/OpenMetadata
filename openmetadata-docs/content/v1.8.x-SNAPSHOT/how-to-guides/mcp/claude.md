@@ -13,6 +13,8 @@ For this guide, you will need:
 - OpenMetadata v1.8.0 - You can upgrade your version of OpenMetadata with [this guide](https://docs.open-metadata.org/latest/deployment/upgrade)
 - [Claude Desktop](https://claude.ai/download)
 
+{%  youtube videoId="m96F-7gXvfo" start="0:00" end="23:05" width="800px" height="450px" /%}
+
 ## Add MCP App to OpenMetadata
 OpenMetadata has a variety of applications improve your data such as MetaPilot, Data Insights, Search Indexing, and MCP.
 
@@ -73,6 +75,12 @@ caption="Personal Access Token expires in 60 days"
   - *URL* is <YOUR-OpenMetadata-SERVER>/mcp/sse
   - *Bearer Token* is your PAT
   - Select *Connect*
+
+{% image
+src="/images/v1.8/how-to-guides/mcp/mcp-inspector.jpg"
+alt="MCP Inspector Configuration"
+caption="Setting up OpenMetadata in MCP Inspector"
+/%}
 
 ## Adding your OpenMetadata MCP Server to Claude Desktop
 This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 4.
