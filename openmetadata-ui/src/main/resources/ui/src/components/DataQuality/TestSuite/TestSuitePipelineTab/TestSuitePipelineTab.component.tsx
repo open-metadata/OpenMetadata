@@ -19,7 +19,6 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -62,7 +61,7 @@ const TestSuitePipelineTab = ({
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
 
   const { permissions } = usePermissionProvider();
-  const pipelinePaging = usePaging(PAGE_SIZE_BASE);
+  const pipelinePaging = usePaging();
   const { pageSize, handlePagingChange } = pipelinePaging;
   const history = useHistory();
 

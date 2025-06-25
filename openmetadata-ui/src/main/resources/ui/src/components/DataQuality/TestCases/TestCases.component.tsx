@@ -41,7 +41,6 @@ import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
@@ -128,7 +127,7 @@ export const TestCases = () => {
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const handleSearchParam = <K extends keyof TestCaseSearchParams>(
     key: K,

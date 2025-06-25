@@ -62,7 +62,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByTestId('next').click();
 
-    expect(await page.locator('.ant-table-row').count()).toBe(10);
+    expect(await page.locator('.ant-table-row').count()).toBe(15);
   });
 
   test('Table search with sorting should works', async ({ page }) => {

@@ -28,7 +28,6 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
@@ -92,7 +91,7 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (

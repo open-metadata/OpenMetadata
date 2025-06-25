@@ -29,7 +29,6 @@ import DataProductsContainer from '../../components/DataProducts/DataProductsCon
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -70,7 +69,7 @@ function DatabaseSchemaVersionPage() {
   }>();
   const { fqn: decodedEntityFQN } = useFqn();
 
-  const pagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging();
 
   const {
     paging,
