@@ -110,7 +110,7 @@ class TableauClient:
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
             if owner and owner.email:
                 owner_obj = TableauOwner(
-                    id=owner.id, name=owner.name, email=owner.email
+                    id=str(owner.id), name=owner.name, email=owner.email
                 )
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
@@ -130,7 +130,7 @@ class TableauClient:
             try:
                 charts.append(
                     TableauChart(
-                        id=view.id,
+                        id=str(view.id),
                         name=view.name,
                         tags=view.tags,
                         owner=self.get_tableau_owner(view.owner_id),
@@ -212,10 +212,10 @@ class TableauClient:
                     workbook.views
                 )
                 workbook = TableauDashboard(
-                    id=workbook.id,
+                    id=str(workbook.id),
                     name=workbook.name,
                     project=TableauBaseModel(
-                        id=workbook.project_id, name=workbook.project_name
+                        id=str(workbook.project_id), name=workbook.project_name
                     ),
                     owner=self.get_tableau_owner(workbook.owner_id),
                     description=workbook.description,
