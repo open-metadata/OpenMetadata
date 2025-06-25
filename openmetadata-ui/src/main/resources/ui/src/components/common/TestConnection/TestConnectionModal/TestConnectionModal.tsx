@@ -43,6 +43,8 @@ interface TestConnectionModalProps {
     subDescription?: string;
   };
   handleCloseErrorMessage: () => void;
+  serviceType?: string;
+  hostIp?: string;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
@@ -57,6 +59,8 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   onTestConnection,
   errorMessage,
   handleCloseErrorMessage,
+  serviceType,
+  hostIp,
 }) => {
   const { t } = useTranslation();
 
@@ -113,7 +117,10 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
               {t('label.connection-timeout')}
             </Typography.Title>
             <Typography.Text className="text-grey-muted">
-              {t('message.test-connection-taking-too-long')}
+              {t('message.test-connection-taking-too-long', {
+                service_type: serviceType,
+                ip: hostIp,
+              })}
             </Typography.Text>
             <Button
               ghost

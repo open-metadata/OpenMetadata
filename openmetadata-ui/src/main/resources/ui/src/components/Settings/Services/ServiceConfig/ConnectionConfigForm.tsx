@@ -193,6 +193,7 @@ const ConnectionConfigForm = ({
             <TestConnection
               connectionType={serviceType}
               getData={() => formRef.current?.state?.formData}
+              hostIp={hostIp}
               isTestingDisabled={disableTestConnection}
               serviceCategory={serviceCategory}
               serviceName={data?.name}
