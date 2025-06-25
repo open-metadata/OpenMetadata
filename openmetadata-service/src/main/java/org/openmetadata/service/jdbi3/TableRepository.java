@@ -589,8 +589,6 @@ public class TableRepository extends EntityRepository<Table> {
     table.setProfile(tableProfile);
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
-    } else {
-      table.setColumns(null);
     }
 
     // Set the column tags. Will be used to hide the data
