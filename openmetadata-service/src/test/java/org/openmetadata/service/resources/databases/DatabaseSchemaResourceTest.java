@@ -314,7 +314,7 @@ public class DatabaseSchemaResourceTest
     queryParams.put("downstreamDepth", "1");
 
     // Test both directions - using correct path for new API
-    WebTarget target = getResource("databaseSchemas/getEntityRelationship");
+    WebTarget target = getResource("databaseSchemas/entityRelationship");
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
@@ -336,7 +336,7 @@ public class DatabaseSchemaResourceTest
     queryParams.put("fqn", databaseSchemaFQN);
     queryParams.put("upstreamDepth", "1");
     queryParams.put("downstreamDepth", "1");
-    queryParams.put("query", "test");
+    queryParams.put("query_filter", "test");
 
     // Test with query filter - using correct path
     WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
@@ -400,7 +400,7 @@ public class DatabaseSchemaResourceTest
     queryParams.put("fqn", databaseSchemaFQN);
     queryParams.put("upstreamDepth", "1");
     queryParams.put("downstreamDepth", "1");
-    queryParams.put("includeSourceFields", "true");
+    queryParams.put("fields", "true");
 
     // Test with includeSourceFields - using correct path
     WebTarget target = getResource("databaseSchemas/entityRelationship/upstream");
