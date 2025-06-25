@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -232,6 +233,11 @@ public class SecretsManagerUpdateService {
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
+    } catch (EntityNotFoundException entityNotFoundException) {
+      LOG.error(
+          "Failed to retrieve ingestion pipelines. Entity not found: {}",
+          entityNotFoundException.getMessage());
+      return Collections.emptyList();
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
