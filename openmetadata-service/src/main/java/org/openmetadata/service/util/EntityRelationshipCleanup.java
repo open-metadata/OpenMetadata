@@ -64,7 +64,7 @@ public class EntityRelationshipCleanup {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class CleanupResult {
+  public static class EntityCleanupResult {
     private int totalRelationshipsScanned;
     private int orphanedRelationshipsFound;
     private int relationshipsDeleted;
@@ -84,12 +84,12 @@ public class EntityRelationshipCleanup {
     }
   }
 
-  public CleanupResult performCleanup(int batchSize) {
+  public EntityCleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
 
-    CleanupResult result =
-        CleanupResult.builder()
+    EntityCleanupResult result =
+        EntityCleanupResult.builder()
             .orphanedRelationships(new ArrayList<>())
             .orphansByEntityType(new HashMap<>())
             .orphansByRelationType(new HashMap<>())
@@ -294,7 +294,7 @@ public class EntityRelationshipCleanup {
     return deletedCount;
   }
 
-  private void displayOrphanedRelationships(CleanupResult result) {
+  private void displayOrphanedRelationships(EntityCleanupResult result) {
     if (result.getOrphanedRelationships().isEmpty()) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
@@ -324,7 +324,7 @@ public class EntityRelationshipCleanup {
     displaySummaryStatistics(result);
   }
 
-  private void displaySummaryStatistics(CleanupResult result) {
+  private void displaySummaryStatistics(EntityCleanupResult result) {
     if (!result.getOrphansByEntityType().isEmpty()) {
       LOG.info("Orphaned relationships by entity type:");
       List<String> entityColumns = Arrays.asList("Entity Type Pair", "Count");

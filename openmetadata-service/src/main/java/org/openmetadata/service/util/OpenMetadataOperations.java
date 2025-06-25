@@ -715,36 +715,65 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "relationshipCleanup",
       description =
-          "Cleans up orphaned entity relationships where referenced entities no longer exist. By default, runs in dry-run mode to only identify orphaned relationships.")
+          "Cleans up orphaned entity relationships where referenced entities no longer exist, "
+              + "and broken service hierarchy entities. By default, runs in dry-run mode to only identify orphaned relationships.")
   public Integer cleanupOrphanedRelationships(
       @Option(
               names = {"--delete"},
               description =
-                  "Actually delete the orphaned relationships. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+                  "Actually delete the orphaned relationships and broken entities. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
               defaultValue = "false")
           boolean delete,
       @Option(
               names = {"-b", "--batch-size"},
               defaultValue = "1000",
               description = "Number of relationships to process in each batch.")
-          int batchSize) {
+          int batchSize,
+      @Option(
+              names = {"--skip-hierarchy-cleanup"},
+              description =
+                  "Skip the service hierarchy cleanup and only perform generic relationship cleanup.",
+              defaultValue = "false")
+          boolean skipHierarchyCleanup) {
     try {
       boolean dryRun = !delete;
       LOG.info(
-          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}, Skip hierarchy cleanup: {}",
+          dryRun,
+          batchSize,
+          skipHierarchyCleanup);
       parseConfig();
 
-      EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
-      EntityRelationshipCleanup.CleanupResult result = cleanup.performCleanup(batchSize);
+      if (skipHierarchyCleanup) {
+        // Only perform relationship cleanup
+        LOG.info("=== Entity Relationship Cleanup Only ===");
+        EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+        EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(batchSize);
 
-      LOG.info("=== Entity Relationship Cleanup Summary ===");
-      LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
-      LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
-      LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+        LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+        LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+        LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
 
-      if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
-        LOG.info("To actually delete these orphaned relationships, run with --delete");
-        return 1;
+        if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+          LOG.info("To actually delete these orphaned relationships, run with --delete");
+          return 1;
+        }
+      } else {
+        // Perform comprehensive cleanup (relationships + hierarchies)
+        EntityRelationshipCleanupUtil comprehensiveCleanup =
+            dryRun
+                ? EntityRelationshipCleanupUtil.forDryRun(collectionDAO, batchSize)
+                : EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, batchSize);
+
+        EntityRelationshipCleanupUtil.CleanupResult result =
+            comprehensiveCleanup.performComprehensiveCleanup();
+        comprehensiveCleanup.printComprehensiveResults(result);
+
+        if (dryRun && result.getTotalEntitiesDeleted() > 0) {
+          LOG.info(
+              "To actually delete these orphaned relationships and broken entities, run with --delete");
+          return 1;
+        }
       }
 
       return 0;
@@ -1264,6 +1293,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
+    ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+    DatasourceConfig.initialize(connType.label);
   }
 
   private void promptUserForDelete() {
@@ -1335,6 +1366,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public static void printToAsciiTable(
       List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
+  }
+
+  private void performServiceHierarchyCleanup(boolean dryRun) {
+    ServiceHierarchyCleanup hierarchyCleanup = new ServiceHierarchyCleanup(collectionDAO, dryRun);
+    ServiceHierarchyCleanup.HierarchyCleanupResult result =
+        hierarchyCleanup.performHierarchyCleanup();
+    hierarchyCleanup.printCleanupResults(result);
   }
 
   private void printChangeLog() {
