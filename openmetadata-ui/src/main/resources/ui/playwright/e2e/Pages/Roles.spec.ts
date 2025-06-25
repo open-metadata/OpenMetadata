@@ -147,6 +147,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Edit created role', async () => {
+    await settingClick(page, GlobalSettingOptions.ROLES);
     // Edit description
 
     const roleLocator = page.getByRole('link', { name: roleName });
@@ -180,6 +181,8 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Add new policy to created role', async () => {
+    await settingClick(page, GlobalSettingOptions.ROLES);
+
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -205,6 +208,8 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Remove added policy from created role', async () => {
+    await settingClick(page, GlobalSettingOptions.ROLES);
+
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -223,6 +228,8 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Check if last policy is not removed', async () => {
+    await settingClick(page, GlobalSettingOptions.ROLES);
+
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -257,6 +264,8 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Delete created Role', async () => {
+    await settingClick(page, GlobalSettingOptions.ROLES);
+
     const roleLocator = page.locator(
       `[data-testid="delete-action-${updatedRoleName}"]`
     );
