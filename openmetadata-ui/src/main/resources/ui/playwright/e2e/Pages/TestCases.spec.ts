@@ -1923,8 +1923,8 @@ test('Table Column Count To Be Between', async ({ page }) => {
       await page.getByTestId(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.type).click();
       
       await page.locator(descriptionBox).fill(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_minValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.maxValue);
+      await page.fill('#tableTestForm_params_minColValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.minValue);
+      await page.fill('#tableTestForm_params_maxColValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.maxValue);
       
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
@@ -1950,8 +1950,8 @@ test('Table Column Count To Be Between', async ({ page }) => {
 
       await page.locator('#tableTestForm_displayName').clear();
       await page.fill('#tableTestForm_displayName', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '5');
-      await page.fill('#tableTestForm_params_maxValue', '15');
+      await page.fill('#tableTestForm_params_minColValue', '5');
+      await page.fill('#tableTestForm_params_maxColValue', '15');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
