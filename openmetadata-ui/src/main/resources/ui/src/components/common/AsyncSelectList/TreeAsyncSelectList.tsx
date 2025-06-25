@@ -72,7 +72,6 @@ interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
   isParentSelectable?: boolean;
-  activeGlossary?: Glossary; // Glossary to be loaded in the tree
 }
 
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
@@ -86,7 +85,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   hasNoActionButtons,
   isMultiSelect = true, // default to true for backward compatibility
   isParentSelectable = false, // by default, only leaf nodes can be selected
-  activeGlossary,
+
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -104,31 +103,26 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     setOpen(visible);
   };
 
-  const fetchGlossaryListInternal = async (activeGlossary?: Glossary) => {
+  const fetchGlossaryListInternal = async () => {
     setIsLoading(true);
 
-    if (activeGlossary) {
-      setGlossaries([activeGlossary]);
+    try {
+      const { data } = await getGlossariesList({
+        limit: PAGE_SIZE_LARGE,
+      });
+      setGlossaries((prev) =>
+        filterTreeNodeOptions([...prev, ...data], filterOptions)
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
       setIsLoading(false);
-    } else {
-      try {
-        const { data } = await getGlossariesList({
-          limit: PAGE_SIZE_LARGE,
-        });
-        setGlossaries((prev) =>
-          filterTreeNodeOptions([...prev, ...data], filterOptions)
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
     }
   };
 
   useEffect(() => {
-    fetchGlossaryListInternal(activeGlossary);
-  }, [activeGlossary]);
+    fetchGlossaryListInternal();
+  }, []);
 
   const dropdownRender = (menu: React.ReactElement) => (
     <>
@@ -351,13 +345,12 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, [glossaries]);
 
   const treeData = useMemo(() => {
-    // Get the base tree data
     return convertGlossaryTermsToTreeOptions(
       isNull(searchOptions)
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
-      0, // Start at level 0
-      isParentSelectable // Pass the isParentSelectable flag to allow parent selection
+      0,
+      isParentSelectable
     );
   }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
