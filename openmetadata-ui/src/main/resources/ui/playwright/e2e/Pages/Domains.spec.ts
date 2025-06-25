@@ -903,6 +903,10 @@ test.describe('Data Consumer Domain Ownership', () => {
         await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
         await selectDomain(dataConsumerPage, testResources.domainForTest.data);
 
+        await dataConsumerPage.locator('[data-testid="loader"]').waitFor({
+          state: 'detached',
+        });
+
         await dataConsumerPage.getByTestId('domain-details-add-button').click();
 
         // check Data Products menu item is visible

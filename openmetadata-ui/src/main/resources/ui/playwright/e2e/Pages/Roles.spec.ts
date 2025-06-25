@@ -47,13 +47,14 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
+  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 });
 
 test('Roles page should work properly', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add new role and check all tabs data', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -124,7 +125,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Add new role without selecting data', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -147,7 +147,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Edit created role', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
     // Edit description
 
     const roleLocator = page.getByRole('link', { name: roleName });
@@ -181,8 +180,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Add new policy to created role', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
-
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -208,8 +205,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Remove added policy from created role', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
-
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -228,8 +223,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Check if last policy is not removed', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
-
     const roleLocator = page.getByRole('link', { name: roleName });
 
     await getElementWithPagination(page, roleLocator);
@@ -264,8 +257,6 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Delete created Role', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
-
     const roleLocator = page.locator(
       `[data-testid="delete-action-${updatedRoleName}"]`
     );
@@ -299,7 +290,9 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await role.create(apiContext, policies);
 
-  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.reload();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.waitForLoadState('networkidle');
 
