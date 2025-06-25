@@ -135,7 +135,9 @@ test('Table difference test case', async ({ page }) => {
         '#tableTestForm_params_keyColumns_1_value',
         table1.entity?.columns[3].name
       );
-      await page.getByTitle(table1.entity?.columns[3].name, { exact: true }).click();
+      await page
+        .getByTitle(table1.entity?.columns[3].name, { exact: true })
+        .click();
 
       await page
         .locator('label')
@@ -197,8 +199,8 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
-      await
-        page.getByTestId('code-mirror-container')
+      await page
+        .getByTestId('code-mirror-container')
         .getByRole('textbox')
         .fill(testCase.sqlQuery);
       await page.getByLabel('Strategy').click();
@@ -237,7 +239,10 @@ test('Custom SQL Query', async ({ page }) => {
       await page.fill('#tableTestForm_displayName', testCase.displayName);
 
       await page.locator('.CodeMirror-scroll').click();
-      await page.getByTestId('code-mirror-container').getByRole('textbox').fill(' update');
+      await page
+        .getByTestId('code-mirror-container')
+        .getByRole('textbox')
+        .fill(' update');
       await page.getByText('ROWS').click();
       await page.getByTitle('COUNT').click();
       await page.getByPlaceholder('Enter a Threshold').clear();
@@ -380,9 +385,14 @@ test('Column Values To Be Unique', async ({ page }) => {
       await page.click(`[title="${COLUMN_UNIQUE_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_UNIQUE_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_UNIQUE_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_UNIQUE_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_UNIQUE_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_UNIQUE_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_UNIQUE_TEST_CASE.description);
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -410,8 +420,14 @@ test('Column Values To Be Unique', async ({ page }) => {
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_UNIQUE_TEST_CASE.displayName);
-      await page.getByText('Test case to verify column values are unique').first().click();
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_UNIQUE_TEST_CASE.displayName
+      );
+      await page
+        .getByText('Test case to verify column values are unique')
+        .first()
+        .click();
       await page.keyboard.type(' - updated');
       await page.getByRole('button', { name: 'Submit' }).click();
 
@@ -457,12 +473,23 @@ test('Column Values To Be Between', async ({ page }) => {
       await page.click(`[title="${COLUMN_BETWEEN_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_BETWEEN_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_BETWEEN_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_BETWEEN_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_BETWEEN_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_BETWEEN_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_BETWEEN_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_BETWEEN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_BETWEEN_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValue',
+        COLUMN_BETWEEN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValue',
+        COLUMN_BETWEEN_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -481,10 +508,16 @@ test('Column Values To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_BETWEEN_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_BETWEEN_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_BETWEEN_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_BETWEEN_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_BETWEEN_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_minValue', '5');
       await page.fill('#tableTestForm_params_maxValue', '200');
       await page.getByRole('button', { name: 'Submit' }).click();
@@ -532,10 +565,15 @@ test('Column Values To Match Regex', async ({ page }) => {
       await page.fill('#tableTestForm_testName', COLUMN_REGEX_TEST_CASE.name);
       await page.fill('#tableTestForm_testTypeId', COLUMN_REGEX_TEST_CASE.type);
       await page.click(`[data-testid="${COLUMN_REGEX_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_REGEX_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_REGEX_TEST_CASE.description);
 
       // Fill regex pattern
-      await page.fill('#tableTestForm_params_regex', COLUMN_REGEX_TEST_CASE.regex);
+      await page.fill(
+        '#tableTestForm_params_regex',
+        COLUMN_REGEX_TEST_CASE.regex
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -560,11 +598,14 @@ test('Column Values To Match Regex', async ({ page }) => {
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_REGEX_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_REGEX_TEST_CASE.displayName
+      );
+
       // Update regex pattern
       await page.fill('#tableTestForm_params_regex', '^[A-Za-z]+$');
-      
+
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -608,13 +649,21 @@ test('Column Values To Be In Set', async ({ page }) => {
       await page.click(`[title="${COLUMN_IN_SET_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_IN_SET_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_IN_SET_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_IN_SET_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_IN_SET_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_IN_SET_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_IN_SET_TEST_CASE.description);
 
       // Fill allowed values
       for (let i = 0; i < COLUMN_IN_SET_TEST_CASE.allowedValues.length; i++) {
-        await page.fill(`#tableTestForm_params_allowedValues_${i}`, COLUMN_IN_SET_TEST_CASE.allowedValues[i]);
+        await page.fill(
+          `#tableTestForm_params_allowedValues_${i}`,
+          COLUMN_IN_SET_TEST_CASE.allowedValues[i]
+        );
         if (i < COLUMN_IN_SET_TEST_CASE.allowedValues.length - 1) {
           await page.click('[data-testid="add-allowed-value"]');
         }
@@ -637,11 +686,17 @@ test('Column Values To Be In Set', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_IN_SET_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_IN_SET_TEST_CASE.name}`);
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_IN_SET_TEST_CASE.name}`
+      );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_IN_SET_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_IN_SET_TEST_CASE.displayName
+      );
+
       // Add another allowed value
       await page.click('[data-testid="add-allowed-value"]');
       await page.fill('#tableTestForm_params_allowedValues_3', '4');
@@ -687,14 +742,29 @@ test('Column Values To Be Not In Set', async ({ page }) => {
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_NOT_IN_SET_TEST_CASE.column}"]`);
       await testDefinitionResponse;
-      await page.fill('#tableTestForm_testName', COLUMN_NOT_IN_SET_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_NOT_IN_SET_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testName',
+        COLUMN_NOT_IN_SET_TEST_CASE.name
+      );
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_NOT_IN_SET_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_NOT_IN_SET_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_NOT_IN_SET_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_NOT_IN_SET_TEST_CASE.description);
 
       // Fill forbidden values
-      for (let i = 0; i < COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues.length; i++) {
-        await page.fill(`#tableTestForm_params_forbiddenValues_${i}`, COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues[i]);
+      for (
+        let i = 0;
+        i < COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues.length;
+        i++
+      ) {
+        await page.fill(
+          `#tableTestForm_params_forbiddenValues_${i}`,
+          COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues[i]
+        );
         if (i < COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues.length - 1) {
           await page.click('[data-testid="add-forbidden-value"]');
         }
@@ -715,12 +785,20 @@ test('Column Values To Be Not In Set', async ({ page }) => {
     });
 
     await test.step('Edit', async () => {
-      await page.getByTestId(`edit-${COLUMN_NOT_IN_SET_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_NOT_IN_SET_TEST_CASE.name}`);
-      
+      await page
+        .getByTestId(`edit-${COLUMN_NOT_IN_SET_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_NOT_IN_SET_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_NOT_IN_SET_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_NOT_IN_SET_TEST_CASE.displayName
+      );
+
       // Add another forbidden value
       await page.click('[data-testid="add-forbidden-value"]');
       await page.fill('#tableTestForm_params_forbiddenValues_3', '102');
@@ -749,7 +827,8 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
     displayName: 'Column Values Missing Count To Be Equal Test',
     column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValuesMissingCount',
-    description: 'Test case to verify column missing count equals expected value',
+    description:
+      'Test case to verify column missing count equals expected value',
     missingCountValue: '5',
     missingValueMatch: 'N/A',
   };
@@ -767,13 +846,29 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_MISSING_COUNT_TEST_CASE.column}"]`);
       await testDefinitionResponse;
-      await page.fill('#tableTestForm_testName', COLUMN_MISSING_COUNT_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_MISSING_COUNT_TEST_CASE.type);
-      await page.click(`[data-testid="${COLUMN_MISSING_COUNT_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_MISSING_COUNT_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_testName',
+        COLUMN_MISSING_COUNT_TEST_CASE.name
+      );
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_MISSING_COUNT_TEST_CASE.type
+      );
+      await page.click(
+        `[data-testid="${COLUMN_MISSING_COUNT_TEST_CASE.type}"]`
+      );
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_MISSING_COUNT_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_missingCountValue', COLUMN_MISSING_COUNT_TEST_CASE.missingCountValue);
-      await page.fill('#tableTestForm_params_missingValueMatch', COLUMN_MISSING_COUNT_TEST_CASE.missingValueMatch);
+      await page.fill(
+        '#tableTestForm_params_missingCountValue',
+        COLUMN_MISSING_COUNT_TEST_CASE.missingCountValue
+      );
+      await page.fill(
+        '#tableTestForm_params_missingValueMatch',
+        COLUMN_MISSING_COUNT_TEST_CASE.missingValueMatch
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -790,11 +885,19 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
     });
 
     await test.step('Edit', async () => {
-      await page.getByTestId(`edit-${COLUMN_MISSING_COUNT_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MISSING_COUNT_TEST_CASE.name}`);
-      
+      await page
+        .getByTestId(`edit-${COLUMN_MISSING_COUNT_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_MISSING_COUNT_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_MISSING_COUNT_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_MISSING_COUNT_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_missingCountValue', '10');
       await page.fill('#tableTestForm_params_missingValueMatch', 'NULL');
       await page.getByRole('button', { name: 'Submit' }).click();
@@ -822,7 +925,8 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
     displayName: 'Column Values To Be At Expected Location Test',
     column: table.entity?.columns[2].name, // Use VARCHAR column (index 2) for location data
     type: 'columnValuesToBeAtExpectedLocation',
-    description: 'Test case to verify geographic coordinates are at expected location',
+    description:
+      'Test case to verify geographic coordinates are at expected location',
     locationReferenceType: 'CITY',
     longitudeColumnName: 'longitude',
     latitudeColumnName: 'latitude',
@@ -842,15 +946,35 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_LOCATION_TEST_CASE.column}"]`);
       await testDefinitionResponse;
-      await page.fill('#tableTestForm_testName', COLUMN_LOCATION_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_LOCATION_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testName',
+        COLUMN_LOCATION_TEST_CASE.name
+      );
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_LOCATION_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_LOCATION_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_LOCATION_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_LOCATION_TEST_CASE.description);
 
-      await page.selectOption('#tableTestForm_params_locationReferenceType', COLUMN_LOCATION_TEST_CASE.locationReferenceType);
-      await page.fill('#tableTestForm_params_longitudeColumnName', COLUMN_LOCATION_TEST_CASE.longitudeColumnName);
-      await page.fill('#tableTestForm_params_latitudeColumnName', COLUMN_LOCATION_TEST_CASE.latitudeColumnName);
-      await page.fill('#tableTestForm_params_radius', COLUMN_LOCATION_TEST_CASE.radius);
+      await page.selectOption(
+        '#tableTestForm_params_locationReferenceType',
+        COLUMN_LOCATION_TEST_CASE.locationReferenceType
+      );
+      await page.fill(
+        '#tableTestForm_params_longitudeColumnName',
+        COLUMN_LOCATION_TEST_CASE.longitudeColumnName
+      );
+      await page.fill(
+        '#tableTestForm_params_latitudeColumnName',
+        COLUMN_LOCATION_TEST_CASE.latitudeColumnName
+      );
+      await page.fill(
+        '#tableTestForm_params_radius',
+        COLUMN_LOCATION_TEST_CASE.radius
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -868,11 +992,20 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_LOCATION_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_LOCATION_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_LOCATION_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_LOCATION_TEST_CASE.displayName);
-      await page.selectOption('#tableTestForm_params_locationReferenceType', 'POSTAL_CODE');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_LOCATION_TEST_CASE.displayName
+      );
+      await page.selectOption(
+        '#tableTestForm_params_locationReferenceType',
+        'POSTAL_CODE'
+      );
       await page.fill('#tableTestForm_params_radius', '2000.0');
       await page.getByRole('button', { name: 'Submit' }).click();
 
@@ -917,13 +1050,20 @@ test('Table Row Count To Equal', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_ROW_EQUAL_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_ROW_EQUAL_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_ROW_EQUAL_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_ROW_EQUAL_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_value', TABLE_ROW_EQUAL_TEST_CASE.value);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_ROW_EQUAL_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_value',
+        TABLE_ROW_EQUAL_TEST_CASE.value
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -948,11 +1088,14 @@ test('Table Row Count To Equal', async ({ page }) => {
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_ROW_EQUAL_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_ROW_EQUAL_TEST_CASE.displayName
+      );
+
       // Update value
       await page.fill('#tableTestForm_params_value', '200');
-      
+
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -997,14 +1140,21 @@ test('Table Column To Match Set', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_COLUMN_MATCH_SET_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_COLUMN_MATCH_SET_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_COLUMN_MATCH_SET_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_COLUMN_MATCH_SET_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_columnNames', TABLE_COLUMN_MATCH_SET_TEST_CASE.columnNames);
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_COLUMN_MATCH_SET_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_columnNames',
+        TABLE_COLUMN_MATCH_SET_TEST_CASE.columnNames
+      );
       await page.uncheck('#tableTestForm_params_ordered'); // Set ordered to false
-      
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1019,15 +1169,28 @@ test('Table Column To Match Set', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await expect(
-        page.getByTestId(TABLE_COLUMN_MATCH_SET_TEST_CASE.name).getByRole('link')
+        page
+          .getByTestId(TABLE_COLUMN_MATCH_SET_TEST_CASE.name)
+          .getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_COLUMN_MATCH_SET_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${TABLE_COLUMN_MATCH_SET_TEST_CASE.name}`);
+      await page
+        .getByTestId(`edit-${TABLE_COLUMN_MATCH_SET_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${TABLE_COLUMN_MATCH_SET_TEST_CASE.name}`
+      );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_COLUMN_MATCH_SET_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_columnNames', 'col1,col2,col3,col4,col5');
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_COLUMN_MATCH_SET_TEST_CASE.displayName
+      );
+      await page.fill(
+        '#tableTestForm_params_columnNames',
+        'col1,col2,col3,col4,col5'
+      );
       await page.check('#tableTestForm_params_ordered'); // Set ordered to true
       await page.getByRole('button', { name: 'Submit' }).click();
 
@@ -1076,17 +1239,36 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_ROW_INSERTED_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_ROW_INSERTED_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_ROW_INSERTED_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_ROW_INSERTED_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_min', TABLE_ROW_INSERTED_TEST_CASE.min);
-      await page.fill('#tableTestForm_params_max', TABLE_ROW_INSERTED_TEST_CASE.max);
-      await page.fill('#tableTestForm_params_columnName', TABLE_ROW_INSERTED_TEST_CASE.columnName);
-      await page.selectOption('#tableTestForm_params_rangeType', TABLE_ROW_INSERTED_TEST_CASE.rangeType);
-      await page.fill('#tableTestForm_params_rangeInterval', TABLE_ROW_INSERTED_TEST_CASE.rangeInterval);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_ROW_INSERTED_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_min',
+        TABLE_ROW_INSERTED_TEST_CASE.min
+      );
+      await page.fill(
+        '#tableTestForm_params_max',
+        TABLE_ROW_INSERTED_TEST_CASE.max
+      );
+      await page.fill(
+        '#tableTestForm_params_columnName',
+        TABLE_ROW_INSERTED_TEST_CASE.columnName
+      );
+      await page.selectOption(
+        '#tableTestForm_params_rangeType',
+        TABLE_ROW_INSERTED_TEST_CASE.rangeType
+      );
+      await page.fill(
+        '#tableTestForm_params_rangeInterval',
+        TABLE_ROW_INSERTED_TEST_CASE.rangeInterval
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1104,19 +1286,24 @@ test('Table Row Inserted Count To Be Between', async ({ page }) => {
         page.getByTestId(TABLE_ROW_INSERTED_TEST_CASE.name).getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_ROW_INSERTED_TEST_CASE.name}`).click();
+      await page
+        .getByTestId(`edit-${TABLE_ROW_INSERTED_TEST_CASE.name}`)
+        .click();
 
       await expect(page.locator('.ant-modal-title')).toHaveText(
         `Edit ${TABLE_ROW_INSERTED_TEST_CASE.name}`
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_ROW_INSERTED_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_ROW_INSERTED_TEST_CASE.displayName
+      );
+
       // Update min and max values
       await page.fill('#tableTestForm_params_min', '5');
       await page.fill('#tableTestForm_params_max', '200');
-      
+
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1161,14 +1348,24 @@ test('Table Column Count To Be Between', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_minColValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxColValue', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.maxValue);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_minColValue',
+        TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxColValue',
+        TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.maxValue
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1183,16 +1380,24 @@ test('Table Column Count To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await expect(
-        page.getByTestId(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name).getByRole('link')
+        page
+          .getByTestId(TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name)
+          .getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name}`).click();
+      await page
+        .getByTestId(`edit-${TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name}`)
+        .click();
+
       await expect(page.locator('.ant-modal-title')).toHaveText(
         `Edit ${TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.name}`
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_COLUMN_COUNT_BETWEEN_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_minColValue', '5');
       await page.fill('#tableTestForm_params_maxColValue', '15');
       await page.getByRole('button', { name: 'Submit' }).click();
@@ -1238,13 +1443,20 @@ test('Table Column Name To Exist', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_COLUMN_NAME_EXIST_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_COLUMN_NAME_EXIST_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_COLUMN_NAME_EXIST_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_COLUMN_NAME_EXIST_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_columnName', TABLE_COLUMN_NAME_EXIST_TEST_CASE.columnName);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_COLUMN_NAME_EXIST_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_columnName',
+        TABLE_COLUMN_NAME_EXIST_TEST_CASE.columnName
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1259,16 +1471,24 @@ test('Table Column Name To Exist', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await expect(
-        page.getByTestId(TABLE_COLUMN_NAME_EXIST_TEST_CASE.name).getByRole('link')
+        page
+          .getByTestId(TABLE_COLUMN_NAME_EXIST_TEST_CASE.name)
+          .getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_COLUMN_NAME_EXIST_TEST_CASE.name}`).click();
+      await page
+        .getByTestId(`edit-${TABLE_COLUMN_NAME_EXIST_TEST_CASE.name}`)
+        .click();
+
       await expect(page.locator('.ant-modal-title')).toHaveText(
         `Edit ${TABLE_COLUMN_NAME_EXIST_TEST_CASE.name}`
       );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_COLUMN_NAME_EXIST_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_COLUMN_NAME_EXIST_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_columnName', 'user_id');
       await page.getByRole('button', { name: 'Submit' }).click();
 
@@ -1314,14 +1534,24 @@ test('Table Row Count To Be Between', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_minValue', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.maxValue);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_minValue',
+        TABLE_ROW_COUNT_BETWEEN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValue',
+        TABLE_ROW_COUNT_BETWEEN_TEST_CASE.maxValue
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1336,14 +1566,24 @@ test('Table Row Count To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await expect(
-        page.getByTestId(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name).getByRole('link')
+        page
+          .getByTestId(TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name)
+          .getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`);
+      await page
+        .getByTestId(`edit-${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${TABLE_ROW_COUNT_BETWEEN_TEST_CASE.name}`
+      );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_ROW_COUNT_BETWEEN_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_ROW_COUNT_BETWEEN_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_minValue', '5');
       await page.fill('#tableTestForm_params_maxValue', '2000');
       await page.getByRole('button', { name: 'Submit' }).click();
@@ -1389,13 +1629,20 @@ test('Table Column Count To Equal', async ({ page }) => {
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       await page.getByTestId('test-case').click();
-      await page.getByTestId('test-case-name').fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name);
+      await page
+        .getByTestId('test-case-name')
+        .fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name);
       await page.getByTestId('test-type').click();
       await page.getByTestId(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.type).click();
-      
-      await page.locator(descriptionBox).fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.description);
-      await page.fill('#tableTestForm_params_columnCount', TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.columnCount);
-      
+
+      await page
+        .locator(descriptionBox)
+        .fill(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_params_columnCount',
+        TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.columnCount
+      );
+
       const createTestCaseResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases`
       );
@@ -1410,14 +1657,24 @@ test('Table Column Count To Equal', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await expect(
-        page.getByTestId(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name).getByRole('link')
+        page
+          .getByTestId(TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name)
+          .getByRole('link')
       ).toBeVisible();
 
-      await page.getByTestId(`edit-${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`);
+      await page
+        .getByTestId(`edit-${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.name}`
+      );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        TABLE_COLUMN_COUNT_EQUAL_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_columnCount', '10');
       await page.getByRole('button', { name: 'Submit' }).click();
 
@@ -1467,8 +1724,14 @@ test('Column Value Max To Be Between', async ({ page }) => {
       await page.click(`[data-testid="${COLUMN_MAX_TEST_CASE.type}"]`);
       await page.locator(descriptionBox).fill(COLUMN_MAX_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_MAX_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_MAX_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForMaxInCol',
+        COLUMN_MAX_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForMaxInCol',
+        COLUMN_MAX_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1486,12 +1749,18 @@ test('Column Value Max To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_MAX_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MAX_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_MAX_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_MAX_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '200');
-      await page.fill('#tableTestForm_params_maxValue', '20000');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_MAX_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForMaxInCol', '200');
+      await page.fill('#tableTestForm_params_maxValueForMaxInCol', '20000');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1540,8 +1809,14 @@ test('Column Value Min To Be Between', async ({ page }) => {
       await page.click(`[data-testid="${COLUMN_MIN_TEST_CASE.type}"]`);
       await page.locator(descriptionBox).fill(COLUMN_MIN_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_MIN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_MIN_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForMinInCol',
+        COLUMN_MIN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForMinInCol',
+        COLUMN_MIN_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1559,12 +1834,18 @@ test('Column Value Min To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_MIN_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MIN_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_MIN_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_MIN_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '1');
-      await page.fill('#tableTestForm_params_maxValue', '200');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_MIN_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForMinInCol', '1');
+      await page.fill('#tableTestForm_params_maxValueForMinInCol', '200');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1611,10 +1892,18 @@ test('Column Value Mean To Be Between', async ({ page }) => {
       await page.fill('#tableTestForm_testName', COLUMN_MEAN_TEST_CASE.name);
       await page.fill('#tableTestForm_testTypeId', COLUMN_MEAN_TEST_CASE.type);
       await page.click(`[data-testid="${COLUMN_MEAN_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_MEAN_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_MEAN_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_MEAN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_MEAN_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForMeanInCol',
+        COLUMN_MEAN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForMeanInCol',
+        COLUMN_MEAN_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1632,12 +1921,18 @@ test('Column Value Mean To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_MEAN_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MEAN_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_MEAN_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_MEAN_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '20');
-      await page.fill('#tableTestForm_params_maxValue', '2000');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_MEAN_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForMeanInCol', '20');
+      await page.fill('#tableTestForm_params_maxValueForMeanInCol', '2000');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1682,12 +1977,23 @@ test('Column Value Median To Be Between', async ({ page }) => {
       await page.click(`[title="${COLUMN_MEDIAN_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_MEDIAN_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_MEDIAN_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_MEDIAN_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_MEDIAN_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_MEDIAN_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_MEDIAN_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_MEDIAN_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_MEDIAN_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForMedianInCol',
+        COLUMN_MEDIAN_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForMedianInCol',
+        COLUMN_MEDIAN_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1705,12 +2011,18 @@ test('Column Value Median To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_MEDIAN_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_MEDIAN_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_MEDIAN_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_MEDIAN_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '10');
-      await page.fill('#tableTestForm_params_maxValue', '1000');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_MEDIAN_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForMedianInCol', '10');
+      await page.fill('#tableTestForm_params_maxValueForMedianInCol', '1000');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1736,7 +2048,8 @@ test('Column Value Standard Deviation To Be Between', async ({ page }) => {
     displayName: 'Column Value StdDev To Be Between Test',
     column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueStdDevToBeBetween',
-    description: 'Test case to verify column standard deviation value is within range',
+    description:
+      'Test case to verify column standard deviation value is within range',
     minValue: '0',
     maxValue: '1000',
   };
@@ -1755,12 +2068,23 @@ test('Column Value Standard Deviation To Be Between', async ({ page }) => {
       await page.click(`[title="${COLUMN_STDDEV_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_STDDEV_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_STDDEV_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_STDDEV_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_STDDEV_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_STDDEV_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_STDDEV_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_STDDEV_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_STDDEV_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForStdDevInCol',
+        COLUMN_STDDEV_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForStdDevInCol',
+        COLUMN_STDDEV_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1778,12 +2102,18 @@ test('Column Value Standard Deviation To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_STDDEV_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_STDDEV_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_STDDEV_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_STDDEV_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '1');
-      await page.fill('#tableTestForm_params_maxValue', '2000');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_STDDEV_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForStdDevInCol', '1');
+      await page.fill('#tableTestForm_params_maxValueForStdDevInCol', '2000');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1832,8 +2162,14 @@ test('Column Values Sum To Be Between', async ({ page }) => {
       await page.click(`[data-testid="${COLUMN_SUM_TEST_CASE.type}"]`);
       await page.locator(descriptionBox).fill(COLUMN_SUM_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minValue', COLUMN_SUM_TEST_CASE.minValue);
-      await page.fill('#tableTestForm_params_maxValue', COLUMN_SUM_TEST_CASE.maxValue);
+      await page.fill(
+        '#tableTestForm_params_minValueForColSum',
+        COLUMN_SUM_TEST_CASE.minValue
+      );
+      await page.fill(
+        '#tableTestForm_params_maxValueForColSum',
+        COLUMN_SUM_TEST_CASE.maxValue
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1851,12 +2187,18 @@ test('Column Values Sum To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_SUM_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_SUM_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_SUM_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_SUM_TEST_CASE.displayName);
-      await page.fill('#tableTestForm_params_minValue', '2000');
-      await page.fill('#tableTestForm_params_maxValue', '200000');
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_SUM_TEST_CASE.displayName
+      );
+      await page.fill('#tableTestForm_params_minValueForColSum', '2000');
+      await page.fill('#tableTestForm_params_maxValueForColSum', '200000');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -1901,12 +2243,23 @@ test('Column Values Lengths To Be Between', async ({ page }) => {
       await page.click(`[title="${COLUMN_LENGTHS_TEST_CASE.column}"]`);
       await testDefinitionResponse;
       await page.fill('#tableTestForm_testName', COLUMN_LENGTHS_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_LENGTHS_TEST_CASE.type);
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_LENGTHS_TEST_CASE.type
+      );
       await page.click(`[data-testid="${COLUMN_LENGTHS_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_LENGTHS_TEST_CASE.description);
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_LENGTHS_TEST_CASE.description);
 
-      await page.fill('#tableTestForm_params_minLength', COLUMN_LENGTHS_TEST_CASE.minLength);
-      await page.fill('#tableTestForm_params_maxLength', COLUMN_LENGTHS_TEST_CASE.maxLength);
+      await page.fill(
+        '#tableTestForm_params_minLength',
+        COLUMN_LENGTHS_TEST_CASE.minLength
+      );
+      await page.fill(
+        '#tableTestForm_params_maxLength',
+        COLUMN_LENGTHS_TEST_CASE.maxLength
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1924,10 +2277,16 @@ test('Column Values Lengths To Be Between', async ({ page }) => {
 
     await test.step('Edit', async () => {
       await page.getByTestId(`edit-${COLUMN_LENGTHS_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_LENGTHS_TEST_CASE.name}`);
-      
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_LENGTHS_TEST_CASE.name}`
+      );
+
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_LENGTHS_TEST_CASE.displayName);
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_LENGTHS_TEST_CASE.displayName
+      );
       await page.fill('#tableTestForm_params_minLength', '5');
       await page.fill('#tableTestForm_params_maxLength', '100');
       await page.getByRole('button', { name: 'Submit' }).click();
@@ -1955,7 +2314,8 @@ test('Column Values To Not Match Regex', async ({ page }) => {
     displayName: 'Column Values To Not Match Regex Test',
     column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToNotMatchRegex',
-    description: 'Test case to verify column values do not match forbidden regex pattern',
+    description:
+      'Test case to verify column values do not match forbidden regex pattern',
     forbiddenRegex: '^\\d+$', // Should not be only digits
   };
   await table.create(apiContext);
@@ -1972,13 +2332,26 @@ test('Column Values To Not Match Regex', async ({ page }) => {
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.column}"]`);
       await testDefinitionResponse;
-      await page.fill('#tableTestForm_testName', COLUMN_NOT_MATCH_REGEX_TEST_CASE.name);
-      await page.fill('#tableTestForm_testTypeId', COLUMN_NOT_MATCH_REGEX_TEST_CASE.type);
-      await page.click(`[data-testid="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.type}"]`);
-      await page.locator(descriptionBox).fill(COLUMN_NOT_MATCH_REGEX_TEST_CASE.description);
+      await page.fill(
+        '#tableTestForm_testName',
+        COLUMN_NOT_MATCH_REGEX_TEST_CASE.name
+      );
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        COLUMN_NOT_MATCH_REGEX_TEST_CASE.type
+      );
+      await page.click(
+        `[data-testid="${COLUMN_NOT_MATCH_REGEX_TEST_CASE.type}"]`
+      );
+      await page
+        .locator(descriptionBox)
+        .fill(COLUMN_NOT_MATCH_REGEX_TEST_CASE.description);
 
       // Fill forbidden regex pattern
-      await page.fill('#tableTestForm_params_forbiddenRegex', COLUMN_NOT_MATCH_REGEX_TEST_CASE.forbiddenRegex);
+      await page.fill(
+        '#tableTestForm_params_forbiddenRegex',
+        COLUMN_NOT_MATCH_REGEX_TEST_CASE.forbiddenRegex
+      );
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -1995,15 +2368,23 @@ test('Column Values To Not Match Regex', async ({ page }) => {
     });
 
     await test.step('Edit', async () => {
-      await page.getByTestId(`edit-${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`).click();
-      await expect(page.locator('.ant-modal-title')).toHaveText(`Edit ${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`);
+      await page
+        .getByTestId(`edit-${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${COLUMN_NOT_MATCH_REGEX_TEST_CASE.name}`
+      );
 
       await page.locator('#tableTestForm_displayName').clear();
-      await page.fill('#tableTestForm_displayName', COLUMN_NOT_MATCH_REGEX_TEST_CASE.displayName);
-      
+      await page.fill(
+        '#tableTestForm_displayName',
+        COLUMN_NOT_MATCH_REGEX_TEST_CASE.displayName
+      );
+
       // Update forbidden regex pattern
       await page.fill('#tableTestForm_params_forbiddenRegex', '^[0-9]*$');
-      
+
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
