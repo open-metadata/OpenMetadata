@@ -436,7 +436,7 @@ test('Column Values To Be Between', async ({ page }) => {
   const COLUMN_BETWEEN_TEST_CASE = {
     name: 'column_values_to_be_between_test',
     displayName: 'Column Values To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValuesToBeBetween',
     description: 'Test case to verify column values are within range',
     minValue: '10',
@@ -473,6 +473,11 @@ test('Column Values To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_BETWEEN_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -512,7 +517,7 @@ test('Column Values To Match Regex', async ({ page }) => {
   const COLUMN_REGEX_TEST_CASE = {
     name: 'column_values_to_match_regex_test',
     displayName: 'Column Values To Match Regex Test',
-    column: table.entity?.columns[1].name, // Use second column for string type
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToMatchRegex',
     description: 'Test case to verify column values match regex pattern',
     regex: '^[A-Za-z0-9]+$',
@@ -526,7 +531,7 @@ test('Column Values To Match Regex', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_REGEX_TEST_CASE.column}"]`);
@@ -590,7 +595,7 @@ test('Column Values To Be In Set', async ({ page }) => {
   const COLUMN_IN_SET_TEST_CASE = {
     name: 'column_values_to_be_in_set_test',
     displayName: 'Column Values To Be In Set Test',
-    column: table.entity?.columns[1].name,
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToBeInSet',
     description: 'Test case to verify column values are in allowed set',
     allowedValues: ['value1', 'value2', 'value3'],
@@ -604,7 +609,7 @@ test('Column Values To Be In Set', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_IN_SET_TEST_CASE.column}"]`);
@@ -839,7 +844,7 @@ test('Column Value Max To Be Between', async ({ page }) => {
   const COLUMN_MAX_TEST_CASE = {
     name: 'column_value_max_to_be_between_test',
     displayName: 'Column Value Max To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueMaxToBeBetween',
     description: 'Test case to verify column maximum value is within range',
     minValueForMaxInCol: '50',
@@ -874,6 +879,11 @@ test('Column Value Max To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MAX_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -907,7 +917,7 @@ test('Column Value Mean To Be Between', async ({ page }) => {
   const COLUMN_MEAN_TEST_CASE = {
     name: 'column_value_mean_to_be_between_test',
     displayName: 'Column Value Mean To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueMeanToBeBetween',
     description: 'Test case to verify column mean value is within range',
     minValueForMeanInCol: '10',
@@ -942,6 +952,11 @@ test('Column Value Mean To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MEAN_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -975,7 +990,7 @@ test('Column Value Min To Be Between', async ({ page }) => {
   const COLUMN_MIN_TEST_CASE = {
     name: 'column_value_min_to_be_between_test',
     displayName: 'Column Value Min To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueMinToBeBetween',
     description: 'Test case to verify column minimum value is within range',
     minValueForMinInCol: '1',
@@ -1010,6 +1025,11 @@ test('Column Value Min To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');  
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MIN_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1043,7 +1063,7 @@ test('Column Value Std Dev To Be Between', async ({ page }) => {
   const COLUMN_STDDEV_TEST_CASE = {
     name: 'column_value_stddev_to_be_between_test',
     displayName: 'Column Value Std Dev To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueStdDevToBeBetween',
     description: 'Test case to verify column standard deviation is within range',
     minValueForStdDevInCol: '0.5',
@@ -1078,6 +1098,11 @@ test('Column Value Std Dev To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_STDDEV_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1111,7 +1136,7 @@ test('Column Value Median To Be Between', async ({ page }) => {
   const COLUMN_MEDIAN_TEST_CASE = {
     name: 'column_value_median_to_be_between_test',
     displayName: 'Column Value Median To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValueMedianToBeBetween',
     description: 'Test case to verify column median value is within range',
     minValueForMedianInCol: '20',
@@ -1146,6 +1171,11 @@ test('Column Value Median To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MEDIAN_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1179,7 +1209,7 @@ test('Column Values Sum To Be Between', async ({ page }) => {
   const COLUMN_SUM_TEST_CASE = {
     name: 'column_values_sum_to_be_between_test',
     displayName: 'Column Values Sum To Be Between Test',
-    column: table.entity?.columns[0].name,
+    column: table.entity?.columns[0].name, // Use NUMERIC column (index 0)
     type: 'columnValuesSumToBeBetween',
     description: 'Test case to verify column sum is within range',
     minValueForSumInCol: '1000',
@@ -1214,6 +1244,11 @@ test('Column Values Sum To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_SUM_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1247,7 +1282,7 @@ test('Column Values Lengths To Be Between', async ({ page }) => {
   const COLUMN_LENGTHS_TEST_CASE = {
     name: 'column_values_lengths_to_be_between_test',
     displayName: 'Column Values Lengths To Be Between Test',
-    column: table.entity?.columns[1].name, // Use string column
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValueLengthsToBeBetween',
     description: 'Test case to verify column value lengths are within range',
     minLength: '5',
@@ -1262,7 +1297,7 @@ test('Column Values Lengths To Be Between', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_LENGTHS_TEST_CASE.column}"]`);
@@ -1282,6 +1317,11 @@ test('Column Values Lengths To Be Between', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_LENGTHS_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1315,7 +1355,7 @@ test('Column Values To Not Match Regex', async ({ page }) => {
   const COLUMN_NOT_REGEX_TEST_CASE = {
     name: 'column_values_to_not_match_regex_test',
     displayName: 'Column Values To Not Match Regex Test',
-    column: table.entity?.columns[1].name, // Use string column
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToNotMatchRegex',
     description: 'Test case to verify column values do not match regex pattern',
     regex: '^[0-9]+$', // Should not be only digits
@@ -1329,7 +1369,7 @@ test('Column Values To Not Match Regex', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_NOT_REGEX_TEST_CASE.column}"]`);
@@ -1348,6 +1388,11 @@ test('Column Values To Not Match Regex', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_NOT_REGEX_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1380,7 +1425,7 @@ test('Column Values To Be Not In Set', async ({ page }) => {
   const COLUMN_NOT_IN_SET_TEST_CASE = {
     name: 'column_values_to_be_not_in_set_test',
     displayName: 'Column Values To Be Not In Set Test',
-    column: table.entity?.columns[1].name,
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToBeNotInSet',
     description: 'Test case to verify column values are not in forbidden set',
     forbiddenValues: ['forbidden1', 'forbidden2', 'forbidden3'],
@@ -1394,7 +1439,7 @@ test('Column Values To Be Not In Set', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_NOT_IN_SET_TEST_CASE.column}"]`);
@@ -1419,6 +1464,11 @@ test('Column Values To Be Not In Set', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_NOT_IN_SET_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1454,7 +1504,7 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
   const COLUMN_MISSING_COUNT_TEST_CASE = {
     name: 'column_values_missing_count_to_be_equal_test',
     displayName: 'Column Values Missing Count To Be Equal Test',
-    column: table.entity?.columns[1].name,
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesMissingCount',
     description: 'Test case to verify column missing count equals expected value',
     missingCountValue: '5',
@@ -1469,7 +1519,7 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_MISSING_COUNT_TEST_CASE.column}"]`);
@@ -1489,6 +1539,11 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_MISSING_COUNT_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
@@ -1522,7 +1577,7 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
   const COLUMN_LOCATION_TEST_CASE = {
     name: 'column_values_to_be_at_expected_location_test',
     displayName: 'Column Values To Be At Expected Location Test',
-    column: table.entity?.columns[1].name,
+    column: table.entity?.columns[2].name, // Use VARCHAR column (index 2)
     type: 'columnValuesToBeAtExpectedLocation',
     description: 'Test case to verify geographic coordinates are at expected location',
     locationReferenceType: 'CITY',
@@ -1539,7 +1594,7 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=STRING'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_LOCATION_TEST_CASE.column}"]`);
@@ -1561,6 +1616,11 @@ test('Column Values To Be At Expected Location', async ({ page }) => {
       );
       await page.click('[data-testid="view-service-button"]');
       await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(`[data-testid="${COLUMN_LOCATION_TEST_CASE.name}"]`)
+      ).toBeVisible();
     });
 
     await test.step('Edit', async () => {
