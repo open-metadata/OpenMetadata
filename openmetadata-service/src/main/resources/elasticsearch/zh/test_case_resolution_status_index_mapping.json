@@ -59,7 +59,7 @@
         "type": "date"
       },
       "@timestamp": {
-          "type": "date"
+        "type": "date"
       },
       "testCaseResolutionStatusType": {
         "type": "keyword",
@@ -71,131 +71,131 @@
         }
       },
       "testCaseResolutionStatusDetails": {
-          "type": "object",
-          "dynamic": true,
-          "properties": {
-            "assignee": {
-              "properties": {
-                "id": {
-                  "type": "keyword",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 36
-                    }
+        "type": "object",
+        "dynamic": true,
+        "properties": {
+          "assignee": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
                   }
-                },
-                "type": {
-                  "type": "keyword"
-                },
-                "name": {
-                  "type": "keyword",
-                  "normalizer": "lowercase_normalizer",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                },
-                "displayName": {
-                  "type": "keyword",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 256
-                    }
-                  }
-                },
-                "fullyQualifiedName": {
-                  "type": "text"
-                },
-                "description": {
-                  "type": "text"
-                },
-                "deleted": {
-                  "type": "text"
-                },
-                "href": {
-                  "type": "text"
                 }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
-            },
-            "resolved": {
-              "properties": {
-                "testCaseFailureReason": {
-                  "type": "keyword",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "ignore_above": 15
-                    }
+            }
+          },
+          "resolved": {
+            "properties": {
+              "testCaseFailureReason": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 15
                   }
-                },
-                "testCaseFailureComment": {
-                  "type": "text",
-                  "analyzer": "ik_max_word",
-                  "fields": {
-                    "keyword": {
-                      "type": "keyword",
-                      "normalizer": "lowercase_normalizer"
-                    },
-                    "ngram": {
-                      "type": "text",
-                      "analyzer": "om_ngram"
-                    }
+                }
+              },
+              "testCaseFailureComment": {
+                "type": "text",
+                "analyzer": "ik_max_word",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "normalizer": "lowercase_normalizer"
+                  },
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
                   }
-                },
-                "resolvedBy": {
-                  "properties": {
-                    "id": {
-                      "type": "keyword",
-                      "fields": {
-                        "keyword": {
-                          "type": "keyword",
-                          "ignore_above": 36
-                        }
+                }
+              },
+              "resolvedBy": {
+                "properties": {
+                  "id": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
                       }
-                    },
-                    "type": {
-                      "type": "keyword"
-                    },
-                    "name": {
-                      "type": "keyword",
-                      "normalizer": "lowercase_normalizer",
-                      "fields": {
-                        "keyword": {
-                          "type": "keyword",
-                          "ignore_above": 256
-                        }
-                      }
-                    },
-                    "displayName": {
-                      "type": "keyword",
-                      "fields": {
-                        "keyword": {
-                          "type": "keyword",
-                          "ignore_above": 256
-                        }
-                      }
-                    },
-                    "fullyQualifiedName": {
-                      "type": "text"
-                    },
-                    "description": {
-                      "type": "text"
-                    },
-                    "deleted": {
-                      "type": "text"
-                    },
-                    "href": {
-                      "type": "text"
                     }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword",
+                    "normalizer": "lowercase_normalizer",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "displayName": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "fullyQualifiedName": {
+                    "type": "text"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "deleted": {
+                    "type": "text"
+                  },
+                  "href": {
+                    "type": "text"
                   }
                 }
               }
             }
           }
+        }
       },
       "metrics": {
         "type": "nested",
@@ -258,7 +258,8 @@
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer"
               }
-            }
+            },
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -331,9 +332,6 @@
       },
       "fqnParts": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion"
       },
       "table": {
         "properties": {
@@ -708,7 +706,7 @@
               }
             }
           },
-          "domain" : {
+          "domain": {
             "properties": {
               "id": {
                 "type": "keyword",

@@ -257,6 +257,9 @@ export const fillRule = async (
       }
 
       await dropdownInput.click();
+      if (aggregateRes) {
+        await aggregateRes;
+      }
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
@@ -534,9 +537,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id !== 'Column' && operator === 'AND') {
     const res = await searchRes;
     const json = await res.json();
+    const hits = json.hits.hits;
 
-    expect(JSON.stringify(json)).toContain(searchCriteria1);
-    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+    expect(JSON.stringify(hits)).toContain(searchCriteria1);
+    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
   }
 };
 
@@ -580,4 +584,33 @@ export const runRuleGroupTests = async (
     );
     await page.getByTestId('clear-filters').click();
   }
+};
+
+export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
+  await showAdvancedSearchDialog(page);
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Perform click on rule field
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Database'
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    '=='
+  );
+
+  const inputElement = ruleLocator.locator(
+    '.rule--widget--SELECT .ant-select-selection-search-input'
+  );
+  await inputElement.fill('non-existing-value');
+  const dropdownText = page.locator('.ant-select-item-empty');
+
+  await expect(dropdownText).toContainText('Loading...');
+
+  await page.waitForTimeout(1000);
+
+  await expect(dropdownText).not.toContainText('Loading...');
 };

@@ -124,6 +124,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.NonNull;
@@ -680,7 +681,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -755,7 +758,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
@@ -1037,7 +1042,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateTags(entity);
     prepare(entity, update);
     setFullyQualifiedName(entity);
-    validateExtension(entity);
+    validateExtension(entity, update);
     // Domain is already validated
   }
 
@@ -1057,7 +1062,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
-    entity.setCertification(fields.contains(FIELD_TAGS) ? getCertification(entity) : null);
+    entity.setCertification(
+        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+            ? getCertification(entity)
+            : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -1775,8 +1783,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
 
-  private void validateExtension(T entity) {
+  private void validateExtension(T entity, Entry<String, JsonNode> field) {
     if (entity.getExtension() == null) {
+      return;
+    }
+
+    // Validate single extension field
+    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    String fieldName = field.getKey();
+    JsonNode fieldValue = field.getValue();
+
+    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+    if (jsonSchema == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+    }
+    String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
+    String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
+    validateAndUpdateExtensionBasedOnPropertyType(
+        entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
+    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+    if (!validationMessages.isEmpty()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+    }
+  }
+
+  private void validateExtension(T entity, boolean update) {
+    // Validate complete extension field only on POST
+    if (entity.getExtension() == null || update) {
       return;
     }
 
@@ -3232,7 +3266,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDescription();
         updateDisplayName();
         updateOwners();
-        updateExtension();
+        updateExtension(consolidatingChanges);
         updateTags(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         updateDomain();
@@ -3257,10 +3291,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDescription();
         updateDisplayName();
         updateOwnersForImport();
-        updateExtension();
+        updateExtension(consolidatingChanges);
         updateTagsForImport(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomain();
+        updateDomainForImport();
         updateDataProducts();
         updateExperts();
         updateReviewers();
@@ -3309,11 +3343,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      if (operation.isPut() && !nullOrEmpty(original.getDisplayName()) && updatedByBot()) {
-        // Revert change to non-empty displayName if it is being updated by a bot
-        updated.setDisplayName(original.getDisplayName());
-        return;
-      }
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
@@ -3410,7 +3439,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       applyTags(updatedTags, fqn);
     }
 
-    private void updateExtension() {
+    private void updateExtension(boolean consolidatingChanges) {
       Object origExtension = original.getExtension();
       Object updatedExtension = updated.getExtension();
       if (origExtension == updatedExtension) {
@@ -3430,39 +3459,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      List<JsonNode> added = new ArrayList<>();
-      List<JsonNode> deleted = new ArrayList<>();
-      JsonNode origFields = JsonUtils.valueToTree(origExtension);
-      JsonNode updatedFields = JsonUtils.valueToTree(updatedExtension);
+      List<JsonNode> addedFields = new ArrayList<>();
+      List<JsonNode> deletedFields = new ArrayList<>();
+      List<JsonNode> updatedFields = new ArrayList<>();
+      JsonNode origExtensionFields = JsonUtils.valueToTree(origExtension);
+      JsonNode updatedExtensionFields = JsonUtils.valueToTree(updatedExtension);
+      Set<String> allKeys = new HashSet<>();
+      origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
 
-      // Check for updated and deleted fields
-      for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
-        Entry<String, JsonNode> orig = it.next();
-        JsonNode updatedField = updatedFields.get(orig.getKey());
-        if (updatedField == null) {
-          deleted.add(JsonUtils.getObjectNode(orig.getKey(), orig.getValue()));
-        } else {
-          // TODO converting to a string is a hack for now because JsonNode equals issues
-          recordChange(
-              getExtensionField(orig.getKey()),
-              orig.getValue().toString(),
-              updatedField.toString());
+      for (String key : allKeys) {
+        JsonNode origValue = origExtensionFields.get(key);
+        JsonNode updatedValue = updatedExtensionFields.get(key);
+
+        if (origValue == null) {
+          addedFields.add(JsonUtils.getObjectNode(key, updatedValue));
+        } else if (updatedValue == null) {
+          deletedFields.add(JsonUtils.getObjectNode(key, origValue));
+        } else if (!origValue.equals(updatedValue)) {
+          updatedFields.add(JsonUtils.getObjectNode(key, updatedValue));
+          recordChange(getExtensionField(key), origValue.toString(), updatedValue.toString());
         }
       }
 
-      // Check for added fields
-      for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext(); ) {
-        Entry<String, JsonNode> updatedField = it.next();
-        JsonNode orig = origFields.get(updatedField.getKey());
-        if (orig == null) {
-          added.add(JsonUtils.getObjectNode(updatedField.getKey(), updatedField.getValue()));
+      if (!consolidatingChanges) {
+        for (JsonNode node :
+            Stream.of(addedFields, updatedFields, deletedFields).flatMap(List::stream).toList()) {
+          node.fields().forEachRemaining(field -> validateExtension(updated, field));
         }
       }
-      if (!added.isEmpty()) {
-        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(added));
+      if (!addedFields.isEmpty()) {
+        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
       }
-      if (!deleted.isEmpty()) {
-        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deleted));
+      if (!deletedFields.isEmpty()) {
+        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deletedFields));
       }
       removeExtension(original);
       storeExtension(updated);
@@ -3507,6 +3537,46 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setDomain(updatedDomain);
         // Clean up data products associated not associated with the updated domain
         removeCrossDomainDataProducts(updated.getDomain(), updated);
+      } else {
+        updated.setDomain(original.getDomain());
+      }
+    }
+
+    protected void updateDomainForImport() {
+      EntityReference origDomain = getEntityReference(original.getDomain());
+      EntityReference updatedDomain = getEntityReference(updated.getDomain());
+
+      if (origDomain == updatedDomain) {
+        return;
+      }
+
+      boolean domainChanged =
+          recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch);
+
+      if (domainChanged) {
+        if (origDomain != null) {
+          LOG.info(
+              "Removing domain {} for entity {} (import)",
+              origDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          removeDomainLineage(updated.getId(), entityType, origDomain);
+          deleteRelationship(
+              origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
+        }
+
+        if (updatedDomain != null) {
+          validateDomain(updatedDomain);
+          LOG.info(
+              "Adding domain {} for entity {} (import)",
+              updatedDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          addRelationship(
+              updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
+          addDomainLineage(updated.getId(), entityType, updatedDomain);
+        }
+
+        updated.setDomain(updatedDomain);
+        removeCrossDomainDataProducts(updatedDomain, updated);
       } else {
         updated.setDomain(original.getDomain());
       }
@@ -3658,8 +3728,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      if (Objects.equals(origCertification, updatedCertification) || updatedCertification == null)
+      LOG.debug(
+          "Updating certification - Original: {}, Updated: {}",
+          origCertification,
+          updatedCertification);
+
+      if (updatedCertification == null) {
+        LOG.debug("Setting certification to null");
+        recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
         return;
+      }
+
+      if (Objects.equals(origCertification, updatedCertification)) {
+        LOG.debug("Certification unchanged");
+        return;
+      }
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =

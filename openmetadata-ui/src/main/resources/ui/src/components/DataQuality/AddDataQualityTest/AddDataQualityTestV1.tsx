@@ -36,16 +36,11 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
-import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  createExecutableTestSuite,
-  createTestCase,
-  getTestSuiteByName,
-} from '../../../rest/testAPI';
+import { createTestCase, getTestSuiteByName } from '../../../rest/testAPI';
 import {
   getEntityBreadcrumbs,
   getEntityName,
@@ -127,18 +122,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     });
   };
 
-  const createTestSuite = async () => {
-    const testSuite: CreateTestSuite = {
-      name: `${table.fullyQualifiedName}.testSuite`,
-      basicEntityReference: table.fullyQualifiedName,
-      owners,
-    };
-    const response = await createExecutableTestSuite(testSuite);
-    setTestSuiteData(response);
-
-    return response;
-  };
-
   const fetchTestSuiteByFqn = async (fqn: string) => {
     try {
       const response = await getTestSuiteByName(fqn);
@@ -158,17 +141,21 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setTestCaseData(data);
 
     try {
-      const testSuite = isUndefined(testSuiteData)
-        ? await createTestSuite()
-        : table.testSuite;
-
       const testCasePayload: CreateTestCase = {
         ...data,
         owners,
-        testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      if (
+        testCaseResponse.testSuite.fullyQualifiedName &&
+        isUndefined(table.testSuite)
+      ) {
+        await fetchTestSuiteByFqn(
+          testCaseResponse.testSuite.fullyQualifiedName
+        );
+      }
+
       // Update current count when Create / Delete operation performed
       await getResourceLimit('dataQuality', true, true);
       setActiveServiceStep(2);

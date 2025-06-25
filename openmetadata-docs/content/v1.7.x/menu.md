@@ -11,9 +11,9 @@ site_menu:
     url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
-  - category: Quickstart / Getting Started  
+  - category: Quickstart / Getting Started
     url: /quick-start/getting-started
-  - category: Quickstart / Getting Started / Day 1  
+  - category: Quickstart / Getting Started / Day 1
     url: /quick-start/getting-started/day-1
   - category: Quickstart / Getting Started / Day 1 / Database Service Setup
     url: /quick-start/getting-started/day-1/database-service-setup
@@ -49,7 +49,6 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
 
-
   - category: Deployment / Ingestion
     url: /deployment/ingestion
   - category: Deployment / Ingestion / OpenMetadata
@@ -78,7 +77,7 @@ site_menu:
   - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
     url: /deployment/security/ldap/bare-metal
   - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
-    url: /deployment/security/ldap/kubernetes  
+    url: /deployment/security/ldap/kubernetes
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -170,7 +169,7 @@ site_menu:
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / Configuration Reference Parameters
-    url: /deployment/security/configuration-parameters  
+    url: /deployment/security/configuration-parameters
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
 
@@ -218,7 +217,7 @@ site_menu:
 
   - category: Deployment / Metrics
     url: /deployment/metrics
-  
+
   - category: Deployment / OSS Security
     url: /deployment/oss-security
 
@@ -816,6 +815,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
     url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Auto Ingest DBT Core Artifacts
+    url: /connectors/ingestion/workflows/dbt/auto-ingest-dbt-core
   - category: Connectors / Ingestion / Workflows / dbt / Run Externally
     url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
@@ -897,8 +898,8 @@ site_menu:
     url: /how-to-guides/admin-guide/Reindexing-Search
   - category: How-to Guides / Admin Guide / Data Insights
     url: /how-to-guides/admin-guide/data-insights
-  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
-    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization
+    url: /how-to-guides/admin-guide/persona-landing-page-customization
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
     url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
@@ -997,11 +998,11 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
-  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases
     url: /how-to-guides/data-quality-observability/quality/adding-test-cases
-  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites
     url: /how-to-guides/data-quality-observability/quality/adding-test-suites
-  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config
     url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
   - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
     url: /how-to-guides/data-quality-observability/quality/visualize
@@ -1019,8 +1020,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
     url: /how-to-guides/data-quality-observability/profiler/custom-metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/external-workflow
   - category: How-to Guides / Data Quality and Observability / Data Observability
@@ -1104,6 +1103,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
     url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Sample Data
+    url: /how-to-guides/data-governance/classification/auto-classification/external-sample-data
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -1125,6 +1126,14 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.7.4 Release
+    url: /releases/all-releases/#1.7.4-release
+  - category: Releases / All Releases / 1.7.3 Release
+    url: /releases/all-releases/#1.7.3-release
+  - category: Releases / All Releases / 1.7.2 Release
+    url: /releases/all-releases/#1.7.2-release
+  - category: Releases / All Releases / 1.7.1 Release
+    url: /releases/all-releases/#1.7.1-release
   - category: Releases / All Releases / 1.7.0 Release
     url: /releases/all-releases/#1.7.0-release
   - category: Releases / All Releases / 1.6.11 Release
@@ -1158,7 +1167,7 @@ site_menu:
   - category: Releases / All Releases / 1.5.13 Release
     url: /releases/all-releases/#1.5.13-release
   - category: Releases / All Releases / 1.5.12 Release
-    url: /releases/all-releases/#1.5.12-release 
+    url: /releases/all-releases/#1.5.12-release
   - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release
@@ -1255,7 +1264,6 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
-
 
   - category: Main Concepts
     url: /main-concepts

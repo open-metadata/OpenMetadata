@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  Card,
   Col,
   Divider,
   Dropdown,
@@ -38,7 +39,6 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
-import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -48,7 +48,10 @@ import StatusBadge from '../../components/common/StatusBadge/StatusBadge.compone
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -65,6 +68,7 @@ import {
   DE_ACTIVE_COLOR,
   ROUTES,
 } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -218,7 +222,7 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: TabSpecificField.DOMAIN,
+          fields: [TabSpecificField.DOMAIN, TabSpecificField.OWNERS],
         });
         setTagItem(response);
       }
@@ -433,46 +437,38 @@ const TagPage = () => {
         label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
         children: (
-          <ResizablePanels
-            className="tag-height-with-resizable-panel"
-            firstPanel={{
-              className: 'tag-resizable-panel-container',
-              children: (
-                <div className="tag-overview-tab">
-                  <Row>
-                    <Col span={24}>
-                      <DescriptionV1
-                        removeBlur
-                        description={tagItem?.description}
-                        entityName={getEntityName(tagItem)}
-                        entityType={EntityType.TAG}
-                        hasEditAccess={editDescriptionPermission}
-                        showActions={!tagItem?.deleted}
-                        showCommentsIcon={false}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </Col>
-                  </Row>
+          <GenericProvider<Tag>
+            data={tagItem as Tag}
+            isVersionView={false}
+            permissions={tagPermissions}
+            type={EntityType.TAG as CustomizeEntityType}
+            onUpdate={(updatedData: Tag) =>
+              Promise.resolve(updateTag(updatedData))
+            }>
+            <Row gutter={16}>
+              <Col span={18}>
+                <Card className="card-padding-md">
+                  <DescriptionV1
+                    removeBlur
+                    wrapInCard
+                    description={tagItem?.description}
+                    entityName={getEntityName(tagItem)}
+                    entityType={EntityType.TAG}
+                    hasEditAccess={editDescriptionPermission}
+                    showActions={!tagItem?.deleted}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </Card>
+              </Col>
+              <Col span={6}>
+                <div className="d-flex flex-column gap-5">
+                  <DomainLabelV2 showDomainHeading />
+                  <OwnerLabelV2 dataTestId="tag-owner-name" />
                 </div>
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-            }}
-            secondPanel={{
-              children: tagItem ? (
-                <DomainLabel
-                  showDomainHeading
-                  domain={tagItem.domain}
-                  entityFqn={tagItem.fullyQualifiedName ?? ''}
-                  entityId={tagItem.id ?? ''}
-                  entityType={EntityType.TAG}
-                  hasPermission={editTagsPermission}
-                />
-              ) : null,
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-              className:
-                'entity-resizable-right-panel-container tag-resizable-panel-container',
-            }}
-          />
+              </Col>
+            </Row>
+          </GenericProvider>
         ),
       },
       {
@@ -566,7 +562,7 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-  }, []);
+  }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
@@ -624,7 +620,7 @@ const TagPage = () => {
             {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  {!isCertificationClassification && (
+                  {!isCertificationClassification && !tagItem.disabled && (
                     <Button
                       data-testid="data-classification-add-button"
                       type="primary"
@@ -672,7 +668,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tabs-new"
+            className="tabs-new tag-page-tabs"
             items={tabItems}
             onChange={activeTabHandler}
           />

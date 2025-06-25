@@ -16,11 +16,14 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
     Dataset,
     PowerBIDashboard,
     PowerBiTable,
     PowerBITableSource,
+    UpstreaDataflow,
 )
+from metadata.utils import fqn
 
 MOCK_REDSHIFT_EXP = """
 let
@@ -87,7 +90,12 @@ mock_config = {
                 "tenantId": "tenant_id",
             },
         },
-        "sourceConfig": {"config": {"type": "DashboardMetadata"}},
+        "sourceConfig": {
+            "config": {
+                "type": "DashboardMetadata",
+                "includeOwners": True,
+            }
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -190,6 +198,12 @@ MOCK_DASHBOARD_DATA_MODEL = DashboardDataModel(
     id=uuid.uuid4(),
     columns=[],
     dataModelType=DataModelType.PowerBIDataModel.value,
+)
+MOCK_DATAMODEL_ENTITY = DashboardDataModel(
+    name="dummy_dataflow_id_a",
+    id=uuid.uuid4(),
+    dataModelType=DataModelType.PowerBIDataFlow.value,
+    columns=[],
 )
 
 
@@ -311,6 +325,32 @@ class PowerBIUnitTest(TestCase):
         # Verify get_reference_by_email was not called when there are no owners
         self.powerbi.metadata.get_reference_by_email.assert_not_called()
 
+        # Reset mock for invalid owners test
+        self.powerbi.metadata.get_reference_by_email.reset_mock()
+        # Test with invalid owners
+        dashboard_invalid_owners = PowerBIDashboard.model_validate(
+            {
+                "id": "dashboard3",
+                "displayName": "Test Dashboard 3",
+                "webUrl": "https://test.com",
+                "embedUrl": "https://test.com/embed",
+                "tiles": [],
+                "users": [
+                    {
+                        "displayName": "Kane Williams",
+                        "emailAddress": "kane.williams@example.com",
+                        "dashboardUserAccessRight": "Read",
+                        "userType": "Member",
+                    },
+                ],
+            }
+        )
+        owner_ref = self.powerbi.get_owner_ref(dashboard_invalid_owners)
+        self.assertIsNone(owner_ref)
+
+        # Verify get_reference_by_email was not called when there are no owners
+        self.powerbi.metadata.get_reference_by_email.assert_not_called()
+
     @pytest.mark.order(3)
     def test_parse_table_info_from_source_exp(self):
         table = PowerBiTable(
@@ -357,3 +397,29 @@ class PowerBIUnitTest(TestCase):
         self.assertIsNone(result["database"])
         self.assertIsNone(result["schema"])
         self.assertEqual(result["table"], "CUSTOMER_TABLE")
+
+    @pytest.mark.order(5)
+    @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
+    @patch.object(fqn, "build", return_value=None)
+    def test_upstream_dataflow_lineage(self, *_):
+        MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(
+            name="dummy_dataflow_id_b",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[],
+        )
+        MOCK_DATAMODEL_2 = Dataflow(
+            name="dataflow_b",
+            objectId="dummy_dataflow_id_b",
+            upstreamDataflows=[
+                UpstreaDataflow(
+                    targetDataflowId="dataflow_a",
+                )
+            ],
+        )
+        lineage_request = list(
+            self.powerbi.create_dataflow_upstream_dataflow_lineage(
+                MOCK_DATAMODEL_2, MOCK_DATAMODEL_ENTITY_2
+            )
+        )
+        assert lineage_request[0].right is not None

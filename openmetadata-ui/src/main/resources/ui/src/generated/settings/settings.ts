@@ -44,6 +44,7 @@ export enum SettingType {
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
+    ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",

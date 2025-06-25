@@ -83,7 +83,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -171,13 +171,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(
       EntityType.DATABASE_SCHEMA,
       decodedDatabaseSchemaFQN,
       handleFeedCount
     );
-  };
+  }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -328,8 +328,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database-schema'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -404,10 +403,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission]);
+  }, [
+    viewDatabaseSchemaPermission,
+    fetchDatabaseSchemaDetails,
+    fetchStoreProcedureCount,
+    getEntityFeedCount,
+  ]);
 
   useEffect(() => {
     fetchTableCount();
@@ -578,6 +581,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [USERId, databaseSchemaId]);
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (databaseSchema) {
+        const certificationTag: DatabaseSchema['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...databaseSchema,
+          certification: certificationTag,
+        };
+
+        await handleUpdateDatabaseSchema(updatedTableDetails as DatabaseSchema);
+      }
+    },
+    [handleUpdateDatabaseSchema, databaseSchema]
+  );
+
   const handleFollowClick = useCallback(async () => {
     isFollowing ? await unFollowSchema() : await followSchema();
   }, [isFollowing, unFollowSchema, followSchema]);
@@ -631,6 +650,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 entityType={EntityType.DATABASE_SCHEMA}
                 extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
+                onCertificationUpdate={onCertificationUpdate}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onFollowClick={handleFollowClick}
                 onOwnerUpdate={handleUpdateOwner}

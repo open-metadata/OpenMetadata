@@ -35,7 +35,9 @@
         "assetCertificationSettings",
         "lineageSettings",
         "workflowSettings",
-        "entityRulesSettings"
+        "entityRulesSettings",
+        "workflowSettings",
+        "scimConfiguration"
       ]
     }
   },

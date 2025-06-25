@@ -201,6 +201,7 @@ class ProfilerTest(TestCase):
         """
         simple = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
+            metrics_registry=Metrics,
         )
         simple.compute_metrics()
 
@@ -337,6 +338,7 @@ class ProfilerTest(TestCase):
 
         default_profiler = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
+            metrics_registry=Metrics,
         )
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:

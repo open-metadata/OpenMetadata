@@ -80,7 +80,8 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "freqs",
+        "term_vector": "with_positions_offsets"
       },
       "version": {
         "type": "float"
@@ -95,7 +96,7 @@
       "href": {
         "type": "text"
       },
-      "apiCollection" : {
+      "apiCollection": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -142,7 +143,7 @@
           }
         }
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -260,7 +261,8 @@
               "description": {
                 "type": "text",
                 "index_options": "docs",
-                "analyzer": "om_analyzer"
+                "analyzer": "om_analyzer",
+                "term_vector": "with_positions_offsets"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -361,7 +363,8 @@
               "description": {
                 "type": "text",
                 "index_options": "docs",
-                "analyzer": "om_analyzer"
+                "analyzer": "om_analyzer",
+                "term_vector": "with_positions_offsets"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -599,8 +602,8 @@
           }
         }
       },
-      "lineage": {
-        "type" : "object"
+      "upstreamLineage": {
+        "type": "object"
       },
       "lifeCycle": {
         "type": "keyword"
@@ -612,18 +615,9 @@
       "entityType": {
         "type": "keyword"
       },
-      "field_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
-      },
-      "votes" : {
-        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

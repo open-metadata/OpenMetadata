@@ -72,6 +72,7 @@ export interface FilterPattern {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
