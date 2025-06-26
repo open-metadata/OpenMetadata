@@ -344,12 +344,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=left_where,
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
-            if self.runtime_params.table1.privateKey
-            else None,
-            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
-            if self.runtime_params.table1.passPhrase
-            else None,
+            # key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            # if self.runtime_params.table1.privateKey
+            # else None,
+            # private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            # if self.runtime_params.table1.passPhrase
+            # else None,
         )
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
@@ -357,12 +357,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
-            if self.runtime_params.table1.privateKey
-            else None,
-            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
-            if self.runtime_params.table1.passPhrase
-            else None,
+            # key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            # if self.runtime_params.table1.privateKey
+            # else None,
+            # private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            # if self.runtime_params.table1.passPhrase
+            # else None,
         )
         data_diff_kwargs = {
             "key_columns": self.runtime_params.keyColumns,
@@ -508,7 +508,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ("table1.serviceUrl", self.runtime_params.table1.serviceUrl),
             ("table2.serviceUrl", self.runtime_params.table2.serviceUrl),
         ]:
-            dialect = urlparse(param).scheme
+            if isinstance(param, dict):
+                dialect = param.get("driver")
+            else:
+                dialect = urlparse(param).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 
