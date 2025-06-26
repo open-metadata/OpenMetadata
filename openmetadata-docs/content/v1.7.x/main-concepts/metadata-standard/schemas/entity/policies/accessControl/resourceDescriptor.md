@@ -1,5 +1,5 @@
 ---
-title: resourceDescriptor
+title: Resource Descriptor | OpenMetadata Resource Descriptor
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcedescriptor
 ---
 

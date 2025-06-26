@@ -1,5 +1,5 @@
 ---
-title: gcsConfig
+title: GCS Config | OpenMetadata Google Cloud Storage Config
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/gcsconfig
 ---
 

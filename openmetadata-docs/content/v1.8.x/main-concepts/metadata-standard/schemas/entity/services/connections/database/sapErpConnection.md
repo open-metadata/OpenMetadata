@@ -1,5 +1,5 @@
 ---
-title: sapErpConnection
+title: SAP ERP Connection | OpenMetadata SAP ERP
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saperpconnection
 ---
 

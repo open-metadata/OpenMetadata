@@ -1,5 +1,5 @@
 ---
-title: powerBIConnection
+title: PowerBI Connection | OpenMetadata PowerBI Integration
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbiconnection
 ---
 

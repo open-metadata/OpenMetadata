@@ -1,5 +1,5 @@
 ---
-title: supersetConnection
+title: Superset Connection | OpenMetadata Superset
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/supersetconnection
 ---
 

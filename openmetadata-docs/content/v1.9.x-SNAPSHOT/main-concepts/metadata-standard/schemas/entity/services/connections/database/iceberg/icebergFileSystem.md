@@ -1,5 +1,5 @@
 ---
-title: icebergFileSystem
+title: Iceberg File System | OpenMetadata Iceberg
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg/icebergfilesystem
 ---
 

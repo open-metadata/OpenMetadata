@@ -1,5 +1,5 @@
 ---
-title: db2Connection
+title: DB2 Connection | OpenMetadata DB2 Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/db2connection
 ---
 

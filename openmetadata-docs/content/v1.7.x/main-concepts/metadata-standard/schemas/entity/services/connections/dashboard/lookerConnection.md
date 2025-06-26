@@ -1,5 +1,5 @@
 ---
-title: lookerConnection
+title: Looker Connection | OpenMetadata Looker Connection Details
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/lookerconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: redshiftConnection
+title: Redshift Connection | OpenMetadata Redshift
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/redshiftconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Database Connections | OpenMetadata Database Connections
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database
 ---
 

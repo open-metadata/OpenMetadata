@@ -1,5 +1,5 @@
 ---
-title: index
+title: Messaging Connections | OpenMetadata Messaging
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging
 ---
 

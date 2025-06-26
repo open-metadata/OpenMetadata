@@ -1,5 +1,5 @@
 ---
-title: restConnection
+title: REST Connection | OpenMetadata REST Connections
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/api/restconnection
 ---
 

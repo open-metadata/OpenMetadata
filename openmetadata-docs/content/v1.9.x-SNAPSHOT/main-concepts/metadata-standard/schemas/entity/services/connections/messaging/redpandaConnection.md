@@ -1,5 +1,5 @@
 ---
-title: redpandaConnection
+title: Redpanda Connection | OpenMetadata Redpanda
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/redpandaconnection
 ---
 

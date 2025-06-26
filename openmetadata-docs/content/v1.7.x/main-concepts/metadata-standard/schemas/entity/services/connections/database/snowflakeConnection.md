@@ -1,5 +1,5 @@
 ---
-title: snowflakeConnection
+title: Snowflake Connection | OpenMetadata Snowflake
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/snowflakeconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: greenplumConnection
+title: Greenplum Connection | OpenMetadata Greenplum
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/greenplumconnection
 ---
 

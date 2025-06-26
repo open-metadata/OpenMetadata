@@ -1,5 +1,5 @@
 ---
-title: deltaLakeConnection
+title: DeltaLake Connection | OpenMetadata DeltaLake
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalakeconnection
 ---
 

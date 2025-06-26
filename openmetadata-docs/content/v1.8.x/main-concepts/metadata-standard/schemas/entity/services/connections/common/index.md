@@ -1,5 +1,5 @@
 ---
-title: index
+title: Common Connections | OpenMetadata Common Connections
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common
 ---
 

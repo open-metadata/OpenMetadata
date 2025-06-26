@@ -1,5 +1,5 @@
 ---
-title: sigmaConnection
+title: Sigma Connection | OpenMetadata Sigma Dashboard Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/sigmaconnection
 ---
 

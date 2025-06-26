@@ -1,5 +1,5 @@
 ---
-title: sasConnection
+title: SAS Connection | OpenMetadata SAS Database Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/sasconnection
 ---
 
