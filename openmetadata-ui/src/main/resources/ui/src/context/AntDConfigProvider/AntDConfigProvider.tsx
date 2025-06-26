@@ -42,6 +42,14 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
           );
       }
     });
+    document.documentElement.style.setProperty(
+      `--ant-primary-color-hover`,
+      palette[6]
+    );
+    document.documentElement.style.setProperty(
+      `--ant-primary-color-active`,
+      palette[8]
+    );
   }, [applicationConfig?.customTheme?.primaryColor]);
 
   ConfigProvider.config({
