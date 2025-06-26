@@ -661,11 +661,11 @@ test('Column Values To Be In Set', async ({ page }) => {
       // Fill allowed values
       for (let i = 0; i < COLUMN_IN_SET_TEST_CASE.allowedValues.length; i++) {
         await page.fill(
-          `#tableTestForm_params_allowedValues_${i}`,
+          `#tableTestForm_params_allowedValues_${i}_value`,
           COLUMN_IN_SET_TEST_CASE.allowedValues[i]
         );
         if (i < COLUMN_IN_SET_TEST_CASE.allowedValues.length - 1) {
-          await page.click('[data-testid="add-allowed-value"]');
+          await page.getByRole('button', { name: 'plus' }).click();
         }
       }
 
@@ -698,8 +698,8 @@ test('Column Values To Be In Set', async ({ page }) => {
       );
 
       // Add another allowed value
-      await page.click('[data-testid="add-allowed-value"]');
-      await page.fill('#tableTestForm_params_allowedValues_3', '4');
+      await page.getByRole('button', { name: 'plus' }).click();
+      await page.fill('#tableTestForm_params_allowedValues_3_value', '4');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -762,11 +762,11 @@ test('Column Values To Be Not In Set', async ({ page }) => {
         i++
       ) {
         await page.fill(
-          `#tableTestForm_params_forbiddenValues_${i}`,
+          `#tableTestForm_params_forbiddenValues_${i}_value`,
           COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues[i]
         );
         if (i < COLUMN_NOT_IN_SET_TEST_CASE.forbiddenValues.length - 1) {
-          await page.click('[data-testid="add-forbidden-value"]');
+          await page.getByRole('button', { name: 'plus' }).click();
         }
       }
 
@@ -800,8 +800,8 @@ test('Column Values To Be Not In Set', async ({ page }) => {
       );
 
       // Add another forbidden value
-      await page.click('[data-testid="add-forbidden-value"]');
-      await page.fill('#tableTestForm_params_forbiddenValues_3', '102');
+      await page.getByRole('button', { name: 'plus' }).click();
+      await page.fill('#tableTestForm_params_forbiddenValues_3_value', '102');
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await toastNotification(page, 'Test case updated successfully.');
@@ -841,7 +841,7 @@ test('Column Values Missing Count To Be Equal', async ({ page }) => {
   try {
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC'
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMBER'
       );
       await page.click('#tableTestForm_column');
       await page.click(`[title="${COLUMN_MISSING_COUNT_TEST_CASE.column}"]`);
