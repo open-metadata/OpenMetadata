@@ -73,6 +73,30 @@ export const AlertMessage = ({
   );
 };
 
+export const getTotalResourceCount = (
+  entityCounts: Bucket[],
+  selectedResource: Array<string>
+) => {
+  // Calculate the total entity count for the selected resources
+  const entityCount = entityCounts.reduce((acc: number, bucket: Bucket) => {
+    // Check if the selected resource is 'all' and the bucket key is in the list of all options
+    const isResourceFromAllOptionsInBucket =
+      selectedResource.includes('all') &&
+      CURATED_ASSETS_LIST.includes(bucket.key as EntityType);
+
+    // Check if the bucket key is in the selected resource list
+    const isSelectedResourceInBucket = selectedResource.includes(bucket.key);
+
+    if (isResourceFromAllOptionsInBucket || isSelectedResourceInBucket) {
+      return acc + bucket.doc_count;
+    }
+
+    return acc;
+  }, 0);
+
+  return entityCount;
+};
+
 export const getSelectedResourceCount = async ({
   selectedResource,
   queryFilter,
@@ -118,25 +142,8 @@ export const getSelectedResourceCount = async ({
       [] as Array<EntityType>
     );
 
-    // Calculate the total entity count for the selected resources
-    const entityCount = entityCounts.reduce((acc: number, bucket: Bucket) => {
-      // Check if the selected resource is 'all' and the bucket key is in the list of all options
-      const isResourceFromAllOptionsInBucket =
-        selectedResource.includes('all') &&
-        CURATED_ASSETS_LIST.includes(bucket.key as EntityType);
-
-      // Check if the bucket key is in the selected resource list
-      const isSelectedResourceInBucket = selectedResource.includes(bucket.key);
-
-      if (isResourceFromAllOptionsInBucket || isSelectedResourceInBucket) {
-        return acc + bucket.doc_count;
-      }
-
-      return acc;
-    }, 0);
-
     return {
-      entityCount,
+      entityCount: getTotalResourceCount(entityCounts, selectedResource),
       ...(shouldUpdateResourceList ? { resourcesWithNonZeroCount } : {}),
     };
   } catch {

@@ -45,7 +45,11 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getModifiedQueryFilterWithSelectedAssets } from '../../../../utils/CuratedAssetsUtils';
+import {
+  getExploreURLWithFilters,
+  getModifiedQueryFilterWithSelectedAssets,
+  getTotalResourceCount,
+} from '../../../../utils/CuratedAssetsUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -53,6 +57,7 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import './curated-assets-widget.less';
 import CuratedAssetsModal from './CuratedAssetsModal/CuratedAssetsModal';
 
@@ -68,6 +73,8 @@ const CuratedAssetsWidget = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [createCuratedAssetsModalOpen, setCreateCuratedAssetsModalOpen] =
     useState<boolean>(false);
+  const [viewMoreCount, setViewMoreCount] = useState<string>('');
+  const { config } = useAdvanceSearch();
 
   const curatedAssetsData = useMemo(() => {
     let curatedAssetsConfig = null;
@@ -127,6 +134,17 @@ const CuratedAssetsWidget = ({
         });
 
         const source = res.hits.hits.map((hit) => hit._source);
+
+        const totalResourceCounts = getTotalResourceCount(
+          res.aggregations.entityType.buckets,
+          selectedResource
+        );
+
+        const count = String(
+          totalResourceCounts > 10 ? totalResourceCounts - 10 : ''
+        );
+
+        setViewMoreCount(count);
 
         setData(source as unknown as EntityReference[]);
       } catch (error) {
@@ -194,6 +212,16 @@ const CuratedAssetsWidget = ({
       },
     ],
     [handleCloseClick]
+  );
+
+  const queryURL = useMemo(
+    () =>
+      getExploreURLWithFilters({
+        queryFilter,
+        selectedResource,
+        config,
+      }),
+    [queryFilter, config, selectedResource]
   );
 
   const menuItemsList = useMemo(
@@ -321,17 +349,17 @@ const CuratedAssetsWidget = ({
         <Divider className="mb-0 mt-0" />
         <Button
           className="text-primary hover:underline w-full  footer-view-more-button"
-          href="#"
+          href={queryURL}
           type="link">
           {t('label.view-more-count', {
-            count: 10,
+            count: viewMoreCount as unknown as number,
           })}
 
           <ArrowRightOutlined />
         </Button>
       </div>
     );
-  }, [t, handleModalOpen]);
+  }, [t, handleModalOpen, viewMoreCount, queryURL]);
 
   const renderEntityList = useMemo(
     () => (
