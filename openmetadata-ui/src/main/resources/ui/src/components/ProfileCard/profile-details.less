@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../styles/variables.less');
 .profile-management-popover .ant-popover-inner-content::before,
 .profile-management-popover .ant-popover-arrow {
   display: none !important;
@@ -46,13 +47,13 @@
   }
 
   &:hover {
-    background-color: #f5faff;
+    background-color: @primary-25;
     svg path {
-      fill: #1570ef;
+      fill: @primary-color;
     }
   }
 
   &:hover .ant-typography {
-    color: #1570ef;
+    color: @primary-color;
   }
 }

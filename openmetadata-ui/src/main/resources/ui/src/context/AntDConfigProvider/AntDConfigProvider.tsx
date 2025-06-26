@@ -13,28 +13,32 @@
 import { ConfigProvider } from 'antd';
 import React, { FC, ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { generatePalette } from '../../styles/colorPallet';
 
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const { applicationConfig } = useApplicationStore();
-
+  const palette = generatePalette(DEFAULT_THEME.primaryColor);
   useEffect(() => {
-    if (applicationConfig?.customTheme?.primaryColor === '#1570ef') {
-      // Set CSS custom property directly on document root
-      document.documentElement.style.setProperty('--ant-primary-1', '#d1e9ff');
-      document.documentElement.style.setProperty('--ant-primary-3', '#b2ddff');
-      document.documentElement.style.setProperty('--ant-primary-4', '#1849a9');
-      document.documentElement.style.setProperty('--ant-primary-5', '#1849a9');
-      document.documentElement.style.setProperty('--ant-primary-7', '#175cd3');
-    } else {
-      // Clear the custom properties when primary color is not #1570ef
-      document.documentElement.style.removeProperty('--ant-primary-1');
-      document.documentElement.style.removeProperty('--ant-primary-3');
-      document.documentElement.style.removeProperty('--ant-primary-4');
-      document.documentElement.style.removeProperty('--ant-primary-5');
-      document.documentElement.style.removeProperty('--ant-primary-7');
-    }
+    palette.forEach((color, index) => {
+      switch (index) {
+        case 0:
+          document.documentElement.style.setProperty(`--ant-primary-25`, color);
+
+          break;
+        case 1:
+          document.documentElement.style.setProperty(`--ant-primary-50`, color);
+
+          break;
+        default:
+          document.documentElement.style.setProperty(
+            `--ant-primary-${index - 1}`,
+            color
+          );
+      }
+    });
   }, [applicationConfig?.customTheme?.primaryColor]);
 
   ConfigProvider.config({
