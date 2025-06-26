@@ -39,6 +39,7 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
+import { SearchSourceAlias } from '../../../../interface/search.interface';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -49,6 +50,7 @@ import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageC
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './curated-assets-widget.less';
@@ -349,17 +351,28 @@ const CuratedAssetsWidget = ({
                     <Button
                       className="entity-button flex-center p-0 m--ml-1"
                       icon={
-                        <div className="entity-button-icon m-r-xs">
-                          {searchClassBase.getEntityIcon(item.type ?? '')}
-                        </div>
+                        <img
+                          alt={get(item, 'service.displayName', '')}
+                          className="entity-icon"
+                          src={serviceUtilClassBase.getServiceTypeLogo(
+                            item as unknown as SearchSourceAlias
+                          )}
+                        />
                       }
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
-                      <Typography.Text
-                        className="w-72 text-left text-xs"
-                        ellipsis={{ tooltip: true }}>
-                        {getEntityName(item)}
-                      </Typography.Text>
+                      <div className="flex flex-col">
+                        <Typography.Text
+                          className="w-72 text-left text-sm"
+                          ellipsis={{ tooltip: true }}>
+                          {get(item, 'service.displayName', '')}
+                        </Typography.Text>
+                        <Typography.Text
+                          className="w-72 text-left text-sm"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item)}
+                        </Typography.Text>
+                      </div>
                     </Button>
                   </Link>
                 </div>

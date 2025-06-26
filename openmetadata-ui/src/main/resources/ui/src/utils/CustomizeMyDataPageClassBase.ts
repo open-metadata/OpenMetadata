@@ -68,7 +68,7 @@ class CustomizeMyDataPageClassBase {
     h: this.landingPageWidgetDefaultHeights.curatedAssets,
     i: LandingPageWidgetKeys.CURATED_ASSETS,
     static: false,
-    w: 2,
+    w: 1,
     x: 0,
     y: 0,
   };

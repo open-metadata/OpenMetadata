@@ -64,7 +64,7 @@ export const AlertMessage = ({
             })}
             &nbsp;
             <a className="text-primary hover:underline" href={href}>
-              {t('message.view-in-explore-page')}
+              {t('label.view-in-explore-page')}
             </a>
           </span>
         </div>
