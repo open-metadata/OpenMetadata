@@ -178,7 +178,6 @@ function SchemaTablesTab({
           pageSize
         );
       }
-      handlePageChange(currentPage);
     },
     [paging, getSchemaTables, handlePageChange]
   );
@@ -260,8 +259,6 @@ function SchemaTablesTab({
     viewDatabaseSchemaPermission,
     pageSize,
     isCustomizationPage,
-    pagingCursor?.cursorType,
-    pagingCursor?.cursorValue,
   ]);
 
   useEffect(() => {
