@@ -146,39 +146,40 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
 
         connection_dict.update(url.query)
 
+        if connection_copy.proxies:
+            connection_dict["http_session"] = connection_copy.proxies
+
         if (
-            self.service_connection.connectionArguments
-            and self.service_connection.connectionArguments.root
+            connection_copy.connectionArguments
+            and connection_copy.connectionArguments.root
         ):
-            connection_with_options_secrets(lambda: self.service_connection)
-            connection_dict.update(get_connection_args_common(self.service_connection))
+            connection_with_options_secrets(lambda: connection_copy)
+            connection_dict.update(get_connection_args_common(connection_copy))
 
-            if isinstance(self.service_connection.authType, basicAuth.BasicAuth):
-                connection_dict["auth"] = TrinoConnection.get_basic_auth_dict(
-                    self.service_connection
-                )
-                connection_dict["http_scheme"] = "https"
+        if isinstance(connection_copy.authType, basicAuth.BasicAuth):
+            connection_dict["auth"] = TrinoConnection.get_basic_auth_dict(
+                connection_copy
+            )
+            connection_dict["http_scheme"] = "https"
 
-            elif isinstance(self.service_connection.authType, jwtAuth.JwtAuth):
-                connection_dict["auth"] = TrinoConnection.get_jwt_auth_dict(
-                    self.service_connection
-                )
-                connection_dict["http_scheme"] = "https"
+        elif isinstance(connection_copy.authType, jwtAuth.JwtAuth):
+            connection_dict["auth"] = TrinoConnection.get_jwt_auth_dict(connection_copy)
+            connection_dict["http_scheme"] = "https"
 
-            elif hasattr(self.service_connection.authType, "azureConfig"):
-                connection_dict["auth"] = TrinoConnection.get_azure_auth_dict(
-                    self.service_connection
-                )
-                connection_dict["http_scheme"] = "https"
+        elif hasattr(connection_copy.authType, "azureConfig"):
+            connection_dict["auth"] = TrinoConnection.get_azure_auth_dict(
+                connection_copy
+            )
+            connection_dict["http_scheme"] = "https"
 
-            elif (
-                self.service_connection.authType
-                == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
-            ):
-                connection_dict["auth"] = TrinoConnection.get_oauth2_auth_dict(
-                    self.service_connection
-                )
-                connection_dict["http_scheme"] = "https"
+        elif (
+            connection_copy.authType
+            == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
+        ):
+            connection_dict["auth"] = TrinoConnection.get_oauth2_auth_dict(
+                connection_copy
+            )
+            connection_dict["http_scheme"] = "https"
 
         return connection_dict
 
