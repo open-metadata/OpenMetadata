@@ -224,18 +224,31 @@ export const AdvanceSearchProvider = ({
     try {
       const res = await getAllCustomProperties();
 
-      Object.entries(res).forEach(([_, fields]) => {
+      Object.entries(res).forEach(([entityType, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
+          // Create nested subfields for each entity type (e.g., table, database, etc.)
+          const entitySubfields: Record<string, Field> = {};
+
           fields.forEach((field) => {
             if (field.name && field.type) {
               const { subfieldsKey, dataObject } =
                 advancedSearchClassBase.getCustomPropertiesSubFields(field);
-              subfields[subfieldsKey] = {
+
+              entitySubfields[subfieldsKey] = {
                 ...dataObject,
                 valueSources: dataObject.valueSources as ValueSource[],
               };
             }
           });
+
+          // Only create the entity type field if it has custom properties
+          if (!isEmpty(entitySubfields)) {
+            subfields[entityType] = {
+              label: entityType.charAt(0).toUpperCase() + entityType.slice(1),
+              type: '!group',
+              subfields: entitySubfields,
+            } as Field;
+          }
         }
       });
     } catch (error) {
