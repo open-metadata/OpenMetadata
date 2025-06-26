@@ -54,7 +54,7 @@ public class OpenSearchSourceBuilderFactory
 
     Map<String, Float> nonFuzzyFields =
         fields.entrySet().stream()
-            .filter(entry -> !isFuzzyField(entry.getKey()))
+            .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     QueryStringQueryBuilder fuzzyQueryBuilder =
@@ -162,6 +162,12 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size) {
+    return buildDataAssetSearchBuilder(indexName, query, from, size, false);
+  }
+
+  @Override
+  public SearchSourceBuilder buildDataAssetSearchBuilder(
+      String indexName, String query, int from, int size, boolean explain) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
     Map<String, Float> fuzzyFields;
     Map<String, Float> nonFuzzyFields;
@@ -173,7 +179,7 @@ public class OpenSearchSourceBuilderFactory
               .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
       nonFuzzyFields =
           assetConfig.getSearchFields().stream()
-              .filter(fieldBoost -> !isFuzzyField(fieldBoost.getField()))
+              .filter(fieldBoost -> isNonFuzzyField(fieldBoost.getField()))
               .collect(Collectors.toMap(FieldBoost::getField, fb -> fb.getBoost().floatValue()));
     } else {
       Map<String, Float> defaultFields = SearchIndex.getDefaultFields();
@@ -183,7 +189,7 @@ public class OpenSearchSourceBuilderFactory
               .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       nonFuzzyFields =
           defaultFields.entrySet().stream()
-              .filter(entry -> !isFuzzyField(entry.getKey()))
+              .filter(entry -> isNonFuzzyField(entry.getKey()))
               .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -312,7 +318,7 @@ public class OpenSearchSourceBuilderFactory
     }
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
-    searchSourceBuilder.explain(true);
+    searchSourceBuilder.explain(explain);
     return searchSourceBuilder;
   }
 

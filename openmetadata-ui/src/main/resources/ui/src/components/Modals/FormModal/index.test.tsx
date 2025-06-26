@@ -27,6 +27,7 @@ const mockForm = jest.fn().mockReturnValue(<p data-testid="form">data</p>);
 const mockInitionalData = {
   name: '',
   description: '',
+  id: '123',
 };
 
 describe.skip('Test FormModal component', () => {

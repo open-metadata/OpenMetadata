@@ -68,6 +68,7 @@ const PipelineDetailsProps: PipeLineDetailsProp = {
   onExtensionUpdate: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
+  onPipelineUpdate: jest.fn(),
 };
 
 jest.mock(

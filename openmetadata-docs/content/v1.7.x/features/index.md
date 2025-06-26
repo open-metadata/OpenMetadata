@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata
+title: OpenMetadata Features | Product Overview
 slug: /features
 ---
 

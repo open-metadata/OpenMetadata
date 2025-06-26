@@ -1,5 +1,5 @@
 ---
-title: Data Lineage
+title: Data Lineage | OpenMetadata Lineage How-To Guide
 slug: /how-to-guides/data-lineage
 ---
 
