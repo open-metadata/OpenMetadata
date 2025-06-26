@@ -1,5 +1,5 @@
 ---
-title: index
+title: Teams API | OpenMetadata Teams API and Management
 slug: /main-concepts/metadata-standard/schemas/api/teams
 ---
 

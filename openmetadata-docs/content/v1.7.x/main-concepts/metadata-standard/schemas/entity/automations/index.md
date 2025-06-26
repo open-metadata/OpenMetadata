@@ -1,5 +1,5 @@
 ---
-title: index
+title: Automations | OpenMetadata Automations API and Workflows
 slug: /main-concepts/metadata-standard/schemas/entity/automations
 ---
 

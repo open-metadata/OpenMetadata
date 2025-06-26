@@ -1,5 +1,5 @@
 ---
-title: voteRequest
+title: Vote Request API | OpenMetadata Vote Request
 slug: /main-concepts/metadata-standard/schemas/api/voterequest
 ---
 

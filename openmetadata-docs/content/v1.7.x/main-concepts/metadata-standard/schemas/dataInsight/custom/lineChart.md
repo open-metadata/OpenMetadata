@@ -1,5 +1,5 @@
 ---
-title: lineChart
+title: Line Chart Schema | OpenMetadata Insight Charts
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/linechart
 ---
 

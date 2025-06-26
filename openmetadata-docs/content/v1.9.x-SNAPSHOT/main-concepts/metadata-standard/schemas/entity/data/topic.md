@@ -1,5 +1,5 @@
 ---
-title: topic
+title: Topic Schema | OpenMetadata Topic Schema and Definitions
 slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 ---
 
