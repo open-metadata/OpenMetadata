@@ -1,5 +1,5 @@
 ---
-title: loadGlossary
+title: Load Glossary API | OpenMetadata Glossary Load
 slug: /main-concepts/metadata-standard/schemas/api/data/loadglossary
 ---
 

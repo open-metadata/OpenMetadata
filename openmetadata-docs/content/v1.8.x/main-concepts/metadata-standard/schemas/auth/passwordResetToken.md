@@ -1,5 +1,5 @@
 ---
-title: passwordResetToken
+title: Password Reset Token | OpenMetadata Password Reset
 slug: /main-concepts/metadata-standard/schemas/auth/passwordresettoken
 ---
 
