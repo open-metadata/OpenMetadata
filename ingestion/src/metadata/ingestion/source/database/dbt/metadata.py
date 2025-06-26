@@ -371,7 +371,7 @@ class DbtSource(DbtServiceSource):
         exposure_type = manifest_node.type.value
         if exposure_type in ExposureTypeMap.keys():
             self.context.get().exposures[key] = {
-                DbtCommonEnum.TARGET: self.parse_exposure_node(manifest_node),
+                DbtCommonEnum.EXPOSURE: self.parse_exposure_node(manifest_node),
                 DbtCommonEnum.MANIFEST_NODE: manifest_node,
             }
 
@@ -883,7 +883,7 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
-        to_entity = exposure_spec[DbtCommonEnum.TARGET]
+        to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
 
