@@ -230,7 +230,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           : EntityFields.OWNERS
       );
       onTreeUpdate(
-        QbUtils.sanitizeTree(QbUtils.loadTree(emptyJsonTree), config).fixedTree,
+        QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
         config
       );
     }
