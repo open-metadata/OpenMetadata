@@ -14,6 +14,7 @@ Constants required for dbt
 
 from enum import Enum
 
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 
@@ -164,4 +165,9 @@ class DbtCommonEnum(Enum):
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
 
 
-ExposureTypeMap = {"dashboard": Dashboard, "ml": MlModel}
+# DBT Supports more types of exposures but only these two map nicely
+ExposureTypeMap = {
+    "dashboard": {"entity_type": Dashboard, "entity_type_name": "dashboard"},
+    "ml": {"entity_type": MlModel, "entity_type_name": "mlmodel"},
+    "application": {"entity_type": APIEndpoint, "entity_type_name": "apiEndpoint"},
+}
