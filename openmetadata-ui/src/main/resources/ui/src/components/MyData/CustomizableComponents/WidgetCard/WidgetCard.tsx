@@ -10,27 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Card, Typography } from 'antd';
 import React from 'react';
-import { Document } from '../../../../generated/entity/docStore/document';
+import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
+import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import './widget-card.less';
 
 interface WidgetCardProps {
-  widget: Document;
+  widget: DocStoreDocument;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelectWidget?: (id: string) => void;
 }
 
-const WidgetCard = ({ widget, isSelected, onSelect }: WidgetCardProps) => {
+const WidgetCard = ({
+  widget,
+  isSelected,
+  onSelectWidget,
+}: WidgetCardProps) => {
+  const handleClick = () => {
+    onSelectWidget?.(widget.id ?? '');
+  };
+
   return (
     <Card
-      hoverable
       className={`widget-card ${isSelected ? 'selected' : ''}`}
-      onClick={onSelect}>
+      onClick={handleClick}>
       <div className="widget-card-content">
         <Typography.Text strong>{widget.name}</Typography.Text>
-        {isSelected && <CheckOutlined className="check-icon" />}
+        {isSelected && (
+          <div className="check-box bg-white">
+            <Icon className="check-icon" component={CheckIcon} />
+          </div>
+        )}
       </div>
       <Typography.Paragraph className="widget-desc">
         {widget.description || 'No description available.'}

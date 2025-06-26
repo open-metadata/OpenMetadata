@@ -11,22 +11,28 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { forwardRef } from 'react';
-import { Document } from '../../../../generated/entity/docStore/document';
+import React, { forwardRef, useMemo } from 'react';
+import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './all-widgets-content.less';
 
 interface AllWidgetsContentProps {
-  widgets: Document[];
+  addedWidgetsList?: string[];
+  widgets: DocStoreDocument[];
   selectedWidgets: string[];
-  onSelectWidget: (id: string) => void;
+  onSelectWidget?: (id: string) => void;
 }
 
 const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
-  ({ widgets, selectedWidgets, onSelectWidget }, ref) => {
-    return (
-      <Row className="all-widgets-grid" gutter={[20, 20]} ref={ref}>
-        {widgets.map((widget) => (
+  ({ widgets, addedWidgetsList, selectedWidgets, onSelectWidget }, ref) => {
+    const widgetsList = useMemo(() => {
+      return widgets.map((widget) => {
+        const isAlreadyAdded = addedWidgetsList?.some((addedWidgetId) =>
+          addedWidgetId.startsWith(widget.fullyQualifiedName ?? '')
+        );
+        const isSelected = selectedWidgets.includes(widget.id ?? '');
+
+        return (
           <Col
             data-widget-key={widget.fullyQualifiedName}
             key={widget.id}
@@ -34,12 +40,21 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
             md={12}
             sm={24}>
             <WidgetCard
-              isSelected={selectedWidgets.includes(widget.id ?? '')}
+              isSelected={isAlreadyAdded || isSelected}
               widget={widget}
-              onSelect={() => onSelectWidget(widget.id ?? '')}
+              onSelectWidget={onSelectWidget}
             />
           </Col>
-        ))}
+        );
+      });
+    }, [widgets, addedWidgetsList, selectedWidgets, onSelectWidget]);
+
+    return (
+      <Row
+        className="all-widgets-grid p-r-xs overflow-y-auto"
+        gutter={[20, 20]}
+        ref={ref}>
+        {widgetsList}
       </Row>
     );
   }

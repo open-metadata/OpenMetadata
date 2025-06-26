@@ -30,15 +30,11 @@ import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
-
-interface CustomiseLandingPageHeaderProps {
-  hideCustomiseButton?: boolean;
-  overlappedContainer?: boolean;
-  backgroundColor?: string;
-  onBackgroundColorUpdate?: (color: string) => Promise<void>;
-}
+import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
 
 const CustomiseLandingPageHeader = ({
+  addedWidgetsList,
+  handleAddWidget,
   hideCustomiseButton = false,
   overlappedContainer = false,
   backgroundColor,
@@ -183,7 +179,9 @@ const CustomiseLandingPageHeader = ({
 
       {!hideCustomiseButton && showCustomiseHomeModal && (
         <CustomiseHomeModal
+          addedWidgetsList={addedWidgetsList}
           currentBackgroundColor={bgColor}
+          handleAddWidget={handleAddWidget}
           open={showCustomiseHomeModal}
           onBackgroundColorUpdate={onBackgroundColorUpdate}
           onClose={handleCloseCustomiseHomeModal}

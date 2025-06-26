@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Document } from '../../../../generated/entity/docStore/document';
 
-@import (reference) '../../../../styles/variables.less';
-
-.all-widgets-grid {
-  .ant-card {
-    border: 2px solid transparent;
-    background-color: @grey-100;
-    border-radius: @border-radius-sm;
-    padding: @padding-sm;
-    cursor: pointer;
-    position: relative;
-
-    &.selected {
-      border: 2px solid @blue-9;
-    }
-  }
+export interface CustomiseLandingPageHeaderProps {
+  addedWidgetsList?: string[];
+  handleAddWidget?: (
+    newWidgetData: Document,
+    placeholderWidgetKey: string,
+    widgetSize: number
+  ) => void;
+  hideCustomiseButton?: boolean;
+  overlappedContainer?: boolean;
+  backgroundColor?: string;
+  onBackgroundColorUpdate?: (color: string) => Promise<void>;
 }

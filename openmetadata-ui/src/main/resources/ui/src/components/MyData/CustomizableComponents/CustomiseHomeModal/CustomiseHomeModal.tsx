@@ -25,15 +25,11 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
 import AllWidgetsContent from '../AllWidgetsContent/AllWidgetsContent';
 import './customise-home-modal.less';
-
-interface CustomiseHomeModalProps {
-  onClose: () => void;
-  open: boolean;
-  onBackgroundColorUpdate?: (color: string) => Promise<void>;
-  currentBackgroundColor?: string;
-}
+import { CustomiseHomeModalProps } from './CustomiseHomeModal.interface';
 
 const CustomiseHomeModal = ({
+  addedWidgetsList,
+  handleAddWidget,
   onClose,
   open,
   onBackgroundColorUpdate,
@@ -71,9 +67,25 @@ const CustomiseHomeModal = ({
   }, []);
 
   const handleSelectWidget = (id: string) => {
-    setSelectedWidgets((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
+    const widget = widgets.find((w) => w.id === id);
+    if (!widget) {
+      return;
+    }
+    const isAlreadyAdded = addedWidgetsList?.some((addedWidgetId) =>
+      addedWidgetId.startsWith(widget.fullyQualifiedName ?? '')
     );
+
+    if (isAlreadyAdded) {
+      return;
+    }
+
+    setSelectedWidgets((prev) => {
+      const newSelection = prev.includes(id)
+        ? prev.filter((w) => w !== id)
+        : [...prev, id];
+
+      return newSelection;
+    });
   };
 
   const handleSidebarClick = (key: string) => {
@@ -105,6 +117,7 @@ const CustomiseHomeModal = ({
       label: t('label.all-widgets'),
       component: (
         <AllWidgetsContent
+          addedWidgetsList={addedWidgetsList}
           ref={contentRef}
           selectedWidgets={selectedWidgets}
           widgets={widgets}
@@ -159,8 +172,30 @@ const CustomiseHomeModal = ({
     if (onBackgroundColorUpdate) {
       onBackgroundColorUpdate(selectedColor);
     }
+
+    if (handleAddWidget && selectedWidgets.length > 0) {
+      selectedWidgets.forEach((widgetId) => {
+        const widget = widgets.find((w) => w.id === widgetId);
+        if (widget) {
+          handleAddWidget(
+            widget,
+            LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+            1
+          );
+        }
+      });
+    }
+
+    setSelectedWidgets([]);
     onClose();
   };
+
+  const hasChanges = useMemo(() => {
+    const colorChanged = selectedColor !== currentBackgroundColor;
+    const widgetsSelected = selectedWidgets.length > 0;
+
+    return colorChanged || widgetsSelected;
+  }, [selectedColor, currentBackgroundColor, selectedWidgets]);
 
   return (
     <Modal
@@ -201,6 +236,7 @@ const CustomiseHomeModal = ({
           <Button
             className="apply-btn border-radius-xs font-semibold text-white text-md"
             data-testid="apply-btn"
+            disabled={!hasChanges}
             type="primary"
             onClick={handleApply}>
             {t('label.apply')}

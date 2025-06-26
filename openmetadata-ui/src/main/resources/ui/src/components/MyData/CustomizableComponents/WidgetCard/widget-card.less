@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.widget-card {
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border 0.3s ease;
-  position: relative;
 
+@import (reference) '../../../../styles/variables.less';
+
+.widget-card {
   &.selected {
-    border: 2px solid #1890ff;
+    border: 2px solid #175cd3;
   }
 
   .widget-card-content {
@@ -27,9 +24,24 @@
     align-items: center;
   }
 
-  .check-icon {
-    color: #1890ff;
-    font-size: 16px;
+  .check-box {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 1px solid #ebeef2;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .check-icon {
+      color: #175cd3;
+      font-size: 24px;
+      svg {
+        fill: none;
+      }
+    }
   }
 
   .widget-desc {
