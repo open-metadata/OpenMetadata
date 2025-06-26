@@ -23,4 +23,5 @@ export interface CustomiseLandingPageHeaderProps {
   overlappedContainer?: boolean;
   backgroundColor?: string;
   onBackgroundColorUpdate?: (color: string) => Promise<void>;
+  placeholderWidgetKey?: string;
 }

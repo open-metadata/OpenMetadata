@@ -39,6 +39,7 @@ const CustomiseLandingPageHeader = ({
   overlappedContainer = false,
   backgroundColor,
   onBackgroundColorUpdate,
+  placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -183,6 +184,7 @@ const CustomiseLandingPageHeader = ({
           currentBackgroundColor={bgColor}
           handleAddWidget={handleAddWidget}
           open={showCustomiseHomeModal}
+          placeholderWidgetKey={placeholderWidgetKey}
           onBackgroundColorUpdate={onBackgroundColorUpdate}
           onClose={handleCloseCustomiseHomeModal}
         />

@@ -34,6 +34,7 @@ const CustomiseHomeModal = ({
   open,
   onBackgroundColorUpdate,
   currentBackgroundColor,
+  placeholderWidgetKey,
 }: CustomiseHomeModalProps) => {
   const { t } = useTranslation();
   const [selectedColor, setSelectedColor] = useState<string>(
@@ -179,7 +180,8 @@ const CustomiseHomeModal = ({
         if (widget) {
           handleAddWidget(
             widget,
-            LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+            placeholderWidgetKey ??
+              LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
             1
           );
         }

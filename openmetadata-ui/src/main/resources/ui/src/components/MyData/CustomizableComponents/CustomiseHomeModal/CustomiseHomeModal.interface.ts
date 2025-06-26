@@ -23,4 +23,5 @@ export interface CustomiseHomeModalProps {
     placeholderWidgetKey: string,
     widgetSize: number
   ) => void;
+  placeholderWidgetKey?: string;
 }
