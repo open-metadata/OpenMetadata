@@ -1378,10 +1378,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {
-    // Dispatch entity deleted event to all registered handlers
-    EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
-  }
+  protected void postDelete(T entity) {}
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (hardDelete) {
