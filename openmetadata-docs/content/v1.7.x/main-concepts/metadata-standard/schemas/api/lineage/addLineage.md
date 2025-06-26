@@ -1,5 +1,5 @@
 ---
-title: addLineage
+title: Add Lineage API | OpenMetadata Add Lineage
 slug: /main-concepts/metadata-standard/schemas/api/lineage/addlineage
 ---
 

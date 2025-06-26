@@ -1,5 +1,5 @@
 ---
-title: index
+title: Custom Data Insight | OpenMetadata Custom Insight
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/custom
 ---
 

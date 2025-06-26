@@ -9,4 +9,9 @@ import java.lang.annotation.Target;
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
-public @interface Repository {}
+public @interface Repository {
+  String name() default "";
+
+  /** Priority for registering the repository */
+  int priority() default 10;
+}

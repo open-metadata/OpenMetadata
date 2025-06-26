@@ -1,5 +1,5 @@
 ---
-title: query
+title: Query Schema | OpenMetadata Query Schema and Usage
 slug: /main-concepts/metadata-standard/schemas/entity/data/query
 ---
 
