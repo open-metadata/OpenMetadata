@@ -43,7 +43,10 @@ import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -65,6 +68,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   versionHandler,
   handleToggleDelete,
   onMlModelUpdate,
+  onMlModelUpdateCertification,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -358,6 +362,24 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     fetchMlModel,
     customizedPage?.tabs,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (mlModelDetail) {
+        const certificationTag: Mlmodel['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedMlModelDetails = {
+          ...mlModelDetail,
+          certification: certificationTag,
+        };
+
+        await onMlModelUpdateCertification(
+          updatedMlModelDetails,
+          'certification'
+        );
+      }
+    },
+    [mlModelDetail, onMlModelUpdateCertification]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -387,6 +409,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             entityType={EntityType.MLMODEL}
             openTaskCount={feedCount.openTaskCount}
             permissions={mlModelPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMlModel}
             onOwnerUpdate={onOwnerUpdate}

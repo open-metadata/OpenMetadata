@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+    MysqlConnection as MysqlConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -67,12 +67,10 @@ def _(_: BackendConnection) -> Engine:
 
 
 @_get_connection.register
-def _(airflow_connection: MysqlConnection) -> Engine:
-    from metadata.ingestion.source.database.mysql.connection import (
-        get_connection as get_mysql_connection,
-    )
+def _(airflow_connection: MysqlConnectionConfig) -> Engine:
+    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
-    return get_mysql_connection(airflow_connection)
+    return MySQLConnection(airflow_connection).get_client()
 
 
 @_get_connection.register

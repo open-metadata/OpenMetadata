@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -307,7 +311,6 @@
       "entityType": {
         "type": "keyword"
       },
-
       "owners": {
         "properties": {
           "id": {
@@ -358,7 +361,7 @@
       "followers": {
         "type": "keyword"
       },
-      "votes" : {
+      "votes": {
         "properties": {
           "upVotes": {
             "type": "long"
@@ -523,7 +526,7 @@
       "sourceUrl": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",

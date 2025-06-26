@@ -7,14 +7,6 @@
   "javaType": "org.openmetadata.schema.api.AddTagToAssetsRequest",
   "javaInterfaces": ["org.openmetadata.schema.BulkAssetsRequestInterface"],
   "properties": {
-    "operation": {
-      "description": "Operation to be performed",
-      "type": "string",
-      "enum": [
-        "AddAssets",
-        "AddClassificationTags"
-      ]
-    },
     "dryRun": {
       "description": "If true, the request will be validated but no changes will be made",
       "type": "boolean",

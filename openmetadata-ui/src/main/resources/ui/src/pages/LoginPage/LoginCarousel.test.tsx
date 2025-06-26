@@ -23,7 +23,9 @@ describe('Test LoginCarousel component', () => {
   it('renders the carousel container', () => {
     render(<LoginCarousel />);
 
-    expect(screen.getByTestId('carousel-container')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('slider-container')).toHaveLength(
+      LOGIN_SLIDE.length
+    );
   });
 
   it('renders a carousel with the correct number of slides', async () => {
