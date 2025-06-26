@@ -1,5 +1,5 @@
 ---
-title: Root Cause Analysis
+title: Root Cause Analysis | OpenMetadata Incident Management
 slug: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
 Collate: true
 ---
