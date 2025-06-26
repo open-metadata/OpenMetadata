@@ -2636,8 +2636,8 @@ public class ElasticSearchClient implements SearchClient {
     SearchEntityRelationshipResult result =
         entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
             entityRelationshipRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
                 .withDirection(
                     org.openmetadata
                         .schema
@@ -2656,8 +2656,8 @@ public class ElasticSearchClient implements SearchClient {
     SearchEntityRelationshipResult upstreamResult =
         entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
             entityRelationshipRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
                 .withDirection(
                     org.openmetadata
                         .schema

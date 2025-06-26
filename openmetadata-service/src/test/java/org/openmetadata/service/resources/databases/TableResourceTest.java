@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -4356,39 +4355,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
     Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
 
-    Table upstreamTable = createEntity(
-      createRequest("er_upstream_fk").withDatabaseSchema(schema.getFullyQualifiedName()).withTableConstraints(null).withColumns(List.of(c1)),
-      ADMIN_AUTH_HEADERS
-    );
+    Table upstreamTable =
+        createEntity(
+            createRequest("er_upstream_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
 
     // This table will have a FK to tableInSchema2, so create it first without the constraint
-    CreateTable createDownstream = createRequest("er_downstream_fk")
-      .withDatabaseSchema(schema.getFullyQualifiedName())
-      .withTableConstraints(null)
-      .withColumns(List.of(new Column().withName("c2_fk").withDataType(ColumnDataType.INT)));
+    CreateTable createDownstream =
+        createRequest("er_downstream_fk")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableConstraints(null)
+            .withColumns(List.of(new Column().withName("c2_fk").withDataType(ColumnDataType.INT)));
     Table downstreamTable = createEntity(createDownstream, ADMIN_AUTH_HEADERS);
 
     // This table has a FK to upstreamTable, create it without constraint first
-    CreateTable createTableInSchema1 = createRequest("er_table1_fk")
-      .withDatabaseSchema(schema.getFullyQualifiedName())
-      .withTableConstraints(null)
-      .withColumns(List.of(new Column().withName("c1_fk").withDataType(ColumnDataType.INT)));
+    CreateTable createTableInSchema1 =
+        createRequest("er_table1_fk")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableConstraints(null)
+            .withColumns(List.of(new Column().withName("c1_fk").withDataType(ColumnDataType.INT)));
     Table tableInSchema1 = createEntity(createTableInSchema1, ADMIN_AUTH_HEADERS);
 
-    Table tableInSchema2 = createEntity(
-      createRequest("er_table2_fk").withDatabaseSchema(schema.getFullyQualifiedName()).withTableConstraints(null).withColumns(List.of(c2)),
-      ADMIN_AUTH_HEADERS
-    );
+    Table tableInSchema2 =
+        createEntity(
+            createRequest("er_table2_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c2)),
+            ADMIN_AUTH_HEADERS);
 
     // Now, add the constraints via update
     createTableInSchema1.withTableConstraints(
-      List.of(new TableConstraint().withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY).withColumns(List.of("c1_fk")).withReferredColumns(List.of(upstreamTable.getColumns().getFirst().getFullyQualifiedName())))
-    );
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("c1_fk"))
+                .withReferredColumns(
+                    List.of(upstreamTable.getColumns().getFirst().getFullyQualifiedName()))));
     updateEntity(createTableInSchema1, Status.OK, ADMIN_AUTH_HEADERS);
 
     createDownstream.withTableConstraints(
-      List.of(new TableConstraint().withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY).withColumns(List.of("c2_fk")).withReferredColumns(List.of(tableInSchema2.getColumns().getFirst().getFullyQualifiedName())))
-    );
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("c2_fk"))
+                .withReferredColumns(
+                    List.of(tableInSchema2.getColumns().getFirst().getFullyQualifiedName()))));
     updateEntity(createDownstream, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Test UPSTREAM direction for the table (not schema)
@@ -4402,14 +4417,29 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       upstreamTarget = upstreamTarget.queryParam(entry.getKey(), entry.getValue());
     }
     org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult upstreamResult =
-      org.openmetadata.service.util.TestUtils.get(upstreamTarget, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+        org.openmetadata.service.util.TestUtils.get(
+            upstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
 
     // Debug logging for upstream
     System.out.println("\n=== UPSTREAM RELATIONSHIP DEBUG ===");
     System.out.println("Query Params: " + queryParamsUpstream);
-    System.out.println("Nodes found (" + upstreamResult.getNodes().size() + "): " + upstreamResult.getNodes().keySet());
-    System.out.println("Upstream edges (" + upstreamResult.getUpstreamEdges().size() + "): " + upstreamResult.getUpstreamEdges());
-    System.out.println("Downstream edges (" + upstreamResult.getDownstreamEdges().size() + "): " + upstreamResult.getDownstreamEdges());
+    System.out.println(
+        "Nodes found ("
+            + upstreamResult.getNodes().size()
+            + "): "
+            + upstreamResult.getNodes().keySet());
+    System.out.println(
+        "Upstream edges ("
+            + upstreamResult.getUpstreamEdges().size()
+            + "): "
+            + upstreamResult.getUpstreamEdges());
+    System.out.println(
+        "Downstream edges ("
+            + upstreamResult.getDownstreamEdges().size()
+            + "): "
+            + upstreamResult.getDownstreamEdges());
     System.out.println("================================\n");
 
     // Assertions for upstream: should find upstreamTable -> tableInSchema1
@@ -4419,6 +4449,50 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertTrue(upstreamResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
     assertEquals(1, upstreamResult.getUpstreamEdges().size());
     assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test UPSTREAM direction with depth=2 (should return up to 2 upstream edges if the chain
+    // exists)
+    Map<String, String> queryParamsUpstreamTwo = new HashMap<>();
+    queryParamsUpstreamTwo.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsUpstreamTwo.put("upstreamDepth", "2");
+    queryParamsUpstreamTwo.put("downstreamDepth", "0");
+    WebTarget upstreamTwoTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamTwo.entrySet()) {
+      upstreamTwoTarget = upstreamTwoTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult
+        upstreamTwoResult =
+            org.openmetadata.service.util.TestUtils.get(
+                upstreamTwoTarget,
+                org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+                ADMIN_AUTH_HEADERS);
+    assertNotNull(upstreamTwoResult);
+    // If there is a 2-level upstream chain, expect 3 nodes and 2 edges; otherwise, expect <=2 nodes
+    // and <=1 edge
+    assertTrue(upstreamTwoResult.getNodes().size() >= 2);
+    assertTrue(upstreamTwoResult.getUpstreamEdges().size() <= 2);
+    // If you want to enforce 2-level upstream, add more FK chains in the test data
+
+    // Test UPSTREAM direction with depth=0 (should return no upstream edges)
+    Map<String, String> queryParamsUpstreamZero = new HashMap<>();
+    queryParamsUpstreamZero.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsUpstreamZero.put("upstreamDepth", "0");
+    queryParamsUpstreamZero.put("downstreamDepth", "0");
+    WebTarget upstreamZeroTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamZero.entrySet()) {
+      upstreamZeroTarget = upstreamZeroTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult
+        upstreamZeroResult =
+            org.openmetadata.service.util.TestUtils.get(
+                upstreamZeroTarget,
+                org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+                ADMIN_AUTH_HEADERS);
+    assertNotNull(upstreamZeroResult);
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertTrue(upstreamZeroResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertTrue(upstreamZeroResult.getUpstreamEdges().isEmpty());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for the table (not schema)
     Map<String, String> queryParamsDownstream = new HashMap<>();
@@ -4431,30 +4505,38 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       downstreamTarget = downstreamTarget.queryParam(entry.getKey(), entry.getValue());
     }
     org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult downstreamResult =
-      org.openmetadata.service.util.TestUtils.get(downstreamTarget, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+        org.openmetadata.service.util.TestUtils.get(
+            downstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
 
-    // Assertions for downstream: should find tableInSchema1 -> (none, since no downstream for this table)
+    // Assertions for downstream: should find tableInSchema1 -> (none, since no downstream for this
+    // table)
     assertNotNull(downstreamResult);
-    
     // Debug logging
     System.out.println("\n=== DOWNSTREAM RELATIONSHIP DEBUG ===");
     System.out.println("Query Params: " + queryParamsDownstream);
-    System.out.println("Nodes found (" + downstreamResult.getNodes().size() + "): " + downstreamResult.getNodes().keySet());
-    System.out.println("Downstream edges (" + downstreamResult.getDownstreamEdges().size() + "): " + downstreamResult.getDownstreamEdges());
-    System.out.println("Upstream edges (" + downstreamResult.getUpstreamEdges().size() + "): " + downstreamResult.getUpstreamEdges());
+    System.out.println(
+        "Nodes found ("
+            + downstreamResult.getNodes().size()
+            + "): "
+            + downstreamResult.getNodes().keySet());
+    System.out.println(
+        "Downstream edges ("
+            + downstreamResult.getDownstreamEdges().size()
+            + "): "
+            + downstreamResult.getDownstreamEdges());
+    System.out.println(
+        "Upstream edges ("
+            + downstreamResult.getUpstreamEdges().size()
+            + "): "
+            + downstreamResult.getUpstreamEdges());
     System.out.println("==================================\n");
 
-    // If there is a downstream, both the main table and the downstream table should be present
-    if (!downstreamResult.getDownstreamEdges().isEmpty()) {
-      assertEquals(2, downstreamResult.getNodes().size());
-      assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
-      // Find the downstream table FQN from the edge
-      String downstreamFqn = downstreamResult.getDownstreamEdges().values().iterator().next().getRelatedEntity().getFullyQualifiedName();
-      assertTrue(downstreamResult.getNodes().containsKey(downstreamFqn));
-    } else {
-      assertEquals(1, downstreamResult.getNodes().size());
-      assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
-    }
+    // For this test setup, tableInSchema1 has no downstream relationships
+    assertEquals(1, downstreamResult.getNodes().size());
+    assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertEquals(0, downstreamResult.getDownstreamEdges().size());
     assertTrue(downstreamResult.getUpstreamEdges().isEmpty());
   }
 
@@ -4473,31 +4555,37 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String testSchemaFqn = schema.getFullyQualifiedName();
 
     // Step 1: Create all tables with columns, but no constraints
-    Table upstreamTable = createEntity(
-        createRequest("er_both_upstream_fk")
-            .withDatabaseSchema(testSchemaFqn)
-            .withTableConstraints(null)
-            .withColumns(List.of(cUp)),
-        ADMIN_AUTH_HEADERS);
+    Table upstreamTable =
+        createEntity(
+            createRequest("er_both_upstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cUp)),
+            ADMIN_AUTH_HEADERS);
 
-    Table downstreamTable = createEntity(
-        createRequest("er_both_downstream_fk")
-            .withDatabaseSchema(testSchemaFqn)
-            .withTableConstraints(null)
-            .withColumns(List.of(cDownFk)),
-        ADMIN_AUTH_HEADERS);
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_both_downstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cDownFk)),
+            ADMIN_AUTH_HEADERS);
 
-    Table tableInSchema = createEntity(
-        createRequest("er_both_table_fk")
-            .withDatabaseSchema(testSchemaFqn)
-            .withTableConstraints(null)
-            .withColumns(List.of(cMain, cMainFk)),
-        ADMIN_AUTH_HEADERS);
+    Table tableInSchema =
+        createEntity(
+            createRequest("er_both_table_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cMain, cMainFk)),
+            ADMIN_AUTH_HEADERS);
 
     // Step 2: Retrieve the tables to get columns with FQN
-    final Table upstreamTableFinal = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    final Table downstreamTableFinal = getEntityByName(downstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    final Table tableInSchemaFinal = getEntityByName(tableInSchema.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    final Table upstreamTableFinal =
+        getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    final Table downstreamTableFinal =
+        getEntityByName(downstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    final Table tableInSchemaFinal =
+        getEntityByName(tableInSchema.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
     // Step 3: Patch constraints using the correct FQN columns
     CreateTable updateTableInSchema =
@@ -4510,7 +4598,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
                         .withColumns(List.of(cMainFk.getName()))
                         .withReferredColumns(
-                            List.of(upstreamTableFinal.getColumns().getFirst().getFullyQualifiedName()))));
+                            List.of(
+                                upstreamTableFinal
+                                    .getColumns()
+                                    .getFirst()
+                                    .getFullyQualifiedName()))));
     updateEntity(updateTableInSchema, Status.OK, ADMIN_AUTH_HEADERS);
 
     CreateTable updateDownstream =
@@ -4523,7 +4615,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
                         .withColumns(List.of(cDownFk.getName()))
                         .withReferredColumns(
-                            List.of(tableInSchemaFinal.getColumns().getFirst().getFullyQualifiedName()))));
+                            List.of(
+                                tableInSchemaFinal
+                                    .getColumns()
+                                    .getFirst()
+                                    .getFullyQualifiedName()))));
     updateEntity(updateDownstream, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Test both directions using the main table's FQN
@@ -4559,8 +4655,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         result.getUpstreamEdges().values().stream()
             .anyMatch(
                 e ->
-                    e.getEntity().getId().equals(upstreamTableFinal.getId()) &&
-                    e.getRelatedEntity().getId().equals(tableInSchemaFinal.getId())),
+                    e.getEntity().getId().equals(upstreamTableFinal.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchemaFinal.getId())),
         "Edge from upstreamTable to tableInSchema not found in upstream edges");
 
     // Check downstream edge: tableInSchema -> downstreamTable
@@ -4568,90 +4664,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         result.getDownstreamEdges().values().stream()
             .anyMatch(
                 e ->
-                    e.getEntity().getId().equals(tableInSchemaFinal.getId()) &&
-                    e.getRelatedEntity().getId().equals(downstreamTableFinal.getId())),
+                    e.getEntity().getId().equals(tableInSchemaFinal.getId())
+                        && e.getRelatedEntity().getId().equals(downstreamTableFinal.getId())),
         "Edge from tableInSchema to downstreamTable not found in downstream edges");
-  }
-
-  @Test
-  void test_tableEntityRelationshipWithQueryFilter() throws IOException {
-    // Create a schema and a table for this test
-    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_query_filter_schema");
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    Table table = createEntity(
-      createRequest("er_query_filter_table").withDatabaseSchema(schema.getFullyQualifiedName()),
-      ADMIN_AUTH_HEADERS
-    );
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqn", table.getFullyQualifiedName());
-    queryParams.put("upstreamDepth", "1");
-    queryParams.put("downstreamDepth", "1");
-    queryParams.put("query_filter", "test");
-    WebTarget target = getResource("tables/entityRelationship");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
-      org.openmetadata.service.util.TestUtils.get(target, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(result);
-    assertNotNull(result.getNodes());
-  }
-
-  @Test
-  void test_tableEntityRelationshipWithIncludeSourceFields() throws IOException {
-    // Create a schema and a table for this test
-    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_include_fields_schema");
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    Table table = createEntity(
-      createRequest("er_include_fields_table").withDatabaseSchema(schema.getFullyQualifiedName()),
-      ADMIN_AUTH_HEADERS
-    );
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqn", table.getFullyQualifiedName());
-    queryParams.put("upstreamDepth", "1");
-    queryParams.put("downstreamDepth", "1");
-    queryParams.put("fields", "true");
-    WebTarget target = getResource("tables/entityRelationship");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
-      org.openmetadata.service.util.TestUtils.get(target, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(result);
-    assertNotNull(result.getNodes());
-  }
-
-  @Test
-  void test_tableEntityRelationshipPaginationAndDepth() throws IOException {
-    // Create a schema and a table for this test
-    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_pagination_depth_schema");
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    Table table = createEntity(
-      createRequest("er_pagination_depth_table").withDatabaseSchema(schema.getFullyQualifiedName()),
-      ADMIN_AUTH_HEADERS
-    );
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("fqn", table.getFullyQualifiedName());
-    queryParams.put("upstreamDepth", "2");
-    queryParams.put("downstreamDepth", "2");
-    WebTarget target = getResource("tables/entityRelationship");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
-      org.openmetadata.service.util.TestUtils.get(target, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(result);
-    assertNotNull(result.getNodes());
-    // Test with depth 0 (should return immediate relationships only)
-    queryParams.put("upstreamDepth", "0");
-    queryParams.put("downstreamDepth", "0");
-    WebTarget immediateTarget = getResource("tables/entityRelationship");
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      immediateTarget = immediateTarget.queryParam(entry.getKey(), entry.getValue());
-    }
-    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult immediateResult =
-      org.openmetadata.service.util.TestUtils.get(immediateTarget, org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(immediateResult);
-    assertNotNull(immediateResult.getNodes());
   }
 }

@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.api.entityRelationship.RelationshipRef;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -56,7 +55,7 @@ public class ESEntityRelationshipGraphBuilder {
         request,
         result,
         Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
-        request.getUpstreamDepth());
+        request.getUpstreamDepth() - 1);
     return result;
   }
 
@@ -135,7 +134,7 @@ public class ESEntityRelationshipGraphBuilder {
         buildDirectionToFqnSet(entityRelationshipRequest.getDirectionValue(), hasToFqnMap.keySet());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            (EntityRelationshipDirection) null,
+            entityRelationshipRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             entityRelationshipRequest.getQueryFilter(),
             ENTITY_RELATIONSHIP_AGGREGATION,
@@ -170,6 +169,9 @@ public class ESEntityRelationshipGraphBuilder {
         for (EsEntityRelationshipData data : paginatedUpstreamEntities) {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withRelatedEntity(toEntity));
           String fromFqn = data.getEntity().getFullyQualifiedName();
+          if (!result.getNodes().containsKey(fromFqn)) {
+            result.getNodes().put(fromFqn, new NodeInformation().withEntity(data.getEntity()));
+          }
           if (!result.getNodes().containsKey(fromFqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
           }

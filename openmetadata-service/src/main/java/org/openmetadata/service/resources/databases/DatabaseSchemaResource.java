@@ -856,10 +856,12 @@ public class DatabaseSchemaResource
           boolean deleted)
       throws IOException {
 
-      String indexName = Entity.getSearchRepository()
-              .getIndexMapping(DATABASE_SCHEMA)
-              .getIndexName(Entity.getSearchRepository().getClusterAlias());
-//      return Entity.getSearchRepository().searchSchemaEntityRelationship(indexName, queryFilter, deleted);
+    String indexName =
+        Entity.getSearchRepository()
+            .getIndexMapping(DATABASE_SCHEMA)
+            .getIndexName(Entity.getSearchRepository().getClusterAlias());
+    //      return Entity.getSearchRepository().searchSchemaEntityRelationship(indexName,
+    // queryFilter, deleted);
     return Entity.getSearchRepository()
         .searchRelationshipsForSchema(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
