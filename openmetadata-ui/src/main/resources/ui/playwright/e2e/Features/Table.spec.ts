@@ -112,8 +112,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .locator('[data-testid="page-indicator"]')
       .textContent();
 
-    const linkInColumn = getFirstRowColumnLink(page);
-    await linkInColumn.click();
+    // First navigation - click on first table link
+    const firstLinkInColumn = getFirstRowColumnLink(page);
+    await firstLinkInColumn.click();
 
     await page.waitForURL('**/table/**');
     await page.waitForLoadState('networkidle');
@@ -125,11 +126,41 @@ test.describe('Table pagination sorting search scenarios ', () => {
       waitUntil: 'networkidle',
     });
 
-    const pageIndicatorAfterBack = await page
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Verify page indicator is still the same after first navigation
+    const pageIndicatorAfterFirstBack = await page
       .locator('[data-testid="page-indicator"]')
       .textContent();
 
-    expect(pageIndicatorAfterBack).toBe(initialPageIndicator);
+    expect(pageIndicatorAfterFirstBack).toBe(initialPageIndicator);
+
+    // Second navigation - click on second table link
+    const secondLinkInColumn = getFirstRowColumnLink(page);
+    await secondLinkInColumn.click();
+
+    await page.waitForURL('**/table/**');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.goBack({
+      waitUntil: 'networkidle',
+    });
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Verify page indicator is still the same after second navigation
+    const pageIndicatorAfterSecondBack = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    expect(pageIndicatorAfterSecondBack).toBe(initialPageIndicator);
   });
 
   test('should persist page size', async ({ page }) => {
