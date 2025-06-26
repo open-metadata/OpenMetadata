@@ -2707,4 +2707,10 @@ public class ElasticSearchClient implements SearchClient {
           entityRelationshipRequest);
     }
   }
+
+  @Override
+  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
+      String index, String queryFilter, boolean deleted) throws IOException {
+    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(index, queryFilter, deleted);
+  }
 }

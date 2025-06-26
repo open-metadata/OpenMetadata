@@ -14,8 +14,9 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -51,8 +52,6 @@ import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
-import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
@@ -93,7 +92,7 @@ public class DatabaseSchemaResource
   }
 
   public DatabaseSchemaResource(Authorizer authorizer, Limits limits) {
-    super(Entity.DATABASE_SCHEMA, authorizer, limits);
+    super(DATABASE_SCHEMA, authorizer, limits);
   }
 
   @Override
@@ -828,8 +827,8 @@ public class DatabaseSchemaResource
   @GET
   @Path("/entityRelationship")
   @Operation(
-      operationId = "searchEntityRelationship",
-      summary = "Search entity relationship",
+      operationId = "searchSchemaEntityRelationship",
+      summary = "Search Schema Entity Relationship",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -837,15 +836,14 @@ public class DatabaseSchemaResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
-  public SearchEntityRelationshipResult searchEntityRelationship(
+  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
-          int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
           int downstreamDepth,
       @Parameter(
               description =
@@ -855,101 +853,14 @@ public class DatabaseSchemaResource
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           @DefaultValue("false")
-          boolean deleted,
-      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
-          @QueryParam("fields")
-          @DefaultValue("*")
-          String includeSourceFields,
-      @Parameter(description = "From field to paginate the results, defaults to 0")
-          @DefaultValue("0")
-          @QueryParam("from")
-          int from,
-      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
-          @DefaultValue("1000")
-          @QueryParam("size")
-          int size)
+          boolean deleted)
       throws IOException {
-    // Validate required FQN parameter
-    if (fqn == null || fqn.trim().isEmpty()) {
-      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
-    }
 
+      String indexName = Entity.getSearchRepository()
+              .getIndexMapping(DATABASE_SCHEMA)
+              .getIndexName(Entity.getSearchRepository().getClusterAlias());
+//      return Entity.getSearchRepository().searchSchemaEntityRelationship(indexName, queryFilter, deleted);
     return Entity.getSearchRepository()
-        .searchEntityRelationship(
-            new SearchEntityRelationshipRequest()
-                .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(deleted)
-                .withLayerFrom(from)
-                .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
-  }
-
-  @GET
-  @Path("/entityRelationship/{direction}")
-  @Operation(
-      operationId = "searchEntityRelationshipWithDirection",
-      summary = "Search entity relationship with Direction",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "search response",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
-      })
-  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
-          @PathParam("direction")
-          EntityRelationshipDirection direction,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
-          int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
-          int downstreamDepth,
-      @Parameter(
-              description =
-                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
-          @QueryParam("query_filter")
-          String queryFilter,
-      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @QueryParam("includeDeleted")
-          @DefaultValue("false")
-          boolean deleted,
-      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
-          @QueryParam("fields")
-          @DefaultValue("*")
-          String includeSourceFields,
-      @Parameter(description = "From field to paginate the results, defaults to 0")
-          @DefaultValue("0")
-          @QueryParam("from")
-          int from,
-      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
-          @DefaultValue("1000")
-          @QueryParam("size")
-          int size)
-      throws IOException {
-    // Validate required FQN parameter
-    if (fqn == null || fqn.trim().isEmpty()) {
-      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
-    }
-
-    return Entity.getSearchRepository()
-        .searchEntityRelationshipWithDirection(
-            new SearchEntityRelationshipRequest()
-                .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(deleted)
-                .withDirection(direction)
-                .withLayerFrom(from)
-                .withLayerSize(size)
-                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+        .searchRelationshipsForSchema(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 }

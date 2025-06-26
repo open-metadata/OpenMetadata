@@ -88,7 +88,6 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -100,7 +99,6 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -122,12 +120,6 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
-
-  @FunctionalInterface
-  private interface RelationshipSearcher {
-    SearchEntityRelationshipResult search(SearchEntityRelationshipRequest request)
-        throws IOException;
-  }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
@@ -1321,6 +1313,40 @@ public class SearchRepository {
     return new ArrayList<>();
   }
 
+  // Returns the count of entities matching the FQN prefix from ES
+  public int getEntityCountByFQNPrefixFromES(String entityFQN, String indexName) {
+    try {
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              ReindexingUtil.escapeDoubleQuotes(entityFQN));
+
+      SearchRequest searchRequest =
+          new SearchRequest()
+              .withQuery("")
+              .withSize(0) // Only want the count
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .withFrom(0)
+              .withQueryFilter(queryFilter)
+              .withFetchSource(false)
+              .withTrackTotalHits(true)
+              .withDeleted(false);
+
+      Response response = search(searchRequest, null);
+      String json = (String) response.getEntity();
+      JsonNode hitsNode = JsonUtils.extractValue(json, "hits");
+      if (hitsNode != null && hitsNode.has("total")) {
+        JsonNode totalNode = hitsNode.get("total");
+        if (totalNode.has("value")) {
+          return totalNode.get("value").asInt();
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error("Error while counting entities from ES for validation", ex);
+    }
+    return 0;
+  }
+
   public Set<String> getSearchEntities() {
     return new HashSet<>(entityIndexMap.keySet());
   }
@@ -1351,12 +1377,13 @@ public class SearchRepository {
     }
   }
 
-  private SearchEntityRelationshipResult searchRelationshipsForSchema(
-      SearchEntityRelationshipRequest request, RelationshipSearcher searcher) throws IOException {
-
-    DatabaseSchema schema =
-        Entity.getEntityByName(
-            Entity.DATABASE_SCHEMA, request.getFqn(), "tables", Include.NON_DELETED);
+  public SearchEntityRelationshipResult searchRelationshipsForSchema(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted)
+      throws IOException {
 
     SearchEntityRelationshipResult finalResult =
         new SearchEntityRelationshipResult()
@@ -1364,22 +1391,20 @@ public class SearchRepository {
             .withUpstreamEdges(new HashMap<>())
             .withDownstreamEdges(new HashMap<>());
 
-    List<EntityReference> tables = schema.getTables();
+    int tableCount = getEntityCountByFQNPrefixFromES(fqn, Entity.TABLE);
+    List<EntityReference> tables = getEntitiesContainingFQNFromES(fqn, tableCount, Entity.TABLE);
     if (tables != null) {
       for (EntityReference tableRef : tables) {
         SearchEntityRelationshipRequest tableRequest =
             new SearchEntityRelationshipRequest()
                 .withFqn(tableRef.getFullyQualifiedName())
-                .withUpstreamDepth(request.getUpstreamDepth())
-                .withDownstreamDepth(request.getDownstreamDepth())
-                .withQueryFilter(request.getQueryFilter())
-                .withIncludeDeleted(request.getIncludeDeleted())
-                .withDirection(request.getDirection())
-                .withLayerFrom(request.getLayerFrom())
-                .withLayerSize(request.getLayerSize())
-                .withIncludeSourceFields(request.getIncludeSourceFields());
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(includeDeleted);
 
-        SearchEntityRelationshipResult tableResult = searcher.search(tableRequest);
+        SearchEntityRelationshipResult tableResult =
+            searchClient.searchEntityRelationship(tableRequest);
 
         if (tableResult != null) {
           if (tableResult.getNodes() != null) {
@@ -1399,13 +1424,16 @@ public class SearchRepository {
 
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
-    return searchRelationshipsForSchema(
-        entityRelationshipRequest, searchClient::searchEntityRelationshipWithDirection);
+    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
   }
 
   public SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
-    return searchRelationshipsForSchema(
-        entityRelationshipRequest, searchClient::searchEntityRelationship);
+    return searchClient.searchEntityRelationship(entityRelationshipRequest);
+  }
+
+  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
+      String alias, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchSchemaEntityRelationship(alias, queryFilter, deleted);
   }
 }

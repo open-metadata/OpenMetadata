@@ -237,6 +237,12 @@ public interface SearchClient {
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;
 
+  /**
+   * Fetches all entities from ES/OS matching a filter, adds them as nodes, and adds their upstream edges (platform ER view).
+   */
+  SearchEntityRelationshipResult searchSchemaEntityRelationship(
+      String index, String queryFilter, boolean deleted) throws IOException;
+
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */

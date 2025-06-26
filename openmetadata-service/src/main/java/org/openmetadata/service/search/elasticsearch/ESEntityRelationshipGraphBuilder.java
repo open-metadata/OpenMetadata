@@ -83,6 +83,37 @@ public class ESEntityRelationshipGraphBuilder {
     return result;
   }
 
+  /**
+   * Fetches all entities from ES matching a filter, adds them as nodes, and adds their upstream edges (platform ER view).
+   */
+  public SearchEntityRelationshipResult getSchemaEntityRelationship(
+      String index, String queryFilter, boolean deleted) throws IOException {
+    SearchEntityRelationshipResult result =
+        new SearchEntityRelationshipResult()
+            .withNodes(new HashMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>());
+    es.org.elasticsearch.action.search.SearchResponse searchResponse =
+        EsUtils.searchEntities(index, queryFilter, deleted);
+
+    // Add Nodes
+    for (es.org.elasticsearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> sourceMap = hit.getSourceAsMap();
+      String fqn = sourceMap.get(FQN_FIELD).toString();
+      result.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(sourceMap));
+
+      List<EsEntityRelationshipData> upstreamList =
+          getUpstreamEntityRelationshipListIfExist(sourceMap);
+      RelationshipRef toEntity = getEntityRelationshipRef(sourceMap);
+      for (EsEntityRelationshipData erData : upstreamList) {
+        result
+            .getUpstreamEdges()
+            .putIfAbsent(erData.getDocId(), erData.withRelatedEntity(toEntity));
+      }
+    }
+    return result;
+  }
+
   private void fetchUpstreamNodesRecursively(
       SearchEntityRelationshipRequest entityRelationshipRequest,
       SearchEntityRelationshipResult result,
