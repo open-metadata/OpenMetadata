@@ -1,5 +1,5 @@
 ---
-title: Incident Manager
+title: Incident Manager | OpenMetadata Data Quality Management
 slug: /how-to-guides/data-quality-observability/incident-manager
 ---
 

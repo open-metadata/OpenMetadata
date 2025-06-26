@@ -1,5 +1,5 @@
 ---
-title: index
+title: Email Schemas | OpenMetadata Email API and Schema Overview
 slug: /main-concepts/metadata-standard/schemas/email
 ---
 

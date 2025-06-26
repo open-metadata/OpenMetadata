@@ -1,5 +1,5 @@
 ---
-title: createAPIEndpoint
+title: Create API Endpoint | OpenMetadata API Endpoint
 slug: /main-concepts/metadata-standard/schemas/api/data/createapiendpoint
 ---
 

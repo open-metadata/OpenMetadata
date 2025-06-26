@@ -1,5 +1,5 @@
 ---
-title: document
+title: Document Schema | OpenMetadata Document Schema Overview
 slug: /main-concepts/metadata-standard/schemas/entity/docstore/document
 ---
 

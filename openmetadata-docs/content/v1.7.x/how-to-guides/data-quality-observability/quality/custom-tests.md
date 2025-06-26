@@ -1,5 +1,5 @@
 ---
-title: Custom Tests
+title: Custom Tests | OpenMetadata Quality Testing Guide
 slug: /how-to-guides/data-quality-observability/quality/custom-tests
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Policies API | OpenMetadata Policies API
 slug: /main-concepts/metadata-standard/schemas/api/policies
 ---
 

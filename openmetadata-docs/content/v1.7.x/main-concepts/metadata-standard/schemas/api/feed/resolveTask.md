@@ -1,5 +1,5 @@
 ---
-title: resolveTask
+title: Resolve Task API | OpenMetadata Task Resolve API
 slug: /main-concepts/metadata-standard/schemas/api/feed/resolvetask
 ---
 

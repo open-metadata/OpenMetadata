@@ -1,5 +1,5 @@
 ---
-title: index
+title: Docstore API | OpenMetadata Document Store API
 slug: /main-concepts/metadata-standard/schemas/api/docstore
 ---
 

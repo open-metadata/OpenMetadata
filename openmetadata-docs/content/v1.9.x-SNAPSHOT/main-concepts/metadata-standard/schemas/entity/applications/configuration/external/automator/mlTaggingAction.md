@@ -1,5 +1,5 @@
 ---
-title: mlTaggingAction
+title: ML Tagging Action | OpenMetadata ML Tagging
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/mltaggingaction
 ---
 

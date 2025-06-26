@@ -1,5 +1,5 @@
 ---
-title: table
+title: Table Schema | OpenMetadata Table Schema and API Guide
 slug: /main-concepts/metadata-standard/schemas/entity/data/table
 ---
 

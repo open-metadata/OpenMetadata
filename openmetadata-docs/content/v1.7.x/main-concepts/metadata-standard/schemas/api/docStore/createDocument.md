@@ -1,5 +1,5 @@
 ---
-title: createDocument
+title: Create Document API | OpenMetadata Document API
 slug: /main-concepts/metadata-standard/schemas/api/docstore/createdocument
 ---
 

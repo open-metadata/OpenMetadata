@@ -1,5 +1,5 @@
 ---
-title: searchIndex
+title: Search Index Schema | OpenMetadata Search Index
 slug: /main-concepts/metadata-standard/schemas/entity/data/searchindex
 ---
 

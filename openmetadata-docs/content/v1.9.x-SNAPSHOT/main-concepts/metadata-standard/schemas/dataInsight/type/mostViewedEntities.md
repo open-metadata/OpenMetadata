@@ -1,5 +1,5 @@
 ---
-title: mostViewedEntities
+title: Most Viewed Entities | OpenMetadata Popular Entities
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/mostviewedentities
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createTeam
+title: Create Team API | OpenMetadata API for Creating Teams
 slug: /main-concepts/metadata-standard/schemas/api/teams/createteam
 ---
 

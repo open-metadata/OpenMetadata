@@ -1,5 +1,5 @@
 ---
-title: themeConfiguration
+title: Theme Configuration | OpenMetadata Theme Setup
 slug: /main-concepts/metadata-standard/schemas/configuration/themeconfiguration
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: personalAccessToken
+title: Personal Access Token | OpenMetadata Access Tokens
 slug: /main-concepts/metadata-standard/schemas/auth/personalaccesstoken
 ---
 

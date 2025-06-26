@@ -1,5 +1,5 @@
 ---
-title: loadTags
+title: Load Tags API | OpenMetadata Tag Loading API
 slug: /main-concepts/metadata-standard/schemas/api/classification/loadtags
 ---
 

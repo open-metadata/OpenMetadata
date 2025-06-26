@@ -1,5 +1,5 @@
 ---
-title: addOwnerAction
+title: Add Owner Action | OpenMetadata Ownership Actions
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addowneraction
 ---
 

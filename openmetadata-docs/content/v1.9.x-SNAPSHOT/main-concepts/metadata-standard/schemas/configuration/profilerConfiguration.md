@@ -1,5 +1,5 @@
 ---
-title: profilerConfiguration
+title: Profiler Configuration | OpenMetadata Profiler Setup
 slug: /main-concepts/metadata-standard/schemas/configuration/profilerconfiguration
 ---
 

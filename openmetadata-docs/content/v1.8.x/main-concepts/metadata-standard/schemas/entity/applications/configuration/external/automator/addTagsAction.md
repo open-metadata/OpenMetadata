@@ -1,5 +1,5 @@
 ---
-title: addTagsAction
+title: Add Tags Action | OpenMetadata Tag Actions
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/addtagsaction
 ---
 

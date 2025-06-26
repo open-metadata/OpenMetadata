@@ -1,5 +1,5 @@
 ---
-title: createChart
+title: Create Chart API | OpenMetadata Chart API
 slug: /main-concepts/metadata-standard/schemas/api/data/createchart
 ---
 

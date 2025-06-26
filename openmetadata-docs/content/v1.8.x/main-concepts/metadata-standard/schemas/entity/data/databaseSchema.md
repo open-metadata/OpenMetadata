@@ -1,5 +1,5 @@
 ---
-title: databaseSchema
+title: Database Schema Schema | OpenMetadata Schema
 slug: /main-concepts/metadata-standard/schemas/entity/data/databaseschema
 ---
 

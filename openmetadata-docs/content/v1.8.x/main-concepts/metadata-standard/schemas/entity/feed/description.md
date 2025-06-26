@@ -1,5 +1,5 @@
 ---
-title: description
+title: Description Schema | OpenMetadata Description
 slug: /main-concepts/metadata-standard/schemas/entity/feed/description
 ---
 

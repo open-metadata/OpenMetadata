@@ -1,5 +1,5 @@
 ---
-title: createPersona
+title: Create Persona API | OpenMetadata Persona API
 slug: /main-concepts/metadata-standard/schemas/api/teams/createpersona
 ---
 

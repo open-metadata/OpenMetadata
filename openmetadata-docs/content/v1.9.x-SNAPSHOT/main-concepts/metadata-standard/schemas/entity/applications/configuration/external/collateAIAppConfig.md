@@ -1,5 +1,5 @@
 ---
-title: collateAIAppConfig
+title: Collate AI App Config | OpenMetadata AI App Config
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/collateaiappconfig
 ---
 

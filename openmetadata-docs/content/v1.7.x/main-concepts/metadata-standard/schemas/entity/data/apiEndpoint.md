@@ -1,5 +1,5 @@
 ---
-title: apiEndpoint
+title: API Endpoint | OpenMetadata API Endpoint
 slug: /main-concepts/metadata-standard/schemas/entity/data/apiendpoint
 ---
 

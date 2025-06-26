@@ -1,5 +1,5 @@
 ---
-title: domain
+title: Domain Schema | OpenMetadata Domain Schema and Details
 slug: /main-concepts/metadata-standard/schemas/entity/domains/domain
 ---
 

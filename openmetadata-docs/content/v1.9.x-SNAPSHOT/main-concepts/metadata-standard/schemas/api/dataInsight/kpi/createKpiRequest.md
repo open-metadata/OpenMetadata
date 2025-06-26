@@ -1,5 +1,5 @@
 ---
-title: createKpiRequest
+title: Create KPI Request | OpenMetadata KPI Request API
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/kpi/createkpirequest
 ---
 

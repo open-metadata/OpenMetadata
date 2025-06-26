@@ -1,5 +1,5 @@
 ---
-title: emailTemplate
+title: Email Template | OpenMetadata Email Templates
 slug: /main-concepts/metadata-standard/schemas/email/emailtemplate
 ---
 

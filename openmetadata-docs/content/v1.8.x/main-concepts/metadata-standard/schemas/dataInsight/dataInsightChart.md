@@ -1,5 +1,5 @@
 ---
-title: dataInsightChart
+title: Data Insight Chart | OpenMetadata Data Insight
 slug: /main-concepts/metadata-standard/schemas/datainsight/datainsightchart
 ---
 

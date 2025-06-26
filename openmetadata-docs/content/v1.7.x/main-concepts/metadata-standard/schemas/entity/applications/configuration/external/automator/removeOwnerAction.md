@@ -1,5 +1,5 @@
 ---
-title: removeOwnerAction
+title: Remove Owner Action | OpenMetadata Owner Removal
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removeowneraction
 ---
 

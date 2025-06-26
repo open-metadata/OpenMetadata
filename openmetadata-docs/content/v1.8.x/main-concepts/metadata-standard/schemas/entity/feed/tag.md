@@ -1,5 +1,5 @@
 ---
-title: tag
+title: Tag Schema | OpenMetadata Tag Schema and API Reference
 slug: /main-concepts/metadata-standard/schemas/entity/feed/tag
 ---
 

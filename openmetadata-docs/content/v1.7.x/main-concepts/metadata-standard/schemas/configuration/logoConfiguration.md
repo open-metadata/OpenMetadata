@@ -1,5 +1,5 @@
 ---
-title: logoConfiguration
+title: Logo Configuration | OpenMetadata Logo Setup
 slug: /main-concepts/metadata-standard/schemas/configuration/logoconfiguration
 ---
 

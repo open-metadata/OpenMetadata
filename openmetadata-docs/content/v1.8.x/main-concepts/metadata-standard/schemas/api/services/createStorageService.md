@@ -1,5 +1,5 @@
 ---
-title: createStorageService
+title: Create Storage Service | OpenMetadata Storage Service
 slug: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
 ---
 

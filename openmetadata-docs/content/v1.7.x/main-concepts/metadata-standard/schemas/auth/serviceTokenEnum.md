@@ -1,5 +1,5 @@
 ---
-title: serviceTokenEnum
+title: Service Token Enum | OpenMetadata Service Tokens
 slug: /main-concepts/metadata-standard/schemas/auth/servicetokenenum
 noindex: true
 nofollow: true

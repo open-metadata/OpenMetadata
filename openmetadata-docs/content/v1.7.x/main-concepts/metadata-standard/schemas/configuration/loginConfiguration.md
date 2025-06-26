@@ -1,5 +1,5 @@
 ---
-title: loginConfiguration
+title: Login Configuration | OpenMetadata Login Config
 slug: /main-concepts/metadata-standard/schemas/configuration/loginconfiguration
 ---
 

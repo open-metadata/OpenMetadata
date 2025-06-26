@@ -1,5 +1,5 @@
 ---
-title: refreshToken
+title: Refresh Token API | OpenMetadata Token Refresh
 slug: /main-concepts/metadata-standard/schemas/auth/refreshtoken
 ---
 

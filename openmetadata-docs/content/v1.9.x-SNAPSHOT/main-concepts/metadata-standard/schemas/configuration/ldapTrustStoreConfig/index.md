@@ -1,5 +1,5 @@
 ---
-title: index
+title: LDAP Trust Store Config | OpenMetadata LDAP SSL
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig
 ---
 

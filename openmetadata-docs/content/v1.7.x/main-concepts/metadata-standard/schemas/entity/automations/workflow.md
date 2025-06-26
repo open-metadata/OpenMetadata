@@ -1,5 +1,5 @@
 ---
-title: workflow
+title: Workflow | OpenMetadata Workflow API and Configuration
 slug: /main-concepts/metadata-standard/schemas/entity/automations/workflow
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createDomain
+title: Create Domain API | OpenMetadata Domain API
 slug: /main-concepts/metadata-standard/schemas/api/domains/createdomain
 ---
 

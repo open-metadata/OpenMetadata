@@ -1,5 +1,5 @@
 ---
-title: createTableProfile
+title: Create Table Profile | OpenMetadata Table Profile API
 slug: /main-concepts/metadata-standard/schemas/api/data/createtableprofile
 ---
 

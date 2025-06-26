@@ -1,5 +1,5 @@
 ---
-title: basicAuth
+title: Basic Auth Schema | OpenMetadata Basic Auth
 slug: /main-concepts/metadata-standard/schemas/auth/basicauth
 ---
 

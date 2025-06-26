@@ -1,5 +1,5 @@
 ---
-title: mostActiveUsers
+title: Most Active Users | OpenMetadata User Activity
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/mostactiveusers
 ---
 

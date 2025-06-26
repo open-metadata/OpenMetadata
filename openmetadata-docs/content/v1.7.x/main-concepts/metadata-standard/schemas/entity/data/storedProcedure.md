@@ -1,5 +1,5 @@
 ---
-title: storedProcedure
+title: Stored Procedure | OpenMetadata Stored Procedures
 slug: /main-concepts/metadata-standard/schemas/entity/data/storedprocedure
 ---
 

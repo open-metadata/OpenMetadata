@@ -1,5 +1,5 @@
 ---
-title: mlmodel
+title: ML Model Schema | OpenMetadata Machine Learning Model Schema
 slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 ---
 

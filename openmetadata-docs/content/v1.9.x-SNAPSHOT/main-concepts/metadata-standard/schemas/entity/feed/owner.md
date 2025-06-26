@@ -1,5 +1,5 @@
 ---
-title: owner
+title: Owner Schema | OpenMetadata Owner Schema and API
 slug: /main-concepts/metadata-standard/schemas/entity/feed/owner
 ---
 

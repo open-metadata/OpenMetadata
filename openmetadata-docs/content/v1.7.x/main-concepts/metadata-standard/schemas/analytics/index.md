@@ -1,5 +1,5 @@
 ---
-title: index
+title: Analytics Schemas | OpenMetadata Analytics Data Models
 slug: /main-concepts/metadata-standard/schemas/analytics
 ---
 

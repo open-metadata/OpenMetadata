@@ -1,5 +1,5 @@
 ---
-title: pageViewsByEntities
+title: Page Views By Entities | OpenMetadata Page Views
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/pageviewsbyentities
 ---
 

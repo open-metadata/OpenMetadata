@@ -1,5 +1,5 @@
 ---
-title: Main Concepts
+title: Main Concepts | OpenMetadata Core Concepts Overview
 slug: /main-concepts
 ---
 

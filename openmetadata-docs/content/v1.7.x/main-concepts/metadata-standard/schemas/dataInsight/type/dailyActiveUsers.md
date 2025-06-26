@@ -1,5 +1,5 @@
 ---
-title: dailyActiveUsers
+title: Daily Active Users | OpenMetadata Active Users
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/dailyactiveusers
 ---
 

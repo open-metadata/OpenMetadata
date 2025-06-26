@@ -1,5 +1,5 @@
 ---
-title: How to Add Tags
+title: How to Add Tags | OpenMetadata User Tagging Guide
 slug: /how-to-guides/guide-for-data-users/tags
 ---
 

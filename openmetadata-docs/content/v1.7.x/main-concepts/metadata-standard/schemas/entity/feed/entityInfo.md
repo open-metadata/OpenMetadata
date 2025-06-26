@@ -1,5 +1,5 @@
 ---
-title: entityInfo
+title: Entity Info | OpenMetadata Entity Information Schema
 slug: /main-concepts/metadata-standard/schemas/entity/feed/entityinfo
 ---
 

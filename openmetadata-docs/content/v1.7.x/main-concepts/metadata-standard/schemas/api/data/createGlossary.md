@@ -1,5 +1,5 @@
 ---
-title: createGlossary
+title: Create Glossary API | OpenMetadata Glossary API
 slug: /main-concepts/metadata-standard/schemas/api/data/createglossary
 ---
 

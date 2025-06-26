@@ -1,5 +1,5 @@
 ---
-title: index
+title: Marketplace | OpenMetadata Marketplace API and Resources
 slug: /main-concepts/metadata-standard/schemas/entity/applications/marketplace
 ---
 

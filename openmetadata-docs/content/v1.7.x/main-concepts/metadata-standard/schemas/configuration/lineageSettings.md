@@ -1,5 +1,5 @@
 ---
-title: lineageSettings
+title: Lineage Settings | OpenMetadata Lineage Config
 slug: /main-concepts/metadata-standard/schemas/configuration/lineagesettings
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: emailRequest
+title: Email Request API | OpenMetadata Email Request
 slug: /main-concepts/metadata-standard/schemas/auth/emailrequest
 ---
 

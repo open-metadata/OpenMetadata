@@ -1,5 +1,5 @@
 ---
-title: removeTagsAction
+title: Remove Tags Action | OpenMetadata Tag Removal
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/removetagsaction
 ---
 

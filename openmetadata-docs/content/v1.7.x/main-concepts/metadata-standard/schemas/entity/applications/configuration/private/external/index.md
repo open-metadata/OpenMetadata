@@ -1,5 +1,5 @@
 ---
-title: index
+title: Private External Config Schema | OpenMetadata Entity Config
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/private/external
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: pageViewEvent
+title: Page View Event Schema | OpenMetadata Page View Analytics
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/pageviewevent
 ---
 

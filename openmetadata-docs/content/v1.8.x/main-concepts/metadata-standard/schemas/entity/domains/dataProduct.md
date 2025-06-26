@@ -1,5 +1,5 @@
 ---
-title: dataProduct
+title: Data Product Schema | OpenMetadata Data Product
 slug: /main-concepts/metadata-standard/schemas/entity/domains/dataproduct
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createPolicy
+title: Create Policy API | OpenMetadata Policy Creation
 slug: /main-concepts/metadata-standard/schemas/api/policies/createpolicy
 ---
 

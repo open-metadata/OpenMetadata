@@ -1,5 +1,5 @@
 ---
-title: createDataProduct
+title: Create Data Product | OpenMetadata Data Product API
 slug: /main-concepts/metadata-standard/schemas/api/domains/createdataproduct
 ---
 

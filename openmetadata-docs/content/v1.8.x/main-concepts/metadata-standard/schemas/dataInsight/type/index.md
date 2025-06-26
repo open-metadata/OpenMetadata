@@ -1,5 +1,5 @@
 ---
-title: index
+title: Data Insight Types | OpenMetadata Insight Types
 slug: /main-concepts/metadata-standard/schemas/datainsight/type
 ---
 

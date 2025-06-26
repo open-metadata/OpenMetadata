@@ -1,5 +1,5 @@
 ---
-title: index
+title: Data Insight Schemas | OpenMetadata Insight Schemas
 slug: /main-concepts/metadata-standard/schemas/datainsight
 ---
 

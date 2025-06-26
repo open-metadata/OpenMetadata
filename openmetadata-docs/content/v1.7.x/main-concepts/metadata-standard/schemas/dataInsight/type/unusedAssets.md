@@ -1,5 +1,5 @@
 ---
-title: unusedAssets
+title: Unused Assets | OpenMetadata Asset Tracking
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/unusedassets
 ---
 

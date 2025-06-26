@@ -1,5 +1,5 @@
 ---
-title: index
+title: Data API Schemas | OpenMetadata Data API Overview
 slug: /main-concepts/metadata-standard/schemas/api/data
 ---
 
