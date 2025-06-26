@@ -292,7 +292,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
     for (EntityReference assetRef : assetsMap.values()) {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
-      searchRepository.updateEntity(asset);
+      searchRepository.updateEntityIndex(asset);
     }
   }
 

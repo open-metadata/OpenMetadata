@@ -294,7 +294,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setIncrementalChangeDescription(change);
 
     // Update ES Indexes and usage of this pipeline index
-    searchRepository.updateEntity(pipeline);
+    searchRepository.updateEntityIndex(pipeline);
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices(
