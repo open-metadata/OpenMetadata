@@ -45,7 +45,7 @@ const WidgetCard = ({
         )}
       </div>
       <Typography.Paragraph className="widget-desc">
-        {widget.description || 'No description available.'}
+        {widget.description ?? 'No description available.'}
       </Typography.Paragraph>
     </Card>
   );

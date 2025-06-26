@@ -170,7 +170,8 @@ const CustomiseHomeModal = ({
   }, [sidebarItems, selectedKey, handleSidebarClick]);
 
   const handleApply = () => {
-    if (onBackgroundColorUpdate) {
+    const colorChanged = selectedColor !== currentBackgroundColor;
+    if (onBackgroundColorUpdate && colorChanged) {
       onBackgroundColorUpdate(selectedColor);
     }
 
