@@ -149,6 +149,10 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         `extension.${propertyName} = '${propertyValue}'`
       );
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       expect(page.getByTestId('entity-header-display-name')).toContainText(
         dashboardEntity.entity.displayName
       );
