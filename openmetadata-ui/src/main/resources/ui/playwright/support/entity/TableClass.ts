@@ -74,15 +74,15 @@ export class TableClass extends EntityClass {
   children = [
     {
       name: this.columnsName[0],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
+      dataType: 'NUMBER',
+      dataTypeDisplay: 'number',
       description:
         'Unique identifier for the user of your Shopify POS or your Shopify admin.',
     },
     {
       name: this.columnsName[1],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
+      dataType: 'NUMBER',
+      dataTypeDisplay: 'number',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
     },
