@@ -777,8 +777,22 @@ class DbtSource(DbtServiceSource):
         return columns
 
     def parse_exposure_node(self, exposure_spec):
+        """
+        The implementation assumes that name provided in dbt exposures object matches to FQN of OpenMetadata object:
+        exposures:
+          - name: sample_looker.orders
+            label: lookerOrders
+            type: dashboard
+            maturity: high
+            url: http://localhost:808/looker/dashboard/8/
+            description: >
+              Exemplary OM Looker Dashboard.
+
+            depends_on:
+              - ref('fact_sales')
+        """
         entity_fqn = exposure_spec.name
-        entity_type = ExposureTypeMap[exposure_spec.type.value]
+        entity_type = ExposureTypeMap[exposure_spec.type.value]["entity_type"]
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
         if not entity:
             logger.warning(
@@ -908,7 +922,9 @@ class DbtSource(DbtServiceSource):
                                 ),
                                 toEntity=EntityReference(
                                     id=Uuid(to_entity.id.root),
-                                    type=manifest_node.type.value,
+                                    type=ExposureTypeMap[manifest_node.type.value][
+                                        "entity_type_name"
+                                    ],
                                 ),
                                 lineageDetails=LineageDetails(
                                     source=LineageSource.DbtLineage
