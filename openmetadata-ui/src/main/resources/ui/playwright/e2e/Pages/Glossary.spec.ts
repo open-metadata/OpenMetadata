@@ -1003,12 +1003,8 @@ test.describe('Glossary tests', () => {
       ).not.toBeVisible();
 
       await selectActiveGlossary(page, glossary2.data.displayName);
-
-      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
       // verify the term is moved to the destination glossary
       await page.getByTestId('expand-collapse-all-button').click();
-      await termRes;
 
       await expect(
         page.getByRole('cell', {
