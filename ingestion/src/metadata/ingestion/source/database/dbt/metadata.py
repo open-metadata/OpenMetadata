@@ -70,10 +70,12 @@ from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_RUN_RESULT_DATE_FORMAT,
     REQUIRED_CATALOG_KEYS,
+    REQUIRED_EXPOSURE_KEYS,
     REQUIRED_MANIFEST_KEYS,
     DbtCommonEnum,
     DbtTestFailureEnum,
     DbtTestSuccessEnum,
+    ExposureTypeMap,
     SkipResourceTypeEnum,
 )
 from metadata.ingestion.source.database.dbt.dbt_service import (
@@ -210,6 +212,7 @@ class DbtSource(DbtServiceSource):
             manifest_entities = {
                 **dbt_files.dbt_manifest[DbtCommonEnum.NODES.value],
                 **dbt_files.dbt_manifest[DbtCommonEnum.SOURCES.value],
+                **dbt_files.dbt_manifest.get(DbtCommonEnum.EXPOSURES.value, {}),
             }
             catalog_entities = None
             if dbt_files.dbt_catalog:
@@ -221,6 +224,23 @@ class DbtSource(DbtServiceSource):
                 if manifest_node[DbtCommonEnum.RESOURCETYPE.value] in [
                     item.value for item in SkipResourceTypeEnum
                 ]:
+                    continue
+
+                if (
+                    manifest_node[DbtCommonEnum.RESOURCETYPE.value]
+                    == DbtCommonEnum.EXPOSURE.value
+                ):
+                    if all(
+                        required_key in manifest_node
+                        for required_key in REQUIRED_EXPOSURE_KEYS
+                    ):
+                        logger.debug(f"Successfully Validated DBT Node: {key}")
+                    else:
+                        logger.warning(
+                            f"Error validating DBT Node: {key}\n"
+                            f"Please check if following keys exist for the node: {REQUIRED_EXPOSURE_KEYS}"
+                        )
+
                     continue
 
                 # Validate if all the required keys are present in the manifest nodes
@@ -347,6 +367,20 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
+    def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
+        exposure_type = manifest_node.type.value
+        if exposure_type in ExposureTypeMap.keys():
+            self.context.get().exposures[key] = {
+                DbtCommonEnum.TARGET: self.parse_exposure_node(manifest_node),
+                DbtCommonEnum.MANIFEST_NODE: manifest_node,
+            }
+
+            self.context.get().exposures[key][
+                DbtCommonEnum.UPSTREAM
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+        else:
+            logger.warning(f"Exposure type {exposure_type} not supported.")
+
     def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
     ) -> None:
@@ -440,6 +474,7 @@ class DbtSource(DbtServiceSource):
             manifest_entities = {
                 **dbt_objects.dbt_manifest.sources,
                 **dbt_objects.dbt_manifest.nodes,
+                **dbt_objects.dbt_manifest.exposures,
             }
             catalog_entities = None
             if dbt_objects.dbt_catalog:
@@ -448,6 +483,7 @@ class DbtSource(DbtServiceSource):
                     **dbt_objects.dbt_catalog.nodes,
                 }
             self.context.get().data_model_links = []
+            self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
             # Since we'll be processing multiple run_results for a single project
@@ -490,6 +526,10 @@ class DbtSource(DbtServiceSource):
                             manifest_entities=manifest_entities,
                             dbt_objects=dbt_objects,
                         )
+
+                    if resource_type == DbtCommonEnum.EXPOSURE.value:
+                        self.add_dbt_exposure(key, manifest_node, manifest_entities)
+                        continue
 
                     # Skip the ephemeral nodes since it is not materialized
                     if check_ephemeral_node(manifest_node):
@@ -736,6 +776,17 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
+    def parse_exposure_node(self, exposure_spec):
+        entity_fqn = exposure_spec.name
+        entity_type = ExposureTypeMap[exposure_spec.type.value]
+        entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
+        if not entity:
+            logger.warning(
+                f"Entity [{entity_fqn}] of [{entity_type}] type not found in Open Metadata."
+            )
+
+        return entity
+
     def create_dbt_lineage(
         self, data_model_link: DataModelLink
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -827,6 +878,49 @@ class DbtSource(DbtServiceSource):
                         ),
                         stackTrace=traceback.format_exc(),
                     )
+                )
+
+    def create_dbt_exposures_lineage(
+        self, exposure_spec: dict
+    ) -> Iterable[Either[AddLineageRequest]]:
+        to_entity = exposure_spec[DbtCommonEnum.TARGET]
+        upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
+        manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
+
+        for upstream_node in upstream:
+            try:
+                from_es_result = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=upstream_node,
+                )
+                from_entity: Optional[
+                    Union[Table, List[Table]]
+                ] = get_entity_from_es_result(
+                    entity_list=from_es_result, fetch_multiple_entities=False
+                )
+                if from_entity and to_entity:
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=Uuid(from_entity.id.root),
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=Uuid(to_entity.id.root),
+                                    type=manifest_node.type.value,
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage
+                                ),
+                            )
+                        )
+                    )
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                 )
 
     def process_dbt_meta(self, manifest_meta):

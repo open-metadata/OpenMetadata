@@ -14,10 +14,15 @@ Constants required for dbt
 
 from enum import Enum
 
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+
 DBT_RUN_RESULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
+
+REQUIRED_EXPOSURE_KEYS = ["name", "type", "resource_type", "sources"]
 
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
@@ -84,7 +89,6 @@ REQUIRED_NODE_KEYS = {
     "language",
 }
 
-
 NONE_KEYWORDS_LIST = ["none", "null"]
 
 DBT_CATALOG_FILE_NAME = "catalog.json"
@@ -148,11 +152,17 @@ class DbtCommonEnum(Enum):
     OWNER = "owner"
     NODES = "nodes"
     SOURCES = "sources"
+    EXPOSURE = "exposure"
+    EXPOSURES = "exposures"
     SOURCES_FILE = "sources_file"
     SOURCE = "source"
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"
+    TARGET = "target"
     RESULTS = "results"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
+
+
+ExposureTypeMap = {"dashboard": Dashboard, "ml": MlModel}
