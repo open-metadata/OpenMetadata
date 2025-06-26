@@ -1,5 +1,5 @@
 ---
-title: index
+title: Classification Entity Schema | OpenMetadata Classification Data
 slug: /main-concepts/metadata-standard/schemas/entity/classification
 ---
 

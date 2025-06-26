@@ -1,5 +1,5 @@
 ---
-title: jvmDefaultConfig
+title: JVM Default Config | OpenMetadata JVM Config
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/jvmdefaultconfig
 ---
 

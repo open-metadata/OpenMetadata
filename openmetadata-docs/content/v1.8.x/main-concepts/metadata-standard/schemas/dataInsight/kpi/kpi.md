@@ -1,5 +1,5 @@
 ---
-title: kpi
+title: KPI Schemas | OpenMetadata KPI Metrics and Schema Details
 slug: /main-concepts/metadata-standard/schemas/datainsight/kpi/kpi
 ---
 

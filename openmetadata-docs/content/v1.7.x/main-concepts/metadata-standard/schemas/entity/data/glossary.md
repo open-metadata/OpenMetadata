@@ -1,5 +1,5 @@
 ---
-title: glossary
+title: Glossary Schema | OpenMetadata Glossary Schema and API
 slug: /main-concepts/metadata-standard/schemas/entity/data/glossary
 ---
 

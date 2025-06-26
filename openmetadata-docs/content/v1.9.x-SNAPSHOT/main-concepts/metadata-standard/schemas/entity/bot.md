@@ -1,5 +1,5 @@
 ---
-title: bot
+title: Bot Schema | OpenMetadata Bot Schema and API Documentation
 slug: /main-concepts/metadata-standard/schemas/entity/bot
 ---
 

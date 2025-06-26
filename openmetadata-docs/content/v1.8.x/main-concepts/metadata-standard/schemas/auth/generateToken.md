@@ -1,5 +1,5 @@
 ---
-title: generateToken
+title: Generate Token API | OpenMetadata Token Generation
 slug: /main-concepts/metadata-standard/schemas/auth/generatetoken
 ---
 

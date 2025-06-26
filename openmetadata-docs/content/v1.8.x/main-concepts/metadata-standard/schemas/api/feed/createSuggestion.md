@@ -1,5 +1,5 @@
 ---
-title: createSuggestion
+title: Create Suggestion API | OpenMetadata Suggestion API
 slug: /main-concepts/metadata-standard/schemas/api/feed/createsuggestion
 ---
 
