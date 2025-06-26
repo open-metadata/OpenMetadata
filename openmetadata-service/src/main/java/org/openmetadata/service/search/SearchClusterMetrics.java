@@ -178,10 +178,11 @@ public class SearchClusterMetrics {
     long heapBasedPayloadSize =
         Math.min(500 * 1024 * 1024L, heapMaxBytes / 20); // Max 500MB or 5% of heap
 
-    double compressionRatio = 0.25; // Conservative estimate: compressed size is 25% of original
-    long effectiveMaxContentLength = (long) (maxContentLength / compressionRatio);
+    // Don't assume compression - use actual content length limit
+    // Some clusters might have compression disabled
+    // Use 90% of limit to leave small buffer for request overhead
     long maxPayloadSize =
-        Math.min(heapBasedPayloadSize, effectiveMaxContentLength * 8 / 10); // Use 80% for safety
+        Math.min(heapBasedPayloadSize, maxContentLength * 9 / 10); // Use 90% of limit
 
     // Be more conservative with batch size to handle large documents (some can be 30KB+)
     int avgEntitySizeKB = 10; // More realistic average including large documents
@@ -217,8 +218,47 @@ public class SearchClusterMetrics {
         .build();
   }
 
+  /**
+   * Check if HTTP compression is enabled in cluster settings
+   */
   @SuppressWarnings("unchecked")
-  private static long extractMaxContentLength(Map<String, Object> clusterSettings) {
+  public static boolean isCompressionEnabled(Map<String, Object> clusterSettings) {
+    try {
+      Map<String, Object> persistentSettings =
+          (Map<String, Object>) clusterSettings.get("persistent");
+      Map<String, Object> transientSettings =
+          (Map<String, Object>) clusterSettings.get("transient");
+      Map<String, Object> defaultSettings = (Map<String, Object>) clusterSettings.get("defaults");
+
+      // Check in order: transient -> persistent -> defaults
+      Boolean compressionEnabled = null;
+
+      if (transientSettings != null && transientSettings.containsKey("http.compression")) {
+        compressionEnabled = (Boolean) transientSettings.get("http.compression");
+      }
+
+      if (compressionEnabled == null
+          && persistentSettings != null
+          && persistentSettings.containsKey("http.compression")) {
+        compressionEnabled = (Boolean) persistentSettings.get("http.compression");
+      }
+
+      if (compressionEnabled == null
+          && defaultSettings != null
+          && defaultSettings.containsKey("http.compression")) {
+        compressionEnabled = (Boolean) defaultSettings.get("http.compression");
+      }
+
+      // Default is false in Elasticsearch/OpenSearch
+      return compressionEnabled != null ? compressionEnabled : false;
+    } catch (Exception e) {
+      LOG.debug("Failed to check compression setting, assuming disabled: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public static long extractMaxContentLength(Map<String, Object> clusterSettings) {
     try {
       long defaultMaxContentLength = 100 * 1024 * 1024L; // 100MB
 
@@ -356,6 +396,7 @@ public class SearchClusterMetrics {
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
+    // Default to 100MB if we can't fetch from cluster
     long maxPayloadSize = 100 * 1024 * 1024L; // Default 100MB
     try {
       if (searchRepository != null) {
@@ -371,10 +412,9 @@ public class SearchClusterMetrics {
 
         if (clusterSettings != null) {
           long maxContentLength = extractMaxContentLength(clusterSettings);
-          // With compression, we can send ~4x the max content length
-          double compressionRatio = 0.25;
-          long effectiveMaxContentLength = (long) (maxContentLength / compressionRatio);
-          maxPayloadSize = effectiveMaxContentLength * 8 / 10; // Use 80% for safety
+          // Use actual max content length from cluster settings
+          // Apply 90% to leave small buffer for HTTP headers and request overhead
+          maxPayloadSize = maxContentLength * 9 / 10;
           LOG.debug(
               "Detected max content length: {} MB, effective payload size: {} MB",
               maxContentLength / (1024 * 1024),

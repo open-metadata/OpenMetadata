@@ -14,6 +14,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -54,6 +55,8 @@ public class OpenSearchBulkSink implements BulkSink {
   private volatile int maxConcurrentRequests;
   private final long maxPayloadSizeBytes;
   private volatile BulkProcessor currentBulkProcessor;
+  private final long clusterMaxRequestSize;
+  private final boolean compressionEnabled;
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -66,6 +69,16 @@ public class OpenSearchBulkSink implements BulkSink {
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
     this.maxPayloadSizeBytes = maxPayloadSizeBytes;
+
+    // Get the actual max request size and compression status from cluster settings
+    Map<String, Object> clusterSettings = getClusterSettings();
+    this.clusterMaxRequestSize = SearchClusterMetrics.extractMaxContentLength(clusterSettings);
+    this.compressionEnabled = SearchClusterMetrics.isCompressionEnabled(clusterSettings);
+
+    LOG.info(
+        "OpenSearch cluster config - Max content length: {} MB, Compression enabled: {}",
+        clusterMaxRequestSize / (1024 * 1024),
+        compressionEnabled);
 
     // Initialize stats
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
@@ -83,6 +96,11 @@ public class OpenSearchBulkSink implements BulkSink {
     optionsBuilder.setHttpAsyncResponseConsumerFactory(
         new HttpAsyncResponseConsumerFactory.HeapBufferedResponseConsumerFactory(
             100 * 1024 * 1024)); // 100MB buffer
+
+    // Note: The Java client doesn't automatically compress requests.
+    // Compression must be enabled at the HTTP client level (Apache HttpClient)
+    // or by using a custom request interceptor
+
     RequestOptions requestOptions = optionsBuilder.build();
 
     LOG.info(
@@ -164,7 +182,10 @@ public class OpenSearchBulkSink implements BulkSink {
               }
             })
         .setBulkActions(bulkActions)
-        .setBulkSize(new ByteSizeValue(maxPayloadSizeBytes, ByteSizeUnit.BYTES))
+        // Ensure we never exceed OpenSearch's configured limit
+        .setBulkSize(
+            new ByteSizeValue(
+                Math.min(maxPayloadSizeBytes, clusterMaxRequestSize), ByteSizeUnit.BYTES))
         .setFlushInterval(TimeValue.timeValueSeconds(10)) // Increased from 5s
         .setConcurrentRequests(concurrentRequests)
         .setBackoffPolicy(
@@ -253,19 +274,43 @@ public class OpenSearchBulkSink implements BulkSink {
    * This centralizes the logic for managing payload size limits.
    */
   private void addRequestWithSizeCheck(Object request, long uncompressedSize) {
-    // Estimate compressed size (compression typically reduces JSON to ~25% of original size)
-    long estimatedCompressedSize = uncompressedSize / 4;
+    // Check if single document exceeds cluster limit
+    if (uncompressedSize > clusterMaxRequestSize) {
+      LOG.error(
+          "Single document exceeds OpenSearch cluster limit: {} MB > {} MB. Document will be skipped.",
+          uncompressedSize / (1024.0 * 1024.0),
+          clusterMaxRequestSize / (1024.0 * 1024.0));
+      totalFailed.incrementAndGet();
+      updateStats();
+      return; // Skip this document
+    }
+
+    // Calculate effective size based on whether compression is enabled
+    long effectiveSize;
+    if (compressionEnabled) {
+      // Compression typically achieves 75% reduction for JSON (25% of original size)
+      effectiveSize = uncompressedSize / 4;
+      LOG.debug(
+          "Using compressed size estimate: {} bytes (from {} uncompressed)",
+          effectiveSize,
+          uncompressedSize);
+    } else {
+      // Use uncompressed size when compression is disabled
+      effectiveSize = uncompressedSize;
+    }
 
     // Check if adding this request would exceed the payload size limit
-    // Using volatile read/write for currentPayloadSize - no locking needed
+    // Using volatile - approximate size is sufficient for flushing decisions
     long currentSize = currentPayloadSize;
-    if (currentSize > 0 && currentSize + estimatedCompressedSize > maxPayloadSizeBytes) {
+    long effectiveLimit = Math.min(maxPayloadSizeBytes, clusterMaxRequestSize);
+
+    if (currentSize > 0 && currentSize + effectiveSize > effectiveLimit) {
       LOG.info(
-          "Payload size limit reached. Current: {} MB compressed, Request: {} KB uncompressed ({} KB compressed), Max: {} MB",
+          "Payload size limit reached. Current: {} MB, Request: {} KB, Max: {} MB (cluster limit: {} MB)",
           currentSize / (1024.0 * 1024.0),
           uncompressedSize / 1024.0,
-          estimatedCompressedSize / 1024.0,
-          maxPayloadSizeBytes / (1024.0 * 1024.0));
+          effectiveLimit / (1024.0 * 1024.0),
+          clusterMaxRequestSize / (1024.0 * 1024.0));
 
       // Flush and reset
       bulkProcessor.flush();
@@ -279,21 +324,19 @@ public class OpenSearchBulkSink implements BulkSink {
       bulkProcessor.add((IndexRequest) request);
     }
 
-    // Update current payload size
-    currentPayloadSize += estimatedCompressedSize;
+    // Update current payload size atomically
+    currentPayloadSize = currentSize + effectiveSize;
 
     // Warn about large documents
     if (uncompressedSize > 1024 * 1024) {
       LOG.warn(
-          "Large document detected: {} MB uncompressed, ~{} MB compressed",
+          "Large document detected: {} MB uncompressed{}",
           uncompressedSize / (1024.0 * 1024.0),
-          estimatedCompressedSize / (1024.0 * 1024.0));
+          compressionEnabled
+              ? String.format(", ~%.2f MB compressed", effectiveSize / (1024.0 * 1024.0))
+              : "");
     }
   }
-
-  // Removed handleBackpressure() and recreateBulkProcessor() methods
-  // The BulkProcessor already handles backpressure internally with exponential backoff.
-  // Dynamic recreation of BulkProcessor was causing deadlocks in production.
 
   private void updateStats() {
     stats.setTotalRecords((int) totalSubmitted.get());
@@ -331,6 +374,18 @@ public class OpenSearchBulkSink implements BulkSink {
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Get the cluster settings
+   */
+  private Map<String, Object> getClusterSettings() {
+    try {
+      return searchClient.clusterSettings();
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch cluster settings: {}", e.getMessage());
+      return new HashMap<>();
     }
   }
 
