@@ -64,7 +64,7 @@ The next step will be to add your Personal Access Token (PAT) to mcp-remote so t
 ```
  <YOUR-OpenMetadata-SERVER>/users/<YOUR-USERNAME>/access-token
 ```
-- Select *Generate New Token*. This will give Claude the same role and access policy that is assign to you in OpenMetadata, if you would like Claude to have different role-based access controls, create a new user.
+- Select *Generate New Token*. This will give Claude the same role and access policy that is assigned to you in OpenMetadata. If you would like Claude to have different role-based access controls, create a new user.
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/generate-new-token.jpg"
@@ -87,7 +87,7 @@ The right configuration will allow verification that OpenMetadata's MCP Server c
   - *URL* is <YOUR-OpenMetadata-SERVER>/mcp/sse
   - *Bearer Token* is your OpenMetadata Personal Access Token
   - In Configuration, *Inspector Proxy Address* is [127.0.0.1:6277](127.0.0.1:6277)
-  - *Proxy Session Token* is the Session Token provided in you `npx @modelcontextprotocol/inspector` command
+  - *Proxy Session Token* is the Session Token provided in your `npx @modelcontextprotocol/inspector` command
   - Select *Connect*
 
 {% image
@@ -140,7 +140,7 @@ Paste the following prompt into Claude to have it read from OpenMetadata:
 What tables do you have access to in OpenMetadata?
 ```
 
-Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this multipe times, once for each tool. Claude is now reading from OpenMetadata via its MCP Server!
+Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this multiple times, once for each tool. Claude is now reading from OpenMetadata via its MCP Server!
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
