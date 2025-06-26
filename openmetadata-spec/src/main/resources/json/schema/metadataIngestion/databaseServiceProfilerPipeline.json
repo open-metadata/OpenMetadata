@@ -10,6 +10,21 @@
       "type": "string",
       "enum": ["Profiler"],
       "default": "Profiler"
+    },
+    "processingEngine": {
+      "title": "Processing Engine",
+      "description": "Processing Engine Configuration. If not provided, the Native Engine will be used by default.",
+      "oneOf": [
+        {
+          "$ref": "../metadataIngestion/engine/nativeEngineConfig.json"
+        },
+        {
+          "$ref": "../metadataIngestion/engine/sparkEngineConfig.json"
+        }
+      ],
+      "default": {
+        "type": "Native"
+      }
     }
   },
   "properties": {
@@ -17,6 +32,9 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/profilerConfigType",
       "default": "Profiler"
+    },
+    "processingEngine": {
+      "$ref": "#/definitions/processingEngine"
     },
     "classificationFilterPattern": {
       "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
