@@ -54,8 +54,6 @@ class SamplerProcessor(Processor):
 
         self.config = config
         self.metadata = metadata
-        # Counter for periodic cache clearing
-        self._processed_count = 0
 
         self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
             DatabaseServiceAutoClassificationPipeline,
@@ -79,20 +77,6 @@ class SamplerProcessor(Processor):
         """Fetch the sample data and pass it down the pipeline"""
 
         try:
-            # Periodic cache clearing to prevent memory accumulation
-            self._processed_count += 1
-            if self._processed_count % 50 == 0:
-                # Clear user reference caches every 50 tables
-                if hasattr(self.metadata, "get_reference_by_email"):
-                    self.metadata.get_reference_by_email.cache_clear()
-                if hasattr(self.metadata, "get_reference_by_name"):
-                    self.metadata.get_reference_by_name.cache_clear()
-
-                # Force garbage collection
-                import gc
-
-                gc.collect()
-
             entity = cast(Table, record.entity)
             schema_entity, database_entity, _ = get_context_entities(
                 entity=entity, metadata=self.metadata
@@ -174,18 +158,4 @@ class SamplerProcessor(Processor):
         return config_copy
 
     def close(self) -> None:
-        """Clear only the caches that AutoClassification actually uses"""
-        try:
-            # Clear user reference caches that may accumulate over time
-            if hasattr(self.metadata, "get_reference_by_email"):
-                self.metadata.get_reference_by_email.cache_clear()
-            if hasattr(self.metadata, "get_reference_by_name"):
-                self.metadata.get_reference_by_name.cache_clear()
-
-            # Force garbage collection to clean up any accumulated entity objects
-            import gc
-
-            gc.collect()
-        except Exception:
-            # Don't fail the workflow if cache clearing fails
-            pass
+        """Nothing to close"""
