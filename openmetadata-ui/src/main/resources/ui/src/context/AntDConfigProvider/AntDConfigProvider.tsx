@@ -20,8 +20,11 @@ import { generatePalette } from '../../styles/colorPallet';
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const { applicationConfig } = useApplicationStore();
-  const palette = generatePalette(DEFAULT_THEME.primaryColor);
+
   useEffect(() => {
+    const palette = generatePalette(
+      applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
+    );
     palette.forEach((color, index) => {
       switch (index) {
         case 0:

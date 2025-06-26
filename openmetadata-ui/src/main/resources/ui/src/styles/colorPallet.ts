@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import tinycolor from 'tinycolor2';
+import tinycolor, { ColorFormats } from 'tinycolor2';
 
 const clamp = (val: number, min: number, max: number) =>
   Math.max(min, Math.min(max, val));
@@ -72,7 +72,7 @@ const deltas = [
     l: -0.19999999999999996,
   },
 ];
-const applyDelta = (base: any, delta: any) => ({
+const applyDelta = (base: ColorFormats.HSL, delta: ColorFormats.HSL) => ({
   h: base.h + delta.h,
   s: clamp(base.s + delta.s, 0, 1),
   l: clamp(base.l + delta.l, 0, 1),
