@@ -140,6 +140,9 @@ export const selectSubDomain = async (
   );
   await page.getByTestId(subDomain.name).click();
   await res;
+
+  await page.waitForLoadState('networkidle');
+  await page.locator('[data-testid="loader"]').waitFor({ state: 'detached' });
 };
 
 export const selectDataProductFromTab = async (
