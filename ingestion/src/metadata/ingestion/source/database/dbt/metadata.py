@@ -370,14 +370,17 @@ class DbtSource(DbtServiceSource):
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
         exposure_type = manifest_node.type.value
         if exposure_type in ExposureTypeMap.keys():
-            self.context.get().exposures[key] = {
-                DbtCommonEnum.EXPOSURE: self.parse_exposure_node(manifest_node),
-                DbtCommonEnum.MANIFEST_NODE: manifest_node,
-            }
+            exposure_entity = self.parse_exposure_node(manifest_node)
 
-            self.context.get().exposures[key][
-                DbtCommonEnum.UPSTREAM
-            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            if exposure_entity:
+                self.context.get().exposures[key] = {
+                    DbtCommonEnum.EXPOSURE: exposure_entity,
+                    DbtCommonEnum.MANIFEST_NODE: manifest_node,
+                }
+
+                self.context.get().exposures[key][
+                    DbtCommonEnum.UPSTREAM
+                ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
         else:
             logger.warning(f"Exposure type {exposure_type} not supported.")
 
@@ -792,8 +795,14 @@ class DbtSource(DbtServiceSource):
               - ref('fact_sales')
         """
         entity_fqn = exposure_spec.name
-        entity_type = ExposureTypeMap[exposure_spec.type.value]["entity_type"]
+
+        entity_type = ExposureTypeMap.get(exposure_spec.type.value, {}).get("entity_type")
+
+        if not entity_type:
+            logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
+
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
+
         if not entity:
             logger.warning(
                 f"Entity [{entity_fqn}] of [{entity_type}] type not found in Open Metadata."
