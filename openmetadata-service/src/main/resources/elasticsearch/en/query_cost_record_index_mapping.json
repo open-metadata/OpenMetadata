@@ -200,8 +200,9 @@
             }
           },
           "query": {
-            "type": "keyword",
-            "index": false
+            "type": "text",
+            "index": false,
+            "doc_values": false
           },
           "queryDate": {
             "type": "long"

@@ -197,9 +197,15 @@ public class CompiledRule extends Rule {
     }
   }
 
+  /** Returns true if this rule applies to the given resource name. */
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES)
-        || getResources().contains(resource));
+    if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(resource))) {
+      return true;
+    }
+    if (getResources().stream().anyMatch(r -> r.equalsIgnoreCase(ALL_RESOURCES))) {
+      return !resource.equalsIgnoreCase("scim");
+    }
+    return false;
   }
 
   private boolean matchOperation(MetadataOperation operation) {

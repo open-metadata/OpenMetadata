@@ -246,8 +246,8 @@ entities.forEach((EntityClass) => {
         page,
         'PersonalData.Personal',
         EntityDataClass.tag1.responseData.displayName,
-        EntityDataClass.tag1.responseData.fullyQualifiedName,
-        entity
+        entity,
+        EntityDataClass.tag1.responseData.fullyQualifiedName
       );
     });
 
@@ -318,6 +318,8 @@ entities.forEach((EntityClass) => {
       test('Tag Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
+
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
@@ -326,6 +328,7 @@ entities.forEach((EntityClass) => {
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -343,6 +346,7 @@ entities.forEach((EntityClass) => {
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
           rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
 
@@ -368,7 +372,8 @@ entities.forEach((EntityClass) => {
         await entity.descriptionUpdateChildren(
           page,
           entity.childrenSelectorId ?? '',
-          rowSelector
+          rowSelector,
+          entity.endpoint
         );
       });
     }

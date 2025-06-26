@@ -133,7 +133,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -192,6 +192,8 @@ entities.forEach((EntityClass) => {
       test(`Follow & Un-follow entity for Database Entity`, async ({
         page,
       }) => {
+        test.slow(true);
+
         const entityName = entity.entityResponseData?.['displayName'];
         await entity.followUnfollowEntity(page, entityName);
       });

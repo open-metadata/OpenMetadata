@@ -1,44 +1,50 @@
 {
-    "name": "UnityCatalog",
-    "displayName": "UnityCatalog Test Connection",
-    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
-    "steps": [
-      {
-        "name": "CheckAccess",
-        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to unity catalog, please validate to token, http path  & hostport",
-        "shortCircuit": true,
-        "mandatory": true
-      },
-      {
-        "name": "GetDatabases",
-        "description": "List all the databases available to the user.",
-        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
-        "mandatory": true
-      },
-      {
-        "name": "GetSchemas",
-        "description": "List all the schemas available to the user.",
-        "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
-        "mandatory": true
-      },
-      {
-        "name": "GetTables",
-        "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
-        "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
-        "mandatory": true
-      },
-      {
-        "name": "GetViews",
-        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
-        "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
-        "mandatory": false
-      },
-      {
-        "name": "GetQueries",
-        "description": "Check if we can access the queries form `https://{your_host}/api/2.0/sql/history/queries` API. NOTE: To access this api you must have a premium subscription to unity catalog.",
-        "errorMessage": "Failed to fetch queries, please validate if the user has access to `https://{your_host}/api/2.0/sql/history/queries` API.",
-        "mandatory": false
-      }
-    ]
-  }
+  "name": "UnityCatalog",
+  "displayName": "UnityCatalog Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to unity catalog, please validate to token, http path  & hostport",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List all the databases available to the user.",
+      "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas available to the user.",
+      "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
+      "mandatory": false
+    },
+    {
+      "name": "GetQueries",
+      "description": "Check if we can access the queries form `https://{your_host}/api/2.0/sql/history/queries` API. NOTE: To access this api you must have a premium subscription to unity catalog.",
+      "errorMessage": "Failed to fetch queries, please validate if the user has access to `https://{your_host}/api/2.0/sql/history/queries` API.",
+      "mandatory": false
+    },
+    {
+      "name": "GetTags",
+      "description": "Check if tags can be accessed via `information_schema.catalog_tags`, `information_schema.schema_tags`, `information_schema.table_tags`, and `information_schema.column_tags`.",
+      "errorMessage": "Failed to fetch tags. Please ensure the httpPath is configured and verify that the user has access to view Unity Catalog metadata tables: `information_schema.catalog_tags`, `information_schema.schema_tags`, `information_schema.table_tags`, and `information_schema.column_tags`.",
+      "mandatory": false
+    }
+  ]
+}

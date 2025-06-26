@@ -69,9 +69,7 @@ export class TagClass {
       this.responseData.classification.name,
       this.responseData.classification.displayName
     );
-    const res = page.waitForResponse(`/api/v1/tags/name/*`);
     await page.getByTestId(this.data.name).click();
-    await res;
     await page.waitForLoadState('networkidle');
   }
 
