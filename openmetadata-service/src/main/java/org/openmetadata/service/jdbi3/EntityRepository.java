@@ -178,6 +178,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -681,7 +682,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -756,7 +759,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
       }
       @SuppressWarnings("unchecked")
-      T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      T entity =
+          JsonUtils.deepCopy(
+              (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn)), entityClass);
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
@@ -1117,29 +1122,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearch) {
-      searchRepository.createEntity(entity);
-    }
+    EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
   }
 
   protected void postCreate(List<T> entities) {
-    if (supportsSearch) {
-      searchRepository.createEntities((List<EntityInterface>) entities);
+    for (T entity : entities) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
-    if (supportsSearch) {
-      searchRepository.updateEntity(updated);
-    }
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(updated, updated.getChangeDescription(), null);
   }
 
   @Transaction
@@ -1377,22 +1378,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {}
+  protected void postDelete(T entity) {
+    // Dispatch entity deleted event to all registered handlers
+    EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
+  }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
-    if (supportsSearch) {
-      if (hardDelete) {
-        searchRepository.deleteEntity(entity);
-      } else {
-        searchRepository.softDeleteOrRestoreEntity(entity, true);
-      }
+    if (hardDelete) {
+      // Hard delete - dispatch delete event
+      EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
+    } else {
+      // Soft delete - dispatch soft delete event
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntitySoftDeletedOrRestored(entity, true, null);
     }
   }
 
   public final void restoreFromSearch(T entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntity(entity, false);
-    }
+    // Dispatch entity restore event
+    EntityLifecycleEventDispatcher.getInstance().onEntitySoftDeletedOrRestored(entity, false, null);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -2706,7 +2710,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       // Update ES
-      searchRepository.updateEntity(ref);
+      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ref, null);
     }
 
     result.withSuccessRequest(success);
