@@ -1,5 +1,5 @@
 ---
-title: metric
+title: Metric Schema | OpenMetadata Metric Schema and Definitions
 slug: /main-concepts/metadata-standard/schemas/entity/data/metric
 ---
 

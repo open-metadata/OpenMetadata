@@ -1,5 +1,5 @@
 ---
-title: createSearchService
+title: Create Search Service | OpenMetadata Search Service
 slug: /main-concepts/metadata-standard/schemas/api/services/createsearchservice
 ---
 
