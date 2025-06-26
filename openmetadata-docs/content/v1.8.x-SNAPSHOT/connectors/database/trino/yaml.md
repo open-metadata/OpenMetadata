@@ -20,9 +20,7 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
-{% collateContent %}
-- [Reverse Metadata](#reverse-metadata)
-{% /collateContent %}
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 
 {% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 
