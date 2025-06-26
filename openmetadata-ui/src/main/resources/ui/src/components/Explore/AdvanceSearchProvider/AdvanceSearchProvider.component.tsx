@@ -201,7 +201,8 @@ export const AdvanceSearchProvider = ({
 
   const handleReset = useCallback(() => {
     setTreeInternal(
-      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+      QbUtils.sanitizeTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+        .fixedTree
     );
     setQueryFilter(undefined);
     setSQLQuery('');
@@ -285,7 +286,10 @@ export const AdvanceSearchProvider = ({
   const loadTree = useCallback(
     async (treeObj: OldJsonTree) => {
       const updatedConfig = config;
-      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+      const tree = QbUtils.sanitizeTree(
+        QbUtils.loadTree(treeObj),
+        updatedConfig
+      ).fixedTree;
 
       setTreeInternal(tree);
       const qFilter = {
