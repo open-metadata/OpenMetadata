@@ -26,6 +26,11 @@ import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
 import { useTableFilters } from '../useTableFilters';
 
+type FilterState = Record<
+  string,
+  string | boolean | string[] | null | undefined
+>;
+
 interface CursorState {
   cursorType: CursorType | null;
   cursorValue?: string;
@@ -61,7 +66,7 @@ export const usePaging = (
     cursorValue: undefined,
     currentPage: String(INITIAL_PAGING_VALUE),
     pageSize: String(defaultPageSize),
-  } as any);
+  });
 
   const initialPageSize = Number(urlParams.pageSize) || defaultPageSize;
   const initialCurrentPage =
@@ -98,7 +103,7 @@ export const usePaging = (
         currentPage: String(INITIAL_PAGING_VALUE),
         cursorType: null,
         cursorValue: null,
-      } as any);
+      });
     },
     [setPageSize, setCurrentPage, updateUrlParams]
   );
@@ -128,7 +133,7 @@ export const usePaging = (
         urlUpdate.pageSize = pageSize;
       }
 
-      updateUrlParams(urlUpdate as any);
+      updateUrlParams(urlUpdate as FilterState);
     },
     [setCurrentPage, updateUrlParams, currentPage]
   );
