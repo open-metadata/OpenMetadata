@@ -1,5 +1,5 @@
 ---
-title: createCustomMetric
+title: Create Custom Metric | OpenMetadata Custom Metric API
 slug: /main-concepts/metadata-standard/schemas/api/tests/createcustommetric
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createBot
+title: Create Bot API | OpenMetadata Bot Creation API
 slug: /main-concepts/metadata-standard/schemas/api/createbot
 ---
 

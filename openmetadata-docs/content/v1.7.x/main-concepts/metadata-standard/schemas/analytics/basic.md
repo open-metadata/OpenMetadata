@@ -1,5 +1,5 @@
 ---
-title: basic
+title: Basic Analytics Schema | OpenMetadata Basic Analytics
 slug: /main-concepts/metadata-standard/schemas/analytics/basic
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: uiThemePreference
+title: UI Theme Preference | OpenMetadata UI Preferences
 slug: /main-concepts/metadata-standard/schemas/configuration/uithemepreference
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Access Control Schema | OpenMetadata Access Control
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol
 ---
 
