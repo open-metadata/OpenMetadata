@@ -13,6 +13,7 @@ For this guide, you will need:
 - OpenMetadata v1.8.0 - You can upgrade your version of OpenMetadata with [this guide](https://docs.open-metadata.org/latest/deployment/upgrade)
 - [Claude Desktop](https://claude.ai/download)
 
+
 ## Add MCP App to OpenMetadata
 OpenMetadata has a variety of applications to improve your data such as MetaPilot, Data Insights, Search Indexing, and MCP.
 
@@ -46,12 +47,24 @@ npm install -g mcp-remote
 npx @modelcontextprotocol/inspector
 ```
 
-This will start mcp-remote's MCP Inspector on your localhost at [http://127.0.0.1:6274/](http://127.0.0.1:6274/). Keep your terminal window open, you will see requests coming from Claude to OpenMetadata through mcp-remote in this window once you start prompting.
+This will start mcp-remote's MCP Inspector on your localhost at [http://127.0.0.1:6274/](http://127.0.0.1:6274/). *Note the Session Token provider, this will be used to authenticate your MCP Inspector session.
 
-## Adding your OpenMetadata PAT to mcp-remote
+{% image
+src="/images/v1.8/how-to-guides/mcp/mcp-inspector-auth.jpg"
+alt="Generate New Token"
+caption="Copy your token or use the pre-filled link"
+/%}
+
+Keep your terminal window open, you will see requests coming from Claude to OpenMetadata through mcp-remote in this window once you start prompting.
+
+## Creating your OpenMetadata Personal Access Token
 The next step will be to add your Personal Access Token (PAT) to mcp-remote so that Claude can communicate with OpenMetadata
 
-- Go to <YOUR-OpenMetadata-SERVER>/users/<YOUR-USERNAME>/access-token and select *Generate New Token*. This will give Claude the same role and access policy that is assign to you in OpenMetadata, if you would like Claude to have different role-based access controls, create a new user.
+- To create an OpenMetadata Personal Access Token, go to:
+```
+ <YOUR-OpenMetadata-SERVER>/users/<YOUR-USERNAME>/access-token
+```
+- Select *Generate New Token*. This will give Claude the same role and access policy that is assigned to you in OpenMetadata. If you would like Claude to have different role-based access controls, create a new user.
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/generate-new-token.jpg"
@@ -67,12 +80,21 @@ alt="Set Token Lifespan"
 caption="Personal Access Token expires in 60 days"
 /%}
 
-- Paste your PAT in mcp-remote's MCP Inspector. 
+## Configuring your MCP Inspector for OpenMetadata
+The right configuration will allow verification that OpenMetadata's MCP Server can be reached.
   - MCP Inspector URL is [http://127.0.0.1:6274/](http://127.0.0.1:6274/)
   - *Transport Type* is SSE
   - *URL* is <YOUR-OpenMetadata-SERVER>/mcp/sse
-  - *Bearer Token* is your PAT
+  - *Bearer Token* is your OpenMetadata Personal Access Token
+  - In Configuration, *Inspector Proxy Address* is [127.0.0.1:6277](127.0.0.1:6277)
+  - *Proxy Session Token* is the Session Token provided in your `npx @modelcontextprotocol/inspector` command
   - Select *Connect*
+
+{% image
+src="/images/v1.8/how-to-guides/mcp/mcp-inspector.jpg"
+alt="MCP Inspector Configuration"
+caption="Setting up OpenMetadata in MCP Inspector"
+/%}
 
 ## Adding your OpenMetadata MCP Server to Claude Desktop
 This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 4.
@@ -111,14 +133,14 @@ caption="OpenMetadata MCP Server running in Claude Desktop"
 /%}
 
 ## Prompt to read from OpenMetadata
-This part of the guide assumes that you have assets in OpenMetadata that Claude can read, and that some of your data assets have references to customers. You can change the prompt accordingly and/or add data sources into OpenMetadata [here](https://docs.open-metadata.org/latest/connectors).
+This part of the guide assumes that you have assets in OpenMetadata that Claude can read. You can add data assets into OpenMetadata [here](https://docs.open-metadata.org/latest/connectors).
 
-Past the following prompt into Claude to have it read from OpenMetadata:
+Paste the following prompt into Claude to have it read from OpenMetadata:
 ```
-Imagine you're a data analyst tasked with building a customer retention dashboard. Can you help me identify which tables or datasets in the openmetadata database might contain relevant information?
+What tables do you have access to in OpenMetadata?
 ```
 
-Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this 2 or 3 times per each request type. Claude is now reading from OpenMetadata via its MCP Server!
+Claude will ask if it can use the external integration `openmetadata`, select *Allow always*. You may have to do this multiple times, once for each tool. Claude is now reading from OpenMetadata via its MCP Server!
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
