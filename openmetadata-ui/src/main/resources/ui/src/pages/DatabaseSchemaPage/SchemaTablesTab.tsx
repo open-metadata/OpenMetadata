@@ -261,8 +261,11 @@ function SchemaTablesTab({
   ]);
 
   useEffect(() => {
-    setFilters({ showDeletedTables: databaseSchemaDetails.deleted ?? false });
-  }, [databaseSchemaDetails.deleted]);
+    setFilters({
+      showDeletedTables:
+        tableFilters.showDeletedTables ?? databaseSchemaDetails.deleted,
+    });
+  }, [databaseSchemaDetails.deleted, tableFilters.showDeletedTables]);
 
   return (
     <TableAntd
