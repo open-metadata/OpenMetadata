@@ -301,6 +301,8 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await settingClick(page, GlobalSettingOptions.ROLES);
 
+  await page.waitForLoadState('networkidle');
+
   await getElementWithPagination(page, roleLocator);
 
   await page.getByTestId('manage-button').click();

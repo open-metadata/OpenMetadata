@@ -18,6 +18,7 @@ import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
+import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -210,18 +211,25 @@ const MyDataPage = () => {
 
   return (
     <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
-      <ReactGridLayout
-        cols={4}
-        containerPadding={[0, 0]}
-        isDraggable={false}
-        isResizable={false}
-        margin={[
-          customizePageClassBase.landingPageWidgetMargin,
-          customizePageClassBase.landingPageWidgetMargin,
-        ]}
-        rowHeight={100}>
-        {widgets}
-      </ReactGridLayout>
+      <div className="grid-wrapper">
+        <CustomiseLandingPageHeader
+          overlappedContainer
+          // onBackgroundColorUpdate={handleBackgroundColorUpdate} TODO: Update this updation call when we get the api
+        />
+        <ReactGridLayout
+          className="grid-container p-x-box"
+          cols={3}
+          containerPadding={[0, 0]}
+          isDraggable={false}
+          isResizable={false}
+          margin={[
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+          ]}
+          rowHeight={100}>
+          {widgets}
+        </ReactGridLayout>
+      </div>
       <LimitWrapper resource="dataAssets">
         <br />
       </LimitWrapper>
