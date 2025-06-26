@@ -68,7 +68,7 @@ function AddWidgetModal({
           'Curated Assets KnowledgePanel shows list of curated assets.',
         entityType: 'KnowledgePanel',
         data: {
-          gridSizes: ['medium'],
+          gridSizes: ['small'],
         },
         updatedAt: 1713403302750,
         updatedBy: 'admin',

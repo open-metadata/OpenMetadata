@@ -23,6 +23,9 @@
 }
 
 .right-panel-list-item {
+  padding-top: 8px;
+  padding-bottom: 8px;
+
   .entity-button-icon {
     height: 24px;
     width: 24px;
@@ -51,9 +54,10 @@
     margin-bottom: 0;
   }
 
-  .widget-footer-border {
-    border-top: 1px solid @grey-15;
-    margin-top: 8px;
+  .widget-footer {
+    bottom: 0;
+    position: fixed;
+    width: 100%;
   }
 
   .ant-row {
@@ -87,6 +91,12 @@
     background-color: @grey-1;
     border-color: @primary-color;
   }
+}
+
+.entity-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 8px;
 }
 
 // .curated-assets-popover {
