@@ -45,6 +45,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve()),
+  getSuggestionsByUserId: jest.fn().mockImplementation(() => Promise.resolve()),
   approveRejectAllSuggestions: jest.fn(),
   updateSuggestionStatus: jest.fn(),
 }));
@@ -144,6 +145,26 @@ describe('SuggestionsProvider', () => {
       SuggestionAction.Reject
     );
   });
+
+  it('calls fetchSuggestionsByUserId when button is clicked', async () => {
+    const { getSuggestionsByUserId } = await import(
+      '../../../rest/suggestionsAPI'
+    );
+
+    render(
+      <SuggestionsProvider>
+        <TestComponent />
+      </SuggestionsProvider>
+    );
+
+    const fetchByUserIdBtn = screen.getByText('Fetch By User ID');
+    fireEvent.click(fetchByUserIdBtn);
+
+    expect(getSuggestionsByUserId).toHaveBeenCalledWith('test-user-id', {
+      entityFQN: 'mockFQN',
+      limit: 10,
+    });
+  });
 });
 
 function TestComponent() {
@@ -151,6 +172,7 @@ function TestComponent() {
     acceptRejectAllSuggestions,
     onUpdateActiveUser,
     acceptRejectSuggestion,
+    fetchSuggestionsByUserId,
   } = useSuggestionsContext();
 
   return (
@@ -180,6 +202,9 @@ function TestComponent() {
           acceptRejectSuggestion(suggestions[0], SuggestionAction.Reject)
         }>
         Reject One
+      </button>
+      <button onClick={() => fetchSuggestionsByUserId('test-user-id')}>
+        Fetch By User ID
       </button>
     </>
   );

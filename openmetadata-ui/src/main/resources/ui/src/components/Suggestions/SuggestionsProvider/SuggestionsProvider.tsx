@@ -35,6 +35,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
 import {
   approveRejectAllSuggestions,
+  getSuggestionsByUserId,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -83,6 +84,43 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setSuggestionLimit(paging.total);
         setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
         setSuggestionsByUser(groupedSuggestions);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.suggestion-lowercase-plural'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [entityFqn, suggestionLimit]
+  );
+
+  const fetchSuggestionsByUserId = useCallback(
+    async (userId: string, limit?: number) => {
+      setLoading(true);
+      try {
+        const { data } = await getSuggestionsByUserId(userId, {
+          entityFQN: entityFqn,
+          limit: limit ?? suggestionLimit,
+        });
+
+        // Merge new suggestions with existing ones, removing duplicates by ID
+        setSuggestions((prevSuggestions) => {
+          const existingIds = new Set(prevSuggestions.map((s) => s.id));
+          const newSuggestions = data.filter((s) => !existingIds.has(s.id));
+          const mergedSuggestions = [...prevSuggestions, ...newSuggestions];
+
+          // Update grouped suggestions with merged data
+          const { allUsersList, groupedSuggestions } =
+            getSuggestionByType(mergedSuggestions);
+          setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
+          setSuggestionsByUser(groupedSuggestions);
+
+          return mergedSuggestions;
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -188,6 +226,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       allSuggestionsUsers,
       onUpdateActiveUser,
       fetchSuggestions,
+      fetchSuggestionsByUserId,
       acceptRejectSuggestion,
       acceptRejectAllSuggestions,
     };
@@ -203,6 +242,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     allSuggestionsUsers,
     onUpdateActiveUser,
     fetchSuggestions,
+    fetchSuggestionsByUserId,
     acceptRejectSuggestion,
     acceptRejectAllSuggestions,
   ]);
