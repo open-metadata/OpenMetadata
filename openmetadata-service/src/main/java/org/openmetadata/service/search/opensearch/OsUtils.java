@@ -2,7 +2,9 @@ package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
+import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
 import com.nimbusds.jose.util.Pair;
@@ -13,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
@@ -39,6 +42,109 @@ public class OsUtils {
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     osXContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
+  }
+
+  public static Map<String, Object> searchEREntityByKey(
+      EntityRelationshipDirection direction,
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToRemove)
+      throws IOException {
+    Map<String, Object> result =
+        searchEntitiesByKey(
+            direction, indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
+    if (result.size() == 1) {
+      return (Map<String, Object>) result.get(hasToFqnPair.getRight());
+    } else {
+      throw new SearchException(
+          String.format(
+              "Issue in Search Entity By Key: %s, Value Fqn: %s , Number of Hits: %s",
+              keyName, hasToFqnPair.getRight(), result.size()));
+    }
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      EntityRelationshipDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToRemove)
+      throws IOException {
+    os.org.opensearch.client.RestHighLevelClient client =
+        (os.org.opensearch.client.RestHighLevelClient)
+            Entity.getSearchRepository().getSearchClient().getClient();
+    Map<String, Object> result = new HashMap<>();
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        getSearchRequest(
+            direction,
+            indexAlias,
+            null,
+            null,
+            Map.of(keyName, keyValues),
+            from,
+            size,
+            null,
+            null,
+            fieldsToRemove);
+    os.org.opensearch.action.search.SearchResponse searchResponse =
+        client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+    for (os.org.opensearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> esDoc = hit.getSourceAsMap();
+      result.put(esDoc.get(FQN_FIELD).toString(), hit.getSourceAsMap());
+    }
+    return result;
+  }
+
+  public static os.org.opensearch.action.search.SearchRequest getSearchRequest(
+      EntityRelationshipDirection direction,
+      String indexAlias,
+      String queryFilter,
+      String aggName,
+      Map<String, Set<String>> keysAndValues,
+      int from,
+      int size,
+      Boolean deleted,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove) {
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(indexAlias));
+    os.org.opensearch.search.builder.SearchSourceBuilder searchSourceBuilder =
+        new os.org.opensearch.search.builder.SearchSourceBuilder();
+    searchSourceBuilder.fetchSource(
+        listOrEmpty(fieldsToInclude).toArray(String[]::new),
+        listOrEmpty(fieldsToRemove).toArray(String[]::new));
+
+    searchSourceBuilder.query(getBoolQueriesWithShould(keysAndValues));
+    if (!CommonUtil.nullOrEmpty(deleted)) {
+      searchSourceBuilder.query(
+          os.org.opensearch.index.query.QueryBuilders.boolQuery()
+              .must(getBoolQueriesWithShould(keysAndValues))
+              .must(os.org.opensearch.index.query.QueryBuilders.termQuery("deleted", deleted)));
+    }
+    searchSourceBuilder.from(from);
+    searchSourceBuilder.size(size);
+
+    // This assumes here that the key has a keyword field
+    if (!nullOrEmpty(aggName)) {
+      searchSourceBuilder.aggregation(
+          os.org.opensearch.search.aggregations.AggregationBuilders.terms(aggName)
+              .field(getEntityRelationshipAggregationField(direction)));
+    }
+
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder);
+    return searchRequest;
+  }
+
+  public static String getEntityRelationshipAggregationField(
+      EntityRelationshipDirection direction) {
+    return direction == EntityRelationshipDirection.UPSTREAM
+        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+        : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
   }
 
   public static Map<String, Object> searchEntityByKey(

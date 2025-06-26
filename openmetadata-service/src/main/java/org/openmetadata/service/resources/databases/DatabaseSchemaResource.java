@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,7 +47,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -951,12 +951,5 @@ public class DatabaseSchemaResource
                 .withLayerFrom(from)
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
-  }
-
-  private Set<String> getRequiredEntityRelationshipFields(String includeSourceFields) {
-    if (includeSourceFields.equals("*")) {
-      return Set.of("*");
-    }
-    return Set.of(includeSourceFields.split(","));
   }
 }

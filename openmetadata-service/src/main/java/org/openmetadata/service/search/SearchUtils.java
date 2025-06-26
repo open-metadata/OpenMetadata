@@ -37,7 +37,7 @@ public final class SearchUtils {
   public static final String LINEAGE_AGGREGATION = "matchesPerKey";
   public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
   public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
-  public static final String ENTITY_RELATIONSHIP_AGGREGATION = "entityRelationshipAggregation";
+  public static final String ENTITY_RELATIONSHIP_AGGREGATION = "matchesPerKey";
   public static final String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
@@ -166,6 +166,18 @@ public final class SearchUtils {
     // Without these fields lineage can't be built
     requiredFields.addAll(
         Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
+    return requiredFields;
+  }
+
+  public static Set<String> getRequiredEntityRelationshipFields(String fields) {
+    if ("*".equals(fields)) {
+      return Collections.emptySet();
+    }
+    Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
+    SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
+    // Without these fields entity relationships can't be built
+    requiredFields.addAll(
+        Set.of("fullyQualifiedName", "fqnHash", "id", "entityType", "upstreamEntityRelationship"));
     return requiredFields;
   }
 

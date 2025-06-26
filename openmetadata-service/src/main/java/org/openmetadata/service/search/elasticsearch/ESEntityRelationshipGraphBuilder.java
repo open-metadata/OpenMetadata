@@ -16,6 +16,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -78,7 +79,7 @@ public class ESEntityRelationshipGraphBuilder {
         request,
         result,
         Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
-        request.getDownstreamDepth());
+        request.getDownstreamDepth() - 1);
     return result;
   }
 
@@ -159,59 +160,65 @@ public class ESEntityRelationshipGraphBuilder {
       return;
     }
 
-    // For downstream, we need to search for entities that have current entity as their upstream
-    // This is similar to how lineage downstream works - we find entities that depend on the current
-    // entity
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     Map<String, Set<String>> directionKeyAndValues =
         buildDirectionToFqnSet(entityRelationshipRequest.getDirectionValue(), hasToFqnMap.keySet());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            (EntityRelationshipDirection) null,
+            entityRelationshipRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             entityRelationshipRequest.getQueryFilter(),
             ENTITY_RELATIONSHIP_AGGREGATION,
             directionKeyAndValues,
-            0,
-            10000,
+            entityRelationshipRequest.getLayerFrom(),
+            entityRelationshipRequest.getLayerSize(),
             entityRelationshipRequest.getIncludeDeleted(),
             entityRelationshipRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
     for (SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> esDoc = hit.getSourceAsMap();
-      if (!esDoc.isEmpty()) {
-        String fqn = esDoc.get(FQN_FIELD).toString();
-        RelationshipRef fromEntity = getEntityRelationshipRef(esDoc);
+      Map<String, Object> entityMap = hit.getSourceAsMap();
+      if (!entityMap.isEmpty()) {
+        String fqn = entityMap.get(FQN_FIELD).toString();
+        RelationshipRef toEntity = getEntityRelationshipRef(entityMap);
+
+        // Add Paging Details per entity using aggregation buckets
+        es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms valueCountAgg =
+            searchResponse.getAggregations() != null
+                ? searchResponse.getAggregations().get(ENTITY_RELATIONSHIP_AGGREGATION)
+                : new ParsedStringTerms();
+        if (valueCountAgg != null) {
+          for (es.org.elasticsearch.search.aggregations.bucket.terms.Terms.Bucket bucket :
+              valueCountAgg.getBuckets()) {
+            String fqnFromHash = hasToFqnMap.get(bucket.getKeyAsString());
+            if (fqnFromHash != null && result.getNodes().containsKey(fqnFromHash)) {
+              NodeInformation nodeInformation = result.getNodes().get(fqnFromHash);
+              nodeInformation.setPaging(
+                  new LayerPaging().withEntityDownstreamCount((int) bucket.getDocCount()));
+              result.getNodes().put(fqnFromHash, nodeInformation);
+            }
+          }
+        }
+
+        if (!result.getNodes().containsKey(fqn)) {
+          hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fqn), fqn);
+          result
+              .getNodes()
+              .put(
+                  fqn,
+                  new NodeInformation()
+                      .withEntity(entityMap)
+                      .withPaging(new LayerPaging().withEntityDownstreamCount(0)));
+        }
+
         List<EsEntityRelationshipData> upStreamEntities =
-            getUpstreamEntityRelationshipListIfExist(esDoc);
-        result
-            .getNodes()
-            .putIfAbsent(
-                fqn,
-                new NodeInformation()
-                    .withEntity(esDoc)
-                    .withPaging(
-                        new LayerPaging().withEntityDownstreamCount(upStreamEntities.size())));
-
-        // For downstream: find entities that have the current entity in their upstream list
-        List<EsEntityRelationshipData> filteredDownstreamEntities =
-            upStreamEntities.stream()
-                .filter(data -> hasToFqnMap.containsKey(data.getEntity().getFqnHash()))
-                .toList();
-
-        List<EsEntityRelationshipData> paginatedDownstreamEntities =
-            paginateUpstreamEntityRelationships(
-                filteredDownstreamEntities,
-                entityRelationshipRequest.getLayerFrom(),
-                entityRelationshipRequest.getLayerSize());
-        for (EsEntityRelationshipData data : paginatedDownstreamEntities) {
-          EsEntityRelationshipData newEdge = data.withRelatedEntity(fromEntity);
-          result.getDownstreamEdges().putIfAbsent(data.getDocId(), newEdge);
-          String toFqn = newEdge.getRelatedEntity().getFullyQualifiedName();
-          if (!result.getNodes().containsKey(toFqn)) {
-            hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(toFqn), toFqn);
+            getUpstreamEntityRelationshipListIfExist(entityMap);
+        for (EsEntityRelationshipData data : upStreamEntities) {
+          if (hasToFqnMap.containsKey(data.getEntity().getFqnHash())) {
+            result
+                .getDownstreamEdges()
+                .putIfAbsent(data.getDocId(), data.withRelatedEntity(toEntity));
           }
         }
       }

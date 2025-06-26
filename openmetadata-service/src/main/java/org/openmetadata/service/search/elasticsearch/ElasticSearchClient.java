@@ -2674,7 +2674,16 @@ public class ElasticSearchClient implements SearchClient {
                             .EntityRelationshipDirection
                             .UPSTREAM)));
 
-    // Merge the results
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        var existingNode = upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        var existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // since paging from downstream is merged into upstream, we can just put the upstream result
     result.getNodes().putAll(upstreamResult.getNodes());
     result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
     return result;

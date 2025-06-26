@@ -83,8 +83,6 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.LayerPaging;
-import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -929,8 +927,8 @@ public class OpenSearchClient implements SearchClient {
     // Here we are merging everything from downstream paging into upstream paging
     for (var nodeFromDownstream : result.getNodes().entrySet()) {
       if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
-        LayerPaging existingPaging = existingNode.getPaging();
+        var existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
+        var existingPaging = existingNode.getPaging();
         existingPaging.setEntityDownstreamCount(
             nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
       }
@@ -2737,6 +2735,7 @@ public class OpenSearchClient implements SearchClient {
     // Merge the results
     result.getNodes().putAll(upstreamResult.getNodes());
     result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
     return result;
   }
 

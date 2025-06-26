@@ -501,21 +501,51 @@ public class DatabaseSchemaResourceTest
     Assertions.assertTrue(result.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
     Assertions.assertTrue(result.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
 
-    // 1 upstream edge, 1 downstream edge
-    System.out.println("Upstream edges: " + result.getUpstreamEdges());
-    System.out.println("Downstream edges: " + result.getDownstreamEdges());
-    assertEquals(1, result.getUpstreamEdges().size());
-    assertEquals(1, result.getDownstreamEdges().size());
+    // There should be 2 upstream and 2 downstream edges in total for the schema
+    assertEquals(2, result.getUpstreamEdges().size());
+    assertEquals(2, result.getDownstreamEdges().size());
 
-    // Check upstream edge: upstreamTable -> tableInSchema
-    EsEntityRelationshipData upEdge = result.getUpstreamEdges().values().iterator().next();
-    assertEquals(upstreamTable.getId(), upEdge.getEntity().getId());
-    assertEquals(tableInSchema.getId(), upEdge.getRelatedEntity().getId());
+    // Check upstream edges
+    Map<String, EsEntityRelationshipData> upEdges = result.getUpstreamEdges();
+    Table finalUpstreamTable = upstreamTable;
+    Table finalTableInSchema = tableInSchema;
+    Assertions.assertTrue(
+        upEdges.values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(finalUpstreamTable.getId())
+                        && e.getRelatedEntity().getId().equals(finalTableInSchema.getId())),
+        "Edge from upstreamTable to tableInSchema not found in upstream edges");
+    Table finalTableInSchema1 = tableInSchema;
+    Table finalDownstreamTable = downstreamTable;
+    Assertions.assertTrue(
+        upEdges.values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(finalTableInSchema1.getId())
+                        && e.getRelatedEntity().getId().equals(finalDownstreamTable.getId())),
+        "Edge from tableInSchema to downstreamTable not found in upstream edges");
 
-    // Check downstream edge: tableInSchema -> downstreamTable
-    EsEntityRelationshipData downEdge = result.getDownstreamEdges().values().iterator().next();
-    assertEquals(tableInSchema.getId(), downEdge.getEntity().getId());
-    assertEquals(downstreamTable.getId(), downEdge.getRelatedEntity().getId());
+    // Check downstream edges
+    Map<String, EsEntityRelationshipData> downEdges = result.getDownstreamEdges();
+    Table finalUpstreamTable1 = upstreamTable;
+    Table finalTableInSchema2 = tableInSchema;
+    Assertions.assertTrue(
+        downEdges.values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(finalUpstreamTable1.getId())
+                        && e.getRelatedEntity().getId().equals(finalTableInSchema2.getId())),
+        "Edge from upstreamTable to tableInSchema not found in downstream edges");
+    Table finalTableInSchema3 = tableInSchema;
+    Table finalDownstreamTable1 = downstreamTable;
+    Assertions.assertTrue(
+        downEdges.values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(finalTableInSchema3.getId())
+                        && e.getRelatedEntity().getId().equals(finalDownstreamTable1.getId())),
+        "Edge from tableInSchema to downstreamTable not found in downstream edges");
   }
 
   @Test
