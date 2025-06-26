@@ -165,7 +165,8 @@ class DbtCommonEnum(Enum):
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
 
 
-# DBT Supports more types of exposures but only these two map nicely
+# DBT Supports more types of exposures but only these map nicely
+# https://docs.getdbt.com/docs/build/exposures#available-properties
 ExposureTypeMap = {
     "dashboard": {"entity_type": Dashboard, "entity_type_name": "dashboard"},
     "ml": {"entity_type": MlModel, "entity_type_name": "mlmodel"},
