@@ -1,5 +1,5 @@
 ---
-title: hostNameConfig
+title: Host Name Config | OpenMetadata Hostname Config
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/hostnameconfig
 ---
 

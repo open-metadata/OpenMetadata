@@ -1,5 +1,5 @@
 ---
-title: threadCount
+title: Thread Count API | OpenMetadata Thread Count
 slug: /main-concepts/metadata-standard/schemas/api/feed/threadcount
 ---
 

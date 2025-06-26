@@ -1,5 +1,5 @@
 ---
-title: suggestion
+title: Suggestion Schema | OpenMetadata Suggestion
 slug: /main-concepts/metadata-standard/schemas/entity/feed/suggestion
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: appRunRecord
+title: App Run Record | OpenMetadata App Run Records
 slug: /main-concepts/metadata-standard/schemas/entity/applications/apprunrecord
 ---
 
