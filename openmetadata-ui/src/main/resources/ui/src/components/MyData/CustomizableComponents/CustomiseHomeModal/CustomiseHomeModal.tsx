@@ -12,11 +12,18 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
-import React, { useState } from 'react';
+import { AxiosError } from 'axios';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
+import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
+import { Document } from '../../../../generated/entity/docStore/document';
+import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
+import AllWidgetsContent from '../AllWidgetsContent/AllWidgetsContent';
 import './customise-home-modal.less';
 
 interface CustomiseHomeModalProps {
@@ -37,6 +44,51 @@ const CustomiseHomeModal = ({
     currentBackgroundColor ?? DEFAULT_HEADER_BG_COLOR
   );
 
+  const [widgets, setWidgets] = useState<Document[]>([]);
+  const [selectedWidgets, setSelectedWidgets] = useState<string[]>([]);
+  const [selectedKey, setSelectedKey] = useState('header-theme');
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const fetchWidgets = async () => {
+    try {
+      const { data } = await getAllKnowledgePanels({
+        fqnPrefix: 'KnowledgePanel',
+        limit: PAGE_SIZE_MEDIUM,
+      });
+      setWidgets(
+        data.filter(
+          (widget) =>
+            widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS
+        )
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchWidgets();
+  }, []);
+
+  const handleSelectWidget = (id: string) => {
+    setSelectedWidgets((prev) =>
+      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
+    );
+  };
+
+  const handleSidebarClick = (key: string) => {
+    if (key === 'header-theme' || key === 'all-widgets') {
+      setSelectedKey(key);
+    } else {
+      const target = contentRef.current?.querySelector(
+        `[data-widget-key="${key}"]`
+      );
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
   const customiseOptions = [
     {
       key: 'header-theme',
@@ -51,15 +103,57 @@ const CustomiseHomeModal = ({
     {
       key: 'all-widgets',
       label: t('label.all-widgets'),
-      component: <div>{t('label.all-widgets')}</div>,
+      component: (
+        <AllWidgetsContent
+          ref={contentRef}
+          selectedWidgets={selectedWidgets}
+          widgets={widgets}
+          onSelectWidget={handleSelectWidget}
+        />
+      ),
     },
   ];
 
-  const [selectedKey, setSelectedKey] = useState(customiseOptions[0].key);
+  const sidebarItems = [
+    ...customiseOptions.map(({ key, label }) => ({ key, label })),
+    ...widgets.map((widget) => ({
+      key: widget.fullyQualifiedName,
+      label: widget.name,
+    })),
+  ];
 
-  const selectedComponent = customiseOptions.find(
-    (item) => item.key === selectedKey
-  )?.component;
+  const selectedComponent = useMemo(() => {
+    return customiseOptions.find((item) => item.key === selectedKey)?.component;
+  }, [customiseOptions, selectedKey]);
+
+  const sidebarOptions = useMemo(() => {
+    return (
+      <>
+        {sidebarItems.map((item) => {
+          const isWidgetItem =
+            item.key !== 'header-theme' && item.key !== 'all-widgets';
+
+          const isAllWidgets = item.key === 'all-widgets';
+
+          return (
+            <div
+              className={`sidebar-option text-md font-semibold border-radius-xs cursor-pointer d-flex flex-wrap items-center
+          ${isWidgetItem ? 'sidebar-widget-item' : ''}
+          ${selectedKey === item.key ? 'active' : ''}`}
+              key={item.key}
+              onClick={() => handleSidebarClick(item.key)}>
+              <span>{item.label}</span>
+              {isAllWidgets && (
+                <span className="widget-count text-xs border-radius-md m-l-sm">
+                  {widgets.length}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </>
+    );
+  }, [sidebarItems, selectedKey, handleSidebarClick]);
 
   const handleApply = () => {
     if (onBackgroundColorUpdate) {
@@ -88,17 +182,7 @@ const CustomiseHomeModal = ({
       onCancel={onClose}>
       <Row className="customise-home-modal-body d-flex gap-1">
         <Col className="sidebar p-box sticky top-0 self-start">
-          {customiseOptions.map((item) => (
-            <div
-              className={`sidebar-option text-md font-semibold border-radius-xs cursor-pointer ${
-                selectedKey === item.key ? 'active' : ''
-              }`}
-              data-testid={`sidebar-option-${item.key}`}
-              key={item.key}
-              onClick={() => setSelectedKey(item.key)}>
-              {item.label}
-            </div>
-          ))}
+          {sidebarOptions}
         </Col>
         <Divider
           className="customise-home-modal-divider h-auto self-stretch"
