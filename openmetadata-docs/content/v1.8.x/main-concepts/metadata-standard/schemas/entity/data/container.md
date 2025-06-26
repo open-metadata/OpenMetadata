@@ -1,5 +1,5 @@
 ---
-title: container
+title: Container Schema | OpenMetadata Container
 slug: /main-concepts/metadata-standard/schemas/entity/data/container
 ---
 

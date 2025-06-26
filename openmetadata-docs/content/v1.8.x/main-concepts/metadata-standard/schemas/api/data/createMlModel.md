@@ -1,5 +1,5 @@
 ---
-title: createMlModel
+title: Create ML Model API | OpenMetadata ML Model API
 slug: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
 ---
 

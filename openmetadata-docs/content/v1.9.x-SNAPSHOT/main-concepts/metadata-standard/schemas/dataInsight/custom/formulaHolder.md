@@ -1,5 +1,5 @@
 ---
-title: formulaHolder
+title: Formula Holder | OpenMetadata Data Insight Formulas
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/formulaholder
 ---
 
