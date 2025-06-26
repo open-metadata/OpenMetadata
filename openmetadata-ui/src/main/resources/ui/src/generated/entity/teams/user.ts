@@ -102,7 +102,8 @@ export interface User {
     /**
      * Personas that the user assigned to.
      */
-    personas?: EntityReference[];
+    personas?:    EntityReference[];
+    preferences?: Preferences;
     /**
      * Profile of the user.
      */
@@ -527,6 +528,22 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+export interface Preferences {
+    /**
+     * Default page size for the user.
+     */
+    defaultPageSize?: number;
+    /**
+     * Background color of the home page banner.
+     */
+    homeBannerBgColor?: string;
+    /**
+     * List of columns to display in the table schema.
+     */
+    tableSchemaColumns?: string[];
+    [property: string]: any;
 }
 
 /**
