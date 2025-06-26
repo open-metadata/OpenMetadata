@@ -796,7 +796,9 @@ class DbtSource(DbtServiceSource):
         """
         entity_fqn = exposure_spec.name
 
-        entity_type = ExposureTypeMap.get(exposure_spec.type.value, {}).get("entity_type")
+        entity_type = ExposureTypeMap.get(exposure_spec.type.value, {}).get(
+            "entity_type"
+        )
 
         if not entity_type:
             logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
