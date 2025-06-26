@@ -79,7 +79,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 "org.apache.spark.sql.delta.catalog.DeltaCatalog",
             )
             # Download delta-core jars when creating the SparkSession
-            .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
+            .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.2.0")
         )
 
         # Check that the attribute exists and is properly informed
