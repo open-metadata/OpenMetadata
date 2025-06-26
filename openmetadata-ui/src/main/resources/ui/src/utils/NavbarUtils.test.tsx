@@ -13,7 +13,7 @@
 
 import { ROUTES } from '../constants/constants';
 import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
-import { URL_GITHUB_REPO } from '../constants/URL.constants';
+import { URL_OM_RELEASE_UPDATES } from '../constants/URL.constants';
 import { getHelpDropdownItems } from './NavbarUtils';
 
 describe('NavbarUtils test', () => {
@@ -30,7 +30,9 @@ describe('NavbarUtils test', () => {
     // Test external link
     const externalLink = helpDropdownItems[5].label.props.href;
 
-    expect(externalLink).toBe(URL_GITHUB_REPO);
+    expect(externalLink).toBe(
+      URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', version)
+    );
     expect(helpDropdownItems[5].label.props.target).toBe('_blank');
     expect(helpDropdownItems[5].label.props.rel).toBe('noreferrer');
 
