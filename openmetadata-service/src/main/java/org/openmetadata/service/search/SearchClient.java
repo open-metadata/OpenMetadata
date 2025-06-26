@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
@@ -324,6 +325,13 @@ public interface SearchClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData);
+
+  void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,

@@ -55,6 +55,7 @@ import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import es.org.elasticsearch.index.query.IdsQueryBuilder;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
 import es.org.elasticsearch.index.query.PrefixQueryBuilder;
@@ -65,6 +66,7 @@ import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import es.org.elasticsearch.index.reindex.ReindexRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
@@ -104,6 +106,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1745,6 +1748,33 @@ public class ElasticSearchClient implements SearchClient {
               params);
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
+
+    ReindexRequest request = new ReindexRequest();
+    request.setSourceIndices(sourceIndices.toArray(new String[0]));
+    request.setDestIndex(destinationIndex);
+    request.setDestPipeline(pipelineName);
+
+    // Add query to filter by IDs
+    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
+    idsQuery.addIds(queryIDs);
+    request.setSourceQuery(idsQuery);
+
+    try {
+      client.reindex(request, RequestOptions.DEFAULT);
+      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
+    } catch (IOException e) {
+      LOG.error("Failed to reindex entities: {}", e.getMessage());
     }
   }
 
