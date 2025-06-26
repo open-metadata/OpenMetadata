@@ -22,7 +22,9 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/trino/troubleshooting)
+{% collateContent %}
 - [Reverse Metadata](#reverse-metadata)
+{% /collateContent %}
 
 {% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/trino/yaml"} /%}
 
@@ -117,6 +119,8 @@ Find more details in [the Python requests library documentation](https://request
 
 {% /stepsContainer %}
 
+{% collateContent %}
 {% partial file="/v1.8/connectors/database/trino/reverse-metadata.md" /%}
+{% /collateContent %}
 
 {% partial file="/v1.8/connectors/database/related.md" /%}
