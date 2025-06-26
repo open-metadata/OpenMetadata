@@ -242,7 +242,7 @@ const CuratedAssetsWidget = ({
 
   const renderHeader = useMemo(
     () => (
-      <Row justify="space-between">
+      <Row className="curated-assets-header" justify="space-between">
         <Col className="d-flex items-center h-full min-h-8">
           {sourceIcon && title && (
             <div className="d-flex h-6 w-6 m-r-sm">{sourceIcon}</div>
@@ -345,7 +345,8 @@ const CuratedAssetsWidget = ({
 
   const renderFooter = useMemo(() => {
     return (
-      <div className="widget-footer">
+      <Row className="curated-assets-footer">
+        {/* <div className="widget-footer"> */}
         <Divider className="mb-0 mt-0" />
         <Button
           className="text-primary hover:underline w-full  footer-view-more-button"
@@ -357,7 +358,8 @@ const CuratedAssetsWidget = ({
 
           <ArrowRightOutlined />
         </Button>
-      </div>
+        {/* </div> */}
+      </Row>
     );
   }, [t, handleModalOpen, viewMoreCount, queryURL]);
 
