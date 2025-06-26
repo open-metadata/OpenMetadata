@@ -1,5 +1,5 @@
 ---
-title: jwtAuth
+title: JWT Auth Schema | OpenMetadata JWT Authentication
 slug: /main-concepts/metadata-standard/schemas/auth/jwtauth
 ---
 

@@ -132,6 +132,12 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         'Custom Properties'
       );
 
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Dashboard'
+      );
+
       // Select Custom Property Field when we want filter
       await page
         .locator(
@@ -159,12 +165,14 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       // Validate if filter dashboard appeared
 
-      expect(page.getByTestId('advance-search-filter-text')).toContainText(
-        `extension.${propertyName} = '${propertyValue}'`
+      await expect(
+        page.getByTestId('advance-search-filter-text')
+      ).toContainText(
+        `extension.dashboard.${propertyName} = '${propertyValue}'`
       );
 
-      expect(
-        page.getByTestId('entity-header-display-name').first()
+      await expect(
+        page.getByTestId('entity-header-display-name')
       ).toContainText(dashboardEntity.entity.displayName);
     }
   );

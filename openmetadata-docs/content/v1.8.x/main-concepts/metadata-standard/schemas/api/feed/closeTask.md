@@ -1,5 +1,5 @@
 ---
-title: closeTask
+title: Close Task API | OpenMetadata Close Task API
 slug: /main-concepts/metadata-standard/schemas/api/feed/closetask
 ---
 
