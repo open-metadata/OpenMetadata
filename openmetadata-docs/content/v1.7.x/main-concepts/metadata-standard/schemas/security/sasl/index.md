@@ -1,5 +1,5 @@
 ---
-title: index
+title: SASL Schema | OpenMetadata SASL Schema Overview
 slug: /main-concepts/metadata-standard/schemas/security/sasl
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: tableConfig
+title: Table Config | OpenMetadata Table Config Information
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/tableconfig
 ---
 

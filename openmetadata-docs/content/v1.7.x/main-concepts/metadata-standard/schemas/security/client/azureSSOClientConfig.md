@@ -1,5 +1,5 @@
 ---
-title: azureSSOClientConfig
+title: azureSSOClientConfig | OpenMetadata Azure SSO Client
 slug: /main-concepts/metadata-standard/schemas/security/client/azuressoclientconfig
 ---
 

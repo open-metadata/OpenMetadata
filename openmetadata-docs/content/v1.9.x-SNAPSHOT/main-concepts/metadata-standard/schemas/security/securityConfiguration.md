@@ -1,5 +1,5 @@
 ---
-title: securityConfiguration
+title: securityConfiguration | OpenMetadata Security Config
 slug: /main-concepts/metadata-standard/schemas/security/securityconfiguration
 ---
 

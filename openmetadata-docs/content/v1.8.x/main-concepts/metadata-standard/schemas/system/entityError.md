@@ -1,5 +1,5 @@
 ---
-title: entityError
+title: Entity Error Schema | OpenMetadata Entity Error Details
 slug: /main-concepts/metadata-standard/schemas/system/entityerror
 ---
 

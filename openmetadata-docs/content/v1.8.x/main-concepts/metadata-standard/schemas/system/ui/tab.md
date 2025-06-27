@@ -1,5 +1,5 @@
 ---
-title: tab
+title: Tab Schema | OpenMetadata Tab Schema Information
 slug: /main-concepts/metadata-standard/schemas/system/ui/tab
 ---
 

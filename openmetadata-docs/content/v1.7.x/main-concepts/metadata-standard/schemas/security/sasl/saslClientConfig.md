@@ -1,5 +1,5 @@
 ---
-title: saslClientConfig
+title: saslClientConfig | OpenMetadata SASL Client Config
 slug: /main-concepts/metadata-standard/schemas/security/sasl/saslclientconfig
 ---
 

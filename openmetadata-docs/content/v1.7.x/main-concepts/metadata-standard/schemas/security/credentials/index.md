@@ -1,5 +1,5 @@
 ---
-title: index
+title: index | OpenMetadata Security Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials
 ---
 

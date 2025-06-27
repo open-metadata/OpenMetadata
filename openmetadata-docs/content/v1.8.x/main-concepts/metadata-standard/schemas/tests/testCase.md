@@ -1,5 +1,5 @@
 ---
-title: testCase
+title: Test Case | OpenMetadata Test Case Information
 slug: /main-concepts/metadata-standard/schemas/tests/testcase
 ---
 

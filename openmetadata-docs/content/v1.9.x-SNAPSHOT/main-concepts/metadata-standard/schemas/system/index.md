@@ -1,5 +1,5 @@
 ---
-title: index
+title: System Schema | OpenMetadata System Schema Overview
 slug: /main-concepts/metadata-standard/schemas/system
 ---
 

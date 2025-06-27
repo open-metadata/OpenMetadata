@@ -1,5 +1,5 @@
 ---
-title: changeEventType
+title: changeEventType | OpenMetadata Change Event Type
 slug: /main-concepts/metadata-standard/schemas/type/changeeventtype
 noindex: true
 nofollow: true

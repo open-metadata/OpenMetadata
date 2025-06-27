@@ -1,5 +1,5 @@
 ---
-title: verifySSLConfig
+title: verifySSLConfig | OpenMetadata SSL Verify Config
 slug: /main-concepts/metadata-standard/schemas/security/ssl/verifysslconfig
 ---
 

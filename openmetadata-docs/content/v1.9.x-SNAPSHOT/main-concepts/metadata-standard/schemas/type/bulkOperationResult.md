@@ -1,5 +1,5 @@
 ---
-title: bulkOperationResult
+title: bulkOperationResult | OpenMetadata Bulk Operation Result
 slug: /main-concepts/metadata-standard/schemas/type/bulkoperationresult
 ---
 

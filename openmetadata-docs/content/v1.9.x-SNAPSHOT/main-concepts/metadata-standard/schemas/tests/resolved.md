@@ -1,5 +1,5 @@
 ---
-title: resolved
+title: Test Resolved | OpenMetadata Test Resolved Details
 slug: /main-concepts/metadata-standard/schemas/tests/resolved
 ---
 

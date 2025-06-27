@@ -1,5 +1,5 @@
 ---
-title: basic
+title: Basic Schema | OpenMetadata Basic Schema Details
 slug: /main-concepts/metadata-standard/schemas/type/basic
 ---
 

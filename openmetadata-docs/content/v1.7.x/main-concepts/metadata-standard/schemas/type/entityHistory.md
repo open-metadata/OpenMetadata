@@ -1,5 +1,5 @@
 ---
-title: entityHistory
+title: entityHistory | OpenMetadata Entity History
 slug: /main-concepts/metadata-standard/schemas/type/entityhistory
 ---
 

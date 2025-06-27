@@ -1,5 +1,5 @@
 ---
-title: knowledgePanel
+title: knowledgePanel | OpenMetadata Knowledge Panel
 slug: /main-concepts/metadata-standard/schemas/system/ui/knowledgepanel
 ---
 

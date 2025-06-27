@@ -1,5 +1,5 @@
 ---
-title: index
+title: Monitoring Schema | OpenMetadata Monitoring Schema Details
 slug: /main-concepts/metadata-standard/schemas/monitoring
 ---
 

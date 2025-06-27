@@ -1,5 +1,5 @@
 ---
-title: bitbucketCredentials
+title: bitbucketCredentials | OpenMetadata Bitbucket Credentials
 slug: /main-concepts/metadata-standard/schemas/security/credentials/bitbucketcredentials
 ---
 
