@@ -103,8 +103,8 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertGreaterEqual(
-                self.expected_filtered_sink_mix(),
                 (len(sink_status.records) + len(sink_status.updated_records)),
+                self.expected_filtered_sink_mix(),
             )
 
         @staticmethod
