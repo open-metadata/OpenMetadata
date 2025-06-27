@@ -45,9 +45,7 @@ test.describe('Explore Sort Order Filter', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await page.waitForLoadState('networkidle');
 
       await page.getByRole('button', { name: 'Data Assets' }).click();
 
