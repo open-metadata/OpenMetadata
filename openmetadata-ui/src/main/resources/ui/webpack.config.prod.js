@@ -42,8 +42,10 @@ module.exports = {
     chunkFilename: '[name].[fullhash].js',
     // Clean the output directory before emit.
     clean: true,
-    // Ensures bundle is served from absolute path as opposed to relative
-    publicPath: '/',
+    // Use exactly the same ${basePath} pattern as in index.html
+    // The HTML uses: href="${basePath}favicon.png" (no slash after basePath)
+    // So webpack should use the same pattern
+    publicPath: '${basePath}',
   },
 
   // Loaders

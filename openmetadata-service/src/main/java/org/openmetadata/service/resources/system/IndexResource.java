@@ -24,7 +24,12 @@ public class IndexResource {
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.indexHtml = this.indexHtml.replace("${basePath}", config.getBasePath());
+    // Remove trailing slash from basePath to avoid double slashes in webpack-generated assets
+    String basePath = config.getBasePath();
+    if (basePath.endsWith("/")) {
+      basePath = basePath.substring(0, basePath.length() - 1);
+    }
+    this.indexHtml = this.indexHtml.replace("${basePath}", basePath);
   }
 
   public static String getIndexFile(String basePath) {
