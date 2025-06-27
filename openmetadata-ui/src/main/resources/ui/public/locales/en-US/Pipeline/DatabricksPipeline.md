@@ -8,6 +8,16 @@ To learn more about the Databricks Connection Details (`hostPort`,`token`, `http
 
 You can find further information on the Databricks Pipeline connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/databrickspipeline).
 
+## Lineage Requirements
+
+To enable lineage extraction for Databricks pipelines, the user associated with the provided token must have `SELECT` privileges on the following system tables:
+
+- `system.access.table_lineage` - Required for table-level lineage information
+- `system.access.column_lineage` - Required for column-level lineage information
+
+Without these permissions, the lineage extraction step will fail with an access error. Ensure your Databricks workspace administrator has granted the necessary permissions to the user whose token is being used for the connection.
+
+
 ## Connection Details
 
 $$section
@@ -23,13 +33,6 @@ $$
 $$section
 ### Connection Timeout $(id="connectionTimeout")
 Connection timeout in seconds. The default value is 120 seconds if not specified.
-$$
-
-$$section
-### Warehouse ID $(id="warehouseId")
-Databricks warehouse ID. If not provided, lineage will NOT be extracted. E.g., `abc123def456`.
-You can find your warehouse ID On the warehouse details page under the `Properties` tab.
-The token user will need `SELECT` privilege on `system.access.table_lineage` and `system.access.column_lineage` tables.
 $$
 
 $$section

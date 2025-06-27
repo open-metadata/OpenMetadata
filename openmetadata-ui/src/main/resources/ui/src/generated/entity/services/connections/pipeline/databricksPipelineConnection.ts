@@ -40,10 +40,6 @@ export interface DatabricksPipelineConnection {
      * Service Type
      */
     type?: DatabricksType;
-    /**
-     * Databricks warehouse ID. If not provided, lineage will not be extracted.
-     */
-    warehouseId?: string;
 }
 
 /**

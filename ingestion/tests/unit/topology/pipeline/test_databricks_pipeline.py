@@ -76,7 +76,6 @@ mock_databricks_config = {
                 "type": "DatabricksPipeline",
                 "token": "random_token",
                 "hostPort": "localhost:443",
-                "warehouseId": "abc123def456",
                 "connectionTimeout": 120,
                 "connectionArguments": {
                     "http_path": "sql/1.0/endpoints/path",

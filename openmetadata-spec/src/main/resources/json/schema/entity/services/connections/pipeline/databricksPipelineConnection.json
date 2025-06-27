@@ -33,12 +33,6 @@
       "type": "string",
       "format": "password"
     },
-    "warehouseId": {
-      "title": "Warehouse ID",
-      "description": "Databricks warehouse ID. If not provided, lineage will not be extracted.",
-      "type": "string",
-      "default": null
-    },
     "connectionTimeout": {
       "title": "Connection Timeout",
       "description": "Connection timeout in seconds.",

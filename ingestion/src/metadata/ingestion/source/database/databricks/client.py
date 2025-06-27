@@ -12,12 +12,13 @@
 Client to interact with databricks apis
 """
 import json
-import time
 import traceback
 from datetime import timedelta
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 import requests
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
@@ -57,15 +58,13 @@ class DatabricksClient:
     """
 
     def __init__(
-        self, config: Union[DatabricksConnection, DatabricksPipelineConnection]
+        self,
+        config: Union[DatabricksConnection, DatabricksPipelineConnection],
+        engine: Optional[Engine] = None,
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
         auth_token = self.config.token.get_secret_value()
-        self.warehouseId = None
-        if isinstance(self.config, DatabricksPipelineConnection):
-            self.warehouseId = self.config.warehouseId
-
         self.base_url = f"https://{base_url}{API_VERSION}"
         self.base_query_url = f"{self.base_url}{QUERIES_PATH}"
         self.base_job_url = f"https://{base_url}{JOB_API_VERSION}/jobs"
@@ -80,6 +79,7 @@ class DatabricksClient:
         self.job_column_lineage: dict[
             str, dict[Tuple[str, str], list[Tuple[str, str]]]
         ] = {}
+        self.engine = engine
         self.client = requests
 
     def test_query_api_access(self) -> None:
@@ -88,6 +88,26 @@ class DatabricksClient:
         )
         if res.status_code != 200:
             raise APIError(res.json)
+
+    def test_lineage_query(self) -> None:
+        try:
+            with self.engine.connect() as connection:
+                test_table_lineage = connection.execute(
+                    text(DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB + " LIMIT 1")
+                )
+                test_column_lineage = connection.execute(
+                    text(DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB + " LIMIT 1")
+                )
+                # Check if queries executed successfully by fetching results
+                table_result = test_table_lineage.fetchone()
+                column_result = test_column_lineage.fetchone()
+                logger.info("Lineage queries executed successfully")
+        except Exception as exc:
+            logger.debug(f"Error testing lineage queries: {traceback.format_exc()}")
+            raise DatabricksClientException(
+                f"Failed to test lineage queries Make sure you have access"
+                "to the tables table_lineage and column_lineage: {exc}"
+            )
 
     def _run_query_paginator(self, data, result, end_time, response):
         while True:
@@ -277,49 +297,9 @@ class DatabricksClient:
         Method runs a lineage query and returns the result
         """
         try:
-            query = {
-                "statement": query,
-                "warehouse_id": str(self.warehouseId),
-                "catalog": "system",
-                "schema": "access",
-            }
-            response = self.client.post(
-                f"{self.base_url}/sql/statements/",
-                json=query,
-                headers=self.headers,
-                timeout=self.api_timeout,
-            ).json()
-            if response.get("error"):
-                raise DatabricksClientException(response.get("error"))
-
-            # Wait for query to complete
-            if response.get("status", {}).get("state") != "SUCCEEDED" and response.get(
-                "statement_id"
-            ):
-                retries = 0
-                while (
-                    response.get("status", {}).get("state") != "SUCCEEDED"
-                    and retries < MAX_RETRIES
-                ):
-                    retries += 1
-                    time.sleep(RETRY_INTERVAL)
-                    # Check query status
-                    response = self.client.get(
-                        f"{self.base_url}/sql/statements/{response.get('statement_id')}",
-                        headers=self.headers,
-                        timeout=self.api_timeout,
-                    ).json()
-                    if response.get("error"):
-                        raise DatabricksClientException(response.get("error"))
-
-                if response.get("status", {}).get("state") != "SUCCEEDED":
-                    logger.warning(
-                        f"Query did not complete successfully after {MAX_RETRIES} retries. Final status: {response.get('status',{}).get('state')}"
-                    )
-                    return
-
-            if response.get("result") and response["result"].get("data_array"):
-                return response["result"]["data_array"]
+            with self.engine.connect() as connection:
+                result = connection.execute(text(query))
+                return result
 
         except Exception as exc:
             logger.debug(f"Error caching table lineage due to {traceback.format_exc()}")
@@ -330,20 +310,17 @@ class DatabricksClient:
         """
         Method caches table and column lineage for a job by the specified job_id
         """
-        if self.warehouseId is None:
-            logger.info("Warehouse ID is not set, skipping lineage caching")
-            return
-        logger.info(f"Caching table lineage for warehouse {self.warehouseId}")
+        logger.info(f"Caching table lineage")
         table_lineage = self.run_lineage_query(DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB)
         if table_lineage:
             for row in table_lineage:
                 try:
-                    if row[0] not in self.job_table_lineage:
-                        self.job_table_lineage[row[0]] = []
-                    self.job_table_lineage[row[0]].append(
+                    if row.job_id not in self.job_table_lineage:
+                        self.job_table_lineage[row.job_id] = []
+                    self.job_table_lineage[row.job_id].append(
                         {
-                            "source_table_full_name": row[2],
-                            "target_table_full_name": row[3],
+                            "source_table_full_name": row.source_table_full_name,
+                            "target_table_full_name": row.target_table_full_name,
                         }
                     )
                 except Exception as exc:
@@ -360,21 +337,21 @@ class DatabricksClient:
             for row in column_lineage:
                 try:
                     table_key = (
-                        row[2],
-                        row[4],
-                    )  # (source_table_full_name, target_table_full_name)
+                        row.source_table_full_name,
+                        row.target_table_full_name,
+                    )
                     column_pair = (
-                        row[3],
-                        row[5],
-                    )  # (source_column_name, target_column_name)
+                        row.source_column_name,
+                        row.target_column_name,
+                    )
 
-                    if row[0] not in self.job_column_lineage:
-                        self.job_column_lineage[row[0]] = {}
+                    if row.job_id not in self.job_column_lineage:
+                        self.job_column_lineage[row.job_id] = {}
 
-                    if table_key not in self.job_column_lineage[row[0]]:
-                        self.job_column_lineage[row[0]][table_key] = []
+                    if table_key not in self.job_column_lineage[row.job_id]:
+                        self.job_column_lineage[row.job_id][table_key] = []
 
-                    self.job_column_lineage[row[0]][table_key].append(column_pair)
+                    self.job_column_lineage[row.job_id][table_key].append(column_pair)
 
                 except Exception as exc:
                     logger.debug(
