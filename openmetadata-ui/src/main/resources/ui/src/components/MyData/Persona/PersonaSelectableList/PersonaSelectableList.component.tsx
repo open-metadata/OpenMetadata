@@ -13,14 +13,22 @@
 import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
 
+import { debounce } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { DEBOUNCE_TIMEOUT } from '../../../../constants/Lineage.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
@@ -155,6 +163,26 @@ export const PersonaSelectableList = ({
     });
   };
 
+  // Debounced search handler
+  const debouncedHandleSearch = useMemo(
+    () =>
+      debounce(async (value: string) => {
+        const { data } = await fetchOptions(value);
+        setSelectOptions(data);
+      }, DEBOUNCE_TIMEOUT),
+    [fetchOptions]
+  );
+  const handleDropdownVisibleChange = useCallback(
+    async (open: boolean) => {
+      setIsDropdownOpen(open);
+      if (open) {
+        const { data } = await fetchOptions('');
+        setSelectOptions(data);
+      }
+    },
+    [fetchOptions]
+  );
+
   if (!hasPermission) {
     return null;
   }
@@ -218,9 +246,8 @@ export const PersonaSelectableList = ({
                 );
                 setCurrentlySelectedPersonas(selectedPersonasList);
               }}
-              onDropdownVisibleChange={(open) => {
-                setIsDropdownOpen(open);
-              }}
+              onDropdownVisibleChange={handleDropdownVisibleChange}
+              onSearch={debouncedHandleSearch}
             />
           </div>
 
