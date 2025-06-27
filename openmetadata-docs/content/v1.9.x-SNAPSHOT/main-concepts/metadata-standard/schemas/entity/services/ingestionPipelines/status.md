@@ -1,5 +1,5 @@
 ---
-title: status
+title: Status | OpenMetadata Pipeline Status and Monitoring
 slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipelines/status
 ---
 

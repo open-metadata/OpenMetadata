@@ -1,5 +1,5 @@
 ---
-title: index
+title: Events API | OpenMetadata Events API Documentation
 slug: /main-concepts/metadata-standard/schemas/events/api
 ---
 

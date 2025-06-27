@@ -1,5 +1,5 @@
 ---
-title: storageService
+title: Storage Service | OpenMetadata Storage Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 ---
 

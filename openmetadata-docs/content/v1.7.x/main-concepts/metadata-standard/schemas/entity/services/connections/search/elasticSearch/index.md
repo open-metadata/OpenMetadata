@@ -1,5 +1,5 @@
 ---
-title: index
+title: Elasticsearch Connection | OpenMetadata Elasticsearch
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: s3Connection
+title: S3 Connection | OpenMetadata Amazon S3 Storage Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/s3connection
 ---
 

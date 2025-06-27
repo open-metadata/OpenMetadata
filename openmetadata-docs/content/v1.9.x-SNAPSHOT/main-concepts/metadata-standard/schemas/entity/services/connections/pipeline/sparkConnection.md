@@ -1,5 +1,5 @@
 ---
-title: sparkConnection
+title: Spark Connection | OpenMetadata Apache Spark Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/sparkconnection
 ---
 

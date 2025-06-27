@@ -1,5 +1,5 @@
 ---
-title: testConnectionResult
+title: Test Connection Result | OpenMetadata Test Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/testconnectionresult
 ---
 

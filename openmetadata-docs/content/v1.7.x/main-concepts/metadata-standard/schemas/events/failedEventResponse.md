@@ -1,5 +1,5 @@
 ---
-title: failedEventResponse
+title: failedEventResponse | OpenMetadata Failed Event Response
 slug: /main-concepts/metadata-standard/schemas/events/failedeventresponse
 ---
 

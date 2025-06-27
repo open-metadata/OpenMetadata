@@ -1,5 +1,5 @@
 ---
-title: metadataService
+title: Metadata Service | OpenMetadata Metadata Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 ---
 

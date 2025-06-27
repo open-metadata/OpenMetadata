@@ -1,5 +1,5 @@
 ---
-title: role
+title: Role | OpenMetadata Role API and Permissions
 slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 ---
 

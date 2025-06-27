@@ -1,5 +1,5 @@
 ---
-title: backendConnection
+title: Backend Connection | OpenMetadata Backend
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/backendconnection
 ---
 

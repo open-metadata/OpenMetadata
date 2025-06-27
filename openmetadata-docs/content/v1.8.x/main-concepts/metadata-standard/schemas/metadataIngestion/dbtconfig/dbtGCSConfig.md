@@ -1,5 +1,5 @@
 ---
-title: dbtGCSConfig
+title: dbtGCSConfig | OpenMetadata dbt GCS Config
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: servicesCount
+title: servicesCount | OpenMetadata Service Count
 slug: /main-concepts/metadata-standard/schemas/entity/utils/servicescount
 ---
 

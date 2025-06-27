@@ -1,5 +1,5 @@
 ---
-title: statusContext
+title: statusContext | OpenMetadata Status Context
 slug: /main-concepts/metadata-standard/schemas/events/statuscontext
 ---
 

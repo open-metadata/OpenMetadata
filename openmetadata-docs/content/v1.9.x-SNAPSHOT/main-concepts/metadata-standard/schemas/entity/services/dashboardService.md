@@ -1,5 +1,5 @@
 ---
-title: dashboardService
+title: Dashboard Service | OpenMetadata Dashboard Service
 slug: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
 ---
 

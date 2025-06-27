@@ -1,5 +1,5 @@
 ---
-title: atlasConnection
+title: Atlas Connection | OpenMetadata Apache Atlas Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/atlasconnection
 ---
 

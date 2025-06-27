@@ -1,5 +1,5 @@
 ---
-title: endEvent
+title: End Event | OpenMetadata End Event Details
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/endevent/endevent
 ---
 

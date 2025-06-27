@@ -1,5 +1,5 @@
 ---
-title: apiAuth
+title: API Auth | OpenMetadata API Authentication Details
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch/apiauth
 ---
 

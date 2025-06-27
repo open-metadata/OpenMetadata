@@ -1,5 +1,5 @@
 ---
-title: dbtLocalConfig
+title: dbtLocalConfig | OpenMetadata dbt Local Config
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtlocalconfig
 ---
 

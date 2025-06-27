@@ -1,5 +1,5 @@
 ---
-title: gcsConnection
+title: GCS Connection | OpenMetadata Google Cloud Storage Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/gcsconnection
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: failedEvent
+title: Failed Event Schema | OpenMetadata Failed Event Information
 slug: /main-concepts/metadata-standard/schemas/events/failedevent
 ---
 

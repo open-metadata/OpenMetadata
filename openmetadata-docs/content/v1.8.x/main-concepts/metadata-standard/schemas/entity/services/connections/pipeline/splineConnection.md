@@ -1,5 +1,5 @@
 ---
-title: splineConnection
+title: Spline Connection | OpenMetadata Spline Lineage Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/splineconnection
 ---
 

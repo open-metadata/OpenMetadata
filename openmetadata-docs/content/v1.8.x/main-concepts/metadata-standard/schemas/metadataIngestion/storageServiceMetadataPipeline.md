@@ -1,5 +1,5 @@
 ---
-title: storageServiceMetadataPipeline
+title: Storage Ingestion | OpenMetadata Storage Ingestion Overview
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storageservicemetadatapipeline
 ---
 

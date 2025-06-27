@@ -1,5 +1,5 @@
 ---
-title: stitchConnection
+title: Stitch Connection | OpenMetadata Stitch Pipeline Connection
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/stitchconnection
 ---
 

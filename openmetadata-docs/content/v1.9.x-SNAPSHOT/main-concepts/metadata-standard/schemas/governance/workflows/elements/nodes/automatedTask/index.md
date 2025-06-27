@@ -1,5 +1,5 @@
 ---
-title: index
+title: index | OpenMetadata Automated Task Node
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/automatedtask
 ---
 

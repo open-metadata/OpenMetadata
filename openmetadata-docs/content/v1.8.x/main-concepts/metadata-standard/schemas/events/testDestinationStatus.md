@@ -1,5 +1,5 @@
 ---
-title: testDestinationStatus
+title: testDestinationStatus | OpenMetadata Test Destination Status
 slug: /main-concepts/metadata-standard/schemas/events/testdestinationstatus
 ---
 
