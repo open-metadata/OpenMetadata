@@ -19,7 +19,7 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -29,7 +29,7 @@ You can find the connectors list [here](/connectors).
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Amundsen ingestion, you will need to install:
 
@@ -102,7 +102,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
@@ -144,10 +144,10 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

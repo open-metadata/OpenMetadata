@@ -11,7 +11,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 ## Docker Deployment Architecture
 
-{% image src="/images/v1.9deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
+{% image src="/images/v1.9/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 For Production Deployment using Docker, we recommend bringing your own Databases and ElasticSearch Engine and not rely on quickstart packages.
 
-{% partial file="/v1.9deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
+{% partial file="/v1.9/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
 
 ### Docker (version 20.10.0 or higher)
 
@@ -362,7 +362,7 @@ Restart the OpenMetadata Docker Compose Application using `docker compose --env-
 
 ### PostgreSQL Issue permission denied to create extension "pgcrypto"
 
-{% partial file="/v1.9deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+{% partial file="/v1.9/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
 {%note%}
 

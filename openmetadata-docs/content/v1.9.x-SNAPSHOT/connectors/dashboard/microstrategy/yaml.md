@@ -18,7 +18,7 @@ Configure and schedule MicroStrategy metadata and profiler workflows from the Op
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -26,7 +26,7 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the MicroStrategy ingestion, you will need to install:
 
@@ -90,11 +90,11 @@ If you're using demo account for Microstrategy, it will be needed to authenticat
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -124,14 +124,14 @@ source:
       loginMode: "1"
 ```
 
-{% partial file="/v1.9connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

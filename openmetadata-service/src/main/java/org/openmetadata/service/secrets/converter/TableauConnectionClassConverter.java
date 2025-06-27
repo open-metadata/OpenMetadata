@@ -4,7 +4,7 @@ import java.util.List;
 import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class TableauConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> CONNECTION_CLASSES =

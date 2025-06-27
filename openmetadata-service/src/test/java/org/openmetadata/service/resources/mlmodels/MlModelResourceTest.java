@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.MlStore;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -68,7 +69,6 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j

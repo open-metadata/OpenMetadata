@@ -30,7 +30,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {

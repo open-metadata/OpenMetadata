@@ -22,7 +22,7 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/presto/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/presto/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/presto/yaml"} /%}
 
 ## Requirements
 
@@ -36,12 +36,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Presto", 
-    selectServicePath: "/images/v1.9connectors/presto/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/presto/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/presto/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/presto/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/presto/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/presto/service-connection.png",
 } 
 /%}
 
@@ -56,16 +56,16 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **Catalog**: Presto offers a catalog feature where all the databases are stored.
 - **DatabaseSchema**: DatabaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}
