@@ -65,7 +65,7 @@ const ProfilePicture = ({
   const getAvatarByName = () => {
     return (
       <Avatar
-        className={classNames('flex-center', className)}
+        className={classNames('flex-center flex-shrink', className)}
         data-testid="profile-avatar"
         icon={character}
         shape={type}
