@@ -22,8 +22,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Switch to branch (if manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git checkout ${{ github.event.inputs.branch }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
