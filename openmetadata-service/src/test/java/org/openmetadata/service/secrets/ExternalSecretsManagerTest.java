@@ -20,8 +20,8 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ExternalSecretsManagerTest {
   protected ExternalSecretsManager secretsManager;

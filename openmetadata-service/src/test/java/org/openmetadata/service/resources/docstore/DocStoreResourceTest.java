@@ -45,10 +45,10 @@ import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j

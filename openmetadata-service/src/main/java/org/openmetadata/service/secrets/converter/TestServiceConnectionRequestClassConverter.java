@@ -23,8 +23,8 @@ import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReflectionUtil;
 
 /** Converter class to get an `TestServiceConnectionRequest` object. */

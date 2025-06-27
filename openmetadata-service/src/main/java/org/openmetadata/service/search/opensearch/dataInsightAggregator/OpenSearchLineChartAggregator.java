@@ -13,9 +13,9 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.index.query.QueryBuilder;

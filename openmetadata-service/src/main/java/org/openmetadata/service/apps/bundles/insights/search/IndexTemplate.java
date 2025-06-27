@@ -4,7 +4,7 @@ import static org.openmetadata.service.apps.bundles.insights.search.DataInsights
 
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class IndexTemplate {
   public static final String COMPOSED_OF = "composed_of";
