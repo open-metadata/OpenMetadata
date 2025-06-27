@@ -50,6 +50,12 @@ public class TestDefinitionResourceTest
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName(
             "columnValuesMissingCount", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION4 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToBeBetween", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION5 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToEqual", "owners", ADMIN_AUTH_HEADERS);
   }
 
   @Test
