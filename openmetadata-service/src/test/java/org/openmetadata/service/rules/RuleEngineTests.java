@@ -8,14 +8,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 public class RuleEngineTests extends OpenMetadataApplicationTest {
   private static final String C1 = "id";
   private static final String C2 = "name";
   private static final String C3 = "description";
   private static final String EMAIL_COL = "email";
+
+  private static final String GLOSSARY_TERM_RULE = "Tables can only have a single Glossary Term";
 
   Table getMockTable(TestInfo test) {
     return new Table()
@@ -43,34 +51,113 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testValidateDefaultRules(TestInfo test) {
+  void testMultipleUsersOrSingleTeamOwnership(TestInfo test) {
     Table table = getMockTable(test);
 
-    // we're passing no extra rules, just using the ones on the default settings (no more than 1
-    // owner)
+    // No owners, should pass
     RuleEngine.getInstance().evaluate(table);
 
-    Table tableWithOneOwner =
-        table.withOwners(
-            List.of(
-                new org.openmetadata.schema.type.EntityReference()
-                    .withId(UUID.randomUUID())
-                    .withName("owner1")));
-    RuleEngine.getInstance().evaluate(tableWithOneOwner);
+    // Single user ownership, should pass
+    table.withOwners(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("user1")));
+    RuleEngine.getInstance().evaluate(table);
 
-    Table tableWithOwners =
-        table.withOwners(
-            List.of(
-                new org.openmetadata.schema.type.EntityReference()
-                    .withId(UUID.randomUUID())
-                    .withName("owner1"),
-                new org.openmetadata.schema.type.EntityReference()
-                    .withId(UUID.randomUUID())
-                    .withName("owner2")));
+    // Multiple users ownership, should pass
+    table.withOwners(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("user1"),
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("user2")));
+    RuleEngine.getInstance().evaluate(table);
+
+    // Single team ownership, should pass
+    table.withOwners(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withName("team1")
+                .withType(Entity.TEAM)));
+    RuleEngine.getInstance().evaluate(table);
+
+    // Multiple teams ownership, should fail
+    table.withOwners(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withName("team1")
+                .withType(Entity.TEAM),
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withName("team2")
+                .withType(Entity.TEAM)));
+    assertThrows(RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(table));
+
+    // Mixed ownership (team and user), should fail
+    table.withOwners(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withName("team1")
+                .withType(Entity.TEAM),
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("user1")));
+    assertThrows(RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(table));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testSingleGlossaryTermForTable(TestInfo test) {
+    Table table = getMockTable(test);
+
+    // Get all semantic rules
+    List<SemanticsRule> rules =
+        SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
+            .getEntitySemantics();
+
+    // Pick up the glossary validation for tables to test it
+    SemanticsRule glossaryRule =
+        rules.stream()
+            .filter(rule -> GLOSSARY_TERM_RULE.equals(rule.getName()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No glossary validation rule found for tables. Review the entityRulesSettings.json file."));
+
+    // No glossary terms, should pass
+    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true);
+
+    // Single glossary term, should pass
+    table.withTags(
+        List.of(
+            new org.openmetadata.schema.type.TagLabel()
+                .withTagFQN("Glossary.Term1")
+                .withSource(TagLabel.TagSource.GLOSSARY)));
+
+    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true);
+
+    // Multiple glossary terms, should fail
+    table.withTags(
+        List.of(
+            new org.openmetadata.schema.type.TagLabel()
+                .withTagFQN("Glossary.Term1")
+                .withSource(TagLabel.TagSource.GLOSSARY),
+            new org.openmetadata.schema.type.TagLabel()
+                .withTagFQN("Glossary.Term2")
+                .withSource(TagLabel.TagSource.GLOSSARY)));
     assertThrows(
-        RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(tableWithOwners));
-
-    // if we don't apply the default rules, it should work
-    RuleEngine.getInstance().evaluate(tableWithOwners, null, true);
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true));
   }
 }

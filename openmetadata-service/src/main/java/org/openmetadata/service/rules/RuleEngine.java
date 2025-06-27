@@ -10,6 +10,7 @@ import lombok.Getter;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -37,7 +38,7 @@ public class RuleEngine {
   public void evaluate(Object facts, List<SemanticsRule> rules, boolean incomingOnly) {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
     if (!incomingOnly) {
-      rulesToEvaluate.addAll(getEntitySemantics());
+      rulesToEvaluate.addAll(getEnabledEntitySemantics());
     }
     if (!nullOrEmpty(rules)) {
       rulesToEvaluate.addAll(rules);
@@ -49,13 +50,23 @@ public class RuleEngine {
 
     rulesToEvaluate.forEach(
         rule -> {
-          validateRule(facts, rule);
+          // Only evaluate the rule if it's a generic rule or the rule's entity type matches the
+          // facts class
+          if (rule.getEntityType() == null
+              || Entity.getEntityRepository(rule.getEntityType())
+                  .getEntityClass()
+                  .isInstance(facts)) {
+            validateRule(facts, rule);
+          }
         });
   }
 
-  private List<SemanticsRule> getEntitySemantics() {
+  private List<SemanticsRule> getEnabledEntitySemantics() {
     return SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
-        .getEntitySemantics();
+        .getEntitySemantics()
+        .stream()
+        .filter(SemanticsRule::getEnabled)
+        .toList();
   }
 
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {

@@ -228,12 +228,25 @@
           "type": "string",
           "outputType": "jsonlogic",
           "format": "queryBuilder"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "description": "Indicates if the semantics rule is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "entityType": {
+          "title": "Entity Type",
+          "description": "Type of the entity to which this semantics rule applies.",
+          "type": "string",
+          "default": null
         }
       },
       "required": [
         "name",
         "description",
-        "rule"
+        "rule",
+        "enabled"
       ],
       "additionalProperties": false
     }
