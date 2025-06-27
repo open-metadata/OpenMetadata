@@ -48,6 +48,7 @@ const CustomiseLandingPageHeader = ({
   const { currentUser } = useApplicationStore();
   const { isNLPEnabled } = useSearchStore();
   const { document } = useCustomizeStore();
+
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
 
   const defaultBackgroundColor = useMemo(
@@ -98,6 +99,7 @@ const CustomiseLandingPageHeader = ({
                 name: currentUser?.displayName ?? currentUser?.name,
               })}
             </Typography.Text>
+
             {!hideCustomiseButton && (
               <Button
                 className="customise-header-btn"
@@ -141,7 +143,8 @@ const CustomiseLandingPageHeader = ({
               </div>
               <div
                 className="d-flex items-center gap-2 border-radius-sm p-y-sm p-x-md bg-white domain-selector"
-                data-testid="domain-selector">
+                data-testid="domain-selector"
+              >
                 <DomainIcon
                   className="domain-icon"
                   data-testid="domain-icon"
@@ -164,7 +167,8 @@ const CustomiseLandingPageHeader = ({
                 {recentlyViewData.map((data) => (
                   <div
                     className="recent-item d-flex flex-col items-center gap-3"
-                    key={data.name}>
+                    key={data.name}
+                  >
                     <div className="d-flex items-center justify-center entity-icon-container">
                       {data.icon}
                     </div>
@@ -179,6 +183,7 @@ const CustomiseLandingPageHeader = ({
         </div>
         <div className="announcements" />
       </div>
+
       {overlappedContainer && <div className="overlapped-container" />}
 
       {!hideCustomiseButton && showCustomiseHomeModal && (
