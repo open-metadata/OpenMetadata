@@ -23,6 +23,7 @@ public class SearchClusterMetrics {
   private final int recommendedConcurrentRequests;
   private final int recommendedBatchSize;
   private final int recommendedProducerThreads;
+  private final int recommendedConsumerThreads;
 
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities) {
@@ -159,14 +160,28 @@ public class SearchClusterMetrics {
       long maxContentLength,
       long totalEntities) {
 
-    int baseThreadsPerNode = Runtime.getRuntime().availableProcessors() * 4;
-    int recommendedProducerThreads = Math.min(100, baseThreadsPerNode * totalNodes);
+    // Database connection pool is typically 50-300 connections
+    // Use at most 50% to leave room for other operations
+    int maxDbConnections = 100; // Conservative estimate, could be made configurable
+    int maxProducerThreads = maxDbConnections / 2; // 50% of connection pool
 
-    if (cpuUsagePercent > 80) {
-      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 2);
-    } else if (cpuUsagePercent < 40) {
-      recommendedProducerThreads = Math.min(200, recommendedProducerThreads * 3);
+    int recommendedProducerThreads = Math.min(maxProducerThreads, 30 * totalNodes);
+
+    if (memoryUsagePercent > 80) {
+      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
+    } else if (memoryUsagePercent > 60) {
+      recommendedProducerThreads = Math.max(20, recommendedProducerThreads / 2);
     }
+
+    // Consumers transform entities to search documents - lighter work than producers
+    // Can have many consumers since they're not DB-bound
+    int recommendedConsumerThreads = 50 * totalNodes;
+
+    // Only limit if memory is very high
+    if (memoryUsagePercent > 80) {
+      recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
+    }
+    recommendedConsumerThreads = Math.min(100, recommendedConsumerThreads); // Cap at 100
 
     int baseConcurrentRequests = totalNodes * 50;
     if (memoryUsagePercent > 80) {
@@ -184,11 +199,11 @@ public class SearchClusterMetrics {
     long maxPayloadSize =
         Math.min(heapBasedPayloadSize, maxContentLength * 9 / 10); // Use 90% of limit
 
-    // Be more conservative with batch size to handle large documents (some can be 30KB+)
-    int avgEntitySizeKB = 10; // More realistic average including large documents
-    int recommendedBatchSize = (int) Math.min(500, maxPayloadSize / (avgEntitySizeKB * 1024L));
+    // With optimized field loading, we can use larger batch sizes
+    int avgEntitySizeKB = 5; // Smaller with optimized fields
+    int recommendedBatchSize = (int) Math.min(1000, maxPayloadSize / (avgEntitySizeKB * 1024L));
     recommendedBatchSize =
-        Math.max(50, recommendedBatchSize); // Lower minimum to avoid timeout with large docs
+        Math.max(100, recommendedBatchSize); // Higher minimum since entities are smaller
 
     // Scale batch size based on dataset size but be conservative to avoid timeouts
     if (totalEntities > 1000000) {
@@ -215,6 +230,7 @@ public class SearchClusterMetrics {
         .recommendedConcurrentRequests(baseConcurrentRequests)
         .recommendedBatchSize(recommendedBatchSize)
         .recommendedProducerThreads(recommendedProducerThreads)
+        .recommendedConsumerThreads(recommendedConsumerThreads)
         .build();
   }
 
@@ -374,21 +390,19 @@ public class SearchClusterMetrics {
       conservativeBatchSize = 100;
     }
 
-    // Scale producer threads based on dataset size and available processors
-    // Still capped by MAX_CONCURRENT_TASKS (50) in the application
-    int availableProcessors = Runtime.getRuntime().availableProcessors();
-    int conservativeThreads;
+    // Conservative DB connection usage - assume 50 connections available
+    int conservativeThreads = 25; // 50% of assumed 50 connections
     if (totalEntities > 1000000) {
-      conservativeThreads = Math.min(50, availableProcessors * 4);
+      conservativeThreads = 40;
     } else if (totalEntities > 500000) {
-      conservativeThreads = Math.min(40, availableProcessors * 3);
-    } else if (totalEntities > 100000) {
-      conservativeThreads = Math.min(30, availableProcessors * 2);
-    } else {
-      conservativeThreads = Math.min(20, Math.max(10, availableProcessors));
+      conservativeThreads = 30;
+    } else if (totalEntities < 50000) {
+      conservativeThreads = 15;
     }
 
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
+
+    int conservativeConsumerThreads = 20; // Default 20 consumers with virtual threads
 
     long maxHeap = Runtime.getRuntime().maxMemory();
     long totalHeap = Runtime.getRuntime().totalMemory();
@@ -438,6 +452,7 @@ public class SearchClusterMetrics {
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)
+        .recommendedConsumerThreads(conservativeConsumerThreads)
         .build();
   }
 
@@ -456,6 +471,9 @@ public class SearchClusterMetrics {
     LOG.info(
         "Producer Threads: {} (virtual threads - lightweight & scalable)",
         recommendedProducerThreads);
+    LOG.info(
+        "Consumer Threads: {} (processing-heavy with full field loading)",
+        recommendedConsumerThreads);
     LOG.info("Concurrent Requests: {}", recommendedConcurrentRequests);
     LOG.info(
         "Max Payload Size: {} MB (with compression optimization)",
