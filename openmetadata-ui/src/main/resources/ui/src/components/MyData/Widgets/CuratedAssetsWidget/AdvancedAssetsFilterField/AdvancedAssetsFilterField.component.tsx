@@ -31,7 +31,6 @@ import { IngestionPipeline } from '../../../../../generated/entity/services/inge
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   AlertMessage,
-  APP_CONFIG_PATH,
   getExploreURLWithFilters,
   getModifiedQueryFilterWithSelectedAssets,
 } from '../../../../../utils/CuratedAssetsUtils';
@@ -52,11 +51,7 @@ export const AdvancedAssetsFilterField = ({
   const isMounting = useRef(true);
   const form = Form.useFormInstance<IngestionPipeline>();
 
-  const queryFilterValue = form.getFieldValue([
-    ...APP_CONFIG_PATH,
-    'resources',
-    'queryFilter',
-  ]);
+  const queryFilterValue = form.getFieldValue('queryFilter');
 
   const [queryFilter, setQueryFilter] = useState<string>(
     queryFilterValue ?? ''
@@ -67,10 +62,7 @@ export const AdvancedAssetsFilterField = ({
     useAdvanceSearch();
 
   const selectedResource: Array<string> =
-    Form.useWatch<Array<string>>(
-      [...APP_CONFIG_PATH, 'resources', 'type'],
-      form
-    ) || [];
+    Form.useWatch('resources', form) || [];
 
   const queryURL = useMemo(
     () =>
@@ -88,10 +80,7 @@ export const AdvancedAssetsFilterField = ({
       const queryFilter = {
         query: elasticSearchFormat(nTree, nConfig),
       };
-      form.setFieldValue(
-        [...APP_CONFIG_PATH, 'resources', 'queryFilter'],
-        JSON.stringify(queryFilter)
-      );
+      form.setFieldValue('queryFilter', JSON.stringify(queryFilter));
     },
     [onTreeUpdate, form]
   );
@@ -177,7 +166,7 @@ export const AdvancedAssetsFilterField = ({
 
   return (
     <>
-      <Form.Item hidden name={[...APP_CONFIG_PATH, 'resources', 'queryFilter']}>
+      <Form.Item hidden name="queryFilter">
         <Input />
       </Form.Item>
       <Row className="automator-filter-form-field" gutter={[8, 8]}>

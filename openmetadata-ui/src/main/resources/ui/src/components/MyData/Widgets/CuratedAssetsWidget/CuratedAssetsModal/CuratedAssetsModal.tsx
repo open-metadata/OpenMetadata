@@ -21,7 +21,6 @@ import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-squ
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  APP_CONFIG_PATH,
   CuratedAssetsFormSelectedAssetsInfo,
   getSelectedResourceCount,
 } from '../../../../../utils/CuratedAssetsUtils';
@@ -46,17 +45,9 @@ const CuratedAssetsModal = ({
       resourcesWithNonZeroCount: [],
     });
 
-  const selectedResource = form.getFieldValue([
-    ...APP_CONFIG_PATH,
-    'resources',
-    'type',
-  ]);
+  const selectedResource = form.getFieldValue('resources');
 
-  const queryFilter = form.getFieldValue([
-    ...APP_CONFIG_PATH,
-    'resources',
-    'queryFilter',
-  ]);
+  const queryFilter = form.getFieldValue('queryFilter');
 
   const title = form.getFieldValue(['title']);
 
@@ -151,23 +142,9 @@ const CuratedAssetsModal = ({
   const initialValues = useMemo(
     () => ({
       ...(curatedAssetsData || {}),
-      sourceConfig: {
-        ...(curatedAssetsData?.sourceConfig || {}),
-        config: {
-          ...(curatedAssetsData?.sourceConfig?.config || {}),
-          appConfig: {
-            ...(curatedAssetsData?.sourceConfig?.config?.appConfig || {}),
-            resources: {
-              ...(curatedAssetsData?.sourceConfig?.config?.appConfig
-                ?.resources || {}),
-              type: [
-                ...(curatedAssetsData?.sourceConfig?.config?.appConfig
-                  ?.resources?.type || []),
-              ],
-            },
-          },
-        },
-      },
+      resources: [...(curatedAssetsData?.resources || [])],
+      queryFilter: curatedAssetsData?.queryFilter,
+      title: curatedAssetsData?.title,
     }),
     [curatedAssetsData]
   );

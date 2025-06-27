@@ -40,8 +40,6 @@ export const EMPTY_QUERY_FILTER_STRINGS = [
   '',
 ];
 
-export const APP_CONFIG_PATH = ['sourceConfig', 'config', 'appConfig'];
-
 export const AlertMessage = ({
   assetCount,
   href = '#',
