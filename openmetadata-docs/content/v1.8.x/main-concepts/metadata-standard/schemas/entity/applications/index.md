@@ -1,5 +1,5 @@
 ---
-title: index
+title: Applications Schema | OpenMetadata Applications
 slug: /main-concepts/metadata-standard/schemas/entity/applications
 ---
 

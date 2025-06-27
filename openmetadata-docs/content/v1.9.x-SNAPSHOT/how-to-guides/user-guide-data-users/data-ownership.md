@@ -17,7 +17,7 @@ Admin users have access to add or change data ownership.
 - Select a Team or a User as the Owner of the Data Asset.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/data-owner1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/data-owner1.png"
 alt="Assign an Owner to a Data Asset"
 caption="Assign an Owner to a Data Asset"
 /%}
@@ -27,7 +27,7 @@ caption="Assign an Owner to a Data Asset"
 If the data asset already has an owner, you can change the owner by clicking on the edit icon for Owner and simply selecting a team or user to change ownership.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/data-owner2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/data-owner2.png"
 alt="Change the Owner of the Data Asset"
 caption="Change the Owner of the Data Asset"
 /%}

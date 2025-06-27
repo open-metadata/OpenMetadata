@@ -1,6 +1,6 @@
 """Models for the TableDiff test case"""
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 class TableParameter(BaseModel):
-    serviceUrl: str
+    serviceUrl: Union[str, dict]
     path: str
     columns: List[Column]
     database_service_type: DatabaseServiceType

@@ -1,5 +1,5 @@
 ---
-title: assets
+title: Assets Schema | OpenMetadata Assets Schema and Management
 slug: /main-concepts/metadata-standard/schemas/entity/feed/assets
 ---
 

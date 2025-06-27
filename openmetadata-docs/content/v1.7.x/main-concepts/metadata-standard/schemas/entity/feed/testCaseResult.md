@@ -1,5 +1,5 @@
 ---
-title: testCaseResult
+title: Test Case Result | OpenMetadata Test Results
 slug: /main-concepts/metadata-standard/schemas/entity/feed/testcaseresult
 ---
 

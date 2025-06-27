@@ -1,5 +1,5 @@
 ---
-title: Data Observability
+title: Data Observability | OpenMetadata Observability Guide
 slug: /how-to-guides/data-quality-observability/observability
 ---
 

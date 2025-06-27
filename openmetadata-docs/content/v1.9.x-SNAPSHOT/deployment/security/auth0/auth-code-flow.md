@@ -11,20 +11,20 @@ collate: false
 - Once you are on the Dashboard page, click on `Applications > Applications` available on the left-hand side panel.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/create-new-app-1.png" 
+src="/images/v1.9/deployment/security/auth0/create-new-app-1.png" 
 alt="create-app" /%}
 
 - Click on `Create Application`.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/create-new-app-2.png" 
+src="/images/v1.9/deployment/security/auth0/create-new-app-2.png" 
 alt="create-app" /%}
 
 - Enter the Application name.
 - Choose an application type and click on `Create`.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/auth-code-flow-1.png" 
+src="/images/v1.9/deployment/security/auth0/auth-code-flow-1.png" 
 alt="create-app" /%}
 
 ### Step 2: Where to Find the Credentials
@@ -33,7 +33,7 @@ alt="create-app" /%}
 - You will find your `Client ID` and `Client Secret`.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/auth-code-flow-2.png" 
+src="/images/v1.9/deployment/security/auth0/auth-code-flow-2.png" 
 alt="credentials" /%}
 
 After the applying these steps, you can update the configuration of your deployment:

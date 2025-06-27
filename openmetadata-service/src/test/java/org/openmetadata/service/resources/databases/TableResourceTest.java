@@ -1443,7 +1443,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
     table1 = getLatestTableProfile(table1.getFullyQualifiedName(), false, ADMIN_AUTH_HEADERS);
-    assertNull(table1.getColumns());
+    assertNotNull(table1.getColumns());
 
     // Table profile with column profile as null
     timestamp = TestUtils.dateToTimestamp("2022-09-09");
@@ -2407,7 +2407,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.assertOwnerInheritance(createTestCase, USER1_REF);
 
     // Check owners properly updated in search
@@ -2461,7 +2461,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
@@ -2513,7 +2513,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
         testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 

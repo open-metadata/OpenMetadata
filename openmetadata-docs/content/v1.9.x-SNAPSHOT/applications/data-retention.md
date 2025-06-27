@@ -53,7 +53,7 @@ The app deletes old records from the following internal tables:
 1. Go to **Settings > Applications** and then click on **Add apps**.
 
 {% image
-src="/images/v1.9applications/ret.png"
+src="/images/v1.9/applications/ret.png"
 alt="Install Data Retention Application"
 caption="Install Data Retention Application"
 /%}
@@ -61,7 +61,7 @@ caption="Install Data Retention Application"
 2. Select or install the **Data Retention** application.
 
 {% image
-src="/images/v1.9applications/ret1.png"
+src="/images/v1.9/applications/ret1.png"
 alt="Install Data Retention Application"
 caption="Install Data Retention Application"
 /%}
@@ -69,7 +69,7 @@ caption="Install Data Retention Application"
 3. Configure the desired retention period.
 
 {% image
-src="/images/v1.9applications/ret2.png"
+src="/images/v1.9/applications/ret2.png"
 alt="configuration"
 caption="Configuration"
 /%}
@@ -77,7 +77,7 @@ caption="Configuration"
 4. Run manually or let it operate on its default schedule.
 
 {% image
-src="/images/v1.9applications/ret3.png"
+src="/images/v1.9/applications/ret3.png"
 alt="scheduling"
 caption="scheduling"
 /%}
