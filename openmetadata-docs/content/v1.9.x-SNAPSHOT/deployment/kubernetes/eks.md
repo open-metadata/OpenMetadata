@@ -299,6 +299,6 @@ Use the `--values` flag to point to your own YAML configuration if needed.
 
 # FAQs
 
-{% partial file="/v1.9deployment/faqs-eks.md" /%}
+{% partial file="/v1.9/deployment/faqs-eks.md" /%}
 
-{% partial file="/v1.9deployment/faqs.md" /%}
+{% partial file="/v1.9/deployment/faqs.md" /%}

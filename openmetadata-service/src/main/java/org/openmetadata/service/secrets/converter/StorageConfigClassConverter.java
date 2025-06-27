@@ -3,7 +3,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.services.connections.database.datalake.S3Config;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `StorageConfig` object for DeltaLakeConnection. */
 public class StorageConfigClassConverter extends ClassConverter {

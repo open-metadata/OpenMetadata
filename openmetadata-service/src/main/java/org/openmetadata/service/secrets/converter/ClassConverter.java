@@ -16,7 +16,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Currently when an object is converted into a specific class using `JsonUtils.convertValue` there`Object` fields that

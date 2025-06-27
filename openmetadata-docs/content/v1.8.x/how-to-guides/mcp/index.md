@@ -17,5 +17,11 @@ Even the best LLMs need context in order to operate effectively. Model Context P
   href="/how-to-guides/mcp/claude"%}
   Connect your OpenMetadata to Anthropic's popular AI assistant.
  {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Getting Started with Goose"
+  icon="MdSearch"
+  href="/how-to-guides/mcp/goose"%}
+  Connect your OpenMetadata to block's open-source AI agent.
+ {%/inlineCallout%}
 {%/inlineCalloutContainer%}
-
