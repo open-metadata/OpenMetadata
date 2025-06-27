@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import { DATA_ASSETS } from '../../constant/explore';
+import { startCase } from 'lodash';
+import { EXPECTED_BUCKETS as DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -30,9 +31,9 @@ test.describe('Explore Sort Order Filter for all entities', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
-  DATA_ASSETS.forEach(({ name, filter }) => {
-    test(`${name} - sort order by Name`, async ({ page }) => {
-      await selectDataAssetFilter(page, filter);
+  DATA_ASSETS.forEach((asset) => {
+    test(`${startCase(asset)} - sort order`, async ({ page }) => {
+      await selectDataAssetFilter(page, asset);
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
     });
