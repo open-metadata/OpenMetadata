@@ -176,12 +176,16 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
     (elements) => elements.map((el) => el.textContent?.trim() ?? '')
   );
 
-  // Helper to remove punctuation and normalize case
-  const normalize = (str: string) => str.replace(/[^\w\s]/gi, '').toLowerCase();
+  // Normalize for case insensitivity, but retain punctuation
+  const normalize = (str: string) => str.toLowerCase().trim();
 
-  const sortedEntityNames = [...entityNames].sort((a, b) =>
-    normalize(a).localeCompare(normalize(b))
-  );
+  // Sort using ASCII-based string comparison (ES behavior)
+  const sortedEntityNames = [...entityNames].sort((a, b) => {
+    const normA = normalize(a);
+    const normB = normalize(b);
+
+    return normA < normB ? -1 : normA > normB ? 1 : 0;
+  });
 
   expect(entityNames).toEqual(sortedEntityNames);
 };
