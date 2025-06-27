@@ -778,7 +778,7 @@ class DbtSource(DbtServiceSource):
     def parse_exposure_node(self, exposure_spec) -> Optional[Any]:
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
-        Open Metadata entity.
+        Open Metadata entity. Returns entity object if both conditions are met.
 
         The implementation assumes that label provided in DBT exposures object matches to FQN of OpenMetadata object:
         exposures. We cannot use name field for this as dbt only allows letters, digits and underscores in this field.
