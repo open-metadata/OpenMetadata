@@ -74,6 +74,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -196,6 +197,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Instantiate incident severity classifier
     IncidentSeverityClassifierInterface.createInstance();
+
+    // Initialize the IndexMapping class
+    IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());

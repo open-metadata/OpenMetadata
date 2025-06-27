@@ -5,10 +5,10 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GenericBackgroundWorker implements Managed {

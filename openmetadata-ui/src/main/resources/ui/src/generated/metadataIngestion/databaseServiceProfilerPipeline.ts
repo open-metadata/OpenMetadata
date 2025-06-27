@@ -128,9 +128,9 @@ export interface ProcessingEngine {
      */
     config?: { [key: string]: any };
     /**
-     * Spark Master URL (e.g. yarn, ,spark://host:port, local[*], etc.)
+     * Spark Connect Remote URL.
      */
-    master?: string;
+    remote?: string;
 }
 
 /**

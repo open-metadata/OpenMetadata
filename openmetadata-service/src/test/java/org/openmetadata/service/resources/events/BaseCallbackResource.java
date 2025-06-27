@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j

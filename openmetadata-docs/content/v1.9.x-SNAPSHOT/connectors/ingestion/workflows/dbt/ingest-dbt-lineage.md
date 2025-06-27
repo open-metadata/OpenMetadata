@@ -30,7 +30,7 @@ Openmetadata fetches the lineage information from the `manifest.json` file. Belo
 For the above case the lineage will be created as shown in below:
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/dbt/dbt-lineage-customers.webp"
+  src="/images/v1.9/features/ingestion/workflows/dbt/dbt-lineage-customers.webp"
   alt="dbt-lineage-customers"
   caption="dbt Lineage"
  /%}

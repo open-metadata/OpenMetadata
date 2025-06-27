@@ -18,7 +18,7 @@ import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `SupersetConnection` object. */
 public class SupersetConnectionClassConverter extends ClassConverter {

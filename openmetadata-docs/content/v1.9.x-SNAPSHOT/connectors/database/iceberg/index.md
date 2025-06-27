@@ -22,7 +22,7 @@ Configure and schedule Iceberg metadata workflows from the OpenMetadata UI:
 - [Enable Security](#securing-rest-catalog-connection-with-ssl-in-openmetadata)
 - [Troubleshooting](/connectors/database/iceberg/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
 
 ## Requirements
 
@@ -45,12 +45,12 @@ It depends on where and how the Hive / Rest Catalog is setup and where the Icebe
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.9connectors/metadata-ingestion-ui.md"
+  file="/v1.9/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "Iceberg",
-    selectServicePath: "/images/v1.9connectors/iceberg/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/iceberg/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/iceberg/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/iceberg/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/iceberg/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/iceberg/service-connection.png",
 }
 /%}
 
@@ -195,11 +195,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -208,9 +208,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 When using `SSL` to establish secure connections between OpenMetadata and Rest Catalog, you can specify the `caCertificate` to provide the CA certificate used for SSL validation. Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
 
 {% image
-  src="/images/v1.9connectors/restcatalog_ssl.png"
+  src="/images/v1.9/connectors/restcatalog_ssl.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DeltaLakeConnection` object. */
 public class DeltaLakeConnectionClassConverter extends ClassConverter {

@@ -21,7 +21,7 @@ Configure and schedule Azure Data Factory metadata and profiler workflows from t
     - [Data Factory Versions](#data-factory-versions)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -37,7 +37,7 @@ Ensure that the service principal or managed identity you’re using has the nec
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Data Factory ingestion, you will need to install:
 
@@ -68,7 +68,7 @@ This is a sample config for Data Factory:
 
 #### Source Configuration - Service Connection
 
-{% partial file="/v1.9connectors/yaml/common/azure-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/azure-config-def.md" /%}
 
 {% codeInfo srNumber=5 %}
 
@@ -98,11 +98,11 @@ This is a sample config for Data Factory:
 {% /codeInfo %}
 
 
-{% partial file="/v1.9connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -119,7 +119,7 @@ source:
       configSource: 
 ```
 
-{% partial file="/v1.9connectors/yaml/common/azure-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/azure-config.md" /%}
 
 ```yaml {% srNumber=5 %}
       subscription_id: subscription_id
@@ -134,14 +134,14 @@ source:
       run_filter_days: 7
 ```
 
-{% partial file="/v1.9connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
