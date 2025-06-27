@@ -796,7 +796,8 @@ class DbtSource(DbtServiceSource):
               - ref('fact_sales')
         ```
         """
-        entity_type = ExposureTypeMap.get(exposure_spec.type.value, {}).get(
+        exposure_type = exposure_spec.type.value
+        entity_type = ExposureTypeMap.get(exposure_type, {}).get(
             "entity_type"
         )
 
@@ -811,7 +812,7 @@ class DbtSource(DbtServiceSource):
 
         if not entity:
             logger.warning(
-                f"Entity [{entity_fqn}] of [{entity_type}] type not found in Open Metadata."
+                f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata."
             )
 
             return None
