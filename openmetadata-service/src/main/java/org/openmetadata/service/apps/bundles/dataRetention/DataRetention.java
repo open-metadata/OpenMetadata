@@ -249,9 +249,11 @@ public class DataRetention extends AbstractNativeApplication {
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
       if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        failureDetails =
+                new IndexingError()
+                        .withMessage(ex.getMessage())
+                        .withStackTrace(ExceptionUtils.getStackTrace(ex));
+
       }
     }
   }
