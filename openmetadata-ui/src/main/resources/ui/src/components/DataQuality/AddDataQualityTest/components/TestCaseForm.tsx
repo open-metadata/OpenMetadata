@@ -188,6 +188,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
+      tags: value.tags || [],
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
@@ -234,22 +235,35 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: initialValue?.description ?? '',
-        style: {
-          margin: 0,
+  const formField: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'description',
+        required: false,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: initialValue?.description ?? '',
+          style: {
+            margin: 0,
+          },
         },
       },
-    }),
-    [initialValue?.description]
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          'data-testid': 'tags-selector',
+          initialValue: initialValue?.tags || [],
+        },
+      },
+    ],
+    [initialValue?.description, initialValue?.tags]
   );
 
   useEffect(() => {
@@ -284,6 +298,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ? getParamsValue()
         : undefined,
       columnName: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
+      tags: initialValue?.tags || [],
     });
   }, []);
 
@@ -422,7 +437,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         }
       </Form.Item>
 
-      {generateFormFields([descriptionField])}
+      {generateFormFields(formField)}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 

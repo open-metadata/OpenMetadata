@@ -118,6 +118,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       computePassedFailedRowCount: isComputeRowCountFieldVisible
         ? value.computePassedFailedRowCount
         : testCase?.computePassedFailedRowCount,
+      tags: showOnlyParameter ? testCase.tags : value.tags || [],
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -185,7 +186,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     try {
       const testCaseDetails = await getTestCaseByFqn(
         testCase?.fullyQualifiedName ?? '',
-        { fields: [TabSpecificField.TEST_DEFINITION] }
+        { fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TAGS] }
       );
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
@@ -199,6 +200,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         'description',
         'computePassedFailedRowCount',
         'useDynamicAssertion',
+        'tags',
       ]);
 
       form.setFieldsValue({
@@ -216,22 +218,35 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: testCase?.description ?? '',
-        style: {
-          margin: 0,
+  const formField: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'description',
+        required: false,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: testCase?.description ?? '',
+          style: {
+            margin: 0,
+          },
         },
       },
-    }),
-    [testCase?.description]
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          'data-testid': 'tags-selector',
+          initialValue: testCase?.tags || [],
+        },
+      },
+    ],
+    [testCase?.description, testCase?.tags]
   );
 
   useEffect(() => {
@@ -340,7 +355,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
             {!showOnlyParameter && (
               <>
-                {generateFormFields([descriptionField])}
+                {generateFormFields(formField)}
                 {isComputeRowCountFieldVisible
                   ? generateFormFields(formFields)
                   : null}
