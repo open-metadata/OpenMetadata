@@ -16,7 +16,7 @@ A Rule in a Policy is the building block of Authorization. It contains the follo
 6. **Effect:** Deny or Allow the operation.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules3.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules3.png"
 alt="Building Blocks of Authorization: Rules"
 caption="Building Blocks of Authorization: Rules"
 /%}
@@ -55,7 +55,7 @@ These dynamic conditions empower admins to craft rules that holistically conside
 When navigating to Settings -> Policies -> Organization Policy, you'll discover the default rules set at the organizational level. Here’s a quick breakdown of these rules:
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules4.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules4.png"
 alt="Default Policy and Rule"
 caption="Default Policy and Rule"
 /%}
@@ -63,7 +63,7 @@ caption="Default Policy and Rule"
 #### OrganizationPolicy-NoOwner-Rule
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules5.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules5.png"
 alt="Organization Policy - No Owner - Rule"
 caption="Organization Policy - No Owner - Rule"
 /%}
@@ -75,7 +75,7 @@ caption="Organization Policy - No Owner - Rule"
 #### OrganizationPolicy-Owner-Rule
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rules6.png"
+src="/images/v1.9/how-to-guides/roles-policies/rules6.png"
 alt="Organization Policy - Owner - Rule"
 caption="Organization Policy - Owner - Rule"
 /%}
@@ -99,7 +99,7 @@ While policies can be associated with a specific team within the organizational 
 **Inheritance and Application**
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/inheritance.png"
+src="/images/v1.9/how-to-guides/roles-policies/inheritance.png"
 alt="Inheritance and Application"
 caption="Inheritance and Application"
 /%}
@@ -119,7 +119,7 @@ This architecture aims to establish broad, overarching rules at the organization
 Policies serve as mechanisms to enforce authorization, while Roles offer a more structured hierarchy for the same purpose. Each role is closely aligned with a user's function or job description.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/role1.png"
+src="/images/v1.9/how-to-guides/roles-policies/role1.png"
 alt="Building Blocks of Authorization: Roles"
 caption="Building Blocks of Authorization: Roles"
 /%}
@@ -140,7 +140,7 @@ In OpenMetadata, Role-Based Access Control (RBAC) extends to search functionalit
 To enable or disable the **RBAC Search** option, navigate to **Settings > Preferences > Search** in the OpenMetadata UI. This setting controls whether search results are filtered based on the user's assigned roles and permissions.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/rbac-search.png"
+src="/images/v1.9/how-to-guides/roles-policies/rbac-search.png"
 alt="Roles Based Access Controls (RBAC) Search Option"
 caption="Roles Based Access Controls (RBAC) Search Option"
 /%}

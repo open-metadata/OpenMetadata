@@ -96,7 +96,7 @@
           "databaseService",
           "dashboardService",
           "query",
-          "queryCostResult",
+          "queryCostRecord",
           "apiService",
           "searchIndex",
           "testCaseResult",
