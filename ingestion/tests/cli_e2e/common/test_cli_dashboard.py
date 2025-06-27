@@ -91,8 +91,7 @@ class CliCommonDashboard:
                 (len(sink_status.records) + len(sink_status.updated_records)),
                 self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
-                + self.expected_datamodels()
-                + self.expected_datamodel_lineage(),
+                + self.expected_datamodels(),
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
