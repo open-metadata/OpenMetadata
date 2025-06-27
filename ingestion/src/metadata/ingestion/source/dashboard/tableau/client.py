@@ -20,6 +20,7 @@ from cached_property import cached_property
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
+    ProjectItem,
     Server,
     TableauAuth,
     ViewItem,
@@ -89,6 +90,7 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
         self.owner_cache: Dict[str, TableauOwner] = {}
+        self.all_projects: List[ProjectItem] = []
 
     @cached_property
     def server_info(self) -> Callable:
@@ -108,7 +110,7 @@ class TableauClient:
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
             if owner and owner.email:
                 owner_obj = TableauOwner(
-                    id=owner.id, name=owner.name, email=owner.email
+                    id=str(owner.id), name=owner.name, email=owner.email
                 )
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
@@ -128,7 +130,7 @@ class TableauClient:
             try:
                 charts.append(
                     TableauChart(
-                        id=view.id,
+                        id=str(view.id),
                         name=view.name,
                         tags=view.tags,
                         owner=self.get_tableau_owner(view.owner_id),
@@ -148,10 +150,60 @@ class TableauClient:
 
         return charts, view_count
 
+    def get_all_projects(self) -> None:
+        """
+        Get all projects from the tableau server
+        """
+        try:
+            logger.debug("Getting all projects from the tableau server")
+            all_projects: List[ProjectItem] = []
+            for project in Pager(self.tableau_server.projects):
+                all_projects.append(project)
+            self.all_projects = all_projects
+        except Exception as e:
+            logger.debug(f"Failed to get all projects: {str(e)}")
+
+    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:
+        """
+        Get the parents of a project by id
+        """
+        try:
+            parent_projects = []
+            current_project_id = project_id
+
+            while current_project_id:
+                # Find project with current ID
+                project = next(
+                    (
+                        proj
+                        for proj in self.all_projects
+                        if str(proj.id) == str(current_project_id)
+                    ),
+                    None,
+                )
+
+                if not project:
+                    break
+
+                parent_projects.append(project.name)
+
+                # Get parent ID and continue loop if exists
+                current_project_id = (
+                    project.parent_id if hasattr(project, "parent_id") else None
+                )
+
+            if parent_projects:
+                parent_projects = ".".join(reversed(parent_projects))
+                return parent_projects
+        except Exception as e:
+            logger.debug(f"Failed to get project parents by id: {str(e)}")
+        return None
+
     def get_workbooks(self) -> Iterable[TableauDashboard]:
         """
         Fetch all tableau workbooks
         """
+        self.get_all_projects()
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
@@ -160,10 +212,10 @@ class TableauClient:
                     workbook.views
                 )
                 workbook = TableauDashboard(
-                    id=workbook.id,
+                    id=str(workbook.id),
                     name=workbook.name,
                     project=TableauBaseModel(
-                        id=workbook.project_id, name=workbook.project_name
+                        id=str(workbook.project_id), name=workbook.project_name
                     ),
                     owner=self.get_tableau_owner(workbook.owner_id),
                     description=workbook.description,
@@ -322,7 +374,7 @@ class TableauClient:
         if datasource_id in self.custom_sql_table_queries:
             logger.debug(f"Found cached queries for datasource {datasource_id}")
             return self.custom_sql_table_queries[datasource_id]
-
+        logger.debug(f"No cached queries for datasource {datasource_id}")
         return None
 
     def cache_custom_sql_tables(self) -> None:

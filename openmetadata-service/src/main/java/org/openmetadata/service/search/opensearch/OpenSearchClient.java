@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -137,6 +138,7 @@ import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
+import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
@@ -169,6 +171,7 @@ import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
 import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.IdsQueryBuilder;
 import os.org.opensearch.index.query.MatchQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
@@ -182,6 +185,7 @@ import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
+import os.org.opensearch.index.reindex.ReindexRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.script.Script;
@@ -384,7 +388,11 @@ public class OpenSearchClient implements SearchClient {
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+            request.getIndex(),
+            request.getQuery(),
+            request.getFrom(),
+            request.getSize(),
+            request.getExplain());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -509,6 +517,10 @@ public class OpenSearchClient implements SearchClient {
           os.org.opensearch.action.search.SearchRequest searchRequest =
               new os.org.opensearch.action.search.SearchRequest(request.getIndex());
           searchRequest.source(searchSourceBuilder);
+
+          // Use DFS Query Then Fetch for consistent scoring across shards
+          searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
           if (response.getHits() != null
@@ -541,6 +553,10 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.action.search.SearchRequest osRequest =
           new os.org.opensearch.action.search.SearchRequest(request.getIndex());
       osRequest.source(searchSourceBuilder);
+
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
       getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
@@ -1874,6 +1890,33 @@ public class OpenSearchClient implements SearchClient {
               params);
       updateByQueryRequest.setScript(script);
       updateOpenSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
+
+    ReindexRequest request = new ReindexRequest();
+    request.setSourceIndices(sourceIndices.toArray(new String[0]));
+    request.setDestIndex(destinationIndex);
+    request.setDestPipeline(pipelineName);
+
+    // Add query to filter by IDs
+    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
+    idsQuery.addIds(queryIDs);
+    request.setSourceQuery(idsQuery);
+
+    try {
+      client.reindex(request, RequestOptions.DEFAULT);
+      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
+    } catch (IOException e) {
+      LOG.error("Failed to reindex entities: {}", e.getMessage());
     }
   }
 

@@ -332,7 +332,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
         repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -341,12 +341,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());

@@ -19,11 +19,11 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -54,7 +54,8 @@ public interface SearchIndex {
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
           "upstreamLineage.pipeline.incrementalChangeDescription",
-          "connection");
+          "connection",
+          "changeSummary");
 
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
@@ -127,29 +128,12 @@ public interface SearchIndex {
   }
 
   default Set<String> getFQNParts(String fqn) {
-    Set<String> fqnParts = new HashSet<>();
-    fqnParts.add(fqn);
-    String parent = FullyQualifiedName.getParentFQN(fqn);
-    while (parent != null) {
-      fqnParts.add(parent);
-      parent = FullyQualifiedName.getParentFQN(parent);
-    }
-    return fqnParts;
-  }
+    var parts = FullyQualifiedName.split(fqn);
+    var entityName = parts[parts.length - 1];
 
-  // Add suggest inputs to fqnParts to support partial/wildcard search on names.
-  // In some case of basic Test suite name is not part of the fullyQualifiedName, so it must be
-  // added separately.
-  default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
-    Set<String> fqnParts = new HashSet<>();
-    fqnParts.add(fqn);
-    String parent = FullyQualifiedName.getParentFQN(fqn);
-    while (parent != null) {
-      fqnParts.add(parent);
-      parent = FullyQualifiedName.getParentFQN(parent);
-    }
-    fqnParts.addAll(fqnSplits);
-    return fqnParts;
+    return FullyQualifiedName.getAllParts(fqn).stream()
+        .filter(part -> !part.equals(entityName))
+        .collect(Collectors.toSet());
   }
 
   default List<EntityReference> getEntitiesWithDisplayName(List<EntityReference> entities) {

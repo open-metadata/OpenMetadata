@@ -3,7 +3,14 @@ name: TypeScript Type Generation
 on:
   pull_request:
     paths:
-      - 'openmetadata-spec/src/main/resources/json/schema/**'
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
+        type: string
 
 jobs:
   generate-types:
@@ -21,7 +28,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install dependencies
         run: |

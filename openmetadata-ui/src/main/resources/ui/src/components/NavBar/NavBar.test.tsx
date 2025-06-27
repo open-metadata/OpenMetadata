@@ -12,7 +12,10 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { ONE_HOUR_MS } from '../../constants/constants';
+import {
+  LAST_VERSION_FETCH_TIME_KEY,
+  ONE_HOUR_MS,
+} from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
@@ -177,13 +180,13 @@ describe('Test NavBar Component', () => {
   });
 });
 
-// --- Additional tests for fetchOMVersion one hour threshold ---
-describe('fetchOMVersion one hour threshold', () => {
+// --- Tests for handleDocumentVisibilityChange one hour threshold ---
+describe('handleDocumentVisibilityChange one hour threshold', () => {
   const OLD_DATE_NOW = Date.now;
 
   beforeEach(() => {
     jest.resetModules();
-
+    jest.clearAllMocks();
     global.Date.now = jest.fn();
   });
 
@@ -191,7 +194,7 @@ describe('fetchOMVersion one hour threshold', () => {
     global.Date.now = OLD_DATE_NOW;
   });
 
-  it('should NOT call getVersion if less than one hour since last fetch', async () => {
+  it('should NOT call getVersion on window focus if less than one hour since last fetch', async () => {
     const now = 2000000;
     const lastFetch = now - (ONE_HOUR_MS - 1000); // less than 1 hour ago
     mockGetItem.mockReturnValue(String(lastFetch));
@@ -200,25 +203,62 @@ describe('fetchOMVersion one hour threshold', () => {
     render(<NavBarComponent />);
     await screen.findByTestId('global-search-bar');
 
+    // Clear the initial getVersion call from mount
+    jest.clearAllMocks();
+
+    // Simulate window focus event
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
     expect(getVersion).not.toHaveBeenCalled();
   });
 
-  it('should call getVersion and setItem if more than one hour since last fetch', async () => {
+  it('should call getVersion and setItem on window focus if more than one hour since last fetch', async () => {
     const now = 3000000;
     const lastFetch = now - (ONE_HOUR_MS + 1000); // more than 1 hour ago
     mockGetItem.mockReturnValue(String(lastFetch));
     (global.Date.now as jest.Mock).mockReturnValue(now);
 
     render(<NavBarComponent />);
-    await Promise.resolve();
+    await screen.findByTestId('global-search-bar');
 
+    // Clear the initial getVersion call from mount
+    jest.clearAllMocks();
+
+    // Simulate window focus event
     await act(async () => {
-      expect(getVersion).toHaveBeenCalled();
+      window.dispatchEvent(new Event('focus'));
     });
 
+    expect(getVersion).toHaveBeenCalled();
     expect(mockSetItem).toHaveBeenCalledWith(
-      'versionFetchTime',
+      LAST_VERSION_FETCH_TIME_KEY,
       '3000000',
+      expect.objectContaining({ expires: expect.any(Date) })
+    );
+  });
+
+  it('should call getVersion on window focus if no previous fetch time exists', async () => {
+    const now = 4000000;
+    mockGetItem.mockReturnValue(null); // No previous fetch time
+    (global.Date.now as jest.Mock).mockReturnValue(now);
+
+    render(<NavBarComponent />);
+    await screen.findByTestId('global-search-bar');
+
+    // Clear the initial getVersion call from mount
+    jest.clearAllMocks();
+
+    // Simulate window focus event
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(getVersion).toHaveBeenCalled();
+    expect(mockSetItem).toHaveBeenCalledWith(
+      LAST_VERSION_FETCH_TIME_KEY,
+      '4000000',
       expect.objectContaining({ expires: expect.any(Date) })
     );
   });

@@ -15,7 +15,7 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,6 @@ import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
-  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
@@ -69,6 +68,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Certification from '../../Certification/Certification.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -117,6 +117,7 @@ export const DataAssetsHeader = ({
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
+  onCertificationUpdate,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -130,6 +131,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -359,17 +361,24 @@ export const DataAssetsHeader = ({
     setIsFollowingLoading(false);
   }, [onFollowClick]);
 
-  const { editDomainPermission, editOwnerPermission, editTierPermission } =
-    useMemo(
-      () => ({
-        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
-        editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-        editTierPermission:
-          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      }),
-      [permissions, dataAsset]
-    );
+  const {
+    editDomainPermission,
+    editOwnerPermission,
+    editTierPermission,
+    editCertificationPermission,
+  } = useMemo(
+    () => ({
+      editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+      editOwnerPermission:
+        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
+      editTierPermission:
+        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
+      editCertificationPermission:
+        (permissions.EditAll || permissions.EditCertification) &&
+        !dataAsset.deleted,
+    }),
+    [permissions, dataAsset]
+  );
 
   const tierSuggestionRender = useMemo(() => {
     if (entityType === EntityType.TABLE) {
@@ -701,21 +710,58 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            <Divider className="self-center vertical-divider" type="vertical" />
-            <ExtraInfoLabel
-              dataTestId="certification-label"
-              label={t('label.certification')}
-              value={
-                (dataAsset as Table).certification ? (
-                  <CertificationTag
-                    showName
-                    certification={(dataAsset as Table).certification!}
-                  />
-                ) : (
-                  t('label.no-entity', { entity: t('label.certification') })
-                )
-              }
-            />
+            {isUndefined(serviceCategory) && (
+              <>
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+                <Certification
+                  currentCertificate={
+                    'certification' in dataAsset
+                      ? dataAsset.certification?.tagLabel?.tagFQN
+                      : undefined
+                  }
+                  permission={false}
+                  onCertificationUpdate={onCertificationUpdate}>
+                  <div className="d-flex align-start extra-info-container">
+                    <Typography.Text
+                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                      data-testid="certification-label">
+                      <div className="flex gap-2">
+                        <span className="extra-info-label-heading">
+                          {t('label.certification')}
+                        </span>
+
+                        {editCertificationPermission && (
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-certification"
+                            size="small"
+                            title={t('label.edit-entity', {
+                              entity: t('label.certification'),
+                            })}
+                          />
+                        )}
+                      </div>
+                      <div className="font-medium certification-value">
+                        {(dataAsset as Table).certification ? (
+                          <CertificationTag
+                            showName
+                            certification={(dataAsset as Table).certification!}
+                          />
+                        ) : (
+                          t('label.no-entity', {
+                            entity: t('label.certification'),
+                          })
+                        )}
+                      </div>
+                    </Typography.Text>
+                  </div>
+                </Certification>
+              </>
+            )}
+
             {extraInfo}
           </div>
         </Col>

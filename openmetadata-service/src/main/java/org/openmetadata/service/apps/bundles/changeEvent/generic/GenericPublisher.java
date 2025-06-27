@@ -48,7 +48,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
   private static final String TEST_MESSAGE_JSON =
-      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
+      "{\"message\": \"This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.\"}";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
