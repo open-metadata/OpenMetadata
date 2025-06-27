@@ -1,6 +1,6 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Union
 from urllib.parse import urlparse
 
 from metadata.data_quality.validations.models import Column, TableParameter
@@ -63,9 +63,32 @@ class BaseTableParameter:
         ).replace("___SERVICE___.__DATABASE__.", "")
 
     @staticmethod
+    def get_service_connection_config(
+        db_service: DatabaseService,
+    ) -> Optional[Union[str, dict]]:
+        """Get the service connection config.
+
+        Args:
+            db_service (DatabaseService): The database service entity
+        """
+        if db_service.connection.config.type.value.lower() == "trino":
+            from metadata.ingestion.source.database.trino.connection import (
+                get_connection_dict,
+            )
+
+            source_url = get_connection_dict(db_service.connection.config)
+            return source_url
+        else:
+            return (
+                str(get_connection(db_service.connection.config).url)
+                if db_service.connection.config
+                else None
+            )
+
+    @staticmethod
     def get_data_diff_url(
         db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
-    ) -> str:
+    ) -> Union[str, dict]:
         """Get the url for the data diff service.
 
         Args:
@@ -76,11 +99,17 @@ class BaseTableParameter:
         Returns:
             str: The url for the data diff service
         """
+
         source_url = (
-            str(get_connection(db_service.connection.config).url)
+            BaseTableParameter.get_service_connection_config(db_service)
             if not override_url
             else override_url
         )
+
+        if isinstance(source_url, dict):
+            source_url["driver"] = source_url["driver"].split("+")[0]
+            return source_url
+
         url = urlparse(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}

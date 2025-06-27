@@ -10,11 +10,14 @@
 #  limitations under the License.
 """Module that defines the TableDiffParamsSetter class."""
 from ast import literal_eval
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Union
 from urllib.parse import urlparse
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    BaseTableParameter,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -22,7 +25,6 @@ from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
@@ -75,7 +77,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         )
 
         service1_url = (
-            str(get_connection(self.service_connection_config).url)
+            BaseTableParameter.get_service_connection_config(service1)
             if self.service_connection_config
             else None
         )
@@ -212,7 +214,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     @staticmethod
     def get_data_diff_url(
         db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
-    ) -> str:
+    ) -> Union[str, dict]:
         """Get the url for the data diff service.
 
         Args:
@@ -224,10 +226,14 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             str: The url for the data diff service
         """
         source_url = (
-            str(get_connection(db_service.connection.config).url)
+            BaseTableParameter.get_service_connection_config(db_service)
             if not override_url
             else override_url
         )
+        if isinstance(source_url, dict):
+            source_url["driver"] = source_url["driver"].split("+")[0]
+            return source_url
+
         url = urlparse(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
