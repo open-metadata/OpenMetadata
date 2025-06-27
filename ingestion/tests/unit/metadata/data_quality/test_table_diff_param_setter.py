@@ -6,6 +6,9 @@ from sqlalchemy import Column as SAColumn
 from sqlalchemy import MetaData, String, create_engine
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    BaseTableParameter,
+)
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
@@ -111,9 +114,9 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
     ],
 )
 def test_get_data_diff_url(input, expected):
-    assert expected == TableDiffParamsSetter(
-        None, None, MOCK_TABLE, None
-    ).get_data_diff_url(input, "service.database.schema.table")
+    assert expected == BaseTableParameter.get_data_diff_url(
+        input, "service.database.schema.table"
+    )
 
 
 @pytest.mark.parametrize(

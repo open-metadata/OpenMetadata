@@ -157,7 +157,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=70.0",
     "shapely",
-    "collate-data-diff",
+    "collate-data-diff>=0.11.6",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
