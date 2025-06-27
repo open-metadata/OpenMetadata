@@ -81,7 +81,6 @@ public record TableIndex(Table table) implements ColumnIndex {
             .map(ChangeDescription::getChangeSummary)
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
-    doc.put("tableConstraints", table.getTableConstraints());
     return doc;
   }
 

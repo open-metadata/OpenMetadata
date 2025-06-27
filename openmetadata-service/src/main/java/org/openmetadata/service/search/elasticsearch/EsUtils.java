@@ -125,7 +125,6 @@ public class EsUtils {
     searchSourceBuilder.from(from);
     searchSourceBuilder.size(size);
 
-    // This assumes here that the key has a keyword field
     if (!nullOrEmpty(aggName)) {
       searchSourceBuilder.aggregation(
           AggregationBuilders.terms(aggName)

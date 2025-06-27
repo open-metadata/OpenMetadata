@@ -88,14 +88,15 @@ public interface SearchClient {
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
-  // Updated to work with the new storage field `upstreamEntityRelationship`
   String REMOVE_ENTITY_RELATIONSHIP =
       "for (int i = 0; i < ctx._source.upstreamEntityRelationship.length; i++) { if (ctx._source.upstreamEntityRelationship[i].docId == '%s') { ctx._source.upstreamEntityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
 
-  // Updated to upsert into `upstreamEntityRelationship` instead of legacy `entityRelationship`
+  // The script is used for updating the entityRelationship attribute of the entity in ES
+  // It checks if any duplicate entry is present based on the docId and updates only if it is not
+  // present
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
       "boolean docIdExists = false; "
           + "for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) { "
@@ -140,9 +141,6 @@ public interface SearchClient {
 
   String ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY =
       "entityRelationship.relatedEntity.fqnHash.keyword";
-
-  // Add new constants for upstream entity relationship storage pattern
-  String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
 
   Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
       Set.of(
@@ -240,12 +238,6 @@ public interface SearchClient {
   Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;
-
-  /**
-   * Fetches all entities from ES/OS matching a filter, adds them as nodes, and adds their upstream edges (platform ER view).
-   */
-  SearchEntityRelationshipResult searchSchemaEntityRelationship(
-      String index, String queryFilter, boolean deleted) throws IOException;
 
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension

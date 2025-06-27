@@ -1451,7 +1451,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/entityRelationship")
   @Operation(
       operationId = "searchEntityRelationship",
-      summary = "Search entity relationship",
+      summary = "Search Entity Relationship",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1465,9 +1465,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
-          int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
           int downstreamDepth,
       @Parameter(
               description =
@@ -1491,7 +1490,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("size")
           int size)
       throws IOException {
-    // Validate required FQN parameter
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }

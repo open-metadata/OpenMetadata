@@ -175,7 +175,6 @@ public final class SearchUtils {
     }
     Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
     SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
-    // Without these fields entity relationships can't be built
     requiredFields.addAll(
         Set.of("fullyQualifiedName", "fqnHash", "id", "entityType", "upstreamEntityRelationship"));
     return requiredFields;
@@ -206,13 +205,6 @@ public final class SearchUtils {
                 : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY));
   }
 
-  public static String getEntityRelationshipDirectionAggregationField(
-      EntityRelationshipDirection direction) {
-    return direction == EntityRelationshipDirection.UPSTREAM
-        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
-        : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY;
-  }
-
   public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
       getUpstreamEntityRelationshipListIfExist(Map<String, Object> esDoc) {
     if (esDoc.containsKey(UPSTREAM_ENTITY_RELATIONSHIP_FIELD)) {
@@ -232,23 +224,16 @@ public final class SearchUtils {
     if (nullOrEmpty(upstreamEntities)) {
       return Collections.emptyList();
     }
-
     int totalLength = upstreamEntities.size();
-
     if (from >= totalLength) {
       return Collections.emptyList();
     }
-
-    // Calculate the end index
     int to = Math.min(from + size, totalLength);
-
-    // Return the sublist
     return upstreamEntities.subList(from, to);
   }
 
   public static org.openmetadata.schema.api.entityRelationship.RelationshipRef
       getEntityRelationshipRef(Map<String, Object> entityMap) {
-    // This assumes these keys exists in the map, use it with caution
     return new org.openmetadata.schema.api.entityRelationship.RelationshipRef()
         .withId(UUID.fromString(entityMap.get("id").toString()))
         .withType(entityMap.get("entityType").toString())

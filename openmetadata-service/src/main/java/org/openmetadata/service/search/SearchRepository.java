@@ -1445,9 +1445,4 @@ public class SearchRepository {
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
     return searchClient.searchEntityRelationship(entityRelationshipRequest);
   }
-
-  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
-      String alias, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchSchemaEntityRelationship(alias, queryFilter, deleted);
-  }
 }

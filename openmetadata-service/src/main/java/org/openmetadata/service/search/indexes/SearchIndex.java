@@ -194,9 +194,7 @@ public interface SearchIndex {
 
     // Only process constraints where this entity is the downstream (has foreign keys pointing to
     // other tables)
-    // Following lineage pattern: store only upstream relationships
     processUpstreamConstraints(entity, upstreamRelationships);
-
     return upstreamRelationships;
   }
 
@@ -216,8 +214,7 @@ public interface SearchIndex {
         try {
           Table relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
 
-          // Following lineage pattern: store only upstream relationship where relatedEntity is
-          // upstream
+          // Store only upstream relationship where relatedEntity is upstream
           // Current entity depends on relatedEntity (relatedEntity -> current entity)
           Map<String, Object> relationshipMap =
               checkUpstreamRelationship(
@@ -235,8 +232,7 @@ public interface SearchIndex {
           }
 
           columnIndex++;
-        } catch (EntityNotFoundException ex) {
-          // Skip if related entity not found
+        } catch (EntityNotFoundException ignored) {
         }
       }
     }
@@ -250,14 +246,13 @@ public interface SearchIndex {
       int columnIndex) {
     Map<String, Object> relationshipMap = new HashMap<>();
 
-    // Following lineage pattern: store only entity field (upstream entity)
+    // Store only entity field (upstream entity)
     // relatedEntity is the upstream entity that the current entity depends on
     relationshipMap.put(
         "entity", buildEntityRefMap(relatedEntity.getEntityReference())); // upstream entity only
     relationshipMap.put(
         "docId", relatedEntity.getId().toString() + "-" + entity.getId().toString());
 
-    // Add column mapping
     List<Map<String, Object>> columns = new ArrayList<>();
     String columnFQN =
         FullyQualifiedName.add(

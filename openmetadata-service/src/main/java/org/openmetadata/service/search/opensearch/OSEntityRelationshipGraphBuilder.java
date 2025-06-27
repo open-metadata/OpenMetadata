@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.ENTITY_RELATIONSHIP_AGGREGATION;
@@ -10,6 +11,7 @@ import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntity
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
 
+import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +30,7 @@ import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 
 @Slf4j
 public class OSEntityRelationshipGraphBuilder {
@@ -53,7 +56,7 @@ public class OSEntityRelationshipGraphBuilder {
         request,
         result,
         Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
-        request.getUpstreamDepth());
+        request.getUpstreamDepth() - 1);
     return result;
   }
 
@@ -69,6 +72,9 @@ public class OSEntityRelationshipGraphBuilder {
       return result;
     }
 
+    // Add the first downstream entity node
+    addFirstDownstreamEntity(request, result);
+
     fetchDownstreamNodesRecursively(
         request,
         result,
@@ -77,35 +83,23 @@ public class OSEntityRelationshipGraphBuilder {
     return result;
   }
 
-  /**
-   * Fetches all entities from OS matching a filter, adds them as nodes, and adds their upstream edges (platform ER view).
-   */
-  public SearchEntityRelationshipResult getSchemaEntityRelationship(
-      String index, String queryFilter, boolean deleted) throws IOException {
-    SearchEntityRelationshipResult result =
-        new SearchEntityRelationshipResult()
-            .withNodes(new HashMap<>())
-            .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>());
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        OsUtils.searchEntities(index, queryFilter, deleted);
-
-    // Add Nodes
-    for (os.org.opensearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> sourceMap = hit.getSourceAsMap();
-      String fqn = sourceMap.get(FQN_FIELD).toString();
-      result.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(sourceMap));
-
-      List<EsEntityRelationshipData> upstreamList =
-          getUpstreamEntityRelationshipListIfExist(sourceMap);
-      RelationshipRef toEntity = getEntityRelationshipRef(sourceMap);
-      for (EsEntityRelationshipData erData : upstreamList) {
-        result
-            .getUpstreamEdges()
-            .putIfAbsent(erData.getDocId(), erData.withRelatedEntity(toEntity));
-      }
-    }
-    return result;
+  private void addFirstDownstreamEntity(
+      SearchEntityRelationshipRequest request, SearchEntityRelationshipResult result)
+      throws IOException {
+    Map<String, Object> entityMap =
+        OsUtils.searchEREntityByKey(
+            request.getDirection(),
+            GLOBAL_SEARCH_ALIAS,
+            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+            Pair.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
+            SOURCE_FIELDS_TO_EXCLUDE);
+    result
+        .getNodes()
+        .putIfAbsent(
+            entityMap.get(FQN_FIELD).toString(),
+            new NodeInformation()
+                .withEntity(entityMap)
+                .withPaging(new LayerPaging().withEntityDownstreamCount(0)));
   }
 
   private void fetchUpstreamNodesRecursively(
@@ -165,6 +159,9 @@ public class OSEntityRelationshipGraphBuilder {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withRelatedEntity(toEntity));
           String fromFqn = data.getEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(fromFqn)) {
+            result.getNodes().put(fromFqn, new NodeInformation().withEntity(data.getEntity()));
+          }
+          if (!result.getNodes().containsKey(fromFqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
           }
         }
@@ -185,6 +182,12 @@ public class OSEntityRelationshipGraphBuilder {
       return;
     }
 
+    if (entityRelationshipRequest.getLayerFrom() < 0
+        || entityRelationshipRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
+    }
+
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     Map<String, Set<String>> directionKeyAndValues =
         buildDirectionToFqnSet(entityRelationshipRequest.getDirectionValue(), hasToFqnMap.keySet());
@@ -201,22 +204,19 @@ public class OSEntityRelationshipGraphBuilder {
             entityRelationshipRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        esClient.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-    for (os.org.opensearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
+    SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
+    for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> entityMap = hit.getSourceAsMap();
       if (!entityMap.isEmpty()) {
         String fqn = entityMap.get(FQN_FIELD).toString();
-        RelationshipRef toEntity = getEntityRelationshipRef(entityMap);
 
-        // Add Paging Details per entity using aggregation buckets
-        os.org.opensearch.search.aggregations.bucket.terms.ParsedStringTerms valueCountAgg =
+        // Add Paging Details per entity
+        ParsedStringTerms valueCountAgg =
             searchResponse.getAggregations() != null
                 ? searchResponse.getAggregations().get(ENTITY_RELATIONSHIP_AGGREGATION)
                 : new ParsedStringTerms();
         if (valueCountAgg != null) {
-          for (os.org.opensearch.search.aggregations.bucket.terms.Terms.Bucket bucket :
-              valueCountAgg.getBuckets()) {
+          for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
             String fqnFromHash = hasToFqnMap.get(bucket.getKeyAsString());
             if (fqnFromHash != null && result.getNodes().containsKey(fqnFromHash)) {
               NodeInformation nodeInformation = result.getNodes().get(fqnFromHash);
@@ -227,6 +227,7 @@ public class OSEntityRelationshipGraphBuilder {
           }
         }
 
+        RelationshipRef toEntity = getEntityRelationshipRef(entityMap);
         if (!result.getNodes().containsKey(fqn)) {
           hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fqn), fqn);
           result
@@ -240,11 +241,13 @@ public class OSEntityRelationshipGraphBuilder {
 
         List<EsEntityRelationshipData> upStreamEntities =
             getUpstreamEntityRelationshipListIfExist(entityMap);
-        for (EsEntityRelationshipData data : upStreamEntities) {
-          if (hasToFqnMap.containsKey(data.getEntity().getFqnHash())) {
+        for (EsEntityRelationshipData esEntityRelationshipData : upStreamEntities) {
+          if (hasToFqnMap.containsKey(esEntityRelationshipData.getEntity().getFqnHash())) {
             result
                 .getDownstreamEdges()
-                .putIfAbsent(data.getDocId(), data.withRelatedEntity(toEntity));
+                .putIfAbsent(
+                    esEntityRelationshipData.getDocId(),
+                    esEntityRelationshipData.withRelatedEntity(toEntity));
           }
         }
       }

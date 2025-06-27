@@ -231,7 +231,7 @@ public class ElasticSearchClient implements SearchClient {
   private NLQService nlqService;
 
   public ElasticSearchClient(ElasticSearchConfiguration config) {
-    client = createElasticSearchClient(config);
+    this.client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
@@ -243,13 +243,7 @@ public class ElasticSearchClient implements SearchClient {
 
   // Update the constructor to accept NLQService
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    client = createElasticSearchClient(config);
-    lineageGraphBuilder = new ESLineageGraphBuilder(client);
-    entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
-    clusterAlias = config.getClusterAlias();
-    isClientAvailable = client != null;
-    rbacConditionEvaluator = new RBACConditionEvaluator(new ElasticQueryBuilderFactory());
-    queryBuilderFactory = new ElasticQueryBuilderFactory();
+    this(config);
     this.nlqService = nlqService;
   }
 
@@ -2743,11 +2737,5 @@ public class ElasticSearchClient implements SearchClient {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
-  }
-
-  @Override
-  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
-      String index, String queryFilter, boolean deleted) throws IOException {
-    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(index, queryFilter, deleted);
   }
 }

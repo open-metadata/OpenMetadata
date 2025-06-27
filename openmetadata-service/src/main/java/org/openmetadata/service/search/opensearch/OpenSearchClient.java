@@ -86,6 +86,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -932,8 +934,8 @@ public class OpenSearchClient implements SearchClient {
     // Here we are merging everything from downstream paging into upstream paging
     for (var nodeFromDownstream : result.getNodes().entrySet()) {
       if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        var existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
-        var existingPaging = existingNode.getPaging();
+        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
         existingPaging.setEntityDownstreamCount(
             nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
       }
@@ -2769,7 +2771,17 @@ public class OpenSearchClient implements SearchClient {
                             .EntityRelationshipDirection
                             .UPSTREAM)));
 
-    // Merge the results
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // Here we are merging everything from downstream paging into upstream paging
     result.getNodes().putAll(upstreamResult.getNodes());
     result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
     result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
@@ -2793,11 +2805,5 @@ public class OpenSearchClient implements SearchClient {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
-  }
-
-  @Override
-  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
-      String index, String queryFilter, boolean deleted) throws IOException {
-    return entityRelationshipGraphBuilder.getSchemaEntityRelationship(index, queryFilter, deleted);
   }
 }

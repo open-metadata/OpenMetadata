@@ -73,9 +73,8 @@ public class OsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
-    os.org.opensearch.client.RestHighLevelClient client =
-        (os.org.opensearch.client.RestHighLevelClient)
-            Entity.getSearchRepository().getSearchClient().getClient();
+    RestHighLevelClient client =
+        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
     Map<String, Object> result = new HashMap<>();
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
@@ -89,9 +88,8 @@ public class OsUtils {
             null,
             null,
             fieldsToRemove);
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-    for (os.org.opensearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> esDoc = hit.getSourceAsMap();
       result.put(esDoc.get(FQN_FIELD).toString(), hit.getSourceAsMap());
     }
@@ -112,8 +110,7 @@ public class OsUtils {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(indexAlias));
-    os.org.opensearch.search.builder.SearchSourceBuilder searchSourceBuilder =
-        new os.org.opensearch.search.builder.SearchSourceBuilder();
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.fetchSource(
         listOrEmpty(fieldsToInclude).toArray(String[]::new),
         listOrEmpty(fieldsToRemove).toArray(String[]::new));
@@ -121,17 +118,16 @@ public class OsUtils {
     searchSourceBuilder.query(getBoolQueriesWithShould(keysAndValues));
     if (!CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
-          os.org.opensearch.index.query.QueryBuilders.boolQuery()
+          QueryBuilders.boolQuery()
               .must(getBoolQueriesWithShould(keysAndValues))
-              .must(os.org.opensearch.index.query.QueryBuilders.termQuery("deleted", deleted)));
+              .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     searchSourceBuilder.from(from);
     searchSourceBuilder.size(size);
 
-    // This assumes here that the key has a keyword field
     if (!nullOrEmpty(aggName)) {
       searchSourceBuilder.aggregation(
-          os.org.opensearch.search.aggregations.AggregationBuilders.terms(aggName)
+          AggregationBuilders.terms(aggName)
               .field(getEntityRelationshipAggregationField(direction)));
     }
 
@@ -246,8 +242,8 @@ public class OsUtils {
     return boolQuery;
   }
 
-  public static os.org.opensearch.action.search.SearchResponse searchEntities(
-      String index, String queryFilter, Boolean deleted) throws IOException {
+  public static SearchResponse searchEntities(String index, String queryFilter, Boolean deleted)
+      throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
