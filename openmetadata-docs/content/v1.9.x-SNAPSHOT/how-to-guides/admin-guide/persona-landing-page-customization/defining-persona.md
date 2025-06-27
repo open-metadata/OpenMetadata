@@ -17,7 +17,7 @@ In OpenMetadata, a **persona** represents an organization's specific role or fun
 1. As an administrator, navigate to **Settings > Personas** in OpenMetadata.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/persona-1.png"
+src="/images/v1.9/how-to-guides/admin-guide/persona-1.png"
 alt="Settings > Personas"
 caption="Settings > Personas"
 /%}
@@ -25,7 +25,7 @@ caption="Settings > Personas"
 2. **Create a new persona** or modify an existing one.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/persona-3.png"
+src="/images/v1.9/how-to-guides/admin-guide/persona-3.png"
 alt="create a new persona*"
 caption="create a new persona*"
 /%}
@@ -33,7 +33,7 @@ caption="create a new persona*"
 3. **Associate users** with the appropriate persona to customize their experience based on their roles.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/persona-4.png"
+src="/images/v1.9/how-to-guides/admin-guide/persona-4.png"
 alt="Associate users"
 caption="Associate users"
 /%}

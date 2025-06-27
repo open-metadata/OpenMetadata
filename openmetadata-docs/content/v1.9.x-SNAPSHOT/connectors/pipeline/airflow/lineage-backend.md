@@ -251,9 +251,9 @@ jwt_token = ...
 
 After running the DAG, you should be able to see the following information in the ingested Pipeline:
 
-{% image src="/images/v1.9connectors/airflow/lineage-backend-dag.png" alt="DAG" caption="DAG ingested as a Pipeline with the Task view." /%}
+{% image src="/images/v1.9/connectors/airflow/lineage-backend-dag.png" alt="DAG" caption="DAG ingested as a Pipeline with the Task view." /%}
 
-{% image src="/images/v1.9connectors/airflow/lineage-backend-lineage.png" alt="Lineage" caption="Pipeline Lineage." /%}
+{% image src="/images/v1.9/connectors/airflow/lineage-backend-lineage.png" alt="Lineage" caption="Pipeline Lineage." /%}
 
 A fast way to try and play with Airflow locally is to install `apache-airflow` in a virtual environment and, when using
 versions greater than 2.2.x, using `airflow standalone`.

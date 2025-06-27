@@ -13,7 +13,7 @@ From the home page click on the `Quality` menu item on the vertical navigation. 
 If you want to look at your tests grouped by Test Suites, navigate to the `By Test Suites` tab. This will bring you to the Test Suite page where you can select a specific Test Suite.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/test-suite-home-page.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/test-suite-home-page.png"
   alt="Test suite home page"
   caption="Test suite home page"
  /%}
@@ -22,7 +22,7 @@ If you want to look at your tests grouped by Test Suites, navigate to the `By Te
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/test-suite-results.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/test-suite-results.png"
   alt="Test suite results page"
   caption="Test suite results page"
  /%}
@@ -34,7 +34,7 @@ Navigate to your table and click on the `profiler & Data Quality` tab. From ther
 In the top panel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/data-quality/table-results-entity.png"
+  src="/images/v1.9/features/ingestion/workflows/data-quality/table-results-entity.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}

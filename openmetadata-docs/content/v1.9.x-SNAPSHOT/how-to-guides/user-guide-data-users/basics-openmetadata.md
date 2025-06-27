@@ -14,7 +14,7 @@ Once you login to OpenMetadata, you can start exploring from the widget-rich ‘
 The main section consists of the **Activity Feed Widget**.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/activity1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/activity1.png"
 alt="My Data: Activity Feed Widget"
 caption="My Data: Activity Feed Widget"
 /%}
@@ -29,7 +29,7 @@ caption="My Data: Activity Feed Widget"
 A quick glance at the **My Data Widget** will display all the data assets that you own. In case, you or your team does not own any data assets, you can start claiming the assets from the Explore page.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/data1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/data1.png"
 alt="My Data Widget"
 caption="My Data Widget"
 /%}
@@ -39,7 +39,7 @@ caption="My Data Widget"
 The KPI widget is accessible to Admins only. Other users can also be given access to the KPI widget. The KPI widget gives ready information about the data asset ownership coverage, description coverage, and tiering.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/kpi.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/kpi.png"
 alt="Key Performance Indicators (KPI) Widget"
 caption="Key Performance Indicators (KPI) Widget"
 /%}
@@ -49,7 +49,7 @@ caption="Key Performance Indicators (KPI) Widget"
 This widget displays the trend of the total data assets in the last 14 days. It displays the total Tables, Dashboards, Databases, Database Schemas, Pipelines, Topics, MLModels, Charts, etc. Users can quickly identify the most populated data assets. In the below example, the organization has more Tables when compared to any other data asset.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/data2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/data2.png"
 alt="Total Data Assets Widget"
 caption="Total Data Assets Widget"
 /%}
@@ -59,7 +59,7 @@ caption="Total Data Assets Widget"
 The right-side panel of the ‘My Data’ page displays the **Recent Announcements**, the data assets that you are **Following**, and the **Recently Viewed** data assets.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/data3.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/data3.png"
 alt="Announcements, Following, and Recent Views"
 caption="Announcements, Following, and Recent Views"
 /%}

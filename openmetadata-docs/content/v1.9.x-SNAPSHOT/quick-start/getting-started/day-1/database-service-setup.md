@@ -12,7 +12,7 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 - Click on **Add New Service**.
 
 {% image
-  src="/images/v1.9getting-started/add-service.png"
+  src="/images/v1.9/getting-started/add-service.png"
   alt="Adding Database Service"
   caption="Adding Database Service" /%}
 
@@ -22,7 +22,7 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 - Enter the required details, such as the **Name** and **Description**, to identify the database.
 
 {% image
-  src="/images/v1.9getting-started/select-service.png"
+  src="/images/v1.9/getting-started/select-service.png"
   alt="Selecting Database Service"
   caption="Selecting Database Service" /%}
 
@@ -31,12 +31,12 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 - The side panel offers guidance with available documentation, and you can also refer to the specific `Snowflake` Connector [documentation](/connectors)for more information.
 
 {% image
-  src="/images/v1.9getting-started/configure-connector0.png"
+  src="/images/v1.9/getting-started/configure-connector0.png"
   alt="Configure Service"
   caption="Updating Connection Service" /%}
 
 {% image
-  src="/images/v1.9getting-started/configure-connector.png"
+  src="/images/v1.9/getting-started/configure-connector.png"
   alt="Updating Connection Details"
   caption="Updating Connection Details" /%}
 
@@ -44,7 +44,7 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 Click Test Connection to verify the setup. This will check if OpenMetadata can reach the Snowflake service.
 
 {% image
-  src="/images/v1.9getting-started/test-connection.png"
+  src="/images/v1.9/getting-started/test-connection.png"
   alt="Verifying the Test Connection"
   caption="Verifying the Test Connection" /%}
 

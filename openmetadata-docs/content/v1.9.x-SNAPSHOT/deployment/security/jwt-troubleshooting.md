@@ -32,7 +32,7 @@ When the ingestion workflow uses this token, we use `rsapublicKeyPath` to decryp
 First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
 
 {% image
-  src="/images/v1.9deployment/troubleshoot/jwt-token.png"
+  src="/images/v1.9/deployment/troubleshoot/jwt-token.png"
   alt="jwt-token"
   caption="JWT token in OpenMetadata UI"
  /%}
@@ -41,7 +41,7 @@ You can validate that in [jwt.io](https://jwt.io/). if there's something wrong o
 
 
 {% image
-  src="/images/v1.9deployment/troubleshoot/jwt-validation.png"
+  src="/images/v1.9/deployment/troubleshoot/jwt-validation.png"
   alt="jwt.io"
   caption="jwt.io tool for validating JWT claims"
  /%}

@@ -10,7 +10,7 @@ collate: true
 - Navigate to **Settings > Applications** in the Collate platform.
 
 {% image
-src="/images/v1.9collate-ai/setting-up-collate-ai-1.png"
+src="/images/v1.9/collate-ai/setting-up-collate-ai-1.png"
 alt="setting up Collate AI"
 caption="Navigate to Settings > Applications"
 /%}
@@ -18,7 +18,7 @@ caption="Navigate to Settings > Applications"
 - Install Collate AI by following the on-screen instructions.
 
 {% image
-src="/images/v1.9collate-ai/setting-up-collate-ai-2.png"
+src="/images/v1.9/collate-ai/setting-up-collate-ai-2.png"
 alt="Install Collate AI"
 caption="Install Collate AI"
 /%}
@@ -26,7 +26,7 @@ caption="Install Collate AI"
 - Configure and add filters based on criteria such as owner, schema, database, service, and more. You can also combine multiple conditions to meet your specific requirements.
 
 {% image
-src="/images/v1.9collate-ai/setting-up-collate-ai-3.png"
+src="/images/v1.9/collate-ai/setting-up-collate-ai-3.png"
 alt="automatically generate descriptions"
 caption="automatically generate descriptions"
 /%}
@@ -34,7 +34,7 @@ caption="automatically generate descriptions"
 - **Scheduling**: Schedule Collate AI to run regularly, automatically generating metadata at predefined intervals (e.g., weekly).
 
 {% image
-src="/images/v1.9collate-ai/setting-up-collate-ai-4.png"
+src="/images/v1.9/collate-ai/setting-up-collate-ai-4.png"
 alt="Schedule Collate AI"
 caption="Schedule Collate AI"
 /%}
@@ -43,7 +43,7 @@ caption="Schedule Collate AI"
 - The Collate AI chatbot icon appears on every page after installation.
 
 {% image
-src="/images/v1.9collate-ai/using-collate-ai-chatbot-1.png"
+src="/images/v1.9/collate-ai/using-collate-ai-chatbot-1.png"
 alt="chatbot icon"
 caption="chatbot icon"
 /%}
@@ -55,7 +55,7 @@ caption="chatbot icon"
 - Collate AI will generate the corresponding SQL query and provide a detailed explanation of the query logic.
 
 {% image
-src="/images/v1.9collate-ai/using-collate-ai-chatbot-2.png"
+src="/images/v1.9/collate-ai/using-collate-ai-chatbot-2.png"
 alt="natural language questions"
 caption="natural language questions"
 /%}
@@ -67,7 +67,7 @@ caption="natural language questions"
 - The **Metadata Usage** workflows will ingest the queries being run against the tables. You can see how long each query has been executed in the **Queries** tab.
 
 {% image
-src="/images/v1.9collate-ai/fixing-sql-queries-1.png"
+src="/images/v1.9/collate-ai/fixing-sql-queries-1.png"
 alt="metadata usage workflows"
 caption="metadata usage workflows"
 /%}
@@ -75,7 +75,7 @@ caption="metadata usage workflows"
 - If a query runs inefficiently, ask the chatbot to optimize it by typing: “Optimize this query.”
 
 {% image
-src="/images/v1.9collate-ai/fixing-sql-queries-3.png"
+src="/images/v1.9/collate-ai/fixing-sql-queries-3.png"
 alt="Optimize this query"
 caption="Optimize this query"
 /%}
@@ -87,7 +87,7 @@ caption="Optimize this query"
 - Collate AI will correct the query and provide a working version.
 
 {% image
-src="/images/v1.9collate-ai/fixing-sql-queries-4.png"
+src="/images/v1.9/collate-ai/fixing-sql-queries-4.png"
 alt="Can you fix this query"
 caption="Can you fix this query"
 /%}
@@ -97,7 +97,7 @@ caption="Can you fix this query"
 - You can accept or reject each suggestion individually or choose to accept all suggestions in bulk.
 
 {% image
-src="/images/v1.9collate-ai/reviewing-generated-metadata.png"
+src="/images/v1.9/collate-ai/reviewing-generated-metadata.png"
 alt="reviewing Generated Metadata"
 caption="reviewing Generated Metadata"
 /%}

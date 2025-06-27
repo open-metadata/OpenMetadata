@@ -29,7 +29,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Reverse Metadata](#reverse-metadata)
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
 ## Requirements
 
@@ -62,12 +62,12 @@ For the usage and lineage workflow, the user will need `SELECT` privilege on `ST
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Redshift", 
-    selectServicePath: "/images/v1.9connectors/redshift/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/redshift/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/redshift/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/redshift/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/redshift/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/redshift/service-connection.png",
 } 
 /%}
 
@@ -107,15 +107,15 @@ There are a couple of types of SSL modes that Redshift supports which can be add
 
 For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -126,13 +126,13 @@ To establish secure connections between OpenMetadata and a Redshift database, yo
 Under `Advanced Config`, specify the SSL mode appropriate for your connection, such as `prefer`, `verify-ca`, `allow`, and others. After selecting the SSL mode, provide the CA certificate used for SSL validation (`caCertificate`). Note that Redshift requires only the CA certificate for SSL validation.
 
 {% image
-  src="/images/v1.9connectors/ssl_connection.png"
+  src="/images/v1.9/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/redshift/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/redshift/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

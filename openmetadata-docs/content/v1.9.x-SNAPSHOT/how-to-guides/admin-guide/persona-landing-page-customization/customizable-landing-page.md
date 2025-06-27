@@ -13,13 +13,13 @@ OpenMetadata's customizable landing page allows admins to tailor the layout base
    After defining personas, navigate to **Settings > Preferences > Customize Landing Page**.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/landing-1.png"
+src="/images/v1.9/how-to-guides/admin-guide/landing-1.png"
 alt="Set Up Personas"
 caption="Set Up Personas"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/landing-2.png"
+src="/images/v1.9/how-to-guides/admin-guide/landing-2.png"
 alt="Customize Landing Page"
 caption="Customize Landing Page"
 /%}
@@ -28,7 +28,7 @@ caption="Customize Landing Page"
    Customize a landing page for a specific persona (e.g., data consumer) by adding, removing, or rearranging panels.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/landing-3.png"
+src="/images/v1.9/how-to-guides/admin-guide/landing-3.png"
 alt="Select a Persona"
 caption="Select a Persona"
 /%}
@@ -42,7 +42,7 @@ caption="Select a Persona"
    - Recently Viewed and more
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/landing-4.png"
+src="/images/v1.9/how-to-guides/admin-guide/landing-4.png"
 alt="Pluggable Panels"
 caption="Pluggable Panels"
 /%}
@@ -51,7 +51,7 @@ caption="Pluggable Panels"
    Adjust the layout based on user preferences and save the configuration.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/landing-5.png"
+src="/images/v1.9/how-to-guides/admin-guide/landing-5.png"
 alt="Rearrange and Save"
 caption="Rearrange and Save"
 /%}

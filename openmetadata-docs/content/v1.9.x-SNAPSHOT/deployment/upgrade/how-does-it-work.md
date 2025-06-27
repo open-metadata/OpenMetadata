@@ -18,7 +18,7 @@ backup and upgrade process work, this is the place to be. We will cover:
 Let's start with a simplified design review of OpenMetadata. You can find further details [here](/main-concepts/high-level-design),
 but we'll now focus on the Server & the Database:
 
-{% image src="/images/v1.9deployment/upgrade/how-does-it-work/upgrade-simple.drawio.png" alt="simple architecture" /%}
+{% image src="/images/v1.9/deployment/upgrade/how-does-it-work/upgrade-simple.drawio.png" alt="simple architecture" /%}
 
 All the metadata is stored in a MySQL or Postgres instance. The shape of the data is managed using [Flyway](https://flywaydb.org/), and the migration
 scripts are handled [here](https://github.com/open-metadata/OpenMetadata/tree/main/bootstrap/sql).
@@ -38,7 +38,7 @@ You can find all the necessary information on how to run the backups [here](/dep
 When we backup the data, we are creating an SQL file that follows the shape of the database of a specific version. Thus, if we have
 some issues on our instance, and we ever need to restore that data, it will only fit to a database with that same version shape.
 
-{% image src="/images/v1.9deployment/upgrade/how-does-it-work/upgrade-backup.drawio.png" alt="backup" /%}
+{% image src="/images/v1.9/deployment/upgrade/how-does-it-work/upgrade-backup.drawio.png" alt="backup" /%}
 
 ## 2. When should we restore?
 
@@ -63,7 +63,7 @@ Note that the restore process will not work if we try to restore some data taken
 We have been explaining how each OpenMetadata Server relies on a specific data model to store the metadata. What happens
 when we upgrade from version X to Y?
 
-{% image src="/images/v1.9deployment/upgrade/how-does-it-work/upgrade-migrate.drawio.png" alt="backup" /%}
+{% image src="/images/v1.9/deployment/upgrade/how-does-it-work/upgrade-migrate.drawio.png" alt="backup" /%}
 
 The migration process will take care of getting the data shaped as X and transform it to the Y shape. After the migration is done,
 the server in version Y will be able to run properly.

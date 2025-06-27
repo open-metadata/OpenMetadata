@@ -10,19 +10,19 @@ Data is a team game and OpenMetadata is a platform to discover, collaborate and 
 - Navigate to **Settings >> Team & User Management >> Users** and click on **Add Users**.
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user1.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user1.png"
 alt="Team & User Management"
 caption="Team & User Management"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user1.1.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user1.1.png"
 alt="Users"
 caption="Users"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user1.2.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user1.2.png"
 alt="Add User"
 caption="Add User"
 /%}
@@ -40,7 +40,7 @@ caption="Add User"
 {% /note %}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user2.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user2.png"
 alt="Add User"
 caption="Invite User"
 /%}

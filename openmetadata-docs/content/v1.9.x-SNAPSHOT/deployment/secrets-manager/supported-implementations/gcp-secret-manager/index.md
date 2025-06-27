@@ -85,7 +85,7 @@ If everything goes as planned, all the data would be displayed using the paramet
 `/openmetadata/...` in your GCP Secret Manager console. The following image shows what it should look 
 like:
 
-{% image src="/images/v1.9deployment/secrets-manager/supported-implementations/gcp-secret-manager/gcp-secret-manager-console.png" alt="gcp-secret-manager-console" /%}
+{% image src="/images/v1.9/deployment/secrets-manager/supported-implementations/gcp-secret-manager/gcp-secret-manager-console.png" alt="gcp-secret-manager-console" /%}
 
 **Note:** If we want to change the starting path for our secrets names from `openmetadata` to a different one, we have 
 to change the property `clusterName` in our `openmetadata.yaml`. Also, if you inform the `prefix` value, it will be

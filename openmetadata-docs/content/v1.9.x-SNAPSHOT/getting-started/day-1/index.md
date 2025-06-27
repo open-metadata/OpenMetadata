@@ -51,21 +51,21 @@ to bring in the metadata into Collate at a regular schedule.
 - Go to **Settings > Services > Databases** and click on the service you have added. Navigate to the Ingestion tab to **Add Metadata Ingestion**.
 
 {% image
-  src="/images/v1.9getting-started/add-ingestion.png"
+  src="/images/v1.9/getting-started/add-ingestion.png"
   alt="Adding Ingestion"
   caption="Adding Ingestion" /%}
 
 - Make any necessary configuration changes or filters for the ingestion, with documentation available in the side panel.
 
 {% image
-  src="/images/v1.9getting-started/ingestion-config.png"
+  src="/images/v1.9/getting-started/ingestion-config.png"
   alt="Configure Ingestion"
   caption="Configure Ingestion" /%}
 
 - Schedule the pipeline to ingest metadata regularly.
 
 {% image
-  src="/images/v1.9getting-started/schedule-ingesgtion.png"
+  src="/images/v1.9/getting-started/schedule-ingesgtion.png"
   alt="Schedule Ingestion"
   caption="Schedule Ingestion" /%}
 
@@ -73,7 +73,7 @@ to bring in the metadata into Collate at a regular schedule.
 - Once the metadata ingestion has been completed, you can see the available data assets under **Explore** in the main menu.
 
 {% image
-  src="/images/v1.9getting-started/explore-tab.png"
+  src="/images/v1.9/getting-started/explore-tab.png"
   alt="Ingested Data"
   caption="Ingested Data under Explore Tab" /%}
 
@@ -87,14 +87,14 @@ to collaborate on the data and assign different roles.
 - Navigate to **Settings > Team & User Management > Users**.
 
 {% image
-  src="/images/v1.9getting-started/users.png"
+  src="/images/v1.9/getting-started/users.png"
   alt="Users Navigation"
   caption="Users Navigation" /%}
 
 - Click on **Add User**, and enter their email and other details to provide access to the platform.
 
 {% image
-  src="/images/v1.9getting-started/add-users.png"
+  src="/images/v1.9/getting-started/add-users.png"
   alt="Adding New User"
   height="750px"
   caption="Adding New User" /%}
@@ -104,7 +104,7 @@ to collaborate on the data and assign different roles.
 - Admin access can also be granted. Admins will have access to all settings and can invite other users.
 
 {% image
-  src="/images/v1.9getting-started/update-user.png"
+  src="/images/v1.9/getting-started/update-user.png"
   alt="Users Profile"
   caption="Users Profile" /%}
 

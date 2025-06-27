@@ -22,7 +22,7 @@ Ensure that the **Data Insights** application is installed:
 - Check if **Data Insights Application** is listed.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights1.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights1.png"
 alt="Data Insights Application"
 caption="Data Insights Application"
 /%}
@@ -30,7 +30,7 @@ caption="Data Insights Application"
 - If not, click `Add Apps` and install **Data Insights Application**.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights2.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights2.png"
 alt="Add Apps"
 caption="Add Apps"
 /%}
@@ -40,7 +40,7 @@ caption="Add Apps"
 - Click `Configure` to set parameters.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights3.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights3.png"
 alt="Configure to set parameters"
 caption="Configure to set parameters"
 /%}
@@ -48,7 +48,7 @@ caption="Configure to set parameters"
 - Click `Schedule` to define execution timing.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights4.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights4.png"
 alt="Schedule"
 caption="Schedule"
 /%}
@@ -56,7 +56,7 @@ caption="Schedule"
 - Click `Run Now` to execute the Data Insights workflow.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights5.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights5.png"
 alt="Data Insights workflow"
 caption="Data Insights workflow"
 /%}
@@ -68,7 +68,7 @@ When configuring the Data Insights application:
 - Enable **Backfill Configuration**.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/data-insights6.png"
+src="/images/v1.9/how-to-guides/admin-guide/data-insights6.png"
 alt="Backfill Configuration"
 caption="Backfill Configuration"
 /%}

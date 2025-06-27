@@ -15,7 +15,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 We also assume that your helm chart release names are `openmetadata` and `openmetadata-dependencies` and namespace used is `default`.
 
-{% partial file="/v1.9deployment/upgrade/upgrade-prerequisites.md" /%}
+{% partial file="/v1.9/deployment/upgrade/upgrade-prerequisites.md" /%}
 
 # Upgrade Process
 
@@ -23,7 +23,7 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 You can get changes from artifact hub of [openmetadata helm chart](https://artifacthub.io/packages/helm/open-metadata/openmetadata) release. Click on Default Values >> Compare to Version.
 
-{% image src="/images/v1.9deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
+{% image src="/images/v1.9/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
 
 ## Step 2: Upgrade Helm Repository with a new release
 
@@ -95,7 +95,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 
 {% /note %}
 
-{% partial file="/v1.9deployment/upgrade/post-upgrade-steps.md" /%}
+{% partial file="/v1.9/deployment/upgrade/post-upgrade-steps.md" /%}
 
 # Troubleshooting
 

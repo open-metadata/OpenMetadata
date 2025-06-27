@@ -16,7 +16,7 @@ OpenMetadata provides Data Quality workflows, which helps with:
 The data quality in OpenMetadata is also **extensible** to adapt to your needs. 
 
 {% image
-src="/images/v1.9how-to-guides/quality/quality1.png"
+src="/images/v1.9/how-to-guides/quality/quality1.png"
 alt="Profiler & Data Quality"
 caption="Profiler & Data Quality"
 /%}

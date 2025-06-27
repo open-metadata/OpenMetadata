@@ -36,7 +36,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 This will populate the Lineage tab from the Table Entity Page.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/lineage/table-entity-page.png"
+  src="/images/v1.9/features/ingestion/workflows/lineage/table-entity-page.png"
   alt="table-entity-page"
   caption="Table Entity Page"
  /%}
@@ -49,7 +49,7 @@ We can create a workflow that will obtain the query log and table creation infor
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Lineage Ingestion.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/lineage/add-ingestion.png"
+  src="/images/v1.9/features/ingestion/workflows/lineage/add-ingestion.png"
   alt="add-ingestion"
   caption="Add Ingestion"
  /%}
@@ -59,7 +59,7 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
 Here you can enter the Lineage Ingestion details:
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/lineage/configure-lineage-ingestion.png"
+  src="/images/v1.9/features/ingestion/workflows/lineage/configure-lineage-ingestion.png"
   alt="configure-lineage-ingestion"
   caption="Configure the Lineage Ingestion"
  /%}
@@ -80,7 +80,7 @@ Set the limit for the query log results to be run at a time.
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/lineage/scheule-and-deploy.png"
+  src="/images/v1.9/features/ingestion/workflows/lineage/scheule-and-deploy.png"
   alt="schedule-and-deploy"
   caption="View Service Ingestion pipelines"
  /%}
@@ -91,4 +91,4 @@ In the [connectors](/connectors) section we showcase how to run the metadata ing
 
 This is a good option if you wish to execute your workflow via the Airflow SDK or using the CLI; if you use the CLI a lineage workflow can be triggered with the command `metadata ingest -c FILENAME.yaml`. The `serviceConnection` config will be specific to your connector (you can find more information in the [connectors](/connectors) section), though the sourceConfig for the lineage will be similar across all connectors.
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}

@@ -20,7 +20,7 @@ Configure and schedule VertexAI metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/ml-model/vertexai/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/vertexai/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/vertexai/yaml"} /%}
 
 ## Requirements
 
@@ -48,12 +48,12 @@ To execute metadata extraction workflow successfully the user or the service acc
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "VertexAI", 
-    selectServicePath: "/images/v1.9connectors/vertexai/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/vertexai/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/vertexai/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/vertexai/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/vertexai/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/vertexai/service-connection.png",
 } 
 /%}
 
@@ -88,10 +88,10 @@ Location refers to the geographical region where your resources, such as dataset
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/ml-model/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/ml-model/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

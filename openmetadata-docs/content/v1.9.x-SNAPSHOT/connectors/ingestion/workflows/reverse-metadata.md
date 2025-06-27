@@ -82,7 +82,7 @@ for trivial cases but can be an issue when the logic is different for each chann
 1. Navigate to the **Applications** section.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/reverse-metadata/reverse-metadata1.png"
+  src="/images/v1.9/features/ingestion/workflows/reverse-metadata/reverse-metadata1.png"
   alt="Reverse Metadata Navigation"
   caption="Reverse Metadata Navigation"
  /%}
@@ -90,7 +90,7 @@ for trivial cases but can be an issue when the logic is different for each chann
 2. Locate and install the **Reverse Metadata** app.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/reverse-metadata/reverse-metadata2.png"
+  src="/images/v1.9/features/ingestion/workflows/reverse-metadata/reverse-metadata2.png"
   alt="Reverse Metadata App"
   caption="Reverse Metadata App"
  /%}
@@ -98,7 +98,7 @@ for trivial cases but can be an issue when the logic is different for each chann
 3. Select your database service, configure the required settings, and click **Submit**.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/reverse-metadata/reverse-metadata3.png"
+  src="/images/v1.9/features/ingestion/workflows/reverse-metadata/reverse-metadata3.png"
   alt="Reverse Metadata Configuration"
   caption="Reverse Metadata Configuration"
  /%}
@@ -111,7 +111,7 @@ for trivial cases but can be an issue when the logic is different for each chann
 - Monitor for any errors or warnings.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/reverse-metadata/reverse-metadata4.png"
+  src="/images/v1.9/features/ingestion/workflows/reverse-metadata/reverse-metadata4.png"
   alt="Monitor Reverse Metadata Ingestion"
   caption="Monitor Reverse Metadata Ingestion"
  /%}

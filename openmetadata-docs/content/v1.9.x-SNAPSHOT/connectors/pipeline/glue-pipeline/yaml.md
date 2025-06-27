@@ -63,7 +63,7 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% partial file="/v1.9connectors/yaml/common/aws-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -84,7 +84,7 @@ source:
       type: GluePipeline
       awsConfig:
 ```
-{% partial file="/v1.9connectors/yaml/common/aws-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 

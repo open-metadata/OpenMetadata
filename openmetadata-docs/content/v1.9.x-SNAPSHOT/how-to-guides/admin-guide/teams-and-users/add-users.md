@@ -10,7 +10,7 @@ If the user does not already exist in OpenMetadata, then [invite the user](/how-
 {% note %}
 **Note:** You can add a User to multiple Teams when creating a New User.
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user5.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user5.png"
 alt="Add User to Team"
 /%}
 {% /note %}
@@ -26,19 +26,19 @@ If the user, already exists in OpenMetadata, then
 {% /note %}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user3.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user3.png"
 alt="Add User to Team"
 caption="Select Relevant Team"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user3.1.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user3.1.png"
 alt="Teams"
 caption="Teams"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user3.2.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user3.2.png"
 alt="Add User to Team"
 caption="Select Relevant Team"
 /%}
@@ -46,7 +46,7 @@ caption="Select Relevant Team"
 - Search for the user, select the checkbox, and click on **Update**.
 
 {% image
-src="/images/v1.9how-to-guides/teams-and-users/add-user4.png"
+src="/images/v1.9/how-to-guides/teams-and-users/add-user4.png"
 alt="Add User to Team"
 caption="Add User to the Team"
 /%}

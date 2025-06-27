@@ -10,7 +10,7 @@ Discovering data among thousands of datasets is hard without rich metadata and f
 OpenMetadata provides a user-friendly interface for **data discovery**. OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, ML models, containers, glossaries, and tags. OpenMetadata supports detailed metadata for assets and their components (e.g., columns, charts), including support for complex data types such as arrays and structs. Users can get a complete picture of their data by viewing the **data evolution** tracked using lineage and metadata versioning.
 
 {% image
-  src="/images/v1.9features/data-discovery.gif"
+  src="/images/v1.9/features/data-discovery.gif"
 /%}
 
 {%inlineCalloutContainer%}

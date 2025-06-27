@@ -11,7 +11,7 @@ In order to extract usage information, OpenMetadata parses the queries that have
 Query filtering is supported for both Usage & Lineage workflows. While configuring either usage or lineage workflow you will find a `Filtering Condition` text field where you can provide the sql condition which will be added to already existing conditions with an `AND` operation. In later part of this document you will find how to write this condition for supported data source.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/usage/filter-condition-field.png"
+  src="/images/v1.9/features/ingestion/workflows/usage/filter-condition-field.png"
   alt="filter-condition-field"
   caption="Filter Condition Field"
  /%}

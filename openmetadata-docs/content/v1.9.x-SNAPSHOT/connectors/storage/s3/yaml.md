@@ -18,7 +18,7 @@ Configure and schedule S3 metadata workflows from the CLI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -85,7 +85,7 @@ The policy would look like:
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Athena ingestion, you will need to install:
 
@@ -103,7 +103,7 @@ file at the bucket root.
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
-{% partial file="/v1.9connectors/storage/manifest.md" /%}
+{% partial file="/v1.9/connectors/storage/manifest.md" /%}
 
 ## Metadata Ingestion
 
@@ -128,13 +128,13 @@ This is a sample config for Athena:
 
 #### Source Configuration - Service Connection
 
-{% partial file="/v1.9connectors/yaml/common/aws-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/storage/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/storage/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -170,7 +170,7 @@ source:
       awsConfig:
 ```
 
-{% partial file="/v1.9connectors/yaml/common/aws-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/common/aws-config.md" /%}
 
 ```yaml {% srNumber=13 %}
       bucketNames: 
@@ -186,11 +186,11 @@ source:
         # key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/storage/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/storage/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -198,7 +198,7 @@ source:
 
 
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
 ## Related
 

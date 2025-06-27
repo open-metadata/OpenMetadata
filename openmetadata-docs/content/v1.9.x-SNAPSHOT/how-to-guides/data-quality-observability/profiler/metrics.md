@@ -38,7 +38,7 @@ Returns the number of columns in the Table.
 System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
   alt="table profile freshness metrics"
   caption="table profile freshness metrics"
  /%}

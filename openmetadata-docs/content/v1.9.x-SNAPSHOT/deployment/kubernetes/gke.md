@@ -405,10 +405,10 @@ If you came across `invalid access type while creating the pvc`, and the permiss
 The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mounted properly.
 
 {% image
-  src="/images/v1.9deployment/troubleshoot/dag-log.png"
+  src="/images/v1.9/deployment/troubleshoot/dag-log.png"
   alt="dag-log" /%}
 {% image
-  src="/images/v1.9deployment/troubleshoot/permission-pod-events.png"
+  src="/images/v1.9/deployment/troubleshoot/permission-pod-events.png"
   alt="permission-pod-events"
   caption="Permission pod events" /%}
 
@@ -419,4 +419,4 @@ Please validate:
 
 # FAQs
 
-{% partial file="/v1.9deployment/faqs.md" /%}
+{% partial file="/v1.9/deployment/faqs.md" /%}

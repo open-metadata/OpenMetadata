@@ -3,7 +3,7 @@ title: PostgreSQL Connector Troubleshooting
 slug: /connectors/database/postgres/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 ## Troubleshooting: `pg_stat_statements` Relation Does Not Exist
 

@@ -16,7 +16,7 @@ In this document we will explain how you can generate this token so that OpenMet
 Open your Qlik Cloud Management Console (QMC) and navigate to API Keys section.
 
 {% image
-  src="/images/v1.9connectors/qlikcloud/qlik-cloud-management-console.png"
+  src="/images/v1.9/connectors/qlikcloud/qlik-cloud-management-console.png"
   alt="Navigate to API Keys in QMC"
   caption="Navigate to API Keys in QMC"
  /%}
@@ -32,7 +32,7 @@ Open your Qlik Cloud Management Console (QMC) and navigate to API Keys section.
 Note: This Key will be generated only once. So remember to keep it in secure location.
 
 {% image
-  src="/images/v1.9connectors/qlikcloud/qlik-cloud-generate-new-api-key.png"
+  src="/images/v1.9/connectors/qlikcloud/qlik-cloud-generate-new-api-key.png"
   alt="Provide API Key Details"
   caption="Provide API Key Details"
  /%}

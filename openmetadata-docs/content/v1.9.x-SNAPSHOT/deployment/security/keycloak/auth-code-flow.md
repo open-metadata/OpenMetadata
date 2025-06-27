@@ -15,19 +15,19 @@ collate: false
 - Enter the Name and Description `(Optional)`.
 - Click on `Next` button.
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
 
 ### Step 2: Edit Configs of the client
 - Enable `Client authentication` and `Authorization`.
 - Select `Standard flow` as an `Authentication flow`.
 - Click `Next`.
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-4.png" alt="compatibility configs" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-4.png" alt="compatibility configs" /%}
 
 ### Step 3: Add Login Settings
 - fill the required options
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
 
 - Click on `Save` button.
 
@@ -42,7 +42,7 @@ Note: Scopes `openid`, `email` & `profile` are required to fetch the user detail
 - Navigate to the `Credentials` tab.
 - You will find your `Client Secret` related to the Client id "open-metadata"
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-6.png" alt="client-credentials" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-6.png" alt="client-credentials" /%}
 
 
 After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:

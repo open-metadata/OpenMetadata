@@ -13,7 +13,7 @@ To use the advanced search for complex queries:
 - Navigate to the Explore page and click on the **Advanced** option on the top right
 
 {% image
-src="/images/v1.9how-to-guides/discovery/adv1.png"
+src="/images/v1.9/how-to-guides/discovery/adv1.png"
 alt="Advanced Search"
 caption="Advanced Search"
 /%}
@@ -25,7 +25,7 @@ caption="Advanced Search"
 - Use the AND/OR conditions. Select `AND` to ensure that all the conditions are satisfied. Select `OR` to ensure that any one of the conditions is satisfied.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/adv2.png"
+src="/images/v1.9/how-to-guides/discovery/adv2.png"
 alt="Add Complex Queries using Advanced Search"
 caption="Add Complex Queries using Advanced Search"
 /%}
@@ -47,7 +47,7 @@ Please ensure that custom properties adhere to these constraints for compatibili
 {% /note %}
 
 {% image
-src="/images/v1.9how-to-guides/discovery/adv3.png"
+src="/images/v1.9/how-to-guides/discovery/adv3.png"
 alt="Grouped Condition based on the Owner of the Data Assets"
 caption="Grouped Condition based on the Owner of the Data Assets"
 /%}
@@ -55,13 +55,13 @@ caption="Grouped Condition based on the Owner of the Data Assets"
 - Next, you can add another set of conditions specific to the data based on the Service, Database, Schema, or Columns. **Apply** the conditions to search.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/adv4.png"
+src="/images/v1.9/how-to-guides/discovery/adv4.png"
 alt="Advanced Search Conditions"
 caption="Advanced Search Conditions"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/discovery/adv5.png"
+src="/images/v1.9/how-to-guides/discovery/adv5.png"
 alt="Advanced Search Results"
 caption="Advanced Search Results"
 /%}

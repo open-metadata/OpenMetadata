@@ -7,7 +7,7 @@ slug: /how-to-guides/data-discovery/preview
 
 For the each of the data assets displayed in the Explore page, some basic information is displayed on the data asset card. Users can view the **Source, Name of the Data Asset, Description, Owner (Team/User details), Tier, and Usage** information for each data asset.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv8.png"
+src="/images/v1.9/how-to-guides/discovery/prv8.png"
 alt="Basic Information about the Data Asset"
 caption="Basic Information about the Data Asset"
 /%}
@@ -17,28 +17,28 @@ OpenMetadata provides a quick preview of the data asset on the right side panel.
 ## Preview based on the Data Asset Type
 Based on the type of data asset (Table, Topic, Dashboard, Pipeline, ML Model, Container, Glossary, Tag), the quick preview provides information. For example, the **type of table, the number of queries, and columns** are displayed for `tables`.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv1.png"
+src="/images/v1.9/how-to-guides/discovery/prv1.png"
 alt="Quick Glance of the Table Details"
 caption="Quick Glance of the Table Details"
 /%}
 
 Similarly, the quick glance displays the information on the **Partitions, Replication Factor, Retention Size, CleanUp Policies, Max Message Size, and Schema Type** for `topics`.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv2.png"
+src="/images/v1.9/how-to-guides/discovery/prv2.png"
 alt="Quick Glance of the Topic Details"
 caption="Quick Glance of the Topic Details"
 /%}
 
 For `ML Models`, it displays the **Algorithm, Target, Server, and Dashboard**.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv3.png"
+src="/images/v1.9/how-to-guides/discovery/prv3.png"
 alt="Quick Glance of the ML Model Details"
 caption="Quick Glance of the ML Model Details"
 /%}
 
 A `glossary` preview displays the **Reviewers, Synonyms, and Children**.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv4.png"
+src="/images/v1.9/how-to-guides/discovery/prv4.png"
 alt="Quick Glance of the Glossary Term Details"
 caption="Quick Glance of the Glossary Term Details"
 /%}
@@ -49,7 +49,7 @@ Likewise, for `dashboards`, and `pipelines`, it displays the **Dashboard URL** a
 
 The data quality and profiler metrics displays the details on the **Tests Passed, Aborted, and Failed**.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv5.png"
+src="/images/v1.9/how-to-guides/discovery/prv5.png"
 alt="Quick Glance of the Data Quality and Profiler Metrics"
 caption="Quick Glance of the Data Quality and Profiler Metrics"
 /%}
@@ -58,7 +58,7 @@ caption="Quick Glance of the Data Quality and Profiler Metrics"
 
 Users can view all the tags associated with a particular data asset.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv6.png"
+src="/images/v1.9/how-to-guides/discovery/prv6.png"
 alt="Quick Glance of the Tags"
 caption="Quick Glance of the Tags"
 /%}
@@ -67,7 +67,7 @@ caption="Quick Glance of the Tags"
 
 The Schema provides the details on the **column names, type of column, and column description**.
 {% image
-src="/images/v1.9how-to-guides/discovery/prv7.png"
+src="/images/v1.9/how-to-guides/discovery/prv7.png"
 alt="Quick Glance of the Schema"
 caption="Quick Glance of the Schema"
 /%}

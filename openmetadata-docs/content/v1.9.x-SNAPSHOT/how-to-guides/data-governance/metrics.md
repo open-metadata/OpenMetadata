@@ -44,7 +44,7 @@ To create a new metric in OpenMetadata using the user interface, follow these st
 - Go to **Govern > Metrics** in the OpenMetadata UI.
 
 {% image
-src="/images/v1.9how-to-guides/governance/metrics/metrics-1.png"
+src="/images/v1.9/how-to-guides/governance/metrics/metrics-1.png"
 alt="Navigate to the Metrics Section"
 caption="Navigate to the Metrics Section"
 /%}
@@ -54,7 +54,7 @@ caption="Navigate to the Metrics Section"
 - Click on **Add Metric** to initiate the metric creation process.
 
 {% image
-src="/images/v1.9how-to-guides/governance/metrics/metrics-2.png"
+src="/images/v1.9/how-to-guides/governance/metrics/metrics-2.png"
 alt="Add a New Metric"
 caption="Add a New Metric"
 /%}
@@ -74,7 +74,7 @@ Provide the required information, including:
 - After entering the details, click **Create** to finalize the metric.
 
 {% image
-src="/images/v1.9how-to-guides/governance/metrics/metrics-3.png"
+src="/images/v1.9/how-to-guides/governance/metrics/metrics-3.png"
 alt="Create the Metric"
 caption="Create the Metric"
 /%}
@@ -84,7 +84,7 @@ caption="Create the Metric"
 - The newly created metric will now be available in the **Metrics** page for reference and further use.
 
 {% image
-src="/images/v1.9how-to-guides/governance/metrics/metrics-4.png"
+src="/images/v1.9/how-to-guides/governance/metrics/metrics-4.png"
 alt="View the Created Metric"
 caption="View the Created Metric"
 /%}

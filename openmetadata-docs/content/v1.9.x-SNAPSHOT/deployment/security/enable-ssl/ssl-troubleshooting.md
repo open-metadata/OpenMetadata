@@ -16,7 +16,7 @@ updating to the secured URL: `https://{server_domain}:{port}/api/v1/system/confi
 In case we are using a self-signed certificate, it will fail with the error below:
 
 {% image
-src="/images/v1.9deployment/enable-ssl/500-error-ssl.png"
+src="/images/v1.9/deployment/enable-ssl/500-error-ssl.png"
 alt="500-error-ssl"
 caption="Verify config is correct: 500 Server Error"
  /%}
@@ -41,7 +41,7 @@ One common issue after enabling SSL with a self-signed certificate is that our w
 not be deployed. We can notice it because the following error will be shown in the UI when deploying or re-deploying:
 
 {% image
-src="/images/v1.9deployment/enable-ssl/handshake-error-ssl.png"
+src="/images/v1.9/deployment/enable-ssl/handshake-error-ssl.png"
 alt="handshake-error-ssl"
 caption="SSLError when SSL is enabled during ingestion"
  /%}

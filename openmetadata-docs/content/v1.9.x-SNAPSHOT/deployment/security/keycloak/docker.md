@@ -73,7 +73,7 @@ Altering the order of claims in `jwtPrincipalClaims` may lead to problems when m
 docker compose --env-file ~/openmetadata_keycloak.env up -d
 ```
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}
 
 
 {% inlineCalloutContainer %}

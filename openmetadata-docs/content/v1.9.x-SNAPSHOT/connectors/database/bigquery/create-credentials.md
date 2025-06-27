@@ -14,7 +14,7 @@ This documentation provides a step-by-step guide on how to create a custom role 
 Search for `Roles` in your GCP console and select the first result under `IAM & Roles` section.
 
 {% image
-src="/images/v1.9connectors/bigquery/create-role-1.png"
+src="/images/v1.9/connectors/bigquery/create-role-1.png"
 alt="Navigate to Roles"
 caption="Navigate to Roles" /%}
 
@@ -24,14 +24,14 @@ caption="Navigate to Roles" /%}
 Below the search bar you should see a `Create Role` button click on that & navigate to create role page.
 
 {% image
-src="/images/v1.9connectors/bigquery/create-role-2.png"
+src="/images/v1.9/connectors/bigquery/create-role-2.png"
 alt="Create Role Button"
 caption="Create Role" /%}
 
 Once You are on the create role page, you can edit the description & title of the role and finally you can click on `add permissions` to grant permissions to role.
 
 {% image
-src="/images/v1.9connectors/bigquery/create-role-3.png"
+src="/images/v1.9/connectors/bigquery/create-role-3.png"
 alt="Create Role"
 caption="Create Role" /%}
 
@@ -56,14 +56,14 @@ You can search for the required permissions in the filter box and add them accor
 | 14   | logging.operations.list       | Incremental Metadata Ingestion    |
 
 {% image
-src="/images/v1.9connectors/bigquery/create-role-4.png"
+src="/images/v1.9/connectors/bigquery/create-role-4.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}
 
 Once you have added all the required permissions, you can create the role by clicking on the create button. 
 
 {% image
-src="/images/v1.9connectors/bigquery/create-role-5.png"
+src="/images/v1.9/connectors/bigquery/create-role-5.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}
 
@@ -74,7 +74,7 @@ caption="Add Permissions" /%}
 Login to your GCP console and navigate to service accounts page.
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-service-account-search.png"
+src="/images/v1.9/connectors/bigquery/bq-service-account-search.png"
 alt="Navigate to Service Accounts"
 caption="Navigate to Service Accounts" /%}
 
@@ -84,21 +84,21 @@ caption="Navigate to Service Accounts" /%}
 Once you are on service account page, click on `Create Service Account` button.
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-create-service-account.png"
+src="/images/v1.9/connectors/bigquery/bq-create-service-account.png"
 alt="Create Service Accounts"
 caption="Create Service Accounts" /%}
 
 Fill the service account details 
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-create-service-account-1.png"
+src="/images/v1.9/connectors/bigquery/bq-create-service-account-1.png"
 alt="Create Service Accounts"
 caption="Create Service Accounts" /%}
 
 Grant a role to service account which has all the required permission to ingest BigQuery metadata in OpenMetadata.
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-service-account-grant-role.png"
+src="/images/v1.9/connectors/bigquery/bq-service-account-grant-role.png"
 alt="Grant Role to Service Account"
 caption="Grant Role to Service Account" /%}
 
@@ -110,7 +110,7 @@ caption="Grant Role to Service Account" /%}
 On service accounts page, look for the service account that you just created, click on the three dots menu and go to manage keys
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-service-account-manage-keys.png"
+src="/images/v1.9/connectors/bigquery/bq-service-account-manage-keys.png"
 alt="Service Account Manage Keys"
 caption="Service Account Manage Keys" /%}
 
@@ -120,12 +120,12 @@ caption="Service Account Manage Keys" /%}
 Click on Add Key > New Key > Select Json and download the key.
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-create-service-account-key.png"
+src="/images/v1.9/connectors/bigquery/bq-create-service-account-key.png"
 alt="Create New Key"
 caption="Create New Key" /%}
 
 {% image
-src="/images/v1.9connectors/bigquery/bq-create-key-modal.png"
+src="/images/v1.9/connectors/bigquery/bq-create-key-modal.png"
 alt="Download json Key"
 caption="Download json Key" /%}
 

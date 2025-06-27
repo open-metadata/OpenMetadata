@@ -20,9 +20,9 @@ Configure and schedule BigTable metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/database/bigtable/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigtable/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigtable/yaml"} /%}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 {%inlineCallout icon="description" bold="OpenMetadata 1.3.1 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
@@ -70,12 +70,12 @@ link="/connectors/database/bigtable/roles"
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.9connectors/metadata-ingestion-ui.md"
+  file="/v1.9/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "BigTable",
-    selectServicePath: "/images/v1.9connectors/bigtable/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/bigtable/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/bigtable/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/bigtable/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/bigtable/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/bigtable/service-connection.png",
   }
 /%}
 
@@ -110,14 +110,14 @@ the GCP credentials empty. This is why they are not marked as required.
 {% /note %}
 
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

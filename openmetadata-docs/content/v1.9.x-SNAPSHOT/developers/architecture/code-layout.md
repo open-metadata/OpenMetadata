@@ -35,7 +35,7 @@ OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to
 
 ## System and Components
 
-{% image src="/images/v1.9developers/architecture/architecture.png" alt="System and Components" caption="Overview of the OpenMetadata components and high-level interactions." /%}
+{% image src="/images/v1.9/developers/architecture/architecture.png" alt="System and Components" caption="Overview of the OpenMetadata components and high-level interactions." /%}
 
 ### Events
 OpenMetadata captures changes to entities as `events` and stores them in the OpenMetadata server database. OpenMetadata also indexes change events in Elasticsearch to make them searchable.

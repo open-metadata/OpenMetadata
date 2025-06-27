@@ -18,7 +18,7 @@ Perform the reindexing process described below.
 
 ### Reindex
 
-{% partial file="/v1.9deployment/reindex.md" /%}
+{% partial file="/v1.9/deployment/reindex.md" /%}
 
 **Note:** If you continue to experience issues, consider `re-installing` the search application.
 
@@ -27,7 +27,7 @@ Perform the reindexing process described below.
 This document provides detailed descriptions and best practices for configuring the reindexing process parameters. Proper configuration ensures efficient and reliable reindexing while minimizing potential system bottlenecks.
 
 {% image
-src="/images/v1.9deployment/upgrade/reindex.png"
+src="/images/v1.9/deployment/upgrade/reindex.png"
 alt="Reindex Configuration"
 /%}
 

@@ -11,7 +11,7 @@ In the OpenMetadata UI, navigate to **Govern>Automations**.
 This will take you to the Automations page where you can view and manage your existing automations.
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-1.png"
+src="/images/v1.9/how-to-guides/governance/automation-1.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -21,7 +21,7 @@ In the Automations page, click the **Add Automation** button located at the top 
 A pop-up window will appear to begin the process of adding a new automation.
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-2.png"
+src="/images/v1.9/how-to-guides/governance/automation-2.png"
 alt="Add Automation"
 caption="Add Automation"
 /%}
@@ -42,13 +42,13 @@ Additionally, use the **Apply to Child** option to add a list of **tags** and **
 Ensure each setting aligns with your automation requirements to maximize efficiency.
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-4.png"
+src="/images/v1.9/how-to-guides/governance/automation-4.png"
 alt="Automation details"
 caption="Automation details"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-5.png"
+src="/images/v1.9/how-to-guides/governance/automation-5.png"
 alt="Automation logics"
 caption="Automation logics"
 /%}
@@ -59,7 +59,7 @@ On the next page, you’ll be prompted to select the interval for the automation
 Review your settings and click **Automate** once you are satisfied with the configuration.
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-6.png"
+src="/images/v1.9/how-to-guides/governance/automation-6.png"
 alt="Automation Interval"
 caption="Automation Interval"
 /%}
@@ -69,7 +69,7 @@ After completing the setup, your automation will appear in the Automations list.
 To manage the automation, click on the three dots next to the automation entry. From here, you can **edit**, **re-deploy**, **delete**, etc.
 
 {% image
-src="/images/v1.9how-to-guides/governance/automation-7.png"
+src="/images/v1.9/how-to-guides/governance/automation-7.png"
 alt="Manage Your Automation"
 caption="Manage Your Automation"
 /%}

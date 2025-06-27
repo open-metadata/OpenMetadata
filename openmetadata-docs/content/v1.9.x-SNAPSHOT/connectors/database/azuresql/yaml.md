@@ -22,7 +22,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -40,7 +40,7 @@ GRANT SELECT TO Mary;
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the AzureSQL ingestion, you will need to install:
 
@@ -126,11 +126,11 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -191,25 +191,25 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "azuresql"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "azuresql"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

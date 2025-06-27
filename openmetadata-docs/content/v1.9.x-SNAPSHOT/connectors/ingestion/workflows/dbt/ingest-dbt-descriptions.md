@@ -25,7 +25,7 @@ When the `Update Descriptions` toggle is enabled during the configuration of dbt
 If toggle is disabled during the configuration of dbt ingestion, dbt descriptions will only be updated for tables and columns in OpenMetadata that currently have no descriptions. Existing descriptions will remain unchanged and will not be overwritten with dbt descriptions.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/dbt/dbt-features/dbt-update-descriptions.webp"
+  src="/images/v1.9/features/ingestion/workflows/dbt/dbt-features/dbt-update-descriptions.webp"
   alt="update-dbt-descriptions"
   caption="Update dbt Descriptions"
  /%}

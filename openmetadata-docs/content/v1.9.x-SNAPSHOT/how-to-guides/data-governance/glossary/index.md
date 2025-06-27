@@ -14,7 +14,7 @@ Glossary adds semantics or meaning to data by defining the business terminologie
 OpenMetadata models a Glossary as a Thesauri that organizes terms with **hierarchical**, equivalent, and associative relationships within a domain. The Glossary in OpenMetadata can be accessed from **Govern >>  Glossary**. All the Glossaries are displayed in the left nav bar. Clicking on a specific glossary will display the expanded view to show the entire hierarchy of the glossary terms (parent-child terms).
 
 {% image
-src="/images/v1.9how-to-guides/governance/banking.png"
+src="/images/v1.9/how-to-guides/governance/banking.png"
 alt="Banking Glossary"
 caption="Banking Glossary"
 /%}

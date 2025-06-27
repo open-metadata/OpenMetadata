@@ -8,12 +8,12 @@ slug: /developers/bots
 The default account for any ingestion pipeline deployed from the UI is `ingestion-bot`. To configure `ingestion-bot` from the UI, go to the settings page and access the `Bots` tile.
 
 {% image
-src="/images/v1.9developers/settings-bot.png"
+src="/images/v1.9/developers/settings-bot.png"
 alt="settings-bot"
 /%}
 
 {% image
-src="/images/v1.9developers/bot-listing.png"
+src="/images/v1.9/developers/bot-listing.png"
 alt="bot-listing"
 /%}
 
@@ -27,19 +27,19 @@ Click on `ingestion-bot` and you will be redirected to it's details page, there 
 - Copy the generated token
 
 {% image
-src="/images/v1.9developers/bot-token-page.png"
+src="/images/v1.9/developers/bot-token-page.png"
 alt="bot-listing"
 /%}
 
 - Generate new token
 
 {% image
-src="/images/v1.9developers/generate-new-token.png"
+src="/images/v1.9/developers/generate-new-token.png"
 alt="generate new token"
 /%}
 
 {% image
-src="/images/v1.9developers/bot-token-generate.png"
+src="/images/v1.9/developers/bot-token-generate.png"
 alt="token generate page"
 /%}
 
@@ -48,7 +48,7 @@ alt="token generate page"
 Click the `Add bot` button, and you will be directed to the bot creation page. Fill in the required details and then click on the `Create` button.
 
 {% image
-src="/images/v1.9developers/create-bot.png"
+src="/images/v1.9/developers/create-bot.png"
 alt="create bot"
 /%}
 

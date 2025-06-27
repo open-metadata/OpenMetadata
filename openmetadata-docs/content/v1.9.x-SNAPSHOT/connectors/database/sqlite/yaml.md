@@ -22,13 +22,13 @@ Configure and schedule SQLite metadata and profiler workflows from the OpenMetad
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To ingest basic metadata sqlite user must have the following privileges:
   - `SELECT` Privilege on `sqlite_temp_master`
@@ -87,11 +87,11 @@ This is a sample config for SQLite:
 
 {% /codeInfo %}
 
-{% partial file="/v1.9connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -146,25 +146,25 @@ source:
 ```
 
 
-{% partial file="/v1.9connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.9connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.9connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.9connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.9connectors/yaml/data-profiler.md" variables={connector: "sqlite"} /%}
+{% partial file="/v1.9/connectors/yaml/data-profiler.md" variables={connector: "sqlite"} /%}
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "sqlite"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "sqlite"} /%}
 
-{% partial file="/v1.9connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.9/connectors/yaml/data-quality.md" /%}
 
-{% partial file="/v1.9connectors/yaml/lineage.md" variables={connector: "sqlite"} /%}
+{% partial file="/v1.9/connectors/yaml/lineage.md" variables={connector: "sqlite"} /%}
 
 ## dbt Integration
 
