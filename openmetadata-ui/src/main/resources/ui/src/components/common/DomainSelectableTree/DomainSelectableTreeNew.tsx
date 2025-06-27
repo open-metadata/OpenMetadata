@@ -62,7 +62,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const [allDomains, setAllDomains] = useState<Domain[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -70,7 +70,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   const handleMultiDomainSave = async () => {
     const selectedFqns = selectedDomains
-      .map((domain) => domain.fullyQualifiedName)
+      .map((domain) => domain?.fullyQualifiedName)
       .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
     const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
 
@@ -115,7 +115,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const combinedData = [...data.data];
       initialDomains?.forEach((selectedDomain) => {
         const exists = combinedData.some((domain: Domain) =>
-          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+          isDomainExist(domain, selectedDomain?.fullyQualifiedName ?? '')
         );
         if (!exists) {
           combinedData.push(selectedDomain as unknown as Domain);
@@ -123,7 +123,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       });
 
       setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
-      setDomains(combinedData);
+      setAllDomains(combinedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -136,7 +136,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const selectedData = [];
       for (const item of selectedKeys) {
         selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
+          findItemByFqn(allDomains, item as string, false) as Domain
         );
       }
 
@@ -151,14 +151,14 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const selectedData = [];
       for (const item of checked) {
         selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
+          findItemByFqn(allDomains, item as string, false) as Domain
         );
       }
 
       setSelectedDomains(selectedData);
     } else {
       const selected = checked.checked.map(
-        (item) => findItemByFqn(domains, item as string, false) as Domain
+        (item) => findItemByFqn(allDomains, item as string, false) as Domain
       );
 
       setSelectedDomains(selected);
@@ -182,12 +182,16 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           isMultiple
         );
         setTreeData(updatedTreeData);
-        setDomains(results);
       } finally {
         setIsLoading(false);
       }
     } else {
-      fetchAPI();
+      const updatedTreeData = convertDomainsToTreeOptions(
+        allDomains,
+        0,
+        isMultiple
+      );
+      setTreeData(updatedTreeData);
     }
   }, DEBOUNCE_TIMEOUT);
 
@@ -234,7 +238,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   }, [visible]);
   const handleSelectChange = (selectedFqns: string[]) => {
     const selectedData = selectedFqns.map(
-      (fqn) => findItemByFqn(domains, fqn, false) as Domain
+      (fqn) => findItemByFqn(allDomains, fqn, false) as Domain
     );
     setSelectedDomains(selectedData);
   };
@@ -243,11 +247,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       setSelectedDomains(initialDomains as unknown as Domain[]);
     } else if (value) {
       const selectedData = (value as string[]).map(
-        (fqn) => findItemByFqn(domains, fqn, false) as Domain
+        (fqn) => findItemByFqn(allDomains, fqn, false) as Domain
       );
       setSelectedDomains(selectedData);
     }
-  }, [initialDomains, value, domains]);
+  }, [initialDomains, value, allDomains]);
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
@@ -264,9 +268,9 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             </span>
           )}
           mode={isMultiple ? 'multiple' : undefined}
-          options={domains.map((domain) => ({
-            value: domain.fullyQualifiedName,
-            label: domain.name,
+          options={allDomains.map((domain) => ({
+            value: domain?.fullyQualifiedName,
+            label: domain?.name,
           }))}
           placeholder="Select a domain"
           popupClassName="domain-custom-dropdown-class"
@@ -274,7 +278,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           tagRender={TagRenderer}
           value={
             selectedDomains
-              ?.map((domain) => domain.fullyQualifiedName)
+              ?.map((domain) => domain?.fullyQualifiedName)
               .filter(Boolean) as string[]
           }
           onChange={handleSelectChange}
