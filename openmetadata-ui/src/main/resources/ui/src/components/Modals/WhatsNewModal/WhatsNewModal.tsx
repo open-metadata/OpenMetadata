@@ -12,7 +12,6 @@
  */
 
 import {
-  Alert,
   Button,
   Carousel,
   Col,
@@ -22,7 +21,7 @@ import {
   Spin,
   Typography,
 } from 'antd';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
@@ -37,6 +36,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import CloseIcon from '../CloseIcon.component';
 import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import './whats-new-modal.less';
@@ -60,7 +60,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   onCancel,
   visible,
 }: WhatsNewModalProps) => {
-  const { theme } = useApplicationStore();
+  const { theme, appVersion } = useApplicationStore();
 
   const [versions, setVersions] = useState<ExternalVersionData[]>([]);
   const [activeVersion, setActiveVersion] =
@@ -73,13 +73,12 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   );
   const [loading, setLoading] = useState(false);
   const [contentLoading, setContentLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Fetch versions list from external API
   const fetchVersions = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+
       const response = await axios.get<ExternalVersionData[]>(VERSIONS_API);
       const versions = response.data;
       setVersions(versions);
@@ -88,12 +87,6 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       if (versions.length > 0) {
         setActiveVersion(versions[0]);
       }
-    } catch (err) {
-      const errorMessage =
-        err instanceof AxiosError
-          ? `Failed to fetch versions: ${err.message}`
-          : 'Failed to fetch versions';
-      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -162,54 +155,6 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     };
 
     return releaseInfo;
-
-    // Set default toggle based on available content
-    // if (
-    //   releaseInfo.hasFeatures &&
-    //   releaseInfo.features &&
-    //   releaseInfo.features.length > 0
-    // ) {
-    //   setCheckedValue(ToggleType.FEATURES);
-    // } else {
-    //   setCheckedValue(ToggleType.CHANGE_LOG);
-    // }
-
-    // // Split content by headers to find different sections
-    // const sections = markdown.split(/^#+\s/m);
-
-    // let features: string[] = [];
-    // const changelog = markdown; // Default to full content
-
-    // // Look for Features section
-    // const featuresSection = sections.find(
-    //   (section) =>
-    //     section.toLowerCase().includes('feature') ||
-    //     section.toLowerCase().includes('new')
-    // );
-
-    // if (featuresSection) {
-    //   // Extract feature items (assuming they're in list format)
-    //   const featureMatches = featuresSection.match(/^\s*[-*+]\s(.+)$/gm);
-    //   if (featureMatches) {
-    //     features = featureMatches.map((match) =>
-    //       match.replace(/^\s*[-*+]\s/, '').trim()
-    //     );
-    //   }
-    // }
-
-    // // If no specific features found but hasFeatures is true, create a single feature from title
-    // if (features.length === 0 && activeVersion?.hasFeatures) {
-    //   const titleMatch = markdown.match(/^#\s+(.+)$/m);
-    //   if (titleMatch) {
-    //     features = [titleMatch[1]];
-    //   }
-    // }
-
-    // return {
-    //   markdown,
-    //   features,
-    //   changelog,
-    // };
   };
 
   // Fetch content for a specific version
@@ -217,18 +162,12 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     async (version: string) => {
       try {
         setContentLoading(true);
-        setError(null);
+
         const contentUrl = `${CONTENT_BASE_URL}/${version}.md`;
         const response = await axios.get<string>(contentUrl);
 
         const parsedContent = parseMarkdownContent(response.data);
         setVersionContent(parsedContent);
-      } catch (err) {
-        const errorMessage =
-          err instanceof AxiosError
-            ? `Failed to fetch content for ${version}: ${err.message}`
-            : `Failed to fetch content for ${version}`;
-        setError(errorMessage);
       } finally {
         setContentLoading(false);
       }
@@ -328,18 +267,14 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     ) {
       return (
         <div className="feature-carousal-container h-full">
-          <Carousel autoplay>
+          <Carousel>
             {versionContent.features.map((feature, index) => (
               <div className="h-full" key={index}>
-                <div
-                  className="h-full overflow-y-auto p-4 border rounded-lg bg-gray-50"
-                  style={{ minHeight: '400px', maxHeight: '500px' }}>
-                  <BlockEditor
-                    autoFocus={false}
-                    content={convertToYouTubeEmbedFormat(feature)}
-                    editable={false}
-                  />
-                </div>
+                <BlockEditor
+                  autoFocus={false}
+                  content={convertToYouTubeEmbedFormat(feature)}
+                  editable={false}
+                />
               </div>
             ))}
           </Carousel>
@@ -380,108 +315,118 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
         </Typography.Text>
       }
       width={1200}>
-      {error && (
-        <Alert
-          closable
-          className="mb-4"
-          description={error}
-          message="Error"
-          type="error"
-          onClose={() => setError(null)}
-        />
-      )}
-
-      <Row className="w-auto h-full h-min-75">
-        <Col
-          className="border-r-2 p-x-md p-y-md border-separate whats-new-version-timeline"
-          span={3}
-          style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <Loader fullScreen />
-          ) : (
+      {loading ? (
+        <Loader fullScreen />
+      ) : (
+        <Row className="w-auto h-full h-min-75">
+          <Col
+            className="border-r-2 p-x-md p-y-md border-separate whats-new-version-timeline"
+            span={4}
+            style={{
+              height: '600px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
             <div
-              className="overflow-y-auto flex-1"
-              style={{ maxHeight: '600px', paddingRight: '8px' }}>
+              className="overflow-y-auto w-full"
+              style={{ maxHeight: '600px' }}>
               <Space className="w-full" direction="vertical">
                 {versions.map((version) => (
-                  <Button
-                    className={classNames(
-                      'p-0 w-full text-left',
-                      activeVersion?.version === version.version
-                        ? 'text-primary'
-                        : null
+                  <div
+                    className="flex items-center gap-1"
+                    key={version.version}>
+                    <Button
+                      className={classNames(
+                        'p-0 w-full text-left',
+                        activeVersion?.version === version.version
+                          ? 'text-primary'
+                          : null
+                      )}
+                      icon={
+                        <VersionIndicatorIcon
+                          fill={
+                            activeVersion?.version === version.version
+                              ? theme.primaryColor ?? ''
+                              : DE_ACTIVE_COLOR
+                          }
+                        />
+                      }
+                      size="small"
+                      type="text"
+                      onClick={() => handleVersionSelect(version)}>
+                      {version.version}
+                    </Button>
+                    {'v1.7.5' === version.version && (
+                      <Button className="text-xs" size="small" type="link">
+                        {t('label.current')}
+                      </Button>
                     )}
-                    icon={
-                      <VersionIndicatorIcon
-                        fill={
-                          activeVersion?.version === version.version
-                            ? theme.primaryColor ?? ''
-                            : DE_ACTIVE_COLOR
-                        }
-                      />
-                    }
-                    key={version.version}
-                    size="small"
-                    type="text"
-                    onClick={() => handleVersionSelect(version)}>
-                    {version.version}
-                  </Button>
+                  </div>
                 ))}
               </Space>
             </div>
-          )}
-        </Col>
+          </Col>
 
-        <Col className="overflow-hidden" span={21} style={{ height: '600px' }}>
-          <div className="h-full flex flex-col">
-            <div className="p-t-md px-10 flex-shrink-0">
-              <div className="flex justify-between items-center p-b-sm gap-1">
-                <div>
-                  <p className="text-base font-medium">
-                    {activeVersion?.version}
-                  </p>
-                  <p className="text-grey-muted text-xs">
-                    {activeVersion?.date}
-                  </p>
-                </div>
-                <div>
-                  {activeVersion?.hasFeatures &&
-                    versionContent?.features &&
-                    versionContent.features.length > 0 && (
-                      <div className="whats-new-modal-button-container">
-                        <Button.Group>
-                          <Button
-                            data-testid="WhatsNewModalV2Features"
-                            ghost={checkedValue !== ToggleType.FEATURES}
-                            type="primary"
-                            onClick={() =>
-                              handleToggleChange(ToggleType.FEATURES)
-                            }>
-                            {t('label.feature-plural')}
-                          </Button>
-
-                          <Button
-                            data-testid="WhatsNewModalV2ChangeLogs"
-                            ghost={checkedValue !== ToggleType.CHANGE_LOG}
-                            type="primary"
-                            onClick={() =>
-                              handleToggleChange(ToggleType.CHANGE_LOG)
-                            }>
-                            {t('label.change-log-plural')}
-                          </Button>
-                        </Button.Group>
-                      </div>
+          <Col
+            className="overflow-hidden"
+            span={20}
+            style={{ height: '600px' }}>
+            <div className="h-full flex flex-col">
+              <div className="p-t-md px-10 flex-shrink-0">
+                <div className="flex justify-between items-center p-b-sm gap-1">
+                  <div>
+                    <p className="text-base font-medium">
+                      {activeVersion?.version}
+                    </p>
+                    <p className="text-grey-muted text-xs">
+                      {activeVersion?.date}
+                    </p>
+                    {versionContent?.note && (
+                      <RichTextEditorPreviewerV1
+                        className="m-t-xs"
+                        markdown={versionContent.note}
+                      />
                     )}
+                  </div>
+                  <div>
+                    {activeVersion?.hasFeatures &&
+                      versionContent?.features &&
+                      versionContent.features.length > 0 && (
+                        <div className="whats-new-modal-button-container">
+                          <Button.Group>
+                            <Button
+                              data-testid="WhatsNewModalV2Features"
+                              ghost={checkedValue !== ToggleType.FEATURES}
+                              type="primary"
+                              onClick={() =>
+                                handleToggleChange(ToggleType.FEATURES)
+                              }>
+                              {t('label.feature-plural')}
+                            </Button>
+
+                            <Button
+                              data-testid="WhatsNewModalV2ChangeLogs"
+                              ghost={checkedValue !== ToggleType.CHANGE_LOG}
+                              type="primary"
+                              onClick={() =>
+                                handleToggleChange(ToggleType.CHANGE_LOG)
+                              }>
+                              {t('label.change-log-plural')}
+                            </Button>
+                          </Button.Group>
+                        </div>
+                      )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex-1 overflow-hidden px-10 pb-4">
-              <div className="h-full overflow-y-auto">{renderContent()}</div>
+              <div className="flex-1 overflow-hidden px-10 pb-4">
+                <div className="h-full overflow-y-auto">{renderContent()}</div>
+              </div>
             </div>
-          </div>
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      )}
     </Modal>
   );
 };
