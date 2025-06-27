@@ -13,13 +13,14 @@ Wrapper module of TableauServerConnection client
 """
 import math
 import traceback
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import validators
 from cached_property import cached_property
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
+    ProjectItem,
     Server,
     TableauAuth,
     ViewItem,
@@ -77,16 +78,19 @@ class TableauClient:
         self,
         tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],
         config,
-        verify_ssl,
+        verify_ssl: Union[bool, str],
         pagination_limit: int,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
+        if config.apiVersion:
+            self.tableau_server.version = config.apiVersion
         self.tableau_server.add_http_options({"verify": verify_ssl})
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
-        self.usage_metrics: Dict[str, int] = {}
+        self.owner_cache: Dict[str, TableauOwner] = {}
+        self.all_projects: List[ProjectItem] = []
 
     @cached_property
     def server_info(self) -> Callable:
@@ -101,13 +105,17 @@ class TableauClient:
 
     def get_tableau_owner(self, owner_id: str) -> Optional[TableauOwner]:
         try:
+            if owner_id in self.owner_cache:
+                return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
             if owner and owner.email:
-                return TableauOwner(id=owner.id, name=owner.name, email=owner.email)
+                owner_obj = TableauOwner(
+                    id=str(owner.id), name=owner.name, email=owner.email
+                )
+                self.owner_cache[owner_id] = owner_obj
+                return owner_obj
         except Exception as err:
-            logger.warning(
-                f"Failed to fetch owner details for ID {owner_id}: {str(err)}"
-            )
+            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")
         return None
 
     def get_workbook_charts_and_user_count(
@@ -122,7 +130,7 @@ class TableauClient:
             try:
                 charts.append(
                     TableauChart(
-                        id=view.id,
+                        id=str(view.id),
                         name=view.name,
                         tags=view.tags,
                         owner=self.get_tableau_owner(view.owner_id),
@@ -132,21 +140,70 @@ class TableauClient:
                 )
                 view_count += view.total_views
             except AttributeError as e:
-                logger.warning(
+                logger.debug(
                     f"Failed to process view due to missing attribute: {str(e)}"
                 )
                 continue
             except Exception as e:
-                logger.warning(f"Failed to process view: {str(e)}")
+                logger.debug(f"Failed to process view: {str(e)}")
                 continue
 
         return charts, view_count
 
-    def get_workbooks(self) -> List[TableauDashboard]:
+    def get_all_projects(self) -> None:
+        """
+        Get all projects from the tableau server
+        """
+        try:
+            logger.debug("Getting all projects from the tableau server")
+            all_projects: List[ProjectItem] = []
+            for project in Pager(self.tableau_server.projects):
+                all_projects.append(project)
+            self.all_projects = all_projects
+        except Exception as e:
+            logger.debug(f"Failed to get all projects: {str(e)}")
+
+    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:
+        """
+        Get the parents of a project by id
+        """
+        try:
+            parent_projects = []
+            current_project_id = project_id
+
+            while current_project_id:
+                # Find project with current ID
+                project = next(
+                    (
+                        proj
+                        for proj in self.all_projects
+                        if str(proj.id) == str(current_project_id)
+                    ),
+                    None,
+                )
+
+                if not project:
+                    break
+
+                parent_projects.append(project.name)
+
+                # Get parent ID and continue loop if exists
+                current_project_id = (
+                    project.parent_id if hasattr(project, "parent_id") else None
+                )
+
+            if parent_projects:
+                parent_projects = ".".join(reversed(parent_projects))
+                return parent_projects
+        except Exception as e:
+            logger.debug(f"Failed to get project parents by id: {str(e)}")
+        return None
+
+    def get_workbooks(self) -> Iterable[TableauDashboard]:
         """
         Fetch all tableau workbooks
         """
-        workbooks: Optional[List[TableauDashboard]] = []
+        self.get_all_projects()
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
@@ -154,22 +211,20 @@ class TableauClient:
                 charts, user_views = self.get_workbook_charts_and_user_count(
                     workbook.views
                 )
-                workbooks.append(
-                    TableauDashboard(
-                        id=workbook.id,
-                        name=workbook.name,
-                        project=TableauBaseModel(
-                            id=workbook.project_id, name=workbook.project_name
-                        ),
-                        description=workbook.description,
-                        owner=self.get_tableau_owner(workbook.owner_id),
-                        tags=workbook.tags,
-                        webpageUrl=workbook.webpage_url,
-                        charts=charts,
-                        dataModels=self.get_datasources(dashboard_id=workbook.id),
-                        user_views=user_views,
-                    )
+                workbook = TableauDashboard(
+                    id=str(workbook.id),
+                    name=workbook.name,
+                    project=TableauBaseModel(
+                        id=str(workbook.project_id), name=workbook.project_name
+                    ),
+                    owner=self.get_tableau_owner(workbook.owner_id),
+                    description=workbook.description,
+                    tags=workbook.tags,
+                    webpageUrl=workbook.webpage_url,
+                    charts=charts,
+                    user_views=user_views,
                 )
+                yield workbook
             except AttributeError as err:
                 logger.warning(
                     f"Failed to process workbook due to missing attribute: {str(err)}"
@@ -178,7 +233,6 @@ class TableauClient:
             except Exception as err:
                 logger.warning(f"Failed to process workbook: {str(err)}")
                 continue
-        return workbooks
 
     def test_get_workbooks(self):
         for workbook in Pager(self.tableau_server.workbooks):
@@ -309,7 +363,7 @@ class TableauClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Unable to fetch Data Sources")
-        return None
+        return []
 
     def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:
         """
@@ -320,7 +374,7 @@ class TableauClient:
         if datasource_id in self.custom_sql_table_queries:
             logger.debug(f"Found cached queries for datasource {datasource_id}")
             return self.custom_sql_table_queries[datasource_id]
-
+        logger.debug(f"No cached queries for datasource {datasource_id}")
         return None
 
     def cache_custom_sql_tables(self) -> None:

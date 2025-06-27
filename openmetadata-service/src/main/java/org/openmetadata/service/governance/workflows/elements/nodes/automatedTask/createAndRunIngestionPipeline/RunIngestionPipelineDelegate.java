@@ -15,9 +15,9 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class RunIngestionPipelineDelegate implements JavaDelegate {

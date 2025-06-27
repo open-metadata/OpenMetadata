@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -54,13 +55,13 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
@@ -368,6 +369,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
+      addField(
+          recordList,
+          entity.getCertification() != null && entity.getCertification().getTagLabel() != null
+              ? entity.getCertification().getTagLabel().getTagFQN()
+              : "");
       Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
@@ -433,7 +439,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withDatabaseSchema(schema.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
@@ -445,6 +451,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
       table
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(tableFqn)
@@ -452,11 +461,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
+          .withCertification(certification)
+          .withRetentionPeriod(csvRecord.get(8))
+          .withSourceUrl(csvRecord.get(9))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table, TABLE);
@@ -468,8 +478,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
-      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : TABLE;
-      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
+      String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;
+      String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
 
       if (TABLE.equals(entityType)) {
         createTableEntity(printer, csvRecord, entityFQN);

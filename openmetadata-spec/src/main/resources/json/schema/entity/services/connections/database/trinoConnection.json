@@ -140,6 +140,12 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "queryHistoryTable": {
+      "title": "Query History Table",
+      "description": "Table name to fetch the query history.",
+      "type": "string",
+      "default": "\"system\".\"runtime\".\"queries\""
     }
   },
   "additionalProperties": false,

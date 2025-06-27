@@ -142,7 +142,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
                 entityLink=f"<#E::table::{cls.table_with_suite.fullyQualifiedName.root}>",
-                testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition="tableRowCountToEqual",
                 parameterValues=[TestCaseParameterValue(name="value", value="10")],
             )
@@ -266,7 +265,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=self.table_with_suite.fullyQualifiedName.root + ".testSuite",
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 
@@ -385,7 +383,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         created_test_case = workflow.steps[0].compare_and_create_test_cases(
             cli_test_cases_definitions=config_test_cases_def,
             test_cases=table_and_tests.right.test_cases,
-            test_suite_fqn=f"{self.table_with_suite.fullyQualifiedName.root}.testSuite",
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )
 

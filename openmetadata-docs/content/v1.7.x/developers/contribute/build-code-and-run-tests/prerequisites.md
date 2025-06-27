@@ -1,5 +1,5 @@
 ---
-title: Prerequisites
+title: Prerequisites | OpenMetadata Developer Setup Requirements
 slug: /developers/contribute/build-code-and-run-tests/prerequisites
 ---
 
@@ -9,7 +9,7 @@ This guide will help you set up all prerequisites to develop on OpenMetadata.
 OpenMetadata being a full stack project, we use the following for development:
 
 - [Docker 20 or higher](https://docs.docker.com/engine/install/)
-- [Java JDK 17](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
+- [Java JDK 21](https://docs.oracle.com/en/java/javase/21/install/overview-jdk-installation.html)
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
 - [JQ](https://jqlang.github.io/jq/) - `brew install jq` (osx)  `apt-get install jq` (Ubuntu)
 - [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
@@ -31,9 +31,9 @@ make prerequisites
 Docker version 20.10.8, build 3967b7d
 
 > java -version
-openjdk version "17.0.8.1" 2023-08-24
-OpenJDK Runtime Environment AdoptOpenJDK-17.0.8.1+0 (build 17.0.8.1+0)
-OpenJDK 64-Bit Server VM AdoptOpenJDK-17.0.8.1+0 (build 17.0.8.1+0, mixed mode)
+openjdk version "21.0.7" 2025-04-15
+OpenJDK Runtime Environment Homebrew (build 21.0.7)
+OpenJDK 64-Bit Server VM Homebrew (build 21.0.7, mixed mode, sharing)
 
 > antlr4
 ANTLR Parser Generator  Version 4.9.2
@@ -58,11 +58,11 @@ ANTLR Parser Generator  Version 4.9.2
  -Xexact-output-dir  all output goes into -o dir regardless of paths/package
 
 > mvn -version
-Apache Maven 3.8.2 (ea98e05a04480131370aa0c110b8c54cf726c06f)
-Maven home: /usr/local/Cellar/maven/3.8.2/libexec
-Java version: 11.0.11, vendor: AdoptOpenJDK, runtime: /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
-Default locale: en_US, platform encoding: UTF-8
-OS name: "mac os x", version: "10.15.7", arch: "x86_64", family: "mac"
+Apache Maven 3.9.9 (8e8579a9e76f7d015ee5ec7bfcdc97d260186937)
+Maven home: /opt/homebrew/Cellar/maven/3.9.9/libexec
+Java version: 23.0.2, vendor: Homebrew, runtime: /opt/homebrew/Cellar/openjdk/23.0.2/libexec/openjdk.jdk/Contents/Home
+Default locale: en_IN, platform encoding: UTF-8
+OS name: "mac os x", version: "15.5", arch: "aarch64", family: "mac"
 
 >  make -version
 GNU Make 3.81
@@ -76,16 +76,16 @@ This program built for i386-apple-darwin11.3.0
 Python 3.9.9
 
 > node --version
-v17.3.0
+v20.19.2
 
 > yarn --version
-1.22.17
+1.22.22
 
 > rpm --version
 RPM version 4.17.0
 
 > jq --version                                                                                       
-jq-1.6
+jq-1.7.1
 
 ```
 

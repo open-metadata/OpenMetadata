@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
@@ -529,26 +529,28 @@ public class MigrationUtil {
                     "nameHash",
                     newExecutableTestSuite,
                     newExecutableTestSuite.getFullyQualifiedName());
+
+            // add relationship between executable TestSuite with Table
+            testSuiteRepository.addRelationship(
+                newExecutableTestSuite.getExecutableEntityReference().getId(),
+                newExecutableTestSuite.getId(),
+                Entity.TABLE,
+                TEST_SUITE,
+                Relationship.CONTAINS);
+
+            // add relationship between all the testCases that are created against a table with
+            // native
+            // test suite.
+            for (TestCase testCase : testCases) {
+              testSuiteRepository.addRelationship(
+                  newExecutableTestSuite.getId(),
+                  testCase.getId(),
+                  TEST_SUITE,
+                  TEST_CASE,
+                  Relationship.CONTAINS);
+            }
           } catch (Exception ex) {
             LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
-          }
-          // add relationship between executable TestSuite with Table
-          testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getExecutableEntityReference().getId(),
-              newExecutableTestSuite.getId(),
-              Entity.TABLE,
-              TEST_SUITE,
-              Relationship.CONTAINS);
-
-          // add relationship between all the testCases that are created against a table with native
-          // test suite.
-          for (TestCase testCase : testCases) {
-            testSuiteRepository.addRelationship(
-                newExecutableTestSuite.getId(),
-                testCase.getId(),
-                TEST_SUITE,
-                TEST_CASE,
-                Relationship.CONTAINS);
           }
         }
       }

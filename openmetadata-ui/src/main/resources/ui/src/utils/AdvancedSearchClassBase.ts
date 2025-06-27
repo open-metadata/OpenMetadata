@@ -25,8 +25,10 @@ import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
+  TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import {
@@ -42,6 +44,7 @@ import {
   getCustomPropertyAdvanceSearchEnumOptions,
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
+import { getEntityName } from './EntityUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
@@ -137,8 +140,10 @@ class AdvancedSearchClassBase {
     entityField,
     isCaseInsensitive = false,
   }) => {
-    // Wrapping the fetch function in a debounce of 300 ms
-    const debouncedFetch = debounce((search, callback) => {
+    let pendingResolve:
+      | ((result: { values: any[]; hasMore: boolean }) => void)
+      | null = null;
+    const debouncedFetch = debounce((search: string) => {
       const sourceFields = isCaseInsensitive
         ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
         : undefined;
@@ -149,22 +154,40 @@ class AdvancedSearchClassBase {
         search ?? '',
         JSON.stringify(getCombinedQueryFilterObject()),
         sourceFields
-      ).then((response) => {
-        const buckets =
-          response.data.aggregations[`sterms#${entityField}`].buckets;
+      )
+        .then((response) => {
+          const buckets =
+            response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        const bucketsData = parseBucketsData(buckets, sourceFields);
+          const bucketsData = parseBucketsData(buckets, sourceFields);
 
-        callback({
-          values: bucketsData,
-          hasMore: false,
+          if (pendingResolve) {
+            pendingResolve({
+              values: bucketsData,
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
+        })
+        .catch(() => {
+          if (pendingResolve) {
+            pendingResolve({
+              values: [],
+              hasMore: false,
+            });
+            pendingResolve = null;
+          }
         });
-      });
     }, 300);
 
     return (search) => {
       return new Promise((resolve) => {
-        debouncedFetch(search, resolve);
+        // Resolve previous promise to prevent hanging
+        if (pendingResolve) {
+          pendingResolve({ values: [], hasMore: false });
+        }
+        pendingResolve = resolve;
+        debouncedFetch(search ?? '');
       });
     };
   };
@@ -724,6 +747,22 @@ class AdvancedSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityFields.SUGGESTED_DESCRIPTION]: {
+        label: t('label.suggested-description'),
+        type: 'select',
+        operators: NULL_CHECK_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      [EntityFields.TAGS_LABEL_TYPE]: {
+        label: t('label.tag-label-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: TAG_LABEL_TYPE_LIST_VALUES,
+        },
+      },
     };
   }
 
@@ -917,76 +956,77 @@ class AdvancedSearchClassBase {
   };
 
   public getCustomPropertiesSubFields(field: CustomPropertySummary) {
-    {
-      switch (field.type) {
-        case 'array<entityReference>':
-        case 'entityReference':
-          return {
-            subfieldsKey: field.name + `.displayName`,
-            dataObject: {
-              type: 'select',
-              label: field.name,
-              fieldSettings: {
-                asyncFetch: this.autocomplete({
-                  searchIndex: (
-                    (field.customPropertyConfig?.config ?? []) as string[]
-                  ).join(',') as SearchIndex,
-                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-                }),
-                useAsyncSearch: true,
-              },
+    const label = getEntityName(field);
+    switch (field.type) {
+      case 'array<entityReference>':
+      case 'entityReference':
+        return {
+          subfieldsKey: field.name + `.displayName`,
+          dataObject: {
+            type: 'select',
+            label,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: (
+                  (field.customPropertyConfig?.config ?? []) as string[]
+                ).join(',') as SearchIndex,
+                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+              }),
+              useAsyncSearch: true,
             },
-          };
+          },
+        };
 
-        case 'enum':
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'select',
-              operators: LIST_VALUE_OPERATORS,
-              fieldSettings: {
-                listValues: getCustomPropertyAdvanceSearchEnumOptions(
-                  (
-                    field.customPropertyConfig
-                      ?.config as CustomPropertyEnumConfig
-                  ).values
-                ),
-              },
+      case 'enum':
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'select',
+            label,
+            operators: LIST_VALUE_OPERATORS,
+            fieldSettings: {
+              listValues: getCustomPropertyAdvanceSearchEnumOptions(
+                (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
+                  .values
+              ),
             },
-          };
+          },
+        };
 
-        case 'date-cp': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'date',
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-
-        case 'timestamp':
-        case 'integer':
-        case 'number': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'number',
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-
-        default:
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'text',
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
-            },
-          };
+      case 'date-cp': {
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'date',
+            label,
+            operators: RANGE_FIELD_OPERATORS,
+          },
+        };
       }
+
+      case 'timestamp':
+      case 'integer':
+      case 'number': {
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'number',
+            label,
+            operators: RANGE_FIELD_OPERATORS,
+          },
+        };
+      }
+
+      default:
+        return {
+          subfieldsKey: field.name,
+          dataObject: {
+            type: 'text',
+            label,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        };
     }
   }
 }

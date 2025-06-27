@@ -21,6 +21,9 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
@@ -34,16 +37,12 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +61,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -798,20 +798,5 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
-  }
-
-  public static Object getEntityDetails(Map<String, Object> params) {
-    try {
-      String entityType = (String) params.get("entity_type");
-      String fqn = (String) params.get("fqn");
-
-      LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
-      String fields = "*";
-      Object entity = Entity.getEntityByName(entityType, fqn, fields, null);
-      return entity;
-    } catch (Exception e) {
-      LOG.error("Error getting entity details", e);
-      return Map.of("error", e.getMessage());
-    }
   }
 }

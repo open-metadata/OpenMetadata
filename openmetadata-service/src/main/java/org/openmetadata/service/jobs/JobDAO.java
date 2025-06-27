@@ -15,8 +15,9 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,37 +27,59 @@ public interface JobDAO {
 
   default long insertJob(
       BackgroundJob.JobType jobType, JobHandler handler, String jobArgs, String createdBy) {
+    return insertJob(jobType, handler, jobArgs, createdBy, null);
+  }
+
+  default long insertJob(
+      BackgroundJob.JobType jobType,
+      JobHandler handler,
+      String jobArgs,
+      String createdBy,
+      Long runAt) {
     try {
       JsonUtils.readTree(jobArgs);
     } catch (Exception e) {
       throw new IllegalArgumentException("jobArgs must be a valid JSON string");
     }
     return insertJobInternal(
-        jobType.name(), handler.getClass().getSimpleName(), jobArgs, createdBy);
+        jobType.name(), handler.getClass().getSimpleName(), jobArgs, createdBy, runAt);
   }
 
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO background_jobs (jobType, methodName, jobArgs, createdBy) "
-              + "VALUES (:jobType, :methodName, :jobArgs, :createdBy)",
+          "INSERT INTO background_jobs (jobType, methodName, jobArgs, createdBy, runAt) "
+              + "VALUES (:jobType, :methodName, :jobArgs, :createdBy, :runAt)",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO background_jobs (jobType, methodName, jobArgs,createdBy) VALUES (:jobType, :methodName, :jobArgs::jsonb,:createdBy) ",
+          "INSERT INTO background_jobs (jobType, methodName, jobArgs,createdBy,runAt) VALUES (:jobType, :methodName, :jobArgs::jsonb,:createdBy,:runAt) ",
       connectionType = POSTGRES)
   @GetGeneratedKeys
   long insertJobInternal(
       @Bind("jobType") String jobType,
       @Bind("methodName") String methodName,
       @Bind("jobArgs") String jobArgs,
-      @Bind("createdBy") String createdBy);
+      @Bind("createdBy") String createdBy,
+      @Bind("runAt") Long runAt);
 
   default Optional<BackgroundJob> fetchPendingJob() throws BackgroundJobException {
     return Optional.ofNullable(fetchPendingJobInternal());
   }
 
-  @SqlQuery(
-      "SELECT id,jobType,methodName,jobArgs,status,createdAt,updatedAt,createdBy  FROM background_jobs WHERE status = 'PENDING' ORDER BY createdAt LIMIT 1")
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id,jobType,methodName,jobArgs,status,createdAt,updatedAt,createdBy,runAt FROM background_jobs"
+              + " WHERE status = 'PENDING'"
+              + " AND COALESCE(runAt, 0) <= UNIX_TIMESTAMP(NOW(3)) * 1000"
+              + " ORDER BY createdAt LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id,jobType,methodName,jobArgs,status,createdAt,updatedAt,createdBy,runAt FROM background_jobs"
+              + " WHERE status = 'PENDING'"
+              + " AND COALESCE(runAt, 0) <= EXTRACT(EPOCH FROM NOW()) * 1000"
+              + " ORDER BY createdAt LIMIT 1",
+      connectionType = POSTGRES)
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob fetchPendingJobInternal() throws StatementException;
 

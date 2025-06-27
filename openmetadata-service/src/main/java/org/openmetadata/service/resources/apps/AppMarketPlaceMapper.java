@@ -1,16 +1,16 @@
 package org.openmetadata.service.resources.apps;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.Objects;
 import javax.validation.ConstraintViolationException;
-import javax.ws.rs.BadRequestException;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.mapper.EntityMapper;
-import org.openmetadata.service.util.JsonUtils;
 
 public class AppMarketPlaceMapper
     implements EntityMapper<AppMarketPlaceDefinition, CreateAppMarketPlaceDefinitionReq> {

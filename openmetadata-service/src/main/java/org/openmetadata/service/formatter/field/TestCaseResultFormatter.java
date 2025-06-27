@@ -11,13 +11,13 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultFormatter extends DefaultFieldFormatter {
@@ -58,8 +58,8 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
   private void populateTestResultFeedInfo(Thread.FieldOperation operation, String threadMessage) {
     long currentTime = System.currentTimeMillis();
     long lastWeekTime = currentTime - 7 * 24 * 60 * 60 * 1000;
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCaseResultRepository testCaseResultRepository =
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
     TestCase testCaseEntity =
         Entity.getEntity(
             thread.getEntityRef().getType(),
@@ -68,7 +68,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
             Include.ALL);
     TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuite(), "id", Include.ALL);
     ResultList<TestCaseResult> testCaseResultResultList =
-        testCaseRepository.getTestCaseResults(
+        testCaseResultRepository.getTestCaseResults(
             testCaseEntity.getFullyQualifiedName(), lastWeekTime, currentTime);
     TestCaseResultFeedInfo testCaseResultFeedInfo =
         new TestCaseResultFeedInfo()

@@ -90,7 +90,6 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isUpdateLoading, setIsUpdateLoading] = useState<boolean>(false);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -142,7 +141,11 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: TabSpecificField.TERM_COUNT,
+        fields: [
+          TabSpecificField.TERM_COUNT,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAIN,
+        ],
         limit: 1000,
       });
       setClassifications(response.data);
@@ -170,7 +173,12 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_COUNT,
+            TabSpecificField.TERM_COUNT,
+            TabSpecificField.DOMAIN,
+          ],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
@@ -200,7 +208,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name: fqn, description: '' });
+        setCurrentClassification(undefined);
         setIsLoading(false);
       }
     }
@@ -318,8 +326,6 @@ const TagsPage = () => {
   const handleUpdateClassification = useCallback(
     async (updatedClassification: Classification) => {
       if (!isUndefined(currentClassification)) {
-        setIsUpdateLoading(true);
-
         const patchData = compare(currentClassification, updatedClassification);
         try {
           const response = await patchClassification(
@@ -370,8 +376,6 @@ const TagsPage = () => {
               })
             );
           }
-        } finally {
-          setIsUpdateLoading(false);
         }
       }
     },
@@ -716,23 +720,19 @@ const TagsPage = () => {
         secondPanel={{
           children: (
             <>
-              {isUpdateLoading ? (
-                <Loader />
-              ) : (
-                <ClassificationDetails
-                  classificationPermissions={classificationPermissions}
-                  currentClassification={currentClassification}
-                  deleteTags={deleteTags}
-                  disableEditButton={disableEditButton}
-                  handleActionDeleteTag={handleActionDeleteTag}
-                  handleAddNewTagClick={handleAddNewTagClick}
-                  handleAfterDeleteAction={handleAfterDeleteAction}
-                  handleEditTagClick={handleEditTagClick}
-                  handleUpdateClassification={handleUpdateClassification}
-                  isAddingTag={isAddingTag}
-                  ref={classificationDetailsRef}
-                />
-              )}
+              <ClassificationDetails
+                classificationPermissions={classificationPermissions}
+                currentClassification={currentClassification}
+                deleteTags={deleteTags}
+                disableEditButton={disableEditButton}
+                handleActionDeleteTag={handleActionDeleteTag}
+                handleAddNewTagClick={handleAddNewTagClick}
+                handleAfterDeleteAction={handleAfterDeleteAction}
+                handleEditTagClick={handleEditTagClick}
+                handleUpdateClassification={handleUpdateClassification}
+                isAddingTag={isAddingTag}
+                ref={classificationDetailsRef}
+              />
 
               {/* Classification Form */}
               {isAddingClassification && (

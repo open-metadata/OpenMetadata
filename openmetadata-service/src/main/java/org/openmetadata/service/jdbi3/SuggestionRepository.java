@@ -12,16 +12,16 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -35,6 +35,7 @@ import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
@@ -49,7 +50,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -247,10 +247,9 @@ public class SuggestionRepository {
   public RestUtil.PutResponse<List<Suggestion>> acceptSuggestionList(
       UriInfo uriInfo,
       List<Suggestion> suggestions,
-      SuggestionType suggestionType,
       SecurityContext securityContext,
       Authorizer authorizer) {
-    acceptSuggestionList(suggestions, suggestionType, securityContext, authorizer);
+    acceptSuggestionList(suggestions, securityContext, authorizer);
     List<Suggestion> updatedHref =
         suggestions.stream()
             .map(suggestion -> SuggestionsResource.addHref(uriInfo, suggestion))
@@ -288,10 +287,7 @@ public class SuggestionRepository {
 
   @Transaction
   protected void acceptSuggestionList(
-      List<Suggestion> suggestions,
-      SuggestionType suggestionType,
-      SecurityContext securityContext,
-      Authorizer authorizer) {
+      List<Suggestion> suggestions, SecurityContext securityContext, Authorizer authorizer) {
     String user = securityContext.getUserPrincipal().getName();
 
     // Entity being updated
@@ -307,12 +303,9 @@ public class SuggestionRepository {
       // Validate all suggestions indeed talk about the same entity
       if (entity == null) {
         // Initialize the Entity and the Repository
-        entity =
-            Entity.getEntity(
-                entityLink,
-                suggestionType == SuggestionType.SuggestTagLabel ? "tags" : "",
-                NON_DELETED);
         repository = Entity.getEntityRepository(entityLink.getEntityType());
+        entity =
+            Entity.getEntity(entityLink, repository.getSuggestionFields(suggestion), NON_DELETED);
         origJson = JsonUtils.pojoToJson(entity);
         suggestionWorkflow = repository.getSuggestionWorkflow(entity);
       } else if (!entity.getFullyQualifiedName().equals(entityLink.getEntityFQN())) {

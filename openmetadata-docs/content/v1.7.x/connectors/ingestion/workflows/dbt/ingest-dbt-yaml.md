@@ -1,5 +1,5 @@
 ---
-title: Run Externally
+title: Run dbt Workflow Externally | OpenMetadata Guide
 slug: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
 ---
 
@@ -73,7 +73,7 @@ source:
         dbtConfigType: s3
 ```
 ```yaml {% srNumber=1 %}
-        dbtSecurityConfig:
+      dbtSecurityConfig:
 ```
 
 {% partial file="/v1.7/connectors/yaml/common/aws-config.md" /%}

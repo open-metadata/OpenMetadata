@@ -15,6 +15,10 @@
  */
 export interface TableauConnection {
     /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     */
+    apiVersion?: string;
+    /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
@@ -42,6 +46,11 @@ export interface TableauConnection {
      * Regex to exclude or include projects that matches the pattern.
      */
     projectFilterPattern?: FilterPattern;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */

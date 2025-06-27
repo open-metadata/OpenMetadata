@@ -439,10 +439,6 @@ web:
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
   operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-
-mcpConfiguration:
-  enabled: ${MCP_ENABLED:-true}
-  path: ${MCP_PATH:-"/mcp"}
-  mcpServerVersion: ${MCP_SERVER_VERSION:-"1.0.0"}  
+    
     
   

@@ -15,7 +15,15 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
-from metadata.ingestion.source.dashboard.powerbi.models import Dataset, PowerBIDashboard
+from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
+    Dataset,
+    PowerBIDashboard,
+    PowerBiTable,
+    PowerBITableSource,
+    UpstreaDataflow,
+)
+from metadata.utils import fqn
 
 MOCK_REDSHIFT_EXP = """
 let
@@ -82,7 +90,12 @@ mock_config = {
                 "tenantId": "tenant_id",
             },
         },
-        "sourceConfig": {"config": {"type": "DashboardMetadata"}},
+        "sourceConfig": {
+            "config": {
+                "type": "DashboardMetadata",
+                "includeOwners": True,
+            }
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -167,11 +180,30 @@ MOCK_DATASET_FROM_WORKSPACE = Dataset(
         },
     ],
 )
+MOCK_DATASET_FROM_WORKSPACE_V2 = Dataset(
+    id="testdataset",
+    name="Test Dataset",
+    tables=[],
+    expressions=[
+        {
+            "name": "DB",
+        },
+        {
+            "name": "Schema",
+        },
+    ],
+)
 MOCK_DASHBOARD_DATA_MODEL = DashboardDataModel(
     name="dummy_datamodel",
     id=uuid.uuid4(),
     columns=[],
     dataModelType=DataModelType.PowerBIDataModel.value,
+)
+MOCK_DATAMODEL_ENTITY = DashboardDataModel(
+    name="dummy_dataflow_id_a",
+    id=uuid.uuid4(),
+    dataModelType=DataModelType.PowerBIDataFlow.value,
+    columns=[],
 )
 
 
@@ -292,3 +324,102 @@ class PowerBIUnitTest(TestCase):
 
         # Verify get_reference_by_email was not called when there are no owners
         self.powerbi.metadata.get_reference_by_email.assert_not_called()
+
+        # Reset mock for invalid owners test
+        self.powerbi.metadata.get_reference_by_email.reset_mock()
+        # Test with invalid owners
+        dashboard_invalid_owners = PowerBIDashboard.model_validate(
+            {
+                "id": "dashboard3",
+                "displayName": "Test Dashboard 3",
+                "webUrl": "https://test.com",
+                "embedUrl": "https://test.com/embed",
+                "tiles": [],
+                "users": [
+                    {
+                        "displayName": "Kane Williams",
+                        "emailAddress": "kane.williams@example.com",
+                        "dashboardUserAccessRight": "Read",
+                        "userType": "Member",
+                    },
+                ],
+            }
+        )
+        owner_ref = self.powerbi.get_owner_ref(dashboard_invalid_owners)
+        self.assertIsNone(owner_ref)
+
+        # Verify get_reference_by_email was not called when there are no owners
+        self.powerbi.metadata.get_reference_by_email.assert_not_called()
+
+    @pytest.mark.order(3)
+    def test_parse_table_info_from_source_exp(self):
+        table = PowerBiTable(
+            name="test_table",
+            source=[PowerBITableSource(expression=MOCK_REDSHIFT_EXP)],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_REDSHIFT_RESULT)
+
+        # no source expression
+        table = PowerBiTable(
+            name="test_table",
+            source=[PowerBITableSource(expression=None)],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, {})
+
+        # no source
+        table = PowerBiTable(
+            name="test_table",
+            source=[],
+        )
+        result = self.powerbi._parse_table_info_from_source_exp(
+            table, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, {})
+
+    @pytest.mark.order(4)
+    @patch.object(
+        PowerbiSource,
+        "_fetch_dataset_from_workspace",
+        return_value=MOCK_DATASET_FROM_WORKSPACE_V2,
+    )
+    def test_parse_dataset_expressions(self, *_):
+        # test with valid snowflake source but no
+        # dataset expression value
+        result = self.powerbi._parse_snowflake_source(
+            MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertIsNone(result["database"])
+        self.assertIsNone(result["schema"])
+        self.assertEqual(result["table"], "CUSTOMER_TABLE")
+
+    @pytest.mark.order(5)
+    @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
+    @patch.object(fqn, "build", return_value=None)
+    def test_upstream_dataflow_lineage(self, *_):
+        MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(
+            name="dummy_dataflow_id_b",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[],
+        )
+        MOCK_DATAMODEL_2 = Dataflow(
+            name="dataflow_b",
+            objectId="dummy_dataflow_id_b",
+            upstreamDataflows=[
+                UpstreaDataflow(
+                    targetDataflowId="dataflow_a",
+                )
+            ],
+        )
+        lineage_request = list(
+            self.powerbi.create_dataflow_upstream_dataflow_lineage(
+                MOCK_DATAMODEL_2, MOCK_DATAMODEL_ENTITY_2
+            )
+        )
+        assert lineage_request[0].right is not None

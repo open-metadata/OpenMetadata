@@ -44,7 +44,11 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -154,8 +158,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -300,7 +303,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       sampleDataTab: !viewSampleDataPermission ? (
         <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         <SampleDataWithMessages
@@ -310,6 +319,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       queryViewerTab: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.CONFIG}
           sqlQuery={JSON.stringify(topicDetails.topicConfig)}
           title={t('label.config')}
         />
@@ -366,6 +376,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (topicDetails) {
+        const certificationTag: Topic['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTopicDetails = {
+          ...topicDetails,
+          certification: certificationTag,
+        };
+
+        await onTopicUpdate(updatedTopicDetails, 'certification');
+      }
+    },
+    [topicDetails, onTopicUpdate]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -395,6 +420,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityType={EntityType.TOPIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={topicPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}

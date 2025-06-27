@@ -30,6 +30,7 @@ import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -166,9 +167,6 @@ public class OpenMetadataConnectionBuilder {
   }
 
   public OpenMetadataConnection build() {
-    // Initialize the bot user while building to update any
-    // changes done on the bot like updating jwt token
-    initializeBotUser(Entity.INGESTION_BOT_NAME);
     return new OpenMetadataConnection()
         .withAuthProvider(authProvider)
         .withHostPort(openMetadataURL)

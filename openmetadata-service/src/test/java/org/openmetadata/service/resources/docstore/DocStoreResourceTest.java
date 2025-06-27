@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.docstore;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,6 +18,9 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.put;
 import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_TEMPLATE;
 
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,9 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -45,10 +45,10 @@ import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -440,7 +440,26 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
   private void assertDocData(Object expected, Object actual) {
     Data data = (Data) expected;
-    assertEquals(
-        data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
+    Map<String, Object> expectedMap = data.getAdditionalProperties();
+    Map<String, Object> actualMap = JsonUtils.getMap(JsonUtils.readJson(actual.toString()));
+
+    Map<String, Object> normalizedActualMap = new HashMap<>();
+    for (Map.Entry<String, Object> entry : actualMap.entrySet()) {
+      Object value = entry.getValue();
+      if (value instanceof Map) {
+        Map<String, Object> valueMap = (Map<String, Object>) value;
+        if (valueMap.containsKey("string")
+            && valueMap.containsKey("chars")
+            && valueMap.containsKey("valueType")) {
+          normalizedActualMap.put(entry.getKey(), valueMap.get("string"));
+        } else {
+          normalizedActualMap.put(entry.getKey(), value);
+        }
+      } else {
+        normalizedActualMap.put(entry.getKey(), value);
+      }
+    }
+
+    assertEquals(expectedMap, normalizedActualMap);
   }
 }

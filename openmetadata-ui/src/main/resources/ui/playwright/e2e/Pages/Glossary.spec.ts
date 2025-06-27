@@ -63,6 +63,7 @@ import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
   selectColumns,
+  setupGlossaryDenyPermissionTest,
   toggleBulkActionColumnsSelection,
   updateGlossaryReviewer,
   updateGlossaryTermDataFromTree,
@@ -278,7 +279,13 @@ test.describe('Glossary tests', () => {
           type: 'Users',
         });
 
-        await assignTag(page, 'PersonalData.Personal', 'Add', 'tabs');
+        await assignTag(
+          page,
+          'PersonalData.Personal',
+          'Add',
+          EntityTypeEndpoint.Glossary,
+          'tabs'
+        );
       });
 
       await test.step('Update Glossary Term', async () => {
@@ -994,6 +1001,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Request description task for Glossary', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const user1 = new UserClass();
@@ -1023,11 +1032,9 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
-      );
-
-      expect(viewerContainerText).toContain('Updated description');
+      await expect(
+        page.locator('[data-testid="viewer-container"]')
+      ).toContainText('Updated description');
     } finally {
       await glossary1.delete(apiContext);
       await afterAction();
@@ -1432,6 +1439,38 @@ test.describe('Glossary tests', () => {
       await glossary1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Verify Glossary Deny Permission', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    const { dataConsumerUser, glossary1, cleanup } =
+      await setupGlossaryDenyPermissionTest(apiContext);
+
+    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
+      await performUserLogin(browser, dataConsumerUser);
+
+    await redirectToHomePage(dataConsumerPage);
+    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(
+      dataConsumerPage,
+      glossary1.data.displayName,
+      false
+    );
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toHaveText(
+      "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
+    );
+
+    await consumerAfterAction();
+    await cleanup(apiContext);
+    await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {

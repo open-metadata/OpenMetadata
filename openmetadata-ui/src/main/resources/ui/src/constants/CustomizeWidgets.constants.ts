@@ -142,3 +142,28 @@ export const DUMMY_OWNER_LIST = [
     id: '123',
   },
 ];
+
+export const WIDGET_CUSTOM_PROPERTIES = [
+  {
+    name: 'name',
+    value: 'OpenMetadata',
+    propertyType: {
+      name: 'string',
+      type: 'string',
+      id: '123',
+    },
+    description: 'Name',
+    displayName: 'Name',
+  },
+  {
+    name: 'email',
+    value: 'customproperty@OpenMetadata.com',
+    propertyType: {
+      name: 'string',
+      type: 'string',
+      id: '123',
+    },
+    description: 'Email',
+    displayName: 'Email',
+  },
+];

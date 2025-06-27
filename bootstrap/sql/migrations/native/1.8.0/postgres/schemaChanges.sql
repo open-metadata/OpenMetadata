@@ -1,5 +1,21 @@
--- Add runId column for querying application logs
-ALTER TABLE apps_extension_time_series
-ADD COLUMN runId VARCHAR(255) GENERATED ALWAYS AS ((json ->> 'runId')) STORED;
+ALTER TABLE background_jobs
+ADD COLUMN runAt BIGINT;
 
-CREATE INDEX apps_extension_time_series_run_id_index ON apps_extension_time_series (runId);
+CREATE INDEX background_jobs_run_at_index ON background_jobs(runAt);
+
+-- Create data contract table
+CREATE TABLE IF NOT EXISTS data_contract_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (fqnHash)
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS data_contract_entity_name_index ON data_contract_entity (name);
+CREATE INDEX IF NOT EXISTS index_data_contract_entity_deleted ON data_contract_entity (fqnHash, deleted);

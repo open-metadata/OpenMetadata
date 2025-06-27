@@ -17,9 +17,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.models.IndexMapping;
 
 public class LineageUtil {
 
@@ -115,7 +116,7 @@ public class LineageUtil {
 
   private static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     Entity.getSearchRepository()
         .getSearchClient()
         .updateChildren(

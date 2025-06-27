@@ -24,8 +24,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
@@ -118,6 +118,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String invalidName(String name) {
+    if (name == null) {
+      return "name must not be null";
+    }
     return String.format("Invalid name %s", name);
   }
 

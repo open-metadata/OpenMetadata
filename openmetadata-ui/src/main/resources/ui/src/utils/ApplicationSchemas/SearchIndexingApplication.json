@@ -96,7 +96,7 @@
           "databaseService",
           "dashboardService",
           "query",
-          "queryCostResult",
+          "queryCostRecord",
           "apiService",
           "searchIndex",
           "testCaseResult",
@@ -136,6 +136,12 @@
       "type": "string",
       "enum": ["EN", "JP", "ZH"],
       "default": "EN"
+    },
+    "autoTune": {
+      "title": "Auto Tune",
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

@@ -10,8 +10,15 @@ public class JobHandlerRegistry {
   private final Map<String, JobHandler> handlers = new HashMap<>();
 
   public void register(String methodName, JobHandler handler) {
-    LOG.info("Registering background job handler for: {}", handler.getClass().getSimpleName());
+    LOG.info(
+        "Registering background job handler for: {} -> {}",
+        handler.getClass().getSimpleName(),
+        handler.getClass().getCanonicalName());
     handlers.put(methodName, handler);
+  }
+
+  public void register(JobHandler handler) {
+    register(handler.getClass().getSimpleName(), handler);
   }
 
   public JobHandler getHandler(BackgroundJob job) {

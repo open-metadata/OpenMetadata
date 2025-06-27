@@ -153,7 +153,9 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-name')}
+            {t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}
           </Typography.Text>
         </Button>
       )}
@@ -239,11 +241,11 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <UserPopOverCard userName={getEntityName(userData)}>
+        <UserPopOverCard userName={userData?.name}>
           <div className="d-flex items-center">
             <ProfilePicture
               data-testid="replied-user"
-              name={getEntityName(userData)}
+              name={userData?.name}
               width="80"
             />
           </div>
@@ -279,16 +281,9 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-name')}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
           updateUserDetails={updateUserDetails}
           userData={userData}
-          value={userData.description as string}
-          visible={Boolean(editProfile)}
-          onCancel={() => setEditProfile(false)}
-          onSave={handleModalClose}
+          onCancel={handleModalClose}
         />
       )}
       {userData.deleted && (

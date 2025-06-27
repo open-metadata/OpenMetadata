@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -38,7 +39,6 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -103,29 +103,26 @@ public class RunAppImpl {
           .contains(app.getName());
   }
 
+  private String getTableServiceFilter(String serviceName) {
+    return String.format(
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+        serviceName);
+  }
+
   private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
     Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
     switch (app.getName()) {
       case "CollateAIApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()))
+              .withFilter(getTableServiceFilter(service.getName()))
               .withPatchIfEmpty(true);
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+              .withFilter(getTableServiceFilter(service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
-              .withFilter(
-                  String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()))
+              .withFilter(getTableServiceFilter(service.getName()))
               .withPatchIfEmpty(true);
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =

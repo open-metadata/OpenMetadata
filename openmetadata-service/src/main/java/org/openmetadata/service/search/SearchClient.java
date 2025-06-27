@@ -2,14 +2,15 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -24,8 +25,8 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -269,8 +270,6 @@ public interface SearchClient {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  Response suggest(SearchRequest request) throws IOException;
-
   void createEntity(String indexName, String docId, String doc);
 
   void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
@@ -315,6 +314,13 @@ public interface SearchClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData);
+
+  void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,
@@ -364,4 +370,82 @@ public interface SearchClient {
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
+
+  /**
+   * Get a list of data stream names that match the given prefix.
+   *
+   * @param prefix The prefix to match data stream names against
+   * @return List of data stream names that match the prefix
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default List<String> getDataStreams(String prefix) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete data streams that match the given name or pattern.
+   *
+   * @param dataStreamName The name or pattern of data streams to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteDataStream(String dataStreamName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an Index Lifecycle Management (ILM) policy.
+   *
+   * @param policyName The name of the ILM policy to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteILMPolicy(String policyName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an index template.
+   *
+   * @param templateName The name of the index template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteIndexTemplate(String templateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete a component template.
+   *
+   * @param componentTemplateName The name of the component template to delete
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Detach an ILM policy from indexes matching the given pattern.
+   *
+   * @param indexPattern The pattern of indexes to detach the ILM policy from
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Removes ILM policy from a component template while preserving all other settings.
+   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
+   *
+   * @param componentTemplateName The name of the component template to update
+   * @throws IOException if there is an error communicating with the search engine
+   */
+  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    // Default implementation does nothing as this is only needed for Elasticsearch
+  }
 }

@@ -46,7 +46,6 @@ import ServiceConnectionDetails from '../../components/Settings/Services/Service
 import {
   AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -170,9 +169,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
   const { isAdminUser } = useAuth();
-  const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const collateAgentPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const pagingInfo = usePaging(PAGE_SIZE_BASE);
+  const ingestionPagingInfo = usePaging();
+  const collateAgentPagingInfo = usePaging();
+  const pagingInfo = usePaging();
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
@@ -1085,8 +1084,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.service'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -1464,7 +1462,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

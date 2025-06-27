@@ -37,7 +37,10 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -98,14 +101,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     await onMetricUpdate(updatedData, 'displayName');
   };
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      const certificationTag = updateCertificationTag(newCertification);
+      const updatedData = {
+        ...metricDetails,
+        certification: certificationTag,
+      };
+
+      await onMetricUpdate(updatedData, 'certification');
+    },
+    [metricDetails, onMetricUpdate]
+  );
+
   const handleRestoreMetric = async () => {
     try {
       const { version: newVersion } = await restoreMetric(metricDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.metric'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -249,6 +264,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             entityType={EntityType.METRIC}
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}

@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.resources.policies;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static java.util.Collections.emptyList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import com.google.common.collect.Lists;
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -49,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -72,6 +72,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -85,7 +86,6 @@ import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -196,7 +196,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[operations must not be null]");
+        "[query param operations must not be null]");
 
     // Adding a rule without resources should be disallowed
     policyName = getEntityName(test, 1);
@@ -206,7 +206,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[resources must not be null]");
+        "[query param resources must not be null]");
   }
 
   @Test

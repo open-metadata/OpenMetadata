@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
@@ -95,5 +96,83 @@ class FullyQualifiedNameTest {
     assertFalse(FullyQualifiedName.isParent("a.b", "a.b.c"));
     assertFalse(FullyQualifiedName.isParent("a.b.c", "a.b.c"));
     assertFalse(FullyQualifiedName.isParent("a.b c", "a.b"));
+  }
+
+  @Test
+  void test_getAllParts() {
+    Set<String> parts = FullyQualifiedName.getAllParts("a.b.c.d");
+    assertTrue(parts.contains("a"));
+    assertTrue(parts.contains("b"));
+    assertTrue(parts.contains("c"));
+    assertTrue(parts.contains("d"));
+    // Should contain top-down hierarchy
+    assertTrue(parts.contains("a"));
+    assertTrue(parts.contains("a.b"));
+    assertTrue(parts.contains("a.b.c"));
+    assertTrue(parts.contains("a.b.c.d"));
+    // Should contain bottom-up combinations
+    assertTrue(parts.contains("b.c.d"));
+    assertTrue(parts.contains("c.d"));
+    assertEquals(10, parts.size()); // 4 individual + 4 top-down + 2 bottom-up
+
+    // Test with quoted names
+    Set<String> quotedParts = FullyQualifiedName.getAllParts("\"a.1\".\"b.2\".c.d");
+    assertTrue(quotedParts.contains("\"a.1\""));
+    assertTrue(quotedParts.contains("\"b.2\""));
+    assertTrue(quotedParts.contains("c"));
+    assertTrue(quotedParts.contains("d"));
+    assertTrue(quotedParts.contains("\"a.1\".\"b.2\".c.d"));
+    assertTrue(quotedParts.contains("\"b.2\".c.d"));
+
+    // Test with single part
+    Set<String> singlePart = FullyQualifiedName.getAllParts("service");
+    assertEquals(1, singlePart.size());
+    assertTrue(singlePart.contains("service"));
+  }
+
+  @Test
+  void test_getHierarchicalParts() {
+    List<String> hierarchy = FullyQualifiedName.getHierarchicalParts("a.b.c.d");
+    assertEquals(4, hierarchy.size());
+    assertEquals("a", hierarchy.get(0));
+    assertEquals("a.b", hierarchy.get(1));
+    assertEquals("a.b.c", hierarchy.get(2));
+    assertEquals("a.b.c.d", hierarchy.get(3));
+
+    // Test with quoted names
+    List<String> quotedHierarchy = FullyQualifiedName.getHierarchicalParts("\"a.1\".b.\"c.3\"");
+    assertEquals(3, quotedHierarchy.size());
+    assertEquals("\"a.1\"", quotedHierarchy.get(0));
+    assertEquals("\"a.1\".b", quotedHierarchy.get(1));
+    assertEquals("\"a.1\".b.\"c.3\"", quotedHierarchy.get(2));
+
+    // Test with single part
+    List<String> singleHierarchy = FullyQualifiedName.getHierarchicalParts("service");
+    assertEquals(1, singleHierarchy.size());
+    assertEquals("service", singleHierarchy.getFirst());
+  }
+
+  @Test
+  void test_getAncestors() {
+    List<String> ancestors = FullyQualifiedName.getAncestors("a.b.c.d");
+    assertEquals(3, ancestors.size());
+    assertEquals("a.b.c", ancestors.get(0));
+    assertEquals("a.b", ancestors.get(1));
+    assertEquals("a", ancestors.get(2));
+
+    List<String> twoPartAncestors = FullyQualifiedName.getAncestors("a.b");
+    assertEquals(1, twoPartAncestors.size());
+    assertEquals("a", twoPartAncestors.getFirst());
+
+    // Test with single part (no ancestors)
+    List<String> noAncestors = FullyQualifiedName.getAncestors("service");
+    assertEquals(0, noAncestors.size());
+
+    // Test with quoted names
+    List<String> quotedAncestors = FullyQualifiedName.getAncestors("\"a.1\".b.\"c.3\".d");
+    assertEquals(3, quotedAncestors.size());
+    assertEquals("\"a.1\".b.\"c.3\"", quotedAncestors.get(0));
+    assertEquals("\"a.1\".b", quotedAncestors.get(1));
+    assertEquals("\"a.1\"", quotedAncestors.get(2));
   }
 }
