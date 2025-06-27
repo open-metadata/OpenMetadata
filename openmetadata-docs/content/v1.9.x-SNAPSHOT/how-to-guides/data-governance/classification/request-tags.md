@@ -10,7 +10,7 @@ Apart from adding the tags directly, users can also request to update tags. This
 - Click on the **?** icon next to tags
 
 {% image
-src="/images/v1.9how-to-guides/governance/tag8.png"
+src="/images/v1.9/how-to-guides/governance/tag8.png"
 alt="Request to Update Tags"
 caption="Request to Update Tags"
 /%}
@@ -25,7 +25,7 @@ caption="Request to Update Tags"
   - Click on **Submit** to create the task.
 
  {% image
- src="/images/v1.9how-to-guides/governance/task1.png"
+ src="/images/v1.9/how-to-guides/governance/task1.png"
  alt="Add a Task: Request to Update Tags"
  caption="Add a Task: Request to Update Tags"
  /%}
@@ -33,7 +33,7 @@ caption="Request to Update Tags"
 Once a task has been created, it is displayed in the **Activity Feeds & Tasks** tab for that Data Asset. The assignees, can either `Accept the Suggestion` or `Edit and Accept the Suggestion`. Assignees can also add a **Comment**. They can also add other users as **Assignees**. 
 
 {% image
-src="/images/v1.9how-to-guides/governance/task2.png"
+src="/images/v1.9/how-to-guides/governance/task2.png"
 alt="Task: Accept Suggestion and Comment"
 caption="Task: Accept Suggestion and Comment"
 /%}
@@ -44,7 +44,7 @@ Apart from requesting for tags, users can also create a **Conversation** around 
 - Click on the **Conversation** icon next to the tag.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ct1.png"
+src="/images/v1.9/how-to-guides/governance/ct1.png"
 alt="Conversations around Tags"
 caption="Conversations around Tags"
 /%}
@@ -52,7 +52,7 @@ caption="Conversations around Tags"
 - Start a conversation right within the data asset page. Add **@mention** to tag a user or team. Add a **#mention** to tag a data asset.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ct2.png"
+src="/images/v1.9/how-to-guides/governance/ct2.png"
 alt="Start a Conversation"
 caption="Start a Conversation"
 /%}
@@ -60,7 +60,7 @@ caption="Start a Conversation"
 - Further in the conversation, users can **Reply** to discuss further as well as add **Reactions**, **Edit**, or **Delete**.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ct3.png"
+src="/images/v1.9/how-to-guides/governance/ct3.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}

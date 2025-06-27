@@ -13,7 +13,7 @@ collate: false
 - Provide a redirect URL as a Auth Code Flow. 
 - Click on Register.
 
-{% image src="/images/v1.9deployment/security/azure/create-web-registration.png" alt="create-app" /%}
+{% image src="/images/v1.9/deployment/security/azure/create-web-registration.png" alt="create-app" /%}
 
 
 
@@ -21,7 +21,7 @@ collate: false
 
 - The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
 
-{% image src="/images/v1.9deployment/security/azure/web-client-secret.png" alt="create-app" /%}
+{% image src="/images/v1.9/deployment/security/azure/web-client-secret.png" alt="create-app" /%}
 
 - When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example
   below. `https://login.microsoftonline.com/TenantID`
@@ -30,7 +30,7 @@ collate: false
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}
 
 
 {% inlineCalloutContainer %}

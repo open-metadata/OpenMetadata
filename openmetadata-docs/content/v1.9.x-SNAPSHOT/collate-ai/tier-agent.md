@@ -19,7 +19,7 @@ The Tier Agent analyzes data usage and lineage to suggest appropriate tier class
 1. **Navigate to Applications**: Go to `Settings > Applications`.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-agent.png"
 alt="setting up Collate AI"
 caption="Navigate to Applications"
 /%}
@@ -27,7 +27,7 @@ caption="Navigate to Applications"
 2. **Install the Agent**: Click on "Add Apps" to access the marketplace and install the Collate AI Tier Agent.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-tier-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-tier-agent.png"
 alt="Installation"
 caption="Installation"
 /%}
@@ -37,7 +37,7 @@ caption="Installation"
    - **Patch Tier If Empty**: Enable this option to automatically assign a tier to assets that currently lack one.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-tier-agent1.png"
+src="/images/v1.9/collate-ai/collate-ai-tier-agent1.png"
 alt="Configuration"
 caption="Configuration"
 /%}
@@ -45,7 +45,7 @@ caption="Configuration"
 4. **Scheduling**: Set up regular intervals for the agent to run and update metadata.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-tier-agent2.png"
+src="/images/v1.9/collate-ai/collate-ai-tier-agent2.png"
 alt="Scheduling"
 caption="Scheduling"
 /%}
