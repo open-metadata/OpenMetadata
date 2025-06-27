@@ -368,21 +368,17 @@ class DbtSource(DbtServiceSource):
         )
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
-        exposure_type = manifest_node.type.value
-        if exposure_type in ExposureTypeMap.keys():
-            exposure_entity = self.parse_exposure_node(manifest_node)
+        exposure_entity = self.parse_exposure_node(manifest_node)
 
-            if exposure_entity:
-                self.context.get().exposures[key] = {
-                    DbtCommonEnum.EXPOSURE: exposure_entity,
-                    DbtCommonEnum.MANIFEST_NODE: manifest_node,
-                }
+        if exposure_entity:
+            self.context.get().exposures[key] = {
+                DbtCommonEnum.EXPOSURE: exposure_entity,
+                DbtCommonEnum.MANIFEST_NODE: manifest_node,
+            }
 
-                self.context.get().exposures[key][
-                    DbtCommonEnum.UPSTREAM
-                ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        else:
-            logger.warning(f"Exposure type {exposure_type} not supported.")
+            self.context.get().exposures[key][
+                DbtCommonEnum.UPSTREAM
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
 
     def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
@@ -779,12 +775,17 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec):
+    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:
         """
-        The implementation assumes that name provided in dbt exposures object matches to FQN of OpenMetadata object:
-        exposures:
-          - name: sample_looker.orders
-            label: lookerOrders
+        Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
+        Open Metadata entity.
+
+        The implementation assumes that label provided in DBT exposures object matches to FQN of OpenMetadata object:
+        exposures. We cannot use name field for this as dbt only allows letters, digits and underscores in this field.
+
+        ```yaml
+          - name: orders_dashboard
+            label: sample_looker.orders
             type: dashboard
             maturity: high
             url: http://localhost:808/looker/dashboard/8/
@@ -793,9 +794,8 @@ class DbtSource(DbtServiceSource):
 
             depends_on:
               - ref('fact_sales')
+        ```
         """
-        entity_fqn = exposure_spec.name
-
         entity_type = ExposureTypeMap.get(exposure_spec.type.value, {}).get(
             "entity_type"
         )
@@ -803,12 +803,18 @@ class DbtSource(DbtServiceSource):
         if not entity_type:
             logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
 
+            return None
+
+        entity_fqn = exposure_spec.label
+
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
 
         if not entity:
             logger.warning(
                 f"Entity [{entity_fqn}] of [{entity_type}] type not found in Open Metadata."
             )
+
+            return None
 
         return entity
 
