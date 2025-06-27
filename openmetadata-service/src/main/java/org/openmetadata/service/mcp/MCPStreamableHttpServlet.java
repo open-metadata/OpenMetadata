@@ -40,6 +40,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.MCPConfiguration;
 import org.openmetadata.service.exception.BadRequestException;
@@ -49,7 +50,6 @@ import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.JsonUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

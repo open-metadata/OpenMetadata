@@ -81,6 +81,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -88,7 +89,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 

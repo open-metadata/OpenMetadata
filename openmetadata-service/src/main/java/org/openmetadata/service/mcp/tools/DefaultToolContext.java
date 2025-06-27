@@ -6,12 +6,12 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DefaultToolContext {
