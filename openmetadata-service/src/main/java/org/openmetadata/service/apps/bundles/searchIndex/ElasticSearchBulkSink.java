@@ -160,11 +160,11 @@ public class ElasticSearchBulkSink implements BulkSink {
             })
         .setBulkActions(bulkActions)
         .setBulkSize(new ByteSizeValue(maxPayloadSizeBytes, ByteSizeUnit.BYTES))
-        .setFlushInterval(TimeValue.timeValueSeconds(10))
+        .setFlushInterval(TimeValue.timeValueSeconds(5)) // Reduced from 10s for better throughput
         .setConcurrentRequests(concurrentRequests)
         .setBackoffPolicy(
             BackoffPolicy.exponentialBackoff(
-                TimeValue.timeValueMillis(1000), 3)) // 1s initial delay, 3 retries
+                TimeValue.timeValueMillis(100), 3)) // Reduced from 1s to 100ms for faster retries
         .build();
   }
 

@@ -161,9 +161,9 @@ public class SearchClusterMetrics {
       long totalEntities) {
 
     // Database connection pool is typically 50-300 connections
-    // Use at most 50% to leave room for other operations
+    // Use at most 75% to maximize throughput while leaving room for other operations
     int maxDbConnections = 100; // Conservative estimate, could be made configurable
-    int maxProducerThreads = maxDbConnections / 2; // 50% of connection pool
+    int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
 
     int recommendedProducerThreads = Math.min(maxProducerThreads, 30 * totalNodes);
 
@@ -391,13 +391,13 @@ public class SearchClusterMetrics {
     }
 
     // Conservative DB connection usage - assume 50 connections available
-    int conservativeThreads = 25; // 50% of assumed 50 connections
+    int conservativeThreads = 37; // 75% of assumed 50 connections
     if (totalEntities > 1000000) {
-      conservativeThreads = 40;
+      conservativeThreads = 60; // 75% of 80 connections for large datasets
     } else if (totalEntities > 500000) {
-      conservativeThreads = 30;
+      conservativeThreads = 45; // 75% of 60 connections
     } else if (totalEntities < 50000) {
-      conservativeThreads = 15;
+      conservativeThreads = 22; // 75% of 30 connections for small datasets
     }
 
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;

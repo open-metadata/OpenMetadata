@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -70,7 +71,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final String POISON_PILL = "__POISON_PILL__";
   private static final int QUEUE_CAPACITY =
-      5000; // Larger buffer for producer-consumer to keep pipeline full
+      20000; // Increased buffer for better producer-consumer throughput
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -97,6 +98,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000; // 2 seconds
+  
+  // Throughput monitoring
+  private final AtomicLong lastThroughputCheck = new AtomicLong(0);
+  private final AtomicLong lastThroughputCount = new AtomicLong(0);
+  private static final long THROUGHPUT_CHECK_INTERVAL_MS = 30000; // 30 seconds
 
   // Backpressure handling
   private volatile int consecutiveErrors = 0;
@@ -706,6 +712,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
     sendUpdates(jobExecutionContext, false);
   }
 
+  private void logThroughputIfNeeded() {
+    long currentTime = System.currentTimeMillis();
+    long lastCheck = lastThroughputCheck.get();
+    
+    if (currentTime - lastCheck >= THROUGHPUT_CHECK_INTERVAL_MS) {
+      Stats stats = searchIndexStats.get();
+      if (stats != null && stats.getJobStats() != null) {
+        long currentCount = stats.getJobStats().getSuccessRecords() != null ? 
+            stats.getJobStats().getSuccessRecords() : 0;
+        long lastCount = lastThroughputCount.get();
+        long timeDelta = currentTime - lastCheck;
+        long recordsDelta = currentCount - lastCount;
+        
+        if (timeDelta > 0) {
+          double throughput = (recordsDelta * 1000.0) / timeDelta;
+          double recordsPerMinute = throughput * 60;
+          LOG.info("=== Indexing Throughput ===");
+          LOG.info("Records processed: {} in {}s", recordsDelta, timeDelta / 1000);
+          LOG.info("Current throughput: {} records/second ({} records/minute)", 
+              String.format("%.2f", throughput), String.format("%.0f", recordsPerMinute));
+          LOG.info("Total processed: {}/{}", currentCount, 
+              stats.getJobStats().getTotalRecords() != null ? stats.getJobStats().getTotalRecords() : "unknown");
+          LOG.info("=========================");
+          
+          lastThroughputCheck.set(currentTime);
+          lastThroughputCount.set(currentCount);
+        }
+      }
+    }
+  }
+  
   private void sendUpdates(JobExecutionContext jobExecutionContext, boolean forceUpdate) {
     try {
       long currentTime = System.currentTimeMillis();
@@ -720,6 +757,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       lastWebSocketUpdate = currentTime;
       LOG.debug(
           "Sending WebSocket update - forced: {}, status: {}", forceUpdate, jobData.getStatus());
+      
+      // Check and log throughput periodically
+      logThroughputIfNeeded();
+      
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
       jobExecutionContext
           .getJobDetail()
