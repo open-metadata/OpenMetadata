@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 
 import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -52,7 +51,6 @@ import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -92,7 +90,7 @@ public class DatabaseSchemaResource
   }
 
   public DatabaseSchemaResource(Authorizer authorizer, Limits limits) {
-    super(DATABASE_SCHEMA, authorizer, limits);
+    super(Entity.DATABASE_SCHEMA, authorizer, limits);
   }
 
   @Override
@@ -838,7 +836,7 @@ public class DatabaseSchemaResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = SearchResponse.class)))
       })
-  public SearchEntityRelationshipResult searchSchemaEntityRelationship(
+  public Response searchSchemaEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
@@ -856,13 +854,7 @@ public class DatabaseSchemaResource
           boolean deleted)
       throws IOException {
 
-    String indexName =
-        Entity.getSearchRepository()
-            .getIndexMapping(DATABASE_SCHEMA)
-            .getIndexName(Entity.getSearchRepository().getClusterAlias());
-    //      return Entity.getSearchRepository().searchSchemaEntityRelationship(indexName,
-    // queryFilter, deleted);
     return Entity.getSearchRepository()
-        .searchRelationshipsForSchema(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 }
