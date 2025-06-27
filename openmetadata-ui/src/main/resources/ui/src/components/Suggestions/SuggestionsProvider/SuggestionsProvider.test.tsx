@@ -56,6 +56,49 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+function TestComponent() {
+  const {
+    acceptRejectAllSuggestions,
+    onUpdateActiveUser,
+    acceptRejectSuggestion,
+    fetchSuggestionsByUserId,
+  } = useSuggestionsContext();
+
+  return (
+    <>
+      <button
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
+        Accept All
+      </button>
+      <button
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
+        Reject All
+      </button>
+      <button
+        onClick={() =>
+          onUpdateActiveUser({ id: '1', name: 'Avatar 1', type: 'user' })
+        }>
+        Active User
+      </button>
+      <button
+        onClick={() =>
+          acceptRejectSuggestion(suggestions[0], SuggestionAction.Accept)
+        }>
+        Accept One
+      </button>
+      <button
+        onClick={() =>
+          acceptRejectSuggestion(suggestions[0], SuggestionAction.Reject)
+        }>
+        Reject One
+      </button>
+      <button onClick={() => fetchSuggestionsByUserId('test-user-id')}>
+        Fetch By User ID
+      </button>
+    </>
+  );
+}
+
 describe('SuggestionsProvider', () => {
   it('renders provider and fetches data', async () => {
     await act(async () => {
@@ -166,46 +209,3 @@ describe('SuggestionsProvider', () => {
     });
   });
 });
-
-function TestComponent() {
-  const {
-    acceptRejectAllSuggestions,
-    onUpdateActiveUser,
-    acceptRejectSuggestion,
-    fetchSuggestionsByUserId,
-  } = useSuggestionsContext();
-
-  return (
-    <>
-      <button
-        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
-        Accept All
-      </button>
-      <button
-        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
-        Reject All
-      </button>
-      <button
-        onClick={() =>
-          onUpdateActiveUser({ id: '1', name: 'Avatar 1', type: 'user' })
-        }>
-        Active User
-      </button>
-      <button
-        onClick={() =>
-          acceptRejectSuggestion(suggestions[0], SuggestionAction.Accept)
-        }>
-        Accept One
-      </button>
-      <button
-        onClick={() =>
-          acceptRejectSuggestion(suggestions[0], SuggestionAction.Reject)
-        }>
-        Reject One
-      </button>
-      <button onClick={() => fetchSuggestionsByUserId('test-user-id')}>
-        Fetch By User ID
-      </button>
-    </>
-  );
-}
