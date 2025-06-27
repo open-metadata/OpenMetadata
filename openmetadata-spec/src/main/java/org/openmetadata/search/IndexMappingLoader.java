@@ -41,8 +41,7 @@ public class IndexMappingLoader {
     loadEntityIndexMapping();
   }
 
-  private IndexMappingLoader()
-          throws IOException {
+  private IndexMappingLoader() throws IOException {
     this.searchIndexMappingLanguage = "en";
     loadIndexMapping();
     loadEntityIndexMapping();
