@@ -60,7 +60,7 @@ jobs:
           git push
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.git-check.outputs.changes == 'true' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
