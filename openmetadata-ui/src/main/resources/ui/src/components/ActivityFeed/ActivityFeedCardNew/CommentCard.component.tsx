@@ -22,12 +22,10 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -78,11 +76,6 @@ const CommentCard = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isEditPost]);
-
-  const [, , user] = useUserProfile({
-    permission: true,
-    name: feed.updatedBy ?? '',
-  });
 
   const onEditPost = () => {
     closeFeedEditor();
@@ -138,20 +131,20 @@ const CommentCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <UserPopOverCard userName={feed.updatedBy ?? ''}>
+        <UserPopOverCard userName={post.from ?? ''}>
           <div className="d-flex items-center">
-            <ProfilePicture key={feed.id} name={feed.updatedBy!} width="32" />
+            <ProfilePicture key={post.id} name={post.from ?? ''} width="32" />
           </div>
         </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard userName={feed.updatedBy ?? ''}>
+            <UserPopOverCard userName={post.from ?? ''}>
               <Link
                 className="reply-card-user-name"
-                to={getUserPath(feed.updatedBy ?? '')}>
-                {getEntityName(user)}
+                to={getUserPath(post.from ?? '')}>
+                {post.from}
               </Link>
             </UserPopOverCard>
           </Typography.Text>
