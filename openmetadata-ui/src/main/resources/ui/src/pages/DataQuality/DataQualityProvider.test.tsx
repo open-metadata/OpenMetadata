@@ -31,7 +31,7 @@ const mockPermissionsData = {
     },
   },
 };
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
+const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
   tab?: DataQualityPageTabs;
 };
 

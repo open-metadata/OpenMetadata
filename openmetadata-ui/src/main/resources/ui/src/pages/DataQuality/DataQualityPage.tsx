@@ -68,7 +68,7 @@ const DataQualityPage = () => {
         <Col span={24}>
           <Card>
             <Row>
-              <Col span={isEmpty(extraDropdownContent) ? 16 : 23}>
+              <Col span={16}>
                 <PageHeader
                   data={{
                     header: t('label.data-quality'),
