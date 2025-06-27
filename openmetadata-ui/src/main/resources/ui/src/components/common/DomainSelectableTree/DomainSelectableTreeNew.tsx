@@ -12,6 +12,7 @@
  */
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';
+import { debounce } from 'lodash';
 import React, {
   FC,
   Key,
@@ -25,16 +26,21 @@ import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.sv
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/ic-popover-save.svg';
+import { DEBOUNCE_TIMEOUT } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
-import { listDomainHierarchy } from '../../../rest/domainAPI';
+import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
 import {
   convertDomainsToTreeOptions,
   isDomainExist,
 } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { TagRenderer } from '../TagRenderer/TagRenderer';
@@ -163,6 +169,28 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
+  const onSearch = debounce(async (value: string) => {
+    setSearchTerm(value);
+    if (value) {
+      try {
+        setIsLoading(true);
+        const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+        const results: Domain[] = await searchDomains(encodedValue);
+        const updatedTreeData = convertDomainsToTreeOptions(
+          results,
+          0,
+          isMultiple
+        );
+        setTreeData(updatedTreeData);
+        setDomains(results);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      fetchAPI();
+    }
+  }, DEBOUNCE_TIMEOUT);
+
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
@@ -228,6 +256,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
           dropdownStyle={{ maxHeight: '200px' }}
+          filterOption={false}
           maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
             <span className="max-tag-text">
@@ -250,6 +279,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           }
           onChange={handleSelectChange}
           onDropdownVisibleChange={handleDropdownChange}
+          onSearch={onSearch}
         />
       </div>
       <Space className="d-flex" size={8}>
