@@ -6,7 +6,7 @@
   "type": "object",
   "definitions": {
     "lineagePropagationActionType": {
-      "description": "Lineage propagation action type.",
+      "description": "Lineage propagation action type",
       "type": "string",
       "enum": ["LineagePropagationAction"],
       "default": "LineagePropagationAction"
