@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
+import org.openmetadata.service.jdbi3.ReplicaAwareResource;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.jwt.JWKSResponse;
@@ -44,7 +45,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
-public class ConfigResource {
+public class ConfigResource extends ReplicaAwareResource {
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 

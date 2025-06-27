@@ -419,3 +419,10 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
     UNIQUE (fullyQualifiedName)
 );
 
+--
+-- MySQL replication compatibility note
+-- MySQL replication works differently and doesn't require replica identity statements
+-- This comment exists to maintain migration parity with PostgreSQL
+-- See: https://github.com/open-metadata/OpenMetadata/issues/12880
+--
+
