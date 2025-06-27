@@ -11,11 +11,38 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../styles/variables.less';
+@import (reference) '../../../../styles/variables.less';
 
-.data-quality-page-tabs.ant-tabs.tabs-new {
-  .ant-tabs-tabpane {
-    margin-top: @size-md;
-    background-color: unset;
+.pie-chart-summary-panel {
+  .summary-title {
+    font-size: 16px;
+    color: @text-color;
+    font-weight: 600;
+    margin-bottom: 0;
+  }
+
+  .summary-value {
+    font-size: 30px;
+    font-weight: 600;
+    color: @text-color;
+    line-height: 1.2;
+    margin-top: 8px;
+  }
+
+  .chart-container {
+    position: relative;
+  }
+
+  .chart-center-text {
+    font-size: 16px;
+    font-weight: 600;
+    fill: @text-color;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 }

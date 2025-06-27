@@ -11,22 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Card, Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Redirect,
-  Route,
-  Switch,
-  useHistory,
-  useParams,
-} from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -37,31 +31,24 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
+    useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const { t } = useTranslation();
-  const menuItems: MenuProps['items'] = useMemo(() => {
-    const data = DataQualityClassBase.getLeftSideBar();
+  const { permissions } = usePermissionProvider();
+  const { testSuite: testSuitePermission } = permissions;
+  const menuItems = useMemo(() => {
+    const data = DataQualityClassBase.getDataQualityTab();
 
     return data.map((value) => {
-      const SvgIcon = value.icon;
+      const Component = value.component;
 
       return {
         key: value.key,
-        label: (
-          <TabsLabel
-            description={value.description}
-            id={value.id}
-            name={value.label}
-          />
-        ),
-        icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
+        label: <TabsLabel id={value.key} name={value.label} />,
+        children: <Component />,
       };
     });
-  }, []);
-
-  const tabDetailsComponent = useMemo(() => {
-    return DataQualityClassBase.getDataQualityTab();
   }, []);
 
   const extraDropdownContent = useMemo(
@@ -69,94 +56,70 @@ const DataQualityPage = () => {
     [activeTab]
   );
 
-  const handleTabChange: MenuProps['onClick'] = (event) => {
-    const activeKey = event.key;
+  const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDataQualityPagePath(activeKey as DataQualityPageTabs));
+      history.replace(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
 
   return (
-    <div>
-      <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: (
-            <LeftPanelCard id="data-quality">
-              <Menu
-                className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
-                data-testid="tabs"
-                items={menuItems}
-                mode="inline"
-                selectedKeys={[
-                  activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
-                ]}
-                onClick={handleTabChange}
-              />
-            </LeftPanelCard>
-          ),
-        }}
-        pageTitle={t('label.data-quality')}
-        secondPanel={{
-          children: (
-            <Card className="h-full overflow-y-auto">
-              <DataQualityProvider>
-                <Row data-testid="data-insight-container" gutter={[0, 16]}>
-                  <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>
-                    <Typography.Title
-                      className="m-b-md"
-                      data-testid="page-title"
-                      level={5}>
-                      {t('label.data-quality')}
-                    </Typography.Title>
-                    <Typography.Paragraph
-                      className="text-grey-muted"
-                      data-testid="page-sub-title">
-                      {t('message.page-sub-header-for-data-quality')}
-                    </Typography.Paragraph>
-                  </Col>
-                  {isEmpty(extraDropdownContent) ? null : (
-                    <Col className="d-flex justify-end" span={1}>
-                      <ManageButton
-                        entityName={EntityType.TEST_CASE}
-                        entityType={EntityType.TEST_CASE}
-                        extraDropdownContent={extraDropdownContent}
-                      />
-                    </Col>
-                  )}
-                  <Col span={24}>
-                    <Switch>
-                      {tabDetailsComponent.map((tab) => (
-                        <Route
-                          exact
-                          component={tab.component}
-                          key={tab.key}
-                          path={tab.path}
-                        />
-                      ))}
+    <DataQualityProvider>
+      <Row data-testid="data-insight-container" gutter={[0, 16]}>
+        <Col span={24}>
+          <Card>
+            <Row>
+              <Col span={16}>
+                <PageHeader
+                  data={{
+                    header: t('label.data-quality'),
+                    subHeader: t('message.page-sub-header-for-data-quality'),
+                  }}
+                />
+              </Col>
 
-                      <Route exact path={ROUTES.DATA_QUALITY}>
-                        <Redirect
-                          to={getDataQualityPagePath(
-                            DataQualityClassBase.getDefaultActiveTab()
-                          )}
-                        />
-                      </Route>
-                    </Switch>
-                  </Col>
-                </Row>
-              </DataQualityProvider>
-            </Card>
-          ),
-          className: 'content-resizable-panel-container',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
-    </div>
+              <Col className="d-flex justify-end" span={8}>
+                {activeTab === DataQualityPageTabs.TEST_SUITES &&
+                  testSuitePermission?.Create && (
+                    <Link
+                      data-testid="add-test-suite-btn"
+                      to={ROUTES.ADD_TEST_SUITES}>
+                      <Button type="primary">
+                        {t('label.add-entity', {
+                          entity: t('label.bundle-suite-plural'),
+                        })}
+                      </Button>
+                    </Link>
+                  )}
+                {activeTab === DataQualityPageTabs.TEST_CASES &&
+                  testSuitePermission?.Create && (
+                    <Button data-testid="add-test-case-btn" type="primary">
+                      {t('label.add-entity', {
+                        entity: t('label.test-case'),
+                      })}
+                    </Button>
+                  )}
+                {isEmpty(extraDropdownContent) ? null : (
+                  <ManageButton
+                    entityName={EntityType.TEST_CASE}
+                    entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
+                  />
+                )}
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab}
+            className="tabs-new data-quality-page-tabs"
+            data-testid="tabs"
+            items={menuItems}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+    </DataQualityProvider>
   );
 };
 

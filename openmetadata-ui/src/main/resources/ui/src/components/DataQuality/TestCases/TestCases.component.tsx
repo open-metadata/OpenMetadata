@@ -37,7 +37,7 @@ import {
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -60,6 +60,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -79,19 +80,18 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
+import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
+  const { tab = DataQualityClassBase.getDefaultActiveTab() } =
+    useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const {
-    isTestCaseSummaryLoading,
-    testCaseSummary,
-    activeTab: tab,
-  } = useDataQualityProvider();
+  const { isTestCaseSummaryLoading, testCaseSummary } =
+    useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -646,9 +646,15 @@ export const TestCases = () => {
           </Space>
         </Form>
       </Col>
+      {/* <Col span={24}>
+          <SummaryPanel
+            showAdditionalSummary
+            isLoading={isTestCaseSummaryLoading}
+            testSummary={testCaseSummary}
+          />
+        </Col> */}
       <Col span={24}>
-        <SummaryPanel
-          showAdditionalSummary
+        <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

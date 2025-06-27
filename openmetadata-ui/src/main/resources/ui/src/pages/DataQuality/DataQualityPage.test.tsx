@@ -17,7 +17,7 @@ import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
+const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
   tab?: DataQualityPageTabs;
 };
 const mockUseHistory = {
