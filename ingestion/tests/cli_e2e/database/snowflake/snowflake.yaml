@@ -5,7 +5,7 @@ source:
     config:
       username: $E2E_SNOWFLAKE_USERNAME
       privateKey: $E2E_SNOWFLAKE_PASSWORD
-      privateKeyPassphrase: $E2E_SNOWFLAKE_PASSPHRASE
+      snowflakePrivatekeyPassphrase: $E2E_SNOWFLAKE_PASSPHRASE
       account: $E2E_SNOWFLAKE_ACCOUNT
       warehouse: $E2E_SNOWFLAKE_WAREHOUSE
       database: $E2E_SNOWFLAKE_DATABASE
