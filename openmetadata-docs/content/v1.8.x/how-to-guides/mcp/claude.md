@@ -9,15 +9,16 @@ Configure OpenMetadata's MCP Server to interact with Anthropic's AI assistant pl
 
 ## Prerequisites
 For this guide, you will need:
-- [nvm](https://github.com/nvm-sh/nvm)
 - OpenMetadata v1.8.0 - You can upgrade your version of OpenMetadata with [this guide](https://docs.open-metadata.org/latest/deployment/upgrade)
 - [Claude Desktop](https://claude.ai/download)
-
 
 ## Add MCP App to OpenMetadata
 OpenMetadata has a variety of applications to improve your data such as MetaPilot, Data Insights, Search Indexing, and MCP.
 
-- Go to <YOUR-OpenMetadata-SERVER>/marketplace/apps/McpApplication and select *Install*
+- Go to <YOUR-OpenMetadata-SERVER>/marketplace/apps/McpApplication and select *Install*. If your OpenMetadata is installed locally, the url would be:
+```
+http://localhost:8585/settings/apps/McpApplication
+```
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/install-mcp.jpg"
@@ -27,44 +28,20 @@ caption="Install MCP Server on OpenMetadata"
 
 - The next screen, with *Origin Header URI* is for Streamable-Http requests. This guide uses SSE, so we can skip this portion, select *Submit*
 
-## Install mcp-remote
-Next, we will be adding mcp-remote to Claude Desktop so we can give Claude secure access to your OpenMetadata MCP Server via support for HTTP+SSE.
-
-- Install the latest node version
-```
-nvm install 22 && nvm alias default 22
-```
-
-- Install mcp-remote globally*
-```
-npm install -g mcp-remote
-```
-
-*Note: Installing globally may require you to run as root `sudo npm install -g mcp-remote`
-
-- Start mcp-remote
-```
-npx @modelcontextprotocol/inspector
-```
-
-This will start mcp-remote's MCP Inspector on your localhost at [http://127.0.0.1:6274/](http://127.0.0.1:6274/). *Note the Session Token provider, this will be used to authenticate your MCP Inspector session.
-
-{% image
-src="/images/v1.8/how-to-guides/mcp/mcp-inspector-auth.jpg"
-alt="Generate New Token"
-caption="Copy your token or use the pre-filled link"
-/%}
-
-Keep your terminal window open, you will see requests coming from Claude to OpenMetadata through mcp-remote in this window once you start prompting.
-
 ## Creating your OpenMetadata Personal Access Token
-The next step will be to add your Personal Access Token (PAT) to mcp-remote so that Claude can communicate with OpenMetadata
+The next step will be to create a Personal Access Token (PAT) and add it to Claude Desktop so that it can communicate with OpenMetadata
 
 - To create an OpenMetadata Personal Access Token, go to:
 ```
  <YOUR-OpenMetadata-SERVER>/users/<YOUR-USERNAME>/access-token
 ```
-- Select *Generate New Token*. This will give Claude the same role and access policy that is assigned to you in OpenMetadata. If you would like Claude to have different role-based access controls, create a new user.
+
+If OpenMetadata is installed locally, it will be:
+```
+http://localhost:8585/users/admin/access-token
+```
+
+- Select *Generate New Token*. This will give your models the same role and access policy that is assigned to you in OpenMetadata. If you would like Claude to have different access controls, [create a new user](https://docs.open-metadata.org/latest/how-to-guides/admin-guide/roles-policies/use-cases).
 
 {% image
 src="/images/v1.8/how-to-guides/mcp/generate-new-token.jpg"
@@ -80,22 +57,6 @@ alt="Set Token Lifespan"
 caption="Personal Access Token expires in 60 days"
 /%}
 
-## Configuring your MCP Inspector for OpenMetadata
-The right configuration will allow verification that OpenMetadata's MCP Server can be reached.
-  - MCP Inspector URL is [http://127.0.0.1:6274/](http://127.0.0.1:6274/)
-  - *Transport Type* is SSE
-  - *URL* is <YOUR-OpenMetadata-SERVER>/mcp/sse
-  - *Bearer Token* is your OpenMetadata Personal Access Token
-  - In Configuration, *Inspector Proxy Address* is [127.0.0.1:6277](127.0.0.1:6277)
-  - *Proxy Session Token* is the Session Token provided in your `npx @modelcontextprotocol/inspector` command
-  - Select *Connect*
-
-{% image
-src="/images/v1.8/how-to-guides/mcp/mcp-inspector.jpg"
-alt="MCP Inspector Configuration"
-caption="Setting up OpenMetadata in MCP Inspector"
-/%}
-
 ## Adding your OpenMetadata MCP Server to Claude Desktop
 This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 4.
 
@@ -108,8 +69,8 @@ This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 
       "args": [
         "-y",
         "mcp-remote",
-        "<YOUR-OpenMetadata-SERVER>/mcp/sse",
-        "--auth-server-url=<YOUR-OpenMetadata-SERVER>/mcp",
+        "<YOUR-OpenMetadata-SERVER>/mcp/sse",                 #http://localhost:8585/mcp/sse
+        "--auth-server-url=<YOUR-OpenMetadata-SERVER>/mcp",   #http://localhost:8585/mcp
         "--client-id=openmetadata",
         "--verbose",
         "--clean",
@@ -126,14 +87,9 @@ This how-to guide uses the free version of Claude Desktop for macOS with Sonnet 
 
 - Restart Claude Desktop. You should see your `openmetadata` service running
 
-{% image
-src="/images/v1.8/how-to-guides/mcp/claude-settings.jpg"
-alt="Claude Settings"
-caption="OpenMetadata MCP Server running in Claude Desktop"
-/%}
 
 ## Prompt to read from OpenMetadata
-This part of the guide assumes that you have assets in OpenMetadata that Claude can read. You can add data assets into OpenMetadata [here](https://docs.open-metadata.org/latest/connectors).
+This part of the guide assumes that you have assets in OpenMetadata that Claude can read, and that some of your data assets have references to customers. You can change the prompt accordingly and/or add data sources into OpenMetadata [here](https://docs.open-metadata.org/latest/connectors).
 
 Paste the following prompt into Claude to have it read from OpenMetadata:
 ```
@@ -147,6 +103,7 @@ src="/images/v1.8/how-to-guides/mcp/claude-allow.jpg"
 alt="Allow Claude to use OpenMetadata"
 caption="Claude asking for permission to search OpenMetadata"
 /%}
+
 
 
 ### Show us what you got
