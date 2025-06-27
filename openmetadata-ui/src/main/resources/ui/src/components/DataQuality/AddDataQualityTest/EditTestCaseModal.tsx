@@ -258,7 +258,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         id: 'root/tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          'data-testid': 'tags-selector',
+          selectProps: {
+            'data-testid': 'tags-selector',
+          },
           initialValue: tags,
         },
       },
@@ -269,7 +271,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         id: 'root/glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          'data-testid': 'glossary-terms-selector',
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+          },
           initialValue: glossaryTerms,
           open: false,
           hasNoActionButtons: true,

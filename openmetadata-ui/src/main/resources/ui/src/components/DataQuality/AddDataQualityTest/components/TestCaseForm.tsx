@@ -259,8 +259,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         id: 'root/tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          'data-testid': 'tags-selector',
-          initialValue: initialValue?.tags || [],
+          selectProps: {
+            'data-testid': 'tags-selector',
+          },
         },
       },
       {
@@ -270,8 +271,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         id: 'root/glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          'data-testid': 'glossary-terms-selector',
-          initialValue: initialValue?.tags || [],
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+          },
           open: false,
           hasNoActionButtons: true,
           isTreeSelect: true,

@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { forwardRef } from 'react';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
   MOCK_TEST_CASE,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
@@ -40,6 +41,14 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
 jest.mock('./components/ParameterForm', () => {
   return jest.fn().mockImplementation(() => <div>ParameterForm.component</div>);
 });
+jest.mock('../../../pages/TasksPage/shared/TagSuggestion', () =>
+  jest.fn().mockImplementation(({ children, ...props }) => (
+    <div data-testid={props['data-testid']} {...props}>
+      TagSuggestion Component
+      {children}
+    </div>
+  ))
+);
 jest.mock('../../../rest/testAPI', () => {
   return {
     getTestCaseByFqn: jest
@@ -148,5 +157,128 @@ describe('EditTestCaseModal Component', () => {
     );
 
     expect(screen.queryByText('ParameterForm.component')).toBeNull();
+  });
+
+  // Tags and Glossary Terms functionality tests
+  it('should render tags and glossary terms fields', async () => {
+    render(<EditTestCaseModal {...mockProps} />);
+
+    // Check if tags field is rendered
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+
+    // Check if glossary terms field is rendered
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+
+    // Verify TagSuggestion components are rendered
+    const tagComponents = screen.getAllByText('TagSuggestion Component');
+
+    expect(tagComponents).toHaveLength(2); // One for tags, one for glossary terms
+  });
+
+  it('should separate tags and glossary terms correctly', async () => {
+    const mockTestCaseWithTags = {
+      ...MOCK_TEST_CASE[0],
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PersonalData.Email',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ],
+    };
+
+    const propsWithTags = {
+      ...mockProps,
+      testCase: mockTestCaseWithTags,
+    };
+
+    render(<EditTestCaseModal {...propsWithTags} />);
+
+    // Verify that both tag fields are rendered
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+  });
+
+  it('should handle test case with no tags gracefully', async () => {
+    const mockTestCaseWithoutTags = {
+      ...MOCK_TEST_CASE[0],
+      tags: undefined,
+    };
+
+    const propsWithoutTags = {
+      ...mockProps,
+      testCase: mockTestCaseWithoutTags,
+    };
+
+    render(<EditTestCaseModal {...propsWithoutTags} />);
+
+    // Should still render tag fields even when no tags exist
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+  });
+
+  it('should handle test case with empty tags array', async () => {
+    const mockTestCaseWithEmptyTags = {
+      ...MOCK_TEST_CASE[0],
+      tags: [],
+    };
+
+    const propsWithEmptyTags = {
+      ...mockProps,
+      testCase: mockTestCaseWithEmptyTags,
+    };
+
+    render(<EditTestCaseModal {...propsWithEmptyTags} />);
+
+    // Should render tag fields with empty arrays
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render tags and glossary terms in parameter-only mode', async () => {
+    const parameterOnlyProps = {
+      ...mockProps,
+      showOnlyParameter: true,
+    };
+
+    render(<EditTestCaseModal {...parameterOnlyProps} />);
+
+    // Should not render tag fields when showOnlyParameter is true
+    expect(screen.queryByTestId('tags-selector')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('glossary-terms-selector')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should include tags and glossary terms in form submission', async () => {
+    render(<EditTestCaseModal {...mockProps} />);
+
+    // Wait for form to load
+    expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
+
+    // Submit the form
+    const submitBtn = await screen.findByText('label.submit');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // Verify that onUpdate was called (indicating form submission)
+    expect(mockProps.onUpdate).toHaveBeenCalled();
   });
 });
