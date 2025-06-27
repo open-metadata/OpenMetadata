@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-ui/src/main/resources/ui/src/generated/**"
   workflow_dispatch:
     inputs:
       branch:
