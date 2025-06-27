@@ -67,6 +67,8 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
   const [loading, setLoading] = useState(false);
   const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
+  const [suggestionPendingCount, setSuggestionPendingCount] =
+    useState<number>(0);
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
@@ -82,6 +84,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
         const { allUsersList, groupedSuggestions } = getSuggestionByType(data);
         setSuggestionLimit(paging.total);
+        setSuggestionPendingCount(paging.total - PAGE_SIZE);
         setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
         setSuggestionsByUser(groupedSuggestions);
       } catch (err) {
@@ -118,6 +121,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
             getSuggestionByType(mergedSuggestions);
           setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
           setSuggestionsByUser(groupedSuggestions);
+          setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
 
           return mergedSuggestions;
         });
@@ -224,6 +228,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       loadingAccept,
       loadingReject,
       allSuggestionsUsers,
+      suggestionPendingCount,
       onUpdateActiveUser,
       fetchSuggestions,
       fetchSuggestionsByUserId,
@@ -240,6 +245,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     loadingAccept,
     loadingReject,
     allSuggestionsUsers,
+    suggestionPendingCount,
     onUpdateActiveUser,
     fetchSuggestions,
     fetchSuggestionsByUserId,

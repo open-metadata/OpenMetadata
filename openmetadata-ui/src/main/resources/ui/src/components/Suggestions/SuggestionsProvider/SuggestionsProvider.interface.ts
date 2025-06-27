@@ -21,6 +21,7 @@ export interface SuggestionDataByTypes {
 
 export interface SuggestionsContextType {
   suggestionLimit: number;
+  suggestionPendingCount: number;
   selectedUserSuggestions: SuggestionDataByTypes;
   suggestions: Suggestion[];
   suggestionsByUser: Map<string, SuggestionDataByTypes>;
