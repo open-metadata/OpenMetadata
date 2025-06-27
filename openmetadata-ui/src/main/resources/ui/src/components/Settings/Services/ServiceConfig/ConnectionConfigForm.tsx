@@ -151,6 +151,10 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
+  const handleTestConnection = () => {
+    setHasTestedConnection(true);
+  };
+
   return (
     <Fragment>
       <AirflowMessageBanner />
@@ -196,7 +200,7 @@ const ConnectionConfigForm = ({
             isTestingDisabled={disableTestConnection}
             serviceCategory={serviceCategory}
             serviceName={data?.name}
-            onTestConnection={() => setHasTestedConnection(true)}
+            onTestConnection={handleTestConnection}
             onValidateFormRequiredFields={handleRequiredFieldsValidation}
           />
         )}

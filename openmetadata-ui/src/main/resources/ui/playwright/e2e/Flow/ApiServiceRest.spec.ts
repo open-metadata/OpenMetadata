@@ -107,7 +107,7 @@ test.describe('API service', () => {
 
     await toastNotification(
       page,
-      /(deleted successfully!|Delete operation initiated)/,
+      /deleted successfully!/,
       BIG_ENTITY_DELETE_TIMEOUT
     );
   });
