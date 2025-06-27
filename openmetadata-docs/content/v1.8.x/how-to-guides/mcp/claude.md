@@ -5,7 +5,7 @@ slug: /how-to-guides/mcp/claude
 
 # Getting Started with Claude Desktop
 
-Configure OpenMetadata's MCP Server to interact with Antrophic's AI assistant platform. 
+Configure OpenMetadata's MCP Server to interact with Anthropic's AI assistant platform. 
 
 ## Prerequisites
 For this guide, you will need:
