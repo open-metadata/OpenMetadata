@@ -14,20 +14,20 @@ The default Data Insight charts in OpenMetadata focus on description, ownership,
 Navigate to the `Insights` page from the side menu of application and click on `Create Dashboard` button from top left, provide the name, description and owner of the dashboard and finally click on `Create` button to save the dashboard.
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/navigate-to-insights.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/navigate-to-insights.png"
     alt="Navigate to Insights"
     caption="Navigate to Insights"
  /%}
 
 
  {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/add-dashboard.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/add-dashboard.png"
     alt="Click on Add Dashboard"
     caption="Click on Add Dashboard"
  /%}
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/create-custom-dashboard-form.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/create-custom-dashboard-form.png"
     alt="Fill Create Custom Dashboard Form"
     caption="Fill Create Custom Dashboard Form"
  /%}
@@ -38,7 +38,7 @@ Navigate to the `Insights` page from the side menu of application and click on `
 Once you create a dashboard, you can click on `Create Chart` button to add a new chart to this dashboard
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/create-chart.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/create-chart.png"
     alt="Create Chart"
     caption="Create Chart"
  /%}
@@ -46,13 +46,13 @@ Once you create a dashboard, you can click on `Create Chart` button to add a new
 Now you will see a create chart form with a preview of the chart based on the configuration provided in the form. This preview will be a plot of data from previous 7 days. By default it shows the number/count of records of data available to compute. This number or record represent the total number of `Table`, `Stored Procedure`, `Database Schema`, `Database`, `Chart`, `Dashboard`, `Dashboard Data Model`, `Pipeline`, `Topic`, `Container`, `Search Index`, `ML Model`, `Data Product`, `Glossary Term` & `Tag` available within your OpenMetadata Instance.
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/create-chart-form-1.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/create-chart-form-1.png"
     alt="Create Chart Form Part 1"
     caption="Create Chart Form Part 1"
  /%}
 
  {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/create-chart-form-2.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/create-chart-form-2.png"
     alt="Create Chart Form Part 2"
     caption="Create Chart Form Part 2"
  /%}
@@ -83,7 +83,7 @@ You can customize the default settings to create the desired chart, to do that l
 
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/formula-breakdown.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/formula-breakdown.png"
     alt="Formula Breakdown"
     caption="Formula Breakdown"
  /%}
@@ -142,7 +142,7 @@ max(k='size',q='entityType: "container"')
 Once you have configured your chart correctly, click on the save button to save the chart and add it to dashboard.
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/create-chart-form-preview.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/create-chart-form-preview.png"
     alt="Create Chart Final Preview"
     caption="Create Chart Final Preview"
  /%}
@@ -151,7 +151,7 @@ Once you have configured your chart correctly, click on the save button to save 
 You can add multiple charts to a dashboard and rearrange the layout within a dashboard.
 
 {% image
-    src="/images/v1.9features/data-insight/custom-dashboard/save-and-rearrange-chart.png"
+    src="/images/v1.9/features/data-insight/custom-dashboard/save-and-rearrange-chart.png"
     alt="Save and Rearrange Chart"
     caption="Save and Rearrange Chart"
  /%}

@@ -22,7 +22,7 @@ Using the Eclipse based [ABAP Development Tools (ADT)](https://tools.hana.ondema
 After creating a new ABAP Project for the connected SAP system, a new Data Definition object is to be created.
 
 {% image
-src="/images/v1.9connectors/sap-erp/data-definition-object.png"
+src="/images/v1.9/connectors/sap-erp/data-definition-object.png"
 alt="Data Definition Object"
 caption="Create data definition object" /%}
 
@@ -118,28 +118,28 @@ where l.as4local = 'A'
 Using the transaction `/nsegw` in SAPGUI, open the configuration screen for the SAP Gateway and create a new project with default project type.
 
 {% image
-src="/images/v1.9connectors/sap-erp/create-project.png"
+src="/images/v1.9/connectors/sap-erp/create-project.png"
 alt="Create Project"
 caption="Create Project" /%}
 
 Create a reference to the CDS views under Data Model and import the views. This is all that is needed to configure the OData details thanks to the CDS view annotations.
 
 {% image
-src="/images/v1.9connectors/sap-erp/add-reference.png"
+src="/images/v1.9/connectors/sap-erp/add-reference.png"
 alt="Add Reference"
 caption="Add Reference" /%}
 
 The final step is to expose the generated code as OData service. This is the Register step.
 
 {% image
-src="/images/v1.9connectors/sap-erp/register-odata-service.png"
+src="/images/v1.9/connectors/sap-erp/register-odata-service.png"
 alt="Register odata Service"
 caption="Register odata Service" /%}
 
 In the next screen click on Add Service and add the service as new OData endpoint. The service alias is the location where the SAP Gateway is installed.
 
 {% image
-src="/images/v1.9connectors/sap-erp/add-service-as-endpoint.png"
+src="/images/v1.9/connectors/sap-erp/add-service-as-endpoint.png"
 alt="Add Service As Endpoint"
 caption="Add Service As Endpoint" /%}
 

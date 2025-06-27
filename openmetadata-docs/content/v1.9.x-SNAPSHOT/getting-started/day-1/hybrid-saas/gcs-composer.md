@@ -4,7 +4,7 @@ slug: /getting-started/day-1/hybrid-saas/gcs-composer
 collate: true
 ---
 
-{% partial file="/v1.9deployment/external-ingestion.md" /%}
+{% partial file="/v1.9/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from GCS Composer
 
@@ -93,7 +93,7 @@ with DAG(
     )
 ```
 
-{% partial file="/v1.9deployment/run-connectors-class.md" /%}
+{% partial file="/v1.9/deployment/run-connectors-class.md" /%}
 
 ## Using the Kubernetes Pod Operator
 
