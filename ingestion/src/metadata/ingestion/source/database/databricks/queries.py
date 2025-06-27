@@ -86,3 +86,29 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 )
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
+
+DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB = textwrap.dedent(
+    """
+    SELECT DISTINCT
+        entity_id,
+        entity_type,
+        source_table_full_name,
+        target_table_full_name
+    FROM system.access.table_lineage
+    WHERE entity_type ILIKE 'job'
+    """
+)
+
+DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = textwrap.dedent(
+    """
+    SELECT DISTINCT
+        entity_id,
+        entity_type,
+        source_table_full_name,
+        source_column_name,
+        target_table_full_name,
+        target_column_name
+    FROM system.access.column_lineage
+    WHERE entity_type ILIKE 'job'
+    """
+)

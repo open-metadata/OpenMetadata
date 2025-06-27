@@ -33,6 +33,18 @@
       "type": "string",
       "format": "password"
     },
+    "warehouseId": {
+      "title": "Warehouse ID",
+      "description": "Databricks warehouse ID. If not provided, lineage will not be extracted.",
+      "type": "string",
+      "default": null
+    },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Connection timeout in seconds.",
+      "type": "number",
+      "default": 120
+    },
     "httpPath": {
       "title": "Http Path",
       "description": "Databricks compute resources URL.",

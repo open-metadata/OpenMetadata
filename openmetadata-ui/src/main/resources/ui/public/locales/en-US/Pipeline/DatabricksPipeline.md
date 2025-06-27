@@ -21,6 +21,18 @@ Generated Token to connect to Databricks. E.g., `dapw488e89a7176f7eb39bbc7186178
 $$
 
 $$section
+### Connection Timeout $(id="connectionTimeout")
+Connection timeout in seconds. The default value is 120 seconds if not specified.
+$$
+
+$$section
+### Warehouse ID $(id="warehouseId")
+Databricks warehouse ID. If not provided, lineage will NOT be extracted. E.g., `abc123def456`.
+You can find your warehouse ID On the warehouse details page under the `Properties` tab.
+The token user will need `SELECT` privilege on `system.access.table_lineage` and `system.access.column_lineage` tables.
+$$
+
+$$section
 ### HTTP Path $(id="httpPath")
 Databricks compute resources URL. E.g., `/sql/1.0/warehouses/xyz123`.
 $$

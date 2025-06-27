@@ -16,6 +16,10 @@
 export interface DatabricksPipelineConnection {
     connectionArguments?: { [key: string]: any };
     /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
+    /**
      * Host and port of the Databricks service.
      */
     hostPort: string;
@@ -36,6 +40,10 @@ export interface DatabricksPipelineConnection {
      * Service Type
      */
     type?: DatabricksType;
+    /**
+     * Databricks warehouse ID. If not provided, lineage will not be extracted.
+     */
+    warehouseId?: string;
 }
 
 /**
