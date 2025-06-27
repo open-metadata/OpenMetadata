@@ -351,8 +351,8 @@ class DatabricksClient:
                     )
                     continue
 
-        # Not every job has column lineage, so we need to check if the job exists in the job_column_lineage dict
-        # we will cache the column lineage for jobs that have table lineage
+        # Not every job has column lineage, so we need to check if the job exists in the column_lineage table
+        # we will cache the column lineage for jobs that have column lineage
         logger.info("Caching column lineage")
         column_lineage = self.run_lineage_query(DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB)
         if column_lineage:
