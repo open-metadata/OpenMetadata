@@ -91,7 +91,7 @@ class OpenMetadataDBTConfig(BaseModel):
             return v
         except (ValueError, TypeError) as e:
             raise ValueError(
-                f"Host port must be a valid URL starting with http:// or https://"
+                f"Host port must be a valid URL starting with http:// or https://: {e}"
             )
 
     def _get_filter_pattern(
