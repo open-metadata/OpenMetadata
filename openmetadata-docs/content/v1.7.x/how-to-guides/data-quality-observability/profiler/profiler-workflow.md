@@ -1,5 +1,5 @@
 ---
-title: Profiler Workflow
+title: Profiler Workflow | OpenMetadata Profiling Workflow
 slug: /how-to-guides/data-quality-observability/profiler/workflow
 ---
 
