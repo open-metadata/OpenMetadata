@@ -114,7 +114,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT) ? getTestCaseResult(test) : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
-    test.setTags(fields.contains(FIELD_TAGS) ? getTestCaseTags(test) : test.getTags());
   }
 
   @Override
@@ -129,15 +128,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void inheritTags(TestCase testCase, Fields fields, Table table) {
     if (fields.contains(FIELD_TAGS)) {
       EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-      List<TagLabel> tags = new ArrayList<>(table.getTags());
+      List<TagLabel> testCaseTags =
+          testCase.getTags() != null ? new ArrayList<>(testCase.getTags()) : new ArrayList<>();
+      List<TagLabel> tableTags =
+          table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
+      EntityUtil.mergeTags(testCaseTags, tableTags);
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        // if we have a column test case get the columns tags as well
+        // if we have a column test case inherit the columns tags as well
         table.getColumns().stream()
             .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
             .findFirst()
-            .ifPresent(column -> tags.addAll(column.getTags()));
+            .ifPresent(column -> EntityUtil.mergeTags(testCaseTags, column.getTags()));
       }
-      testCase.setTags(tags);
+      testCase.setTags(testCaseTags);
     }
   }
 
@@ -477,20 +480,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     return ongoingIncident;
-  }
-
-  private List<TagLabel> getTestCaseTags(TestCase test) {
-    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "tags,columns", ALL);
-    List<TagLabel> tags = new ArrayList<>(table.getTags());
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-      // if we have a column test case get the columns tags as well
-      table.getColumns().stream()
-          .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-          .findFirst()
-          .ifPresent(column -> tags.addAll(column.getTags()));
-    }
-    return tags;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
