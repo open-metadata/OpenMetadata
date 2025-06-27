@@ -35,11 +35,11 @@ Admin permissions are required to register the application on the Azure portal.
 
 - From the Azure Active Directory, navigate to the `App Registrations` section from the left nav bar.
 
-{% image src="/images/v1.9deployment/security/azure/create-app-1.png" alt="create-app" /%} 
+{% image src="/images/v1.9/deployment/security/azure/create-app-1.png" alt="create-app" /%} 
 
 - Click on `New Registration`. This step is for registering the OpenMetadata UI.
 
-{% image src="/images/v1.9deployment/security/azure/create-app-2.png" alt="create-app" /%}
+{% image src="/images/v1.9/deployment/security/azure/create-app-2.png" alt="create-app" /%}
 
 - Provide an Application Name for registration.
 - Provide a redirect URL as a `Single Page Application`.

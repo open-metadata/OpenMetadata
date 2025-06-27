@@ -20,7 +20,7 @@ The Quality Agent recommends and deploys data quality tests for your entities in
 1. **Navigate to Applications**: Go to `Settings > Applications`.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-agent.png"
 alt="Navigate to Applications"
 caption="Navigate to Applications"
 /%}
@@ -28,7 +28,7 @@ caption="Navigate to Applications"
 2. **Install the Agent**: Click on "Add Apps" to access the marketplace and install the Collate AI Quality Agent.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-quality-agent.png"
+src="/images/v1.9/collate-ai/collate-ai-quality-agent.png"
 alt="Installation"
 caption="Installation"
 /%}
@@ -38,7 +38,7 @@ caption="Installation"
    - **Active**: Choose whether the suggested tests should be active immediately after creation.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-quality-agent1.png"
+src="/images/v1.9/collate-ai/collate-ai-quality-agent1.png"
 alt="Configuration"
 caption="Configuration"
 /%}
@@ -46,7 +46,7 @@ caption="Configuration"
 4. **Scheduling**: Set up regular intervals for the agent to run and update metadata.
 
 {% image
-src="/images/v1.9collate-ai/collate-ai-quality-agent2.png"
+src="/images/v1.9/collate-ai/collate-ai-quality-agent2.png"
 alt="Scheduling"
 caption="Scheduling"
 /%}

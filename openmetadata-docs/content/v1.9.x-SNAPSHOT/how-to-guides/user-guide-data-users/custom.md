@@ -32,7 +32,7 @@ To create a Custom Property in OpenMetadata:
 - Click on **Add Property**
 
 {% image
-src="/images/v1.9how-to-guides/discovery/custom1.png"
+src="/images/v1.9/how-to-guides/discovery/custom1.png"
 alt="Create a Custom Property"
 caption="Create a Custom Property"
 /%}
@@ -44,7 +44,7 @@ caption="Create a Custom Property"
 - Click on **Create**.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/custom2.png"
+src="/images/v1.9/how-to-guides/discovery/custom2.png"
 alt="Define a Custom Property"
 caption="Define a Custom Property"
 /%}
@@ -52,7 +52,7 @@ caption="Define a Custom Property"
 Once the custom property has been created for a type of data asset, you can add the values for the custom property from the Custom Property tab in the detailed view of the data assets.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/custom3.png"
+src="/images/v1.9/how-to-guides/discovery/custom3.png"
 alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
 /%}
@@ -61,7 +61,7 @@ To delete a Custom Property for a particular asset, such as tables, navigate to 
  click on **Delete Property** 
 
 {% image
-src="/images/v1.9how-to-guides/discovery/custom4.png"
+src="/images/v1.9/how-to-guides/discovery/custom4.png"
 alt="Delete a Custom Property"
 caption="Delete a Custom Property"
 /%}

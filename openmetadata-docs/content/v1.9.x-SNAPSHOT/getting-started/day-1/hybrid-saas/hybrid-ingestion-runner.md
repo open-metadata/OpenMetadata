@@ -28,11 +28,11 @@ Once your DevOps team has installed and configured the Hybrid Runner, follow the
 > If the runner is not connected, reach out to Collate support.
 
 {% image
-src="/images/v1.9getting-started/ingestion-runner-preferences.png"
+src="/images/v1.9/getting-started/ingestion-runner-preferences.png"
 /%}
 
 {% image
-src="/images/v1.9getting-started/ingestion-runner-list.png"
+src="/images/v1.9/getting-started/ingestion-runner-list.png"
 /%}
 
 ### 2. Create a New Service
@@ -43,7 +43,7 @@ src="/images/v1.9getting-started/ingestion-runner-list.png"
 - In the “Ingestion Runner” dropdown, choose the hybrid runner.
 
 {% image
-src="/images/v1.9getting-started/ingestion-runner-service.png"
+src="/images/v1.9/getting-started/ingestion-runner-service.png"
 /%}
 
 > Even if you're operating in hybrid mode, you can still choose "Collate SaaS Runner" to run the ingestion workflow within Collate's SaaS environment.
@@ -65,7 +65,7 @@ When creating a secret, store the value as-is (e.g., `password123`) without any 
 For example, in AWS Secrets Manager, you can click on `Store a new secret` > `Other type of secret` > `Plaintext`. You need to paste the secret as-is, without any other formatting (such as quotes, JSON, etc.).
 
 {% image
-src="/images/v1.9getting-started/hybrid-create-secret.png"
+src="/images/v1.9/getting-started/hybrid-create-secret.png"
 /%}
 
 Finally, in the service connection form in Collate, reference the secret using the `secret:` prefix followed by the full path to your secret.

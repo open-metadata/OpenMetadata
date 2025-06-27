@@ -10,13 +10,13 @@ slug: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
 - Define your test parameters. You can either create a **static test** (e.g., "no null values" or "data should not exceed a certain range") or configure **dynamic assertions** to let the system learn from the data.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-1.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-1.png"
   alt="Manual Configuration of Tests"
   caption="Manual Configuration of Tests"
  /%}
 
  {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-2.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-2.png"
   alt="Manual Configuration of Tests"
   caption="Manual Configuration of Tests"
  /%}
@@ -29,7 +29,7 @@ slug: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
 - Over time (e.g., five weeks), the system will establish expected value ranges and detect any deviations from these patterns.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-3.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-3.png"
   alt="Manual Configuration of Tests"
   caption="Manual Configuration of Tests"
  /%}
@@ -39,7 +39,7 @@ slug: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
 - Investigate significant spikes, drops, or unusual behaviors in the data, which may indicate system errors, backend failures, or unexpected external factors.
 
 {% image
-  src="/images/v1.9how-to-guides/anomaly-detection/set-up-anomaly-detection-4.png"
+  src="/images/v1.9/how-to-guides/anomaly-detection/set-up-anomaly-detection-4.png"
   alt="Manual Configuration of Tests"
   caption="Manual Configuration of Tests"
  /%}

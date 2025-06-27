@@ -17,7 +17,7 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker.
 
-{% partial file="/v1.9deployment/upgrade/upgrade-prerequisites.md" /%}
+{% partial file="/v1.9/deployment/upgrade/upgrade-prerequisites.md" /%}
 
 # Upgrade Process
 
@@ -35,7 +35,7 @@ docker compose down
 docker compose -f docker-compose.yml up -d
 ```
 
-{% partial file="/v1.9deployment/upgrade/post-upgrade-steps.md" /%}
+{% partial file="/v1.9/deployment/upgrade/post-upgrade-steps.md" /%}
 
 # Troubleshooting
 

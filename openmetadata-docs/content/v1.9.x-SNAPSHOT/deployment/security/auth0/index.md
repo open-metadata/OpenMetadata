@@ -27,19 +27,19 @@ Security requirements for your **production** environment:
 - Click I need advanced settings and click next.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/create-account-1.png" 
+src="/images/v1.9/deployment/security/auth0/create-account-1.png" 
 alt="create-account" /%}
 
 - Provide the Tenant Domain, select the region and click on Create Account.
 
 {% image 
-src="/images/v1.9deployment/security/auth0/create-account-2.png" 
+src="/images/v1.9/deployment/security/auth0/create-account-2.png" 
 alt="create-account" /%}
 
 - Once done, you will land on the dashboard page.
 
 {% image
-src="/images/v1.9deployment/security/auth0/create-account-3.png" 
+src="/images/v1.9/deployment/security/auth0/create-account-3.png" 
 alt="create-account" /%}
 
 ## Step 2: Create Server Credentials
@@ -70,4 +70,4 @@ After creating the account, choose the authentication flow you want to use:
 
 {% /note %}
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}

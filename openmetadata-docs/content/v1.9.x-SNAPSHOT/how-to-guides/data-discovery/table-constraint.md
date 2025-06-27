@@ -15,7 +15,7 @@ Once the metadata ingestion is complete, foreign key relationships can be explor
 - Access the desired table within the OpenMetadata interface.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/foreign-key1.png"
+src="/images/v1.9/how-to-guides/discovery/foreign-key1.png"
 alt="Navigate to the Table Details Page"
 caption="Navigate to the Table Details Page"
 /%}
@@ -24,7 +24,7 @@ caption="Navigate to the Table Details Page"
 - Table constraint are displayed, detailing the relationships between the current table and its related tables. [OpenMetadata referred column for foreign key](https://github.com/open-metadata/OpenMetadata/issues/10583)
 
 {% image
-src="/images/v1.9how-to-guides/discovery/foreign-key2.png"
+src="/images/v1.9/how-to-guides/discovery/foreign-key2.png"
 alt="Explore Table Constraints"
 caption="Explore Table Constraints"
 /%}
@@ -42,7 +42,7 @@ To modify table constraint:[​GitHub](https://github.com/open-metadata/OpenMeta
 - Navigate to the table's schema view within the OpenMetadata UI.​
 
 {% image
-src="/images/v1.9how-to-guides/discovery/foreign-key4.png"
+src="/images/v1.9/how-to-guides/discovery/foreign-key4.png"
 alt="Access the Table's Schema"
 caption="Access the Table's Schema"
 /%}
@@ -51,7 +51,7 @@ caption="Access the Table's Schema"
 - Edit the table constraint as required.​
 
 {% image
-src="/images/v1.9how-to-guides/discovery/foreign-key3.png"
+src="/images/v1.9/how-to-guides/discovery/foreign-key3.png"
 alt="Modify Constraints"
 caption="Modify Constraints"
 /%}

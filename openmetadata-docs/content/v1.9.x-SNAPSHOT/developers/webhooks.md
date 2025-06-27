@@ -40,7 +40,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.9developers/webhook.png"
+src="/images/v1.9/developers/webhook.png"
 alt="Generic Webhook"
 caption="Generic Webhook"
 /%}
@@ -56,7 +56,7 @@ caption="Generic Webhook"
 
 
 {% image
-src="/images/v1.9developers/slack.png"
+src="/images/v1.9/developers/slack.png"
 alt="Slack Webhook"
 caption="Slack Webhook"
 /%}
@@ -71,7 +71,7 @@ caption="Slack Webhook"
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.9developers/msteam.png"
+src="/images/v1.9/developers/msteam.png"
 alt="MS Team Webhook"
 caption="MS Team Webhook"
 /%} 
@@ -86,7 +86,7 @@ caption="MS Team Webhook"
    Event data for specific action can be achieved.
 
 {% image
-src="/images/v1.9developers/gchat.png"
+src="/images/v1.9/developers/gchat.png"
 alt="Gchat Webhook"
 caption="Gchat Webhook"
 /%} 

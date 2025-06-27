@@ -4,7 +4,7 @@ slug: /getting-started/day-1/hybrid-saas/github-actions
 collate: true
 ---
 
-{% partial file="/v1.9deployment/external-ingestion.md" /%}
+{% partial file="/v1.9/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from GitHub Actions
 

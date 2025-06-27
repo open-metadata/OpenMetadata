@@ -26,4 +26,4 @@ Additionally, this trigger allows fine-tuning by excluding certain events that m
 
 As an example we can check the default **Glossary Approval Workflow**, shipped with Collate.
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-event-based-entity-trigger.png" alt="event-based-entity-trigger-example" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-event-based-entity-trigger.png" alt="event-based-entity-trigger-example" /%}

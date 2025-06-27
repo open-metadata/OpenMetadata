@@ -17,7 +17,10 @@ import { useHistory } from 'react-router-dom';
 import { useLocationSearch } from './LocationSearch/useLocationSearch';
 import useCustomLocation from './useCustomLocation/useCustomLocation';
 
-type FilterState = Record<string, string | boolean | string[] | null>;
+type FilterState = Record<
+  string,
+  string | boolean | string[] | null | undefined
+>;
 
 export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   const location = useCustomLocation();

@@ -31,7 +31,7 @@ The glossary term can include additional information as follows:
 - **Assets** - After creating a glossary term, data assets can be associated with the term, which helps in data discovery.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary-term.png"
+src="/images/v1.9/how-to-guides/governance/glossary-term.png"
 alt="Glossary Term Requirements"
 caption="Glossary Term Requirements"
 /%}
@@ -47,7 +47,7 @@ The details of a Glossary Term in OpenMetadata are displayed in three tabs: Over
 The **Overview tab** displays the details of the term, along with the synonyms, related terms, references, and tags. It also displays the Owner and the Reviewers for the Glossary Term.
 
 {% image
-src="/images/v1.9how-to-guides/governance/term1.png"
+src="/images/v1.9/how-to-guides/governance/term1.png"
 alt="Overview of a Glossary Term"
 caption="Overview of a Glossary Term"
 /%}
@@ -57,7 +57,7 @@ caption="Overview of a Glossary Term"
 The **Glossary Term Tab** displays all the child terms associated with the parent term. You can also add more child terms from this tab.
 
 {% image
-src="/images/v1.9how-to-guides/governance/term2.png"
+src="/images/v1.9/how-to-guides/governance/term2.png"
 alt="Glossary Terms Tab"
 caption="Glossary Terms Tab"
 /%}
@@ -67,7 +67,7 @@ caption="Glossary Terms Tab"
 The **Assets Tab** displays all the assets that are associated with the glossary term. These data assets are further subgrouped on the basis of databases. The right side panel shows a preview of the data assets selected.
 
 {% image
-src="/images/v1.9how-to-guides/governance/term3.png"
+src="/images/v1.9/how-to-guides/governance/term3.png"
 alt="Assets Tab"
 caption="Assets Tab"
 /%}
@@ -77,7 +77,7 @@ You can add more assets by clicking on **Add > Assets**. You can further search 
 {% note %}
 **Pro Tip:** The Global Search in OpenMetadata also helps discover related Glossary Terms and Tags.
 {% image
-src="/images/v1.9how-to-guides/governance/tag1.png"
+src="/images/v1.9/how-to-guides/governance/tag1.png"
 alt="Search for Glossary Terms and Tags"
 caption="Search for Glossary Terms and Tags"
 /%}
@@ -88,7 +88,7 @@ caption="Search for Glossary Terms and Tags"
 The glossary as well as the terms maintain a version history, which can be viewed on the top right. Clicking on the number will display the details of the **Version History**.
 
 {% image
-src="/images/v1.9how-to-guides/governance/version.png"
+src="/images/v1.9/how-to-guides/governance/version.png"
 alt="Glossary Term Version History"
 caption="Glossary Term Version History"
 /%}

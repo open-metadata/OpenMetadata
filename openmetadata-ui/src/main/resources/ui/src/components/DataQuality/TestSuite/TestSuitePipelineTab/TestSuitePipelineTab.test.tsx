@@ -128,6 +128,28 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock('../../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    paging: {
+      after: 'after-id',
+      before: 'before-id',
+      total: 10,
+    },
+    handlePagingChange: jest.fn(),
+    currentPage: 1,
+    handlePageChange: jest.fn(),
+    pageSize: 15,
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+    pagingCursor: {
+      cursorType: undefined,
+      cursorValue: undefined,
+      currentPage: '1',
+      pageSize: 15,
+    },
+  }),
+}));
+
 jest.mock(
   '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable',
   () => {

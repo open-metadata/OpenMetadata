@@ -14,7 +14,7 @@ Exporting a Data Asset is simple. Below are the steps to bulk export various dat
 3. Click on the **⋮** icon and select **Export** to download the Database Service CSV file.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/export1.png"
+src="/images/v1.9/how-to-guides/discovery/export1.png"
 alt="Export Database Service CSV File"
 caption="Export Database Service CSV File"
 /%}
@@ -32,7 +32,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 2. Click on the **⋮** icon and select **Export** to download the Database CSV file.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/export2.png"
+src="/images/v1.9/how-to-guides/discovery/export2.png"
 alt="Export Database CSV File"
 caption="Export Database CSV File"
 /%}
@@ -50,7 +50,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 2. Click on the **⋮** icon and select **Export** to download the Database Schema CSV file.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/export3.png"
+src="/images/v1.9/how-to-guides/discovery/export3.png"
 alt="Export Database Schema CSV File"
 caption="Export Database Schema CSV File"
 /%}
@@ -69,7 +69,7 @@ Make sure to replace `{name}` with the Fully Qualified Name (FQN) of the Databas
 2. Click on the **⋮** icon and select **Export** to download the Table CSV file.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/export4.png"
+src="/images/v1.9/how-to-guides/discovery/export4.png"
 alt="Export Table CSV File"
 caption="Export Table CSV File"
 /%}

@@ -47,24 +47,24 @@ Let’s start with an example of fetching metadata from a database service, i.e.
 
 - Start by creating a service connection by clicking on **Settings** from the left nav bar. Navigate to the **Services** section, and click on **Databases**. Click on **Add New Service**.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/connector1.png"
+    src="/images/v1.9/how-to-guides/admin-guide/connector1.png"
     alt="Create a Service Connection"
     caption="Create a Service Connection"
     /%}
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/connector1.1.png"
+    src="/images/v1.9/how-to-guides/admin-guide/connector1.1.png"
     alt="Create a Service Connection"
     caption="Create a Service Connection"
     /%}
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/connector1.2.png"
+    src="/images/v1.9/how-to-guides/admin-guide/connector1.2.png"
     alt="Create a Service Connection"
     caption="Create a Service Connection"
     /%}
 
 - Select the Database service of your choice. For example, Snowflake. Click **Next**.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/connector2.jpg"
+    src="/images/v1.9/how-to-guides/admin-guide/connector2.jpg"
     alt="Select the Database Connector"
     caption="Select the Database Connector"
     /%}
@@ -73,28 +73,28 @@ Let’s start with an example of fetching metadata from a database service, i.e.
   - **Name:** No spaces allowed. Apart from letters and numbers, you can use _ - . & ( )
   - **Description:** It is optional, but best to add documentation to improve data culture.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake1.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake1.png"
     alt="Configure Snowflake"
     caption="Configure Snowflake"
     /%}
 
 - Enter the **Connection Details**. The Connector documentation is available right within OpenMetadata in the right side panel. The connector details will differ based on the service selected. Users can add their credentials to create a service and further set up the workflows.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake2.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake2.png"
     alt="Connection Details"
     caption="Connection Details"
     /%}
 
 - Users can **Test the Connection** before creating the service. Test Connection checks for access, and also about what details can be ingested using the connection.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake3.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake3.png"
     alt="Test the Connection"
     caption="Test the Connection"
     /%}
 
 - The **Connection Status** will verify access to the service as well as to the data assets. Once the connection has been tested, you can save the details.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/testconnection1.png"
+    src="/images/v1.9/how-to-guides/admin-guide/testconnection1.png"
     alt="Connection Successful"
     caption="Connection Successful"
     /%}
@@ -104,7 +104,7 @@ Let’s start with an example of fetching metadata from a database service, i.e.
 
   - Or, you can directly start with **Adding Agent**.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake4.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake4.png"
     alt="Snowflake Service Created"
     caption="Snowflake Service Created"
     /%}
@@ -114,7 +114,7 @@ Let’s start with an example of fetching metadata from a database service, i.e.
 {% /note %}
 
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake5.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake5.png"
     alt="View Snowflake Service"
     caption="View Snowflake Service"
     /%}
@@ -132,14 +132,14 @@ Let’s start with an example of fetching metadata from a database service, i.e.
   - **View Definition Parsing Timeout Limit:** The default is set to 300.
 
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake6.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake6.png"
     alt="Configure Metadata Agent"
     caption="Configure Metadata Agent"
     /%}
 
 - **Schedule Metadata Agent** - Define when the metadata Agent pipeline must run on a regular basis. Users can also use a **Custom Cron** expression.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/schedule.png"
+    src="/images/v1.9/how-to-guides/admin-guide/schedule.png"
     alt="Schedule and Deploy Metadata Agent"
     caption="Schedule and Deploy Metadata Agent"
     /%}
@@ -150,14 +150,14 @@ After the pipeline has been created and deployed successfully, click on **View S
 - **Redeploy:** When a  service connection is setup, it fetches the data as per the access provided. If the connection credentials are changed at a later point in time, redeploying will fetch additional data with updated access, if any.
 
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/view-service.png"
+    src="/images/v1.9/how-to-guides/admin-guide/view-service.png"
     alt="View Service Agent"
     caption="View Service Agent"
     /%}
 
 By connecting to a database service, you can ingest the databases, schemas, tables, and columns. In the Service page, the **Databases Tab** will display all the ingested databases. Users can further drilldown to view the **Schemas**, and **Tables**.
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake7.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake7.png"
     alt="View Table Details"
     caption="View Table Details"
     /%}
@@ -167,7 +167,7 @@ By connecting to a database service, you can ingest the databases, schemas, tabl
 {% /note %}
 
 {% image
-    src="/images/v1.9how-to-guides/admin-guide/snowflake8.png"
+    src="/images/v1.9/how-to-guides/admin-guide/snowflake8.png"
     alt="Add Agent Pipelines for Usage, Lineage, Profiler, and dbt"
     caption="Add Agent Pipelines for Usage, Lineage, Profiler, and dbt"
     /%}

@@ -14,7 +14,7 @@ In OpenMetadata, **announcements** can be set up to inform the entire team about
 {% /note %}
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/announce1.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/announce1.png"
 alt="Banner on Data Assets Page"
 caption="Banner on Data Assets Page"
 /%}
@@ -27,13 +27,13 @@ caption="Banner on Data Assets Page"
 Clicking on the announcement will display further details.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/announce2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/announce2.png"
 alt="Details of the Announcement"
 caption="Details of the Announcement"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/announce3.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/announce3.png"
 alt="Details of an Announcement"
 caption="Details of an Announcement"
 /%}
@@ -46,7 +46,7 @@ Details of an announcement are as follows:
 These announcements are also displayed on the top right of the landing page.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/announce4.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/announce4.png"
 alt="Announcement Display (Top Right)"
 caption="Landing Page Announcement Display (Top Right)"
 /%}
@@ -54,7 +54,7 @@ caption="Landing Page Announcement Display (Top Right)"
 Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/react.webp"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/react.webp"
 alt="Reply or React to an Announcement"
 caption="Reply or React to an Announcement"
 /%}

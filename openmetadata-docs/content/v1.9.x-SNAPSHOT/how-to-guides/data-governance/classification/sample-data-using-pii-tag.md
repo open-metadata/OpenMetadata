@@ -13,7 +13,7 @@ In OpenMetadata, sensitive information is protected through **automatic masking*
   - Only that column’s sample data will be **masked** and displayed as `******` in the UI.
 
 {% image
-src="/images/v1.9how-to-guides/governance/pii-tags.png"
+src="/images/v1.9/how-to-guides/governance/pii-tags.png"
 alt="PII Tag Application at Column Level"
 caption="PII Tag Application at Column Level"
 /%}
@@ -22,7 +22,7 @@ caption="PII Tag Application at Column Level"
   - **All columns** within that table will have their sample data masked automatically.
 
 {% image
-src="/images/v1.9how-to-guides/governance/pii-tags2.png"
+src="/images/v1.9/how-to-guides/governance/pii-tags2.png"
 alt="PII Tag Application at Table Level"
 caption="PII Tag Application at Table Level"
 /%}
@@ -51,7 +51,7 @@ When the tag is applied at the **table level**, the result would be:
 2. Apply the **PII.Sensitive** tag via the tagging options.
 
 {% image
-src="/images/v1.9how-to-guides/governance/pii-tags1.png"
+src="/images/v1.9/how-to-guides/governance/pii-tags1.png"
 alt="PII.Sensitive Tagging"
 caption="PII.Sensitive Tagging"
 /%}

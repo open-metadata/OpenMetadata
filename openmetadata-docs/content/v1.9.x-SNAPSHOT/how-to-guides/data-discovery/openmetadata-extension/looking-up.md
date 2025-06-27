@@ -19,7 +19,7 @@ The OpenMetadata Chrome extension allows users to easily look up data assets and
   - **Custom Properties**: Access any additional metadata that has been defined for the asset.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/looking-up-data.png"
+src="/images/v1.9/how-to-guides/discovery/looking-up-data.png"
 alt="Looking Up Data Assets"
 caption="Looking Up Data Assets"
 /%}
@@ -30,7 +30,7 @@ caption="Looking Up Data Assets"
 Open a web browser and perform a search for the keyword or term you want to look up.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/browser-extension-1.png"
+src="/images/v1.9/how-to-guides/discovery/browser-extension-1.png"
 alt="Search for the Keyword in the Browser"
 caption="Search for the Keyword in the Browser"
 /%}
@@ -45,7 +45,7 @@ Open the context menu by right-clicking on the highlighted text.
 Click on the "Search in OpenMetadata" option from the context menu.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/browser-extension-2.png"
+src="/images/v1.9/how-to-guides/discovery/browser-extension-2.png"
 alt="Search in OpenMetadata"
 caption="Search in OpenMetadata"
 /%}
@@ -61,7 +61,7 @@ The extension will initiate a search in OpenMetadata and display results based o
 - **Dashboards**: Metadata for analytics dashboards, including ownership, tags, and lineage.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/browser-extension-3.png"
+src="/images/v1.9/how-to-guides/discovery/browser-extension-3.png"
 alt="View Search Results in OpenMetadata"
 caption="View Search Results in OpenMetadata"
 /%}
@@ -70,7 +70,7 @@ caption="View Search Results in OpenMetadata"
 Click on any result to view detailed metadata, including descriptions, tags, schema details, ownership, and lineage information. Use this information to gain insights into the data asset and understand its relevance to your current context.
 
 {% image
-src="/images/v1.9how-to-guides/discovery/browser-extension-4.png"
+src="/images/v1.9/how-to-guides/discovery/browser-extension-4.png"
 alt="Explore the Search Results"
 caption="Explore the Search Results"
 /%}

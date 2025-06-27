@@ -44,7 +44,7 @@ After the required workflows are completed, the following charts and metrics wil
 The chart visually displays the count of assets classified as `Used` and `Unused` within the specified time frame, providing a straightforward overview of resource utilization.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/used-vs-unused-assets-count.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/used-vs-unused-assets-count.png"
     alt="Used vs Unused Assets Count"
     caption="Used vs Unused Assets Count"
  /%}
@@ -53,7 +53,7 @@ The chart visually displays the count of assets classified as `Used` and `Unused
 The chart visually represents the size of the `Used` and `Unused` and data assets. This graph provides insight into the distribution of resource size and highlights the size-related implications of asset utilization.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/used-vs-unused-assets-size.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/used-vs-unused-assets-size.png"
     alt="Used vs Unused Assets Size"
     caption="Used vs Unused Assets Size"
  /%}
@@ -62,7 +62,7 @@ The chart visually represents the size of the `Used` and `Unused` and data asset
 The chart compares the percentage of used and unused data asset sizes over distinct time periods. It offers a dynamic visualization of how resource allocation and size distribution evolve.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/used-vs-unused-assets-size-percentage.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/used-vs-unused-assets-size-percentage.png"
     alt="Used vs Unused Assets Size Percentage"
     caption="Used vs Unused Assets Size Percentage"
  /%}
@@ -71,7 +71,7 @@ The chart compares the percentage of used and unused data asset sizes over disti
 The chart contrasts the percentage distribution of used and unused data asset counts across various time intervals. This graph offers a visual snapshot of resource utilization trends, facilitating cost-efficiency assessments and strategic resource allocation.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/used-vs-unused-assets-count-percentage.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/used-vs-unused-assets-count-percentage.png"
     alt="Used vs Unused Assets Count Percentage"
     caption="Used vs Unused Assets Count Percentage"
  /%}
@@ -80,7 +80,7 @@ The chart contrasts the percentage distribution of used and unused data asset co
 The table displays underutilized data assets, presenting their names, last accessed timestamps, and sizes in KB, helping identify potential resource savings and optimization opportunities.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/unused-assets.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/unused-assets.png"
     alt="Unused Assets"
     caption="Unused Assets"
  /%}
@@ -89,7 +89,7 @@ The table displays underutilized data assets, presenting their names, last acces
 The table showcases frequently accessed data assets, detailing their names, last accessed timestamps, and sizes in KB, enabling efficient resource allocation.
 
 {% image
-    src="/images/v1.9features/data-insight/cost-analysis/frequently-used-assets.png"
+    src="/images/v1.9/features/data-insight/cost-analysis/frequently-used-assets.png"
     alt="Frequently Used Assets"
     caption="Frequently Used Assets"
  /%}

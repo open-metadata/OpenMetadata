@@ -4,7 +4,7 @@ slug: /getting-started/day-1/hybrid-saas/airflow
 collate: true
 ---
 
-{% partial file="/v1.9deployment/external-ingestion.md" /%}
+{% partial file="/v1.9/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from your Airflow
 
@@ -102,7 +102,7 @@ the whole process.
 The drawback here? You need to install some requirements, which is not always possible. Here you have two alternatives,
 either you use the `PythonVirtualenvOperator`, or read below on how to run the ingestion with the `DockerOperator`.
 
-{% partial file="/v1.9deployment/run-connectors-class.md" /%}
+{% partial file="/v1.9/deployment/run-connectors-class.md" /%}
 
 ## Docker Operator
 

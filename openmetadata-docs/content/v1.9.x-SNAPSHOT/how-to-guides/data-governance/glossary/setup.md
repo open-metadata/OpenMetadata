@@ -10,7 +10,7 @@ To create a glossary manually in OpenMetadata:
 - Click on **+ Add** to add a new glossary
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary1.png"
+src="/images/v1.9/how-to-guides/governance/glossary1.png"
 alt="Add a New Glossary"
 caption="Add a New Glossary"
 /%}
@@ -31,7 +31,7 @@ caption="Add a New Glossary"
   - **Reviewers**  - Multiple reviewers can be added.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary2.png"
+src="/images/v1.9/how-to-guides/governance/glossary2.png"
 alt="Configure the Glossary"
 caption="Configure the Glossary"
 /%}
@@ -43,7 +43,7 @@ When creating a glossary, you can add the glossary owner. Either a Team or a Use
 Multiple users can be added as Reviewers by clicking on the pencil icon. If the **Reviewer** details exist for a glossary, then the same details are reflected when adding a new term manually as well.
 
 {% image
-src="/images/v1.9how-to-guides/governance/owner.png"
+src="/images/v1.9/how-to-guides/governance/owner.png"
 alt="Add Owner and Reviewers"
 caption="Add Owner and Reviewers"
 /%}

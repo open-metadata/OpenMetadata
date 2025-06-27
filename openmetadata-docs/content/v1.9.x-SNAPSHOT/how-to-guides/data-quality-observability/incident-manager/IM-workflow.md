@@ -16,7 +16,7 @@ The Incident Dashboard is the central hub where all incidents are displayed. Use
 - **Time:** Sort incidents by the time they were reported or last updated.
 
 {% image
-src="/images/v1.9how-to-guides/observability/incident-manager-1.png"
+src="/images/v1.9/how-to-guides/observability/incident-manager-1.png"
 alt="Incident Manager Dashboard"
 caption="Incident Manager Dashboard"
 /%}
@@ -33,13 +33,13 @@ Incident status can be updated to reflect the current stage of the incident reso
 5. You can review the Test Case Details.
 
 {% image
-src="/images/v1.9how-to-guides/observability/incident-manager-2.png"
+src="/images/v1.9/how-to-guides/observability/incident-manager-2.png"
 alt="Incident Test Case Details"
 caption="Incident Test Case Details"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/observability/incident-manager-3.png"
+src="/images/v1.9/how-to-guides/observability/incident-manager-3.png"
 alt="Incident Status Change"
 caption="Incident Status Change"
 /%}
@@ -55,7 +55,7 @@ Once an incident has been resolved, it can be officially closed. Ensure to descr
 4. Confirm the closure to update the incident in the dashboard.
 
 {% image
-src="/images/v1.9how-to-guides/observability/incident-manager-4.png"
+src="/images/v1.9/how-to-guides/observability/incident-manager-4.png"
 alt="Incident Resolution"
 caption="Incident Resolution"
 /%}
@@ -70,7 +70,7 @@ Each incident includes a detailed timeline where all relevant information is con
 3. Review the chronological events, RCA, and closure updates associated with the incident.
 
 {% image
-src="/images/v1.9how-to-guides/observability/incident-manager-5.png"
+src="/images/v1.9/how-to-guides/observability/incident-manager-5.png"
 alt="Incident Activities"
 caption="Incident Activities"
 /%}

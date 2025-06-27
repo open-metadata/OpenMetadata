@@ -30,9 +30,9 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 {% /collateContent %}
 
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -47,7 +47,7 @@ link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
-{% partial file="/v1.9connectors/database/partitioned-tables.md" /%}
+{% partial file="/v1.9/connectors/database/partitioned-tables.md" /%}
 
 ### Data Catalog API Permissions 
 
@@ -94,12 +94,12 @@ This will help you simplify your data management and optimize your performance i
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.9connectors/metadata-ingestion-ui.md"
+  file="/v1.9/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "BigQuery",
-    selectServicePath: "/images/v1.9connectors/bigquery/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/bigquery/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/bigquery/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/bigquery/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/bigquery/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/bigquery/service-connection.png",
   }
 /%}
 
@@ -159,15 +159,15 @@ the GCP credentials empty. This is why they are not marked as required.
 {% /note %}
 
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -176,7 +176,7 @@ the GCP credentials empty. This is why they are not marked as required.
 We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
 
 {% collateContent %}
-{% partial file="/v1.9connectors/database/bigquery/reverse-metadata.md" /%}
+{% partial file="/v1.9/connectors/database/bigquery/reverse-metadata.md" /%}
 {% /collateContent %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

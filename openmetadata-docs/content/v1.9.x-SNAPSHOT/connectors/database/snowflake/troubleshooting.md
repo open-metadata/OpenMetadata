@@ -3,7 +3,7 @@ title: Snowflake Troubleshooting Guide | OpenMetadata Support
 slug: /connectors/database/snowflake/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 ## Snowflake User Access Disabled
 

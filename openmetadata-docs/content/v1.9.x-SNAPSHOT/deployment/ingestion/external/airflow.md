@@ -4,7 +4,7 @@ slug: /deployment/ingestion/external/airflow
 collate: false
 ---
 
-{% partial file="/v1.9deployment/external-ingestion.md" /%}
+{% partial file="/v1.9/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from your Airflow
 
@@ -272,4 +272,4 @@ with DAG(
 - All imports must occur inside the function.  
 - Avoid referencing variables outside the function's scope.
 
-{% partial file="/v1.9deployment/run-connectors-class.md" /%}
+{% partial file="/v1.9/deployment/run-connectors-class.md" /%}

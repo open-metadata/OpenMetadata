@@ -16,7 +16,7 @@ A hierarchical structure helps in grouping similar concepts and helps in better 
 When using hierarchy, it is better to limit the hierarchy to three levels.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary7.png"
+src="/images/v1.9/how-to-guides/governance/glossary7.png"
 alt="Phone Number in the Context of a User and Business"
 caption="Phone Number in the Context of a User and Business"
 /%}
@@ -30,7 +30,7 @@ Classification tags can be added to a glossary term. This helps to define both t
 Organizations have data producers who create tables, and build data models. Team members who understand regulatory compliance requirements are good at classifying data. Among them, those who understand the data as well as the regulatory requirements, can help organizations scale by adding glossary terms along with the classification and tags.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary4.png"
+src="/images/v1.9/how-to-guides/governance/glossary4.png"
 alt="Add Classification Tags to Glossary Terms"
 caption="Add Classification Tags to Glossary Terms"
 /%}
@@ -52,7 +52,7 @@ Instead of creating policies for separate tables with sensitive data, the ‘Sen
 When glossaries are inherited from source systems, the names may not communicate the concept well. For example, dep-prod instead of Product Department. Users are more likely to search using common terms like Product or Department, and this helps in better discovery.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary5.png"
+src="/images/v1.9/how-to-guides/governance/glossary5.png"
 alt="Add Display Names for Better Discovery"
 caption="Add Display Names for Better Discovery"
 /%}
@@ -72,7 +72,7 @@ When glossary terms have typos, users tend to delete the term. All the effort sp
 When adding terms, building a semantic relationship helps to understand data through concepts. For example, grouping related terms helps in understanding the various terms and their overall relationship.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary6.png"
+src="/images/v1.9/how-to-guides/governance/glossary6.png"
 alt="Group Similar Concepts Together"
 caption="Group Similar Concepts Together"
 /%}

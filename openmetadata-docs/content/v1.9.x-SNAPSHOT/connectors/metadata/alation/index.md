@@ -22,9 +22,9 @@ Configure and schedule Alation metadata workflow from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Troubleshooting](/connectors/metadata/alation/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/alation/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/alation/yaml"} /%}
 
-{% partial file="/v1.9connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -63,12 +63,12 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.9connectors/metadata-ingestion-ui.md"
+  file="/v1.9/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "Alation",
-    selectServicePath: "/images/v1.9connectors/alation/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/alation/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/alation/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/alation/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/alation/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/alation/service-connection.png",
   }
 /%}
 
@@ -141,14 +141,14 @@ To perform incremental ingestion, these arguments should be used together. For i
 - 3rd execution: {"skip": 20, "limit": 10}
 
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/metadata/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/metadata/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

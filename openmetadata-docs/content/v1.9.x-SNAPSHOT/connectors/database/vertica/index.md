@@ -24,7 +24,7 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/vertica/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
 
 ## Requirements
 
@@ -76,12 +76,12 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 
 ## Metadata Ingestion
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Vertica", 
-    selectServicePath: "/images/v1.9connectors/vertica/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/vertica/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/vertica/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/vertica/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/vertica/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/vertica/service-connection.png",
 } 
 /%}
 
@@ -94,16 +94,16 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 - **Password**: Password to connect to Vertica.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Vertica deployment in the Host and Port field.
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

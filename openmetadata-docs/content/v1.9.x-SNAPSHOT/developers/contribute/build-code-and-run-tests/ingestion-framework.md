@@ -86,11 +86,11 @@ Running the ingestion workflows from PyCharm and debugging them is quite useful.
 
 First, make sure that your Python environment is pointing to the local env you are using to develop.
 
-{% image src="/images/v1.9developers/contribute/build-code-and-run-tests/pycharm-python-interpreter.png" alt="PyCharm env" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/build-code-and-run-tests/pycharm-python-interpreter.png" alt="PyCharm env" caption=" " /%}
 
 Then, you can prepare `Run Configurations` to execute the ingestion as you would run the CLI:
 
-{% image src="/images/v1.9developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" " /%}
+{% image src="/images/v1.9/developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" " /%}
 
 Note that in the example we are preparing a configuration to run and test Superset. In order to understand how to run
 ingestions via the CLI, you can refer to each connector's [docs](/connectors/dashboard/superset/yaml).

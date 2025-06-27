@@ -92,6 +92,6 @@ After logging into the OpenMetadata UI, admin users can change their default pas
 For ingesting metadata when Basic Auth is enabled, it is mandatory to configure the `ingestion-bot` account with the JWT 
 configuration. To know how to enable it, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
-{% partial file="/v1.9deployments/smtp-email.md" /%}
+{% partial file="/v1.9/deployments/smtp-email.md" /%}
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}

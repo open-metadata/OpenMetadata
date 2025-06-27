@@ -25,7 +25,7 @@ To add KPIs:
 - Navigate to **Insights** and click on **Add KPI**.
 
 {% image
-src="/images/v1.9how-to-guides/insights/kpi1.png"
+src="/images/v1.9/how-to-guides/insights/kpi1.png"
 alt="Add a KPI"
 caption="Add a KPI"
 /%}
@@ -39,13 +39,13 @@ caption="Add a KPI"
 - Click on **Submit**.
 
 {% image
-src="/images/v1.9how-to-guides/insights/kpi2.png"
+src="/images/v1.9/how-to-guides/insights/kpi2.png"
 alt="Details of the KPI"
 caption="Details of the KPI"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/insights/kpi3.png"
+src="/images/v1.9/how-to-guides/insights/kpi3.png"
 alt="Ownership Coverage KPI Added"
 caption="Ownership Coverage KPI Added"
 /%}

@@ -5,7 +5,7 @@ slug: /connectors/messaging/kafka/troubleshooting
 
 # Troubleshooting
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 ## Consumer and schema registry config
 

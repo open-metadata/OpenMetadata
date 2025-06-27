@@ -5,7 +5,7 @@ slug: /developers/open-source-community
 
 # Open Source Community
 
-{% image src="/images/v1.9developers/open-source-community.png" alt="Open Source Community" /%}
+{% image src="/images/v1.9/developers/open-source-community.png" alt="Open Source Community" /%}
 
 ### Meet & Greet on Slack
 That’s where the OpenMetadata enthusiasts are;

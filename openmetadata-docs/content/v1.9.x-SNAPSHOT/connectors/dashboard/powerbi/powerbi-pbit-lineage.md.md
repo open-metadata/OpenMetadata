@@ -28,7 +28,7 @@ Use any one of the below sources to store the .pbit files and configure these so
 ### Run from UI
 Select the source for the .pbit files from UI and add the connection for it
 {% image
-  src="/images/v1.9connectors/powerbi/pbit-file-source.png"
+  src="/images/v1.9/connectors/powerbi/pbit-file-source.png"
   alt="pbit-file-sources"
   caption="pbit file sources"
  /%}
