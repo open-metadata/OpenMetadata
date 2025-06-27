@@ -18,7 +18,7 @@ There's two options on how to set up a data connector:
 
 Any tool capable of running Python code can be used to configure the metadata extraction from your sources.
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 In this section we'll show you how the ingestion process works and how to test it from your laptop.
 

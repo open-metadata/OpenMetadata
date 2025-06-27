@@ -17,7 +17,7 @@ Before ingesting your tests results from Great Expectations you will need to hav
 
 ### Python Requirements
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 You will need to install our Great Expectations submodule
 
@@ -55,7 +55,7 @@ In your checkpoint yaml file, you will need to add the above code block in `acti
 - `table_name`: [Optional] only required for `RuntimeDataBatchSpec` execution (e.g. run GX against a dataframe). 
 
 {% image
-src={"/images/v1.9features/integrations/ge-checkpoint-file.gif"}
+src={"/images/v1.9/features/integrations/ge-checkpoint-file.gif"}
 alt="Great Expectations checkpoint file"
 caption=" "
  /%}
@@ -100,7 +100,7 @@ securityConfig:
 You can use environment variables in your configuration file by simply using `{{ env('<MY_ENV_VAR>') }}`. These will be parsed and rendered at runtime allowing you to securely create your configuration and commit it to your favorite version control tool. As we support multiple security configurations, you can check out the [Enable Security](/deployment/security) section for more details on how to set the `securityConfig` part of the `yaml` file.
 
 {% image
-src="/images/v1.9features/integrations/ge-config-yaml.gif"
+src="/images/v1.9/features/integrations/ge-config-yaml.gif"
 alt="Great Expectations config file"
  /%}
 
@@ -112,7 +112,7 @@ great_expectations checkpoint run <my_checkpoint>
 ```
 
 {% image
-src="/images/v1.9features/integrations/ge-run-checkpoint.gif"
+src="/images/v1.9/features/integrations/ge-run-checkpoint.gif"
 alt="Run Great Expectations checkpoint"
  /%}
 

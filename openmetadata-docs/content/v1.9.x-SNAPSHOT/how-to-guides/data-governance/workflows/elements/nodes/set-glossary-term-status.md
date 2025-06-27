@@ -18,4 +18,4 @@ After you define a **Display Name** and a **Description** for this node, you can
 
 We can see an example of this node's configuration below:
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-set-glossary-term-status.png" alt="set-glossary-term-status" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-set-glossary-term-status.png" alt="set-glossary-term-status" /%}

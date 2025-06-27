@@ -4,9 +4,17 @@ on:
   pull_request:
     paths:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run the workflow on'
+        required: true
+        default: 'main'
+        type: string
 
 jobs:
   generate-types:
     runs-on: ubuntu-latest
-    # Placeholder for future workflow steps
-    steps: []
+    steps:
+      - name: Placeholder
+        run: echo "Workflow triggered successfully on branch ${{ github.event.inputs.branch || github.ref_name }}"
