@@ -107,7 +107,7 @@ jest.mock('crypto-random-string-with-promisify-polyfill', () =>
 );
 jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
   jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid={props['data-testid']} {...props}>
+    <div data-testid={props.selectProps?.['data-testid']}>
       TagSuggestion Component
       {children}
     </div>
