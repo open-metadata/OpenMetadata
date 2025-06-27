@@ -8,7 +8,7 @@ collate: false
 
 Any tool capable of running Python code can be used to configure the metadata extraction from your sources.
 
-{% partial file="/v1.9connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 ## 1. How does the Ingestion Framework work?
 

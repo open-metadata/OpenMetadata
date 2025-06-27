@@ -122,7 +122,7 @@ workflowConfig:
 - Provides visibility into sensitive data across databases.
 This approach ensures that the Auto Classification Workflow is executed correctly using the appropriate OpenMetadata ingestion framework.
 
-{% partial file="/v1.9connectors/yaml/auto-classification.md" variables={connector: "snowflake"} /%}
+{% partial file="/v1.9/connectors/yaml/auto-classification.md" variables={connector: "snowflake"} /%}
 
 ## Workflow Execution
 

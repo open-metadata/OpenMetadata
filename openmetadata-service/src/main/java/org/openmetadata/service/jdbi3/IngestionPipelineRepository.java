@@ -56,12 +56,13 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Repository(name = "IngestionPipelineRepository")
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
 
   private static final String UPDATE_FIELDS =
-      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
-      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";

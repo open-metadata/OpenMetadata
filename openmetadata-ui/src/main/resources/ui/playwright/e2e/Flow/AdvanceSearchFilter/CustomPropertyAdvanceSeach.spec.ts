@@ -15,6 +15,7 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../../constant/customProperty';
 import { GlobalSettingOptions } from '../../../constant/settings';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { selectOption } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -122,7 +123,15 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         .getByText('Owner')
         .click();
 
+      const ruleLocator = page.locator('.rule').nth(0);
+
       await page.getByTitle('Custom Properties').click();
+
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Dashboard'
+      );
 
       // Select Custom Property Field when we want filter
       await page
@@ -145,13 +154,23 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       // Validate if filter dashboard appeared
 
-      expect(page.getByTestId('advance-search-filter-text')).toContainText(
-        `extension.${propertyName} = '${propertyValue}'`
+      await expect(
+        page.getByTestId('advance-search-filter-text')
+      ).toContainText(
+        `extension.dashboard.${propertyName} = '${propertyValue}'`
       );
 
-      expect(page.getByTestId('entity-header-display-name')).toContainText(
-        dashboardEntity.entity.displayName
-      );
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+    
+
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(dashboardEntity.entity.displayName);
+
     }
   );
 

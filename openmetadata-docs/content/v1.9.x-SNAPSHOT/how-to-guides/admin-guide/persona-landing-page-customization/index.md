@@ -17,7 +17,7 @@ OpenMetadata is designed as a platform for everyone in your organization, cateri
 - **Customizable Landing Pages**: Each persona can have a tailored landing page, displaying relevant panels like recent views, announcements, tasks, and performance indicators based on the user’s role.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/benefit-1.png"
+src="/images/v1.9/how-to-guides/admin-guide/benefit-1.png"
 alt="Customizable Landing Pages"
 caption="Customizable Landing Pages"
 /%}
@@ -25,7 +25,7 @@ caption="Customizable Landing Pages"
 - **Flexibility for Multiple Personas**: Users can switch between different personas (e.g., a user can be both a data engineer and a data steward), and the application will adapt the layout and functionality accordingly.
 
 {% image
-src="/images/v1.9how-to-guides/admin-guide/switch-1.png"
+src="/images/v1.9/how-to-guides/admin-guide/switch-1.png"
 alt="Flexibility for Multiple Personas"
 caption="Flexibility for Multiple Personas"
 /%}
