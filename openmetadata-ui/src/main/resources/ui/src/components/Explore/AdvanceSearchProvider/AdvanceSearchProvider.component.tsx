@@ -39,6 +39,7 @@ import {
   getTierOptions,
   getTreeConfig,
 } from '../../../utils/AdvancedSearchUtils';
+import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
@@ -302,7 +303,7 @@ export const AdvanceSearchProvider = ({
 
       setTreeInternal(tree);
       const qFilter = {
-        query: QbUtils.elasticSearchFormat(tree, updatedConfig),
+        query: elasticSearchFormat(tree, updatedConfig),
       };
       if (isEqual(qFilter, queryFilter)) {
         return;
@@ -337,7 +338,7 @@ export const AdvanceSearchProvider = ({
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
-      query: QbUtils.elasticSearchFormat(treeInternal, config),
+      query: elasticSearchFormat(treeInternal, config),
     };
     setQueryFilter(qFilter);
     setSQLQuery(

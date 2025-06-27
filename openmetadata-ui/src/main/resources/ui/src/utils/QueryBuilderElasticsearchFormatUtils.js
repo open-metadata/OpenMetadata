@@ -17,6 +17,11 @@
  * with small improvements.
  */
 
+import { Utils as extendConfigUtils } from '@react-awesome-query-builder/core';
+
+export const ES_7_SYNTAX = 'ES_7_SYNTAX';
+export const ES_6_SYNTAX = 'ES_6_SYNTAX';
+
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -27,7 +32,7 @@
  * @private
  */
 function buildEsGeoPoint(geoPointString) {
-  if (geoPointString == null) {
+  if (geoPointString === null) {
     return null;
   }
 
@@ -121,22 +126,23 @@ function buildEsWildcardParameters(value) {
  * returns the ES occurrence required for bool queries
  *
  * @param {string} combinator - query group type or rule condition
+ * @param {bool} not
  * @returns {string} - ES occurrence type. See constants.js
  * @private
  */
-function determineOccurrence(combinator) {
+function determineOccurrence(combinator, not) {
   // todo: move into config, like mongoConj
   switch (combinator) {
     case 'AND':
-      return 'must';
+      return not ? 'must_not' : 'must';
     // -- AND
 
     case 'OR':
-      return 'should';
+      return not ? 'should_not' : 'should';
     // -- OR
 
     case 'NOT':
-      return 'must_not';
+      return not ? 'must' : 'must_not';
     // -- NOT AND
 
     default:
@@ -157,7 +163,14 @@ function determineField(fieldName) {
   return fieldName;
 }
 
-function buildParameters(queryType, value, operator, fieldName, config) {
+function buildParameters(
+  queryType,
+  value,
+  operator,
+  fieldName,
+  config,
+  syntax
+) {
   const textField = determineField(fieldName);
   switch (queryType) {
     case 'filter':
@@ -176,7 +189,13 @@ function buildParameters(queryType, value, operator, fieldName, config) {
       return { [textField]: value[0] };
 
     case 'term':
-      return { [fieldName]: value[0] };
+      return syntax === ES_7_SYNTAX
+        ? {
+            [fieldName]: {
+              value: value[0],
+            },
+          }
+        : { [fieldName]: value[0] };
 
     // todo: not used
     // need to add geo type into RAQB or remove this code
@@ -204,6 +223,7 @@ function buildParameters(queryType, value, operator, fieldName, config) {
  * @param {string} fieldDataType - The type of data this field holds
  * @param {string} value - The value of this rule
  * @param {string} operator - The condition on how the value is matched
+ * @param {string} syntax - The version of ElasticSearch syntax to generate
  * @returns {object} - The ES rule
  * @private
  */
@@ -241,8 +261,16 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   }
 
   // handle if value 0 has multiple values like a select in a array
-  const widget = getWidgetForFieldOp(config, fieldName, op, valueSrc);
+  const widget = extendConfigUtils.ConfigUtils.getWidgetForFieldOp(
+    config,
+    fieldName,
+    op,
+    valueSrc
+  );
   const widgetConfig = config.widgets[widget];
+  if (!widgetConfig) {
+    return undefined;
+  } // unknown widget
   const { elasticSearchFormatValue } = widgetConfig;
 
   /** In most cases the queryType will be static however in some casese (like between) the query type will change
@@ -315,25 +343,33 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
  *
  * @param {object} children - The contents of the group
  * @param {string} conjunction - The way the contents of the group are joined together i.e. AND OR
+ * @param {bool} not
  * @param {Function} recursiveFxn - The recursive fxn to build the contents of the groups children
+ * @param {object} config - The config object
+ * @param {string} syntax - The version of ElasticSearch syntax to generate
  * @private
  * @returns {object} - The ES group
  */
-function buildEsGroup(children, conjunction, properties, recursiveFxn, config) {
+function buildEsGroup(
+  children,
+  conjunction,
+  not,
+  recursiveFxn,
+  config,
+  syntax
+) {
   if (!children || !children.size) {
     return undefined;
   }
   const childrenArray = children.valueSeq().toArray();
-  const occurrence = determineOccurrence(conjunction);
+  const occurrence = determineOccurrence(conjunction, not);
   const result = childrenArray
-    .map((c) => recursiveFxn(c, config))
+    .map((c) => recursiveFxn(c, config, syntax))
     .filter((v) => v !== undefined);
   if (!result.length) {
     return undefined;
   }
   const resultFlat = result.flat(Infinity);
-
-  const not = properties.get('not') ?? false;
 
   if (not) {
     return {
@@ -350,8 +386,13 @@ function buildEsGroup(children, conjunction, properties, recursiveFxn, config) {
   };
 }
 
-export function elasticSearchFormatForJSONLogic(tree, config) {
+export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
+    const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
+      config,
+      undefined,
+      false
+    );
     // -- format the es dsl here
     if (!tree) {
       return undefined;
@@ -363,10 +404,81 @@ export function elasticSearchFormatForJSONLogic(tree, config) {
       // -- field is null when a new blank rule is added
       const operator = properties.get('operator');
       const field = properties.get('field');
-      const value = properties.get('value').toJS();
+      const fieldSrc = properties.get('fieldSrc');
+      const value = properties.get('value')?.toJS();
       const valueSrc = properties.get('valueSrc')?.get(0);
 
-      if (valueSrc === 'func') {
+      if (valueSrc === 'func' || fieldSrc === 'func') {
+        // -- elastic search doesn't support functions (that is post processing)
+        return;
+      }
+
+      if (value && Array.isArray(value[0])) {
+        return {
+          bool: {
+            should: value[0].map((val) =>
+              buildEsRule(
+                field,
+                [val],
+                operator,
+                extendedConfig,
+                valueSrc,
+                syntax
+              )
+            ),
+          },
+        };
+      } else {
+        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+      }
+    }
+
+    if (type === 'group' || type === 'rule_group') {
+      const not = properties.get('not');
+      let conjunction = properties.get('conjunction');
+      if (!conjunction) {
+        conjunction =
+          extendConfigUtils.DefaultUtils.defaultConjunction(extendedConfig);
+      }
+      const children = tree.get('children1');
+
+      return buildEsGroup(
+        children,
+        conjunction,
+        not,
+        elasticSearchFormat,
+        extendedConfig,
+        syntax
+      );
+    }
+  } catch {
+    return {};
+  }
+}
+
+export function elasticSearchFormatForJSONLogic(
+  tree,
+  config,
+  syntax = ES_6_SYNTAX
+) {
+  try {
+    const extendedConfig = extendConfig(config, undefined, false);
+    // -- format the es dsl here
+    if (!tree) {
+      return undefined;
+    }
+    const type = tree.get('type');
+    const properties = tree.get('properties') || new Map();
+
+    if (type === 'rule' && properties.get('field')) {
+      // -- field is null when a new blank rule is added
+      const operator = properties.get('operator');
+      const field = properties.get('field');
+      const fieldSrc = properties.get('fieldSrc');
+      const value = properties.get('value')?.toJS();
+      const valueSrc = properties.get('valueSrc')?.get(0);
+
+      if (valueSrc === 'func' || fieldSrc === 'func') {
         // -- elastic search doesn't support functions (that is post processing)
         return;
       }
@@ -389,18 +501,21 @@ export function elasticSearchFormatForJSONLogic(tree, config) {
     }
 
     if (type === 'group' || type === 'rule_group') {
+      const not = properties.get('not');
       let conjunction = properties.get('conjunction');
       if (!conjunction) {
-        conjunction = defaultConjunction(config);
+        conjunction =
+          extendConfigUtils.DefaultUtils.defaultConjunction(extendedConfig);
       }
       const children = tree.get('children1');
 
       return buildEsGroup(
         children,
         conjunction,
-        properties,
+        not,
         elasticSearchFormatForJSONLogic,
-        config
+        config,
+        syntax
       );
     }
   } catch {
