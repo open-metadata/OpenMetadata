@@ -220,24 +220,18 @@ public interface SearchIndex {
           // upstream
           // Current entity depends on relatedEntity (relatedEntity -> current entity)
           Map<String, Object> relationshipMap =
-              buildUpstreamRelationshipMap(
-                  entity, relatedEntity, tableConstraint, referredColumn, columnIndex);
-
-          int existingIndex =
               checkUpstreamRelationship(
                   entity.getFullyQualifiedName(),
                   relatedEntity.getFullyQualifiedName(),
                   upstreamRelationships);
 
-          if (existingIndex >= 0) {
+          if (relationshipMap != null) {
             updateExistingUpstreamRelationship(
-                entity,
-                tableConstraint,
-                upstreamRelationships.get(existingIndex),
-                referredColumn,
-                columnIndex);
+                entity, tableConstraint, relationshipMap, referredColumn, columnIndex);
           } else {
-            upstreamRelationships.add(relationshipMap);
+            upstreamRelationships.add(
+                buildUpstreamRelationshipMap(
+                    entity, relatedEntity, tableConstraint, referredColumn, columnIndex));
           }
 
           columnIndex++;
@@ -279,18 +273,16 @@ public interface SearchIndex {
     return relationshipMap;
   }
 
-  static int checkUpstreamRelationship(
+  static Map<String, Object> checkUpstreamRelationship(
       String entityFQN, String relatedEntityFQN, List<Map<String, Object>> relationships) {
-    int index = 0;
     for (Map<String, Object> relationship : relationships) {
       Map<String, Object> upstreamEntity = (Map<String, Object>) relationship.get("entity");
-      // Check if this upstream entity relationship already exists
-      if (upstreamEntity.get("fqn").equals(relatedEntityFQN)) {
-        return index;
+      // Check if this upstream entity relationship already exists (compare by FQN)
+      if (relatedEntityFQN.equals(upstreamEntity.get("fullyQualifiedName"))) {
+        return relationship;
       }
-      index++;
     }
-    return -1;
+    return null;
   }
 
   private static void updateExistingUpstreamRelationship(

@@ -88,17 +88,20 @@ public interface SearchClient {
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
+  // Updated to work with the new storage field `upstreamEntityRelationship`
   String REMOVE_ENTITY_RELATIONSHIP =
-      "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].docId == '%s') { ctx._source.entityRelationship.remove(i) }}";
+      "for (int i = 0; i < ctx._source.upstreamEntityRelationship.length; i++) { if (ctx._source.upstreamEntityRelationship[i].docId == '%s') { ctx._source.upstreamEntityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
 
-  // The script is used for updating the entityRelationship attribute of the entity in ES
-  // It checks if any duplicate entry is present based on the docId and updates only if it is not
-  // present
+  // Updated to upsert into `upstreamEntityRelationship` instead of legacy `entityRelationship`
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
+      "boolean docIdExists = false; "
+          + "for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) { "
+          + " if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { "
+          + "   ctx._source.upstreamEntityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}"
+          + "if (!docIdExists) {ctx._source.upstreamEntityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
       "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =

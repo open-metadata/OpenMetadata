@@ -1448,7 +1448,7 @@ public class SearchRepository {
     String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
+        new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
   }
 
