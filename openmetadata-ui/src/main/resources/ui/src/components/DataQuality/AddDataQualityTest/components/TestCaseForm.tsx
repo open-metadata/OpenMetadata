@@ -31,6 +31,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
+import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
@@ -188,7 +189,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
-      tags: value.tags || [],
+      tags: [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
@@ -260,6 +261,24 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         props: {
           'data-testid': 'tags-selector',
           initialValue: initialValue?.tags || [],
+        },
+      },
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          'data-testid': 'glossary-terms-selector',
+          initialValue: initialValue?.tags || [],
+          open: false,
+          hasNoActionButtons: true,
+          isTreeSelect: true,
+          tagType: TagSource.Glossary,
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
         },
       },
     ],

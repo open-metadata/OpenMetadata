@@ -92,4 +92,5 @@ export type TestCaseFormType = {
   computePassedFailedRowCount?: boolean;
   description?: string;
   tags?: TagLabel[];
+  glossaryTerms?: TagLabel[];
 };

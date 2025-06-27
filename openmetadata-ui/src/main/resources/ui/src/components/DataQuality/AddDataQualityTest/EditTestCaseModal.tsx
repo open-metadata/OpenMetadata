@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TagSource } from '../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../generated/entity/data/table';
 import {
   TestDataType,
@@ -46,6 +47,7 @@ import {
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
@@ -103,6 +105,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table]);
 
+  const { tags, glossaryTerms } = useMemo(() => {
+    if (!testCase?.tags) {
+      return { tags: [], glossaryTerms: [] };
+    }
+    const filteredTags = getFilterTags(testCase.tags);
+
+    return {
+      tags: filteredTags.Classification,
+      glossaryTerms: filteredTags.Glossary,
+    };
+  }, [testCase?.tags]);
+
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
     const updatedTestCase = {
       ...testCase,
@@ -118,7 +132,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       computePassedFailedRowCount: isComputeRowCountFieldVisible
         ? value.computePassedFailedRowCount
         : testCase?.computePassedFailedRowCount,
-      tags: showOnlyParameter ? testCase.tags : value.tags || [],
+      tags: showOnlyParameter
+        ? testCase.tags
+        : [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -186,7 +202,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     try {
       const testCaseDetails = await getTestCaseByFqn(
         testCase?.fullyQualifiedName ?? '',
-        { fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TAGS] }
+        { fields: [TabSpecificField.TEST_DEFINITION] }
       );
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
@@ -200,7 +216,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         'description',
         'computePassedFailedRowCount',
         'useDynamicAssertion',
-        'tags',
       ]);
 
       form.setFieldsValue({
@@ -208,6 +223,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
         column: getColumnNameFromEntityLink(testCase?.entityLink),
+        tags: tags,
+        glossaryTerms: glossaryTerms,
         ...formValue,
       });
       setSelectedDefinition(definition);
@@ -242,11 +259,29 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           'data-testid': 'tags-selector',
-          initialValue: testCase?.tags || [],
+          initialValue: tags,
+        },
+      },
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          'data-testid': 'glossary-terms-selector',
+          initialValue: glossaryTerms,
+          open: false,
+          hasNoActionButtons: true,
+          isTreeSelect: true,
+          tagType: TagSource.Glossary,
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
         },
       },
     ],
-    [testCase?.description, testCase?.tags]
+    [testCase?.description, tags, glossaryTerms]
   );
 
   useEffect(() => {

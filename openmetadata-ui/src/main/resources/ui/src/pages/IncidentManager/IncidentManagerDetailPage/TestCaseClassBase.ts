@@ -80,6 +80,7 @@ class TestCaseClassBase {
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.TAGS,
     ];
   }
 
