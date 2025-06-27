@@ -13,7 +13,7 @@
 Source connection handler
 """
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, cast
 from urllib.parse import quote_plus
 
 from requests import Session
@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.common import (
+    azureConfig,
     basicAuth,
     jwtAuth,
     noConfigAuthenticationTypes,
@@ -147,22 +148,90 @@ def get_connection(connection: TrinoConnection) -> Engine:
         )
         connection.connectionArguments.root["verify"] = {"verify": connection.verify}
     if hasattr(connection.authType, "azureConfig"):
-        azure_client = AzureClient(connection.authType.azureConfig).create_client()
-        if not connection.authType.azureConfig.scopes:
-            raise ValueError(
-                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
-            )
-        access_token_obj = azure_client.get_token(
-            *connection.authType.azureConfig.scopes.split(",")
-        )
+        access_token_obj = get_azure_token(connection)
+
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.root["access_token"] = access_token_obj.token
+        connection.connectionOptions.root["access_token"] = access_token_obj
     return create_generic_db_connection(
         connection=connection_copy,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args,
     )
+
+
+def get_connection_dict(connection: TrinoConnection) -> dict:
+    """
+    Create connection
+    """
+    url = get_connection(connection).url
+    connection_copy = deepcopy(connection)
+
+    connection_dict = {
+        "driver": url.drivername,
+        "host": url.host,
+        "port": url.port,
+        "user": url.username,
+        "catalog": url.database,
+        "schema": url.query.get("schema"),
+    }
+    connection_dict.update(url.query)
+
+    if connection_copy.proxies:
+        connection_dict["http_session"] = connection_copy.proxies
+
+    if connection_copy.connectionArguments and connection_copy.connectionArguments.root:
+        connection_with_options_secrets(lambda: connection_copy)
+        connection_dict.update(get_connection_args_common(connection_copy))
+
+    if isinstance(connection_copy.authType, basicAuth.BasicAuth):
+        connection_dict["auth"] = {
+            "authType": "basic",
+            "username": connection.username,
+            "password": connection.authType.password.get_secret_value()
+            if connection.authType.password
+            else None,
+        }
+        connection_dict["http_scheme"] = "https"
+
+    elif isinstance(connection_copy.authType, jwtAuth.JwtAuth):
+        connection_dict["auth"] = {
+            "authType": "jwt",
+            "jwt": connection.authType.jwt.get_secret_value(),
+        }
+        connection_dict["http_scheme"] = "https"
+
+    elif hasattr(connection_copy.authType, "azureConfig"):
+        connection_dict["auth"] = {
+            "authType": "jwt",
+            "jwt": get_azure_token(connection_copy),
+        }
+        connection_dict["http_scheme"] = "https"
+
+    elif (
+        connection_copy.authType
+        == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
+    ):
+        connection_dict["auth"] = {"authType": "oauth2"}
+        connection_dict["http_scheme"] = "https"
+
+    return connection_dict
+
+
+def get_azure_token(connection: TrinoConnection) -> str:
+    """
+    Get the azure token for the trino connection
+    """
+    auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+
+    if not auth_type.azureConfig.scopes:
+        raise ValueError(
+            "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+        )
+
+    azure_client = AzureClient(auth_type.azureConfig).create_client()
+
+    return azure_client.get_token(*auth_type.azureConfig.scopes.split(",")).token
 
 
 def test_connection(
