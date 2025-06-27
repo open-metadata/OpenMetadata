@@ -809,9 +809,10 @@ class DbtSource(DbtServiceSource):
         try:
             entity_fqn = exposure_spec.meta["open_metadata_fqn"]
         except KeyError:
-            logger.warning(f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec.")
+            logger.warning(
+                f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec."
+            )
             return None
-
 
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
 
