@@ -1406,40 +1406,6 @@ public class SearchRepository {
     return new ArrayList<>();
   }
 
-  // Returns the count of entities matching the FQN prefix from ES
-  public int getEntityCountByFQNPrefixFromES(String entityFQN, String indexName) {
-    try {
-      String queryFilter =
-          String.format(
-              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
-              ReindexingUtil.escapeDoubleQuotes(entityFQN));
-
-      SearchRequest searchRequest =
-          new SearchRequest()
-              .withQuery("")
-              .withSize(0) // Only want the count
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-              .withFrom(0)
-              .withQueryFilter(queryFilter)
-              .withFetchSource(false)
-              .withTrackTotalHits(true)
-              .withDeleted(false);
-
-      Response response = search(searchRequest, null);
-      String json = (String) response.getEntity();
-      JsonNode hitsNode = JsonUtils.extractValue(json, "hits");
-      if (hitsNode != null && hitsNode.has("total")) {
-        JsonNode totalNode = hitsNode.get("total");
-        if (totalNode.has("value")) {
-          return totalNode.get("value").asInt();
-        }
-      }
-    } catch (Exception ex) {
-      LOG.error("Error while counting entities from ES for validation", ex);
-    }
-    return 0;
-  }
-
   public Set<String> getSearchEntities() {
     return new HashSet<>(entityIndexMap.keySet());
   }
@@ -1468,51 +1434,6 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
-  }
-
-  public SearchEntityRelationshipResult searchRelationshipsForSchema(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean includeDeleted)
-      throws IOException {
-
-    SearchEntityRelationshipResult finalResult =
-        new SearchEntityRelationshipResult()
-            .withNodes(new HashMap<>())
-            .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>());
-
-    int tableCount = getEntityCountByFQNPrefixFromES(fqn, Entity.TABLE);
-    List<EntityReference> tables = getEntitiesContainingFQNFromES(fqn, tableCount, Entity.TABLE);
-    if (tables != null) {
-      for (EntityReference tableRef : tables) {
-        SearchEntityRelationshipRequest tableRequest =
-            new SearchEntityRelationshipRequest()
-                .withFqn(tableRef.getFullyQualifiedName())
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
-                .withQueryFilter(queryFilter)
-                .withIncludeDeleted(includeDeleted);
-
-        SearchEntityRelationshipResult tableResult =
-            searchClient.searchEntityRelationship(tableRequest);
-
-        if (tableResult != null) {
-          if (tableResult.getNodes() != null) {
-            finalResult.getNodes().putAll(tableResult.getNodes());
-          }
-          if (tableResult.getUpstreamEdges() != null) {
-            finalResult.getUpstreamEdges().putAll(tableResult.getUpstreamEdges());
-          }
-          if (tableResult.getDownstreamEdges() != null) {
-            finalResult.getDownstreamEdges().putAll(tableResult.getDownstreamEdges());
-          }
-        }
-      }
-    }
-    return finalResult;
   }
 
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
