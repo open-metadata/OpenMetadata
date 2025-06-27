@@ -361,7 +361,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="h-full bg-white p-lg border-default border-radius-sm">
+                <div className="bg-white p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}

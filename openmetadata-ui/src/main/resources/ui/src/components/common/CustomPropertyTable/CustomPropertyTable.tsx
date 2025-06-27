@@ -315,7 +315,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="h-full custom-properties-card">
+    <div className="custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>
