@@ -16,7 +16,7 @@ For individual teams, tailor your policies according to the specific needs of bo
 You can create a policy with DatabaseService, Ingesiton Pipeline, and Workflow resources with All operations set to allow.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/policy1.png"
+src="/images/v1.9/how-to-guides/roles-policies/policy1.png"
 alt="Creating Roles & Policies in OpenMetadata"
 caption="Allow All Operations"
 /%}
@@ -34,7 +34,7 @@ Here is an example of a policy to enable it for Data Stewards using two rules.
 You can fine tune these permissions to suit your organizational needs.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/policy2.png"
+src="/images/v1.9/how-to-guides/roles-policies/policy2.png"
 alt="Roles for Data Steward"
 caption="Roles for Data Steward"
 /%}
@@ -46,7 +46,7 @@ To safeguard the data owned by a specific team, you can prevent external access.
 The above rule specifies to deny all operations if the logged-in user is not the owner, or if the logged-in user’s team is not the owner of an asset.
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/policy3.png"
+src="/images/v1.9/how-to-guides/roles-policies/policy3.png"
 alt="Team Only Policy"
 caption="Team Only Policy"
 /%}
@@ -56,7 +56,7 @@ caption="Team Only Policy"
 Just like the above policy, you can create a rule with complex conditions as shown below
 
 {% image
-src="/images/v1.9how-to-guides/roles-policies/policy4.png"
+src="/images/v1.9/how-to-guides/roles-policies/policy4.png"
 alt="PII Sensitive Tag Policy"
 caption="PII Sensitive Tag Policy"
 /%}

@@ -33,4 +33,4 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 docker compose --env-file ~/openmetadata_cognito.env up -d
 ```
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}
