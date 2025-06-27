@@ -273,6 +273,7 @@ const Table = <T extends Record<string, unknown>>(
                     className="custom-column-dropdown-menu text-primary"
                     menu={menu}
                     open={isDropdownVisible}
+                    overlayClassName="custom-column-dropdown-menu-overlay"
                     placement="bottomRight"
                     trigger={['click']}
                     onOpenChange={setIsDropdownVisible}>

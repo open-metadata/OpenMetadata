@@ -23,12 +23,20 @@
   box-sizing: border-box;
   height: 33px;
 
+  &:hover {
+    background-color: @trigger-btn-hover-bg;
+  }
+
   .draggable-menu-item-button {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
     padding: 0px;
+
+    &:hover {
+      background-color: transparent;
+    }
 
     .draggable-menu-item-button-label {
       font-size: 14px;
