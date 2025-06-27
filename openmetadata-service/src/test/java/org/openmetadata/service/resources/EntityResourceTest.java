@@ -390,6 +390,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
+  public static TestDefinition TEST_DEFINITION4;
+  public static TestDefinition TEST_DEFINITION5;
 
   public static DataInsightChart DI_CHART1;
 

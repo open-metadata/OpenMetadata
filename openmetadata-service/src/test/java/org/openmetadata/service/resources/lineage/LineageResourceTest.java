@@ -511,17 +511,19 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite6 =
         testSuiteResourceTest.createBasicTestSuite(createTestSuite6, ADMIN_AUTH_HEADERS);
 
-    MessageParser.EntityLink TABLE4_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(4).getFullyQualifiedName());
-    MessageParser.EntityLink TABLE6_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(6).getFullyQualifiedName());
+    MessageParser.EntityLink TABLE4_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(4).getFullyQualifiedName()));
+    MessageParser.EntityLink TABLE6_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(6).getFullyQualifiedName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
-        .withEntityLink(TABLE4_LINK.getLinkString())
+        .withEntityLink(TABLE4_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
-        .withEntityLink(TABLE6_LINK.getLinkString())
+        .withEntityLink(TABLE6_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);

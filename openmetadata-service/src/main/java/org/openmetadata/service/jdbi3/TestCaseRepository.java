@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -184,6 +185,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestDefinition(testDefinition.getEntityReference());
 
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
+    validateColumnTestCase(entityLink, testDefinition.getEntityType());
   }
 
   /*
@@ -275,6 +277,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               "Required parameter " + parameter.getName() + " is not passed in parameterValues");
         }
         validateParameterRule(parameter, values);
+      }
+    }
+  }
+
+  private void validateColumnTestCase(
+      EntityLink entityLink, TestDefinitionEntityType testDefinitionEntityType) {
+    if (testDefinitionEntityType.equals(TestDefinitionEntityType.COLUMN)) {
+      if (entityLink.getFieldName() == null) {
+        throw new IllegalArgumentException(
+            "Column test case must have a field name and an array field name in the entity link."
+                + " e.g. <#E::table::{entityFqn}::columns::{columnName}>");
+      }
+      // Validate that the field name is a valid column name
+      if (!entityLink.getFieldName().equals("columns")) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid field name '%s' for column test case. It should be 'columns'."
+                    + " e.g. <#E::table::{entityFqn}::columns::{columnName}>",
+                entityLink.getFieldName()));
       }
     }
   }
