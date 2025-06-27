@@ -58,11 +58,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
-<<<<<<< auto_tune_2
 @Slf4j
-=======
 @Repository(name = "IngestionPipelineRepository")
->>>>>>> main
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
 
   private static final String UPDATE_FIELDS =
