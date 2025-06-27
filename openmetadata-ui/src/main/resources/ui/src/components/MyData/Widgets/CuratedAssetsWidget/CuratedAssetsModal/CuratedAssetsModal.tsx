@@ -46,17 +46,19 @@ const CuratedAssetsModal = ({
       resourcesWithNonZeroCount: [],
     });
 
-  const selectedResource = Form.useWatch<Array<string>>(
-    [...APP_CONFIG_PATH, 'resources', 'type'],
-    form
-  );
+  const selectedResource = form.getFieldValue([
+    ...APP_CONFIG_PATH,
+    'resources',
+    'type',
+  ]);
 
-  const queryFilter = Form.useWatch<string>(
-    [...APP_CONFIG_PATH, 'resources', 'queryFilter'],
-    form
-  );
+  const queryFilter = form.getFieldValue([
+    ...APP_CONFIG_PATH,
+    'resources',
+    'queryFilter',
+  ]);
 
-  const title = Form.useWatch<string>(['title'], form);
+  const title = form.getFieldValue(['title']);
 
   const disableSave = useMemo(() => {
     return (
@@ -129,7 +131,8 @@ const CuratedAssetsModal = ({
         data-testid="cancelButton"
         key="cancelButton"
         type="ghost"
-        onClick={handleCancel}>
+        onClick={handleCancel}
+      >
         {t('label.cancel')}
       </Button>,
       <Button
@@ -137,7 +140,8 @@ const CuratedAssetsModal = ({
         disabled={disableSave}
         key="saveButton"
         type="primary"
-        onClick={() => form.submit()}>
+        onClick={() => form.submit()}
+      >
         {t('label.save')}
       </Button>,
     ],
@@ -180,7 +184,8 @@ const CuratedAssetsModal = ({
       open={isOpen}
       title={modalTitle}
       width={700}
-      onCancel={handleCancel}>
+      onCancel={handleCancel}
+    >
       <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
         <Form<IngestionPipeline>
           data-testid="curated-assets-form"
@@ -189,8 +194,13 @@ const CuratedAssetsModal = ({
           initialValues={initialValues}
           layout="vertical"
           validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}>
-          <Form.Item label="Widget's Title" name="title">
+          onFinish={handleSave}
+        >
+          <Form.Item
+            data-testid="title-input"
+            label="Widget's Title"
+            name="title"
+          >
             <Input
               autoFocus
               placeholder="Enter a title for your widget, Ex: Recommended Tables"
