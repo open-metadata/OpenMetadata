@@ -254,7 +254,7 @@ class DatabricksClient:
                 f"Error getting table lineage for job {job_id} due to {traceback.format_exc()}"
             )
             logger.error(exc)
-        return {}
+        return []
 
     def get_column_lineage(
         self, job_id: str, TableKey: Tuple[str, str]
@@ -269,7 +269,7 @@ class DatabricksClient:
                 f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}"
             )
             logger.error(exc)
-        return {}
+        return []
 
     def run_lineage_query(self, query: str) -> List[dict]:
         """

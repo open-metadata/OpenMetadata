@@ -392,3 +392,49 @@ class DatabricksPipelineTests(TestCase):
                         lineage_details.edge.lineageDetails.columnsLineage,
                         EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
                     )
+
+        with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    if fqn == "databricks_pipeline_test.11223344":
+                        return mock_pipeline
+                elif entity == Table:
+                    if "table_1" in fqn:
+                        return mock_source_table
+                    elif "table_2" in fqn:
+                        return mock_target_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.databricks.client, "get_table_lineage"
+            ) as mock_get_table_lineage:
+                mock_get_table_lineage.return_value = [
+                    {
+                        "source_table_full_name": "local_table.dev.table_1",
+                        "target_table_full_name": "local_table.dev.table_2",
+                    }
+                ]
+                with patch.object(
+                    self.databricks.client, "get_column_lineage"
+                ) as mock_get_column_lineage:
+                    mock_get_column_lineage.return_value = []  # No column lineage
+                    lineage_details = list(
+                        self.databricks.yield_pipeline_lineage_details(
+                            DataBrickPipelineDetails(**mock_data[0])
+                        )
+                    )[0].right
+                    self.assertEqual(
+                        lineage_details.edge.fromEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.toEntity.id,
+                        EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
+                    )
+                    self.assertEqual(
+                        lineage_details.edge.lineageDetails.columnsLineage,
+                        [],
+                    )

@@ -237,7 +237,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=pipeline_details,
+                    name=pipeline_details.job_id,
                     error=f"Failed to yield pipeline status: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
@@ -294,7 +294,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.warning(
                 f"No column lineage found for {from_entity.name} to {to_entity.name}"
             )
-        return processed_column_lineage or None
+        return processed_column_lineage or []
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DataBrickPipelineDetails
