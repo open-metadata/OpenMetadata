@@ -184,7 +184,8 @@ export const AdvancedAssetsFilterField = ({
         <Col
           className="automator-conditions-container"
           data-testid="automator-conditions-container"
-          span={24}>
+          span={24}
+        >
           <div className="ant-form-item-label advanced-filter-label">
             <label>{t('label.advance-filter')}</label>
           </div>

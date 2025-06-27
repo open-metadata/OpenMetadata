@@ -116,8 +116,10 @@ export const SelectAssetTypeField = ({
           fieldName: t('label.data-asset-plural'),
         }}
         name={[...APP_CONFIG_PATH, 'resources', 'type']}
-        style={{ marginBottom: 8 }}>
+        style={{ marginBottom: 8 }}
+      >
         <Select
+          data-testid="asset-type-select"
           options={resourcesOptions}
           placeholder={t('label.select-asset-type')}
           value={selectedResource}

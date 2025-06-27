@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Form } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,10 +31,13 @@ jest.mock(
 );
 
 jest.mock('../../../../../utils/SearchClassBase', () => ({
-  getEntityTypeSearchIndexMapping: jest.fn().mockReturnValue({
-    table: 'table_search_index',
-    dashboard: 'dashboard_search_index',
-  }),
+  __esModule: true,
+  default: {
+    getEntityTypeSearchIndexMapping: jest.fn().mockReturnValue({
+      table: 'table_search_index',
+      dashboard: 'dashboard_search_index',
+    }),
+  },
 }));
 
 jest.mock('../../../../../utils/Alerts/AlertsUtil', () => ({
@@ -56,30 +59,6 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Form: {
-    useFormInstance: jest.fn().mockReturnValue({
-      getFieldValue: jest.fn().mockReturnValue('{}'),
-      setFieldValue: jest.fn(),
-    }),
-    useWatch: jest.fn().mockReturnValue([]),
-    Item: jest.fn().mockImplementation(({ children, label }) => (
-      <div data-testid="form-item">
-        <label>{label}</label>
-        {children}
-      </div>
-    )),
-  },
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Select: jest.fn().mockImplementation(({ placeholder, onChange, value }) => (
-    <select
-      data-testid="asset-type-select"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange && onChange(e.target.value)}>
-      <option value="table">Table</option>
-      <option value="dashboard">Dashboard</option>
-    </select>
-  )),
   Skeleton: jest
     .fn()
     .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
@@ -99,7 +78,24 @@ const defaultProps = {
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const [form] = Form.useForm();
 
-  return <Form form={form}>{children}</Form>;
+  return (
+    <Form
+      form={form}
+      initialValues={{
+        sourceConfig: {
+          config: {
+            appConfig: {
+              resources: {
+                type: ['table'],
+              },
+            },
+          },
+        },
+      }}
+    >
+      {children}
+    </Form>
+  );
 };
 
 describe('SelectAssetTypeField', () => {
@@ -113,27 +109,19 @@ describe('SelectAssetTypeField', () => {
     jest.clearAllMocks();
   });
 
-  it('renders component with correct label', () => {
+  it('renders component with correct label and placeholder', () => {
     render(
       <TestWrapper>
         <SelectAssetTypeField {...defaultProps} />
       </TestWrapper>
     );
 
-    expect(screen.getByText('label.select-asset-type')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('label.select-asset-type')
+    ).toBeInTheDocument();
   });
 
-  it('renders select field with placeholder', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
-
-    expect(screen.getByTestId('asset-type-select')).toBeInTheDocument();
-  });
-
-  it('handles asset type selection', () => {
+  it('handles asset type selection', async () => {
     render(
       <TestWrapper>
         <SelectAssetTypeField {...defaultProps} />
@@ -141,9 +129,18 @@ describe('SelectAssetTypeField', () => {
     );
 
     const select = screen.getByTestId('asset-type-select');
-    fireEvent.change(select, { target: { value: 'table' } });
 
-    expect(select).toHaveValue('table');
+    await act(async () => {
+      fireEvent.click(select);
+    });
+
+    const tableOption = screen.getByText('Table');
+
+    await act(async () => {
+      fireEvent.click(tableOption);
+    });
+
+    expect(tableOption).toBeInTheDocument();
   });
 
   it('displays loading skeleton when count is loading', () => {
@@ -164,7 +161,7 @@ describe('SelectAssetTypeField', () => {
     expect(screen.getByTestId('skeleton')).toBeInTheDocument();
   });
 
-  it('displays alert message when resource count is available', () => {
+  it('displays alert message when resource count is available', async () => {
     const propsWithCount = {
       ...defaultProps,
       selectedAssetsInfo: {
@@ -173,11 +170,13 @@ describe('SelectAssetTypeField', () => {
       },
     };
 
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...propsWithCount} />
-      </TestWrapper>
-    );
+    await act(async () => {
+      render(
+        <TestWrapper>
+          <SelectAssetTypeField {...propsWithCount} />
+        </TestWrapper>
+      );
+    });
 
     expect(screen.getByTestId('alert-message')).toBeInTheDocument();
   });

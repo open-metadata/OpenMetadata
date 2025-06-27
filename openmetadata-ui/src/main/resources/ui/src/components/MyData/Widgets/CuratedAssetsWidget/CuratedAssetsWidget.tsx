@@ -275,7 +275,8 @@ const CuratedAssetsWidget = ({
                 content={menuItemsList}
                 placement="bottomRight"
                 showArrow={false}
-                trigger="click">
+                trigger="click"
+              >
                 <Tooltip title={t('label.more')}>
                   <Button
                     className="widget-header-icon"
@@ -304,19 +305,22 @@ const CuratedAssetsWidget = ({
           className="border-none"
           icon={
             <CuratedAssetsEmptyIcon
+              data-testid="curated-assets-empty-icon"
               height={SIZE.X_SMALL}
               width={SIZE.X_SMALL}
             />
           }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+        >
           <Typography.Paragraph>
             {t('message.no-curated-assets')}
           </Typography.Paragraph>
           <Button
             data-testid="add-curated-asset-button"
-            icon={<PlusOutlined />}
+            icon={<PlusOutlined data-testid="plus-icon" />}
             type="primary"
-            onClick={handleModalOpen}>
+            onClick={handleModalOpen}
+          >
             {t('label.create')}
           </Button>
         </ErrorPlaceHolder>
@@ -331,9 +335,14 @@ const CuratedAssetsWidget = ({
         <ErrorPlaceHolder
           className="border-none"
           icon={
-            <CuratedAssetsNoDataIcon height={SIZE.LARGE} width={SIZE.LARGE} />
+            <CuratedAssetsNoDataIcon
+              data-testid="curated-assets-no-data-icon"
+              height={SIZE.LARGE}
+              width={SIZE.LARGE}
+            />
           }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+        >
           <Typography.Paragraph>
             {t('message.curated-assets-no-data-message')}
           </Typography.Paragraph>
@@ -346,19 +355,18 @@ const CuratedAssetsWidget = ({
   const renderFooter = useMemo(() => {
     return (
       <Row className="curated-assets-footer">
-        {/* <div className="widget-footer"> */}
         <Divider className="mb-0 mt-0" />
         <Button
           className="text-primary hover:underline w-full  footer-view-more-button"
           href={queryURL}
-          type="link">
+          type="link"
+        >
           {t('label.view-more-count', {
             count: viewMoreCount as unknown as number,
           })}
 
-          <ArrowRightOutlined />
+          <ArrowRightOutlined data-testid="arrow-right-icon" />
         </Button>
-        {/* </div> */}
       </Row>
     );
   }, [t, handleModalOpen, viewMoreCount, queryURL]);
@@ -371,13 +379,15 @@ const CuratedAssetsWidget = ({
               <div
                 className="right-panel-list-item flex items-center justify-between"
                 data-testid={`Recently Viewed-${getEntityName(item)}`}
-                key={item.id}>
+                key={item.id}
+              >
                 <div className="flex items-center">
                   <Link
                     to={entityUtilClassBase.getEntityLink(
                       item.type || '',
                       item.fullyQualifiedName as string
-                    )}>
+                    )}
+                  >
                     <Button
                       className="entity-button flex-center p-0 m--ml-1"
                       icon={
@@ -390,16 +400,19 @@ const CuratedAssetsWidget = ({
                         />
                       }
                       title={getEntityName(item as unknown as EntityReference)}
-                      type="text">
+                      type="text"
+                    >
                       <div className="flex flex-col">
                         <Typography.Text
                           className="w-72 text-left text-sm"
-                          ellipsis={{ tooltip: true }}>
+                          ellipsis={{ tooltip: true }}
+                        >
                           {get(item, 'service.displayName', '')}
                         </Typography.Text>
                         <Typography.Text
                           className="w-72 text-left text-sm"
-                          ellipsis={{ tooltip: true }}>
+                          ellipsis={{ tooltip: true }}
+                        >
                           {getEntityName(item)}
                         </Typography.Text>
                       </div>
@@ -418,10 +431,12 @@ const CuratedAssetsWidget = ({
     <>
       <Card
         className="curated-assets-widget-container card-widget"
-        data-testid="curated-assets-widget">
+        data-testid="curated-assets-widget"
+      >
         <EntityListSkeleton
           dataLength={data.length !== 0 ? data.length : 5}
-          loading={Boolean(isLoading)}>
+          loading={Boolean(isLoading)}
+        >
           <>
             {renderHeader}
             {isEmpty(data) && isEmpty(selectedResource)

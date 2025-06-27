@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Form } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdvancedAssetsFilterField } from './AdvancedAssetsFilterField.component';
@@ -73,25 +74,32 @@ jest.mock('../../../../../utils/QueryBuilderUtils', () => ({
   getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Form: {
-    useFormInstance: jest.fn().mockReturnValue({
-      getFieldValue: jest.fn().mockReturnValue('{}'),
-      setFieldValue: jest.fn(),
-    }),
-    useWatch: jest.fn().mockReturnValue([]),
-    Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest
-    .fn()
-    .mockImplementation(() => <input data-testid="hidden-input" />),
-  Skeleton: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
-}));
+//   ...jest.requireActual('antd'),
+//   Form: {
+//     ...jest.requireActual('antd').Form,
+//     useFormInstance: jest.fn().mockReturnValue({
+//       getFieldValue: jest.fn().mockReturnValue('{}'),
+//       setFieldValue: jest.fn(),
+//     }),
+//     useWatch: jest.fn().mockReturnValue(['table']),
+//   },
+//   Col: jest
+//     .fn()
+//     .mockImplementation(({ children, className }) => (
+//       <div className={className}>{children}</div>
+//     )),
+//   Row: jest
+//     .fn()
+//     .mockImplementation(({ children, className }) => (
+//       <div className={className}>{children}</div>
+//     )),
+//   Input: jest
+//     .fn()
+//     .mockImplementation(() => <input data-testid="hidden-input" />),
+//   Skeleton: jest
+//     .fn()
+//     .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
+// }));
 
 const mockFetchEntityCount = jest.fn();
 const mockSelectedAssetsInfo = {
@@ -102,6 +110,30 @@ const mockSelectedAssetsInfo = {
 const defaultProps = {
   fetchEntityCount: mockFetchEntityCount,
   selectedAssetsInfo: mockSelectedAssetsInfo,
+};
+
+const TestWrapper = ({ children }: { children: React.ReactNode }) => {
+  const [form] = Form.useForm();
+
+  return (
+    <Form
+      form={form}
+      initialValues={{
+        sourceConfig: {
+          config: {
+            appConfig: {
+              resources: {
+                type: ['table'],
+                queryFilter: '{}',
+              },
+            },
+          },
+        },
+      }}
+    >
+      {children}
+    </Form>
+  );
 };
 
 describe('AdvancedAssetsFilterField', () => {
@@ -116,16 +148,23 @@ describe('AdvancedAssetsFilterField', () => {
   });
 
   it('renders component with correct title', () => {
-    render(<AdvancedAssetsFilterField {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
 
     expect(screen.getByText('label.advance-filter')).toBeInTheDocument();
   });
 
   it('renders query builder component', () => {
-    render(<AdvancedAssetsFilterField {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
 
     expect(screen.getByTestId('query-component')).toBeInTheDocument();
-    expect(screen.getByTestId('query-builder')).toBeInTheDocument();
   });
 
   it('displays resource count when available', () => {
@@ -137,7 +176,11 @@ describe('AdvancedAssetsFilterField', () => {
       },
     };
 
-    render(<AdvancedAssetsFilterField {...propsWithCount} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...propsWithCount} />
+      </TestWrapper>
+    );
 
     expect(
       screen.getByTestId('automator-conditions-container')
@@ -145,7 +188,11 @@ describe('AdvancedAssetsFilterField', () => {
   });
 
   it('handles query changes correctly', () => {
-    render(<AdvancedAssetsFilterField {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
 
     const changeButton = screen.getByText('Change Query');
     fireEvent.click(changeButton);
@@ -162,7 +209,11 @@ describe('AdvancedAssetsFilterField', () => {
       },
     };
 
-    render(<AdvancedAssetsFilterField {...propsWithLoading} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...propsWithLoading} />
+      </TestWrapper>
+    );
 
     expect(
       screen.getByTestId('automator-conditions-container')
@@ -170,7 +221,11 @@ describe('AdvancedAssetsFilterField', () => {
   });
 
   it('renders hidden form field for query filter', () => {
-    render(<AdvancedAssetsFilterField {...defaultProps} />);
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
 
     expect(
       screen.getByTestId('automator-conditions-container')

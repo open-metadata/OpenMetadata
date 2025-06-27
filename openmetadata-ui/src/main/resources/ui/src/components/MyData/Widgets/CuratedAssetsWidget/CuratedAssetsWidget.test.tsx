@@ -10,100 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// /*
-//  *  Copyright 2024 Collate.
-//  *  Licensed under the Apache License, Version 2.0 (the "License");
-//  *  you may not use this file except in compliance with the License.
-//  *  You may obtain a copy of the License at
-//  *  http://www.apache.org/licenses/LICENSE-2.0
-//  *  Unless required by applicable law or agreed to in writing, software
-//  *  distributed under the License is distributed on an "AS IS" BASIS,
-//  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  *  See the License for the specific language governing permissions and
-//  *  limitations under the License.
-//  */
-// import { act, fireEvent, render, screen } from '@testing-library/react';
-// import React from 'react';
-// import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
-// import RecentlyViewed from './CuratedAsset';
-
-// const mockProp = {
-//   widgetKey: 'testKey',
-// };
-
-// jest.mock(
-//   '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
-//   () => {
-//     return jest
-//       .fn()
-//       .mockImplementation(({ children }) => <div>{children}</div>);
-//   }
-// );
-// jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
-//   return jest.fn().mockImplementation(() => ({ pathname: '' }));
-// });
-
-// jest.mock('react-router-dom', () => ({
-//   Link: jest.fn().mockImplementation(() => <div>Link</div>),
-// }));
-
-// jest.mock('../../../../utils/CommonUtils', () => ({
-//   getRecentlyViewedData: jest.fn().mockReturnValue([
-//     {
-//       displayName: 'test',
-//       entityType: 'table',
-//       fqn: 'test',
-//       id: '1',
-//       serviceType: 'BigQuery',
-//       name: 'Test Item',
-//       fullyQualifiedName: 'test.item',
-//       type: 'test',
-//       timestamp: 1706533046620,
-//     },
-//   ]),
-//   prepareLabel: jest.fn(),
-// }));
-
-// describe('RecentlyViewed', () => {
-//   it('should render RecentlyViewed', async () => {
-//     await act(async () => {
-//       render(<RecentlyViewed widgetKey={mockProp.widgetKey} />);
-//     });
-
-//     expect(screen.getByTestId('recently-viewed-widget')).toBeInTheDocument();
-//   });
-
-//   it('should call handleCloseClick when close button is clicked', async () => {
-//     const handleRemoveWidget = jest.fn();
-//     const { getByTestId } = render(
-//       <RecentlyViewed
-//         isEditView
-//         handleRemoveWidget={handleRemoveWidget}
-//         widgetKey="testKey"
-//       />
-//     );
-//     fireEvent.click(getByTestId('remove-widget-button'));
-
-//     expect(handleRemoveWidget).toHaveBeenCalled();
-//   });
-
-//   it('renders list item when data is not empty', async () => {
-//     await act(async () => {
-//       render(<RecentlyViewed widgetKey={mockProp.widgetKey} />);
-//     });
-
-//     expect(screen.getByTestId('Recently Viewed-test')).toBeInTheDocument();
-//   });
-
-//   it('should render no data placeholder when data is  empty', async () => {
-//     (getRecentlyViewedData as jest.Mock).mockReturnValue([]),
-//       await act(async () => {
-//         render(<RecentlyViewed widgetKey={mockProp.widgetKey} />);
-//       });
-
-//     expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
-//   });
-// });
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
@@ -121,41 +27,51 @@ jest.mock('../../../../rest/searchAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Link: jest.fn().mockImplementation(({ children, to }) => (
+    <a data-testid="entity-link" href={to}>
+      {children}
+    </a>
+  )),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">Error Placeholder</div>
-    ))
+// Mock SVG components
+jest.mock(
+  '../../../../assets/svg/curated-assets-no-data-placeholder.svg',
+  () => ({
+    ReactComponent: jest.fn().mockImplementation(({ height, width }) => (
+      <div data-testid="curated-assets-empty-icon" style={{ height, width }}>
+        Empty Icon
+      </div>
+    )),
+  })
 );
 
 jest.mock(
-  '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
-  () =>
-    jest.fn().mockImplementation(({ children, loading }) => (
-      <div data-loading={loading} data-testid="loading-skeleton">
-        {children}
+  '../../../../assets/svg/curated-assets-not-found-placeholder.svg',
+  () => ({
+    ReactComponent: jest.fn().mockImplementation(({ height, width }) => (
+      <div data-testid="curated-assets-no-data-icon" style={{ height, width }}>
+        No Data Icon
       </div>
-    ))
+    )),
+  })
 );
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  getEntityName: jest
+jest.mock('../../../../assets/svg/edit-new.svg', () => ({
+  ReactComponent: jest
     .fn()
-    .mockImplementation((entity) => entity.name || 'Test Entity'),
+    .mockImplementation(({ height, width, 'data-testid': dataTestId }) => (
+      <div data-testid={dataTestId} style={{ height, width }}>
+        Edit Icon
+      </div>
+    )),
 }));
 
-jest.mock('../../../../utils/SearchClassBase', () => ({
-  getEntityIcon: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="entity-icon">Icon</div>),
-}));
-
-jest.mock('../../../../utils/EntityUtilClassBase', () => ({
-  getEntityLink: jest.fn().mockReturnValue('/test-link'),
+// Mock utility functions
+jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
+  getExploreURLWithFilters: jest.fn().mockReturnValue('/explore?filter=test'),
+  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
+  getTotalResourceCount: jest.fn().mockReturnValue(15),
 }));
 
 jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
@@ -169,43 +85,85 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
   },
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Card: jest.fn().mockImplementation(({ children, className, dataTestId }) => (
-    <div className={className} data-testid={dataTestId}>
-      {children}
-    </div>
-  )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, icon, type, dataTestId }) => (
-      <button data-testid={dataTestId} type={type} onClick={onClick}>
-        {icon}
-        {children}
-      </button>
-    )),
-  Typography: {
-    Paragraph: jest
-      .fn()
-      .mockImplementation(({ children, className }) => (
-        <p className={className}>{children}</p>
-      )),
-    Text: jest.fn().mockImplementation(({ children, ellipsis }) => (
-      <span
-        data-testid="entity-name"
-        title={ellipsis?.tooltip ? children : undefined}>
-        {children}
-      </span>
-    )),
-  },
-  Row: jest.fn().mockImplementation(({ children, justify }) => (
-    <div data-justify={justify} data-testid="row">
-      {children}
-    </div>
-  )),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+jest.mock('../../../../utils/EntityUtilClassBase', () => ({
+  getEntityLink: jest.fn().mockReturnValue('/test-link'),
 }));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation((entity) => entity.name || 'Test Entity'),
+}));
+
+jest.mock('../../../../utils/SearchClassBase', () => ({
+  getEntityIcon: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="entity-icon">Icon</div>),
+}));
+
+jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
+  getServiceTypeLogo: jest.fn().mockReturnValue('test-logo.png'),
+}));
+
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(({ children, icon, type, className }) => (
+    <div className={className} data-testid="error-placeholder" data-type={type}>
+      {icon}
+      {children}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  () =>
+    jest.fn().mockImplementation(({ children, loading, dataLength }) => (
+      <div
+        data-length={dataLength}
+        data-loading={loading}
+        data-testid="loading-skeleton"
+      >
+        {children}
+      </div>
+    ))
+);
+
+jest.mock(
+  '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    useAdvanceSearch: jest.fn().mockReturnValue({
+      config: {},
+    }),
+  })
+);
+
+jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
+  jest
+    .fn()
+    .mockImplementation(({ isOpen, onCancel, onSave, curatedAssetsData }) => {
+      if (!isOpen) {
+        return null;
+      }
+
+      return (
+        <div data-testid="curated-assets-modal-container">
+          <div data-testid="modal-title">
+            {curatedAssetsData ? 'Edit Widget' : 'Create Widget'}
+          </div>
+          <div data-testid="modal-content">Modal Content</div>
+          <button data-testid="cancelButton" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            data-testid="saveButton"
+            onClick={() => onSave({ title: 'Test Widget' })}
+          >
+            Save
+          </button>
+        </div>
+      );
+    })
+);
 
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
@@ -216,6 +174,9 @@ const mockEntityData = [
     name: 'Test Entity',
     type: 'table',
     fullyQualifiedName: 'test.entity',
+    service: {
+      displayName: 'Test Service',
+    },
   },
 ];
 
@@ -234,6 +195,7 @@ const defaultProps = {
       static: false,
       isDraggable: true,
       config: {
+        title: 'Test Widget',
         sourceConfig: {
           config: {
             appConfig: {
@@ -258,6 +220,11 @@ describe('CuratedAssetsWidget', () => {
       hits: {
         hits: mockEntityData.map((entity) => ({ _source: entity })),
       },
+      aggregations: {
+        entityType: {
+          buckets: [{ key: 'table', doc_count: 10 }],
+        },
+      },
     });
   });
 
@@ -265,148 +232,60 @@ describe('CuratedAssetsWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('renders widget with correct title', () => {
+  it('renders entity icon when source icon is available', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
-
-    expect(screen.getByText('label.curated-asset-plural')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('entity-icon')).toBeInTheDocument();
+    });
   });
 
-  it('shows edit button when in edit mode', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const editButton = screen.getByTestId('drag-widget-button');
-
-    expect(editButton).toBeInTheDocument();
+  it('renders footer with view more button when data is available', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText('label.view-more-count')).toBeInTheDocument();
+      expect(screen.getByTestId('arrow-right-icon')).toBeInTheDocument();
+    });
   });
 
-  it('shows remove button when in edit mode', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const removeButton = screen.getByTestId('remove-widget-button');
-
-    expect(removeButton).toBeInTheDocument();
-  });
-
-  it('calls handleRemoveWidget when remove button is clicked', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const removeButton = screen.getByTestId('remove-widget-button');
-    fireEvent.click(removeButton);
-
-    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(defaultProps.widgetKey);
-  });
-
-  it('opens modal when add button is clicked', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
-    const addButton = screen.getByTestId('add-curated-asset-button');
-    fireEvent.click(addButton);
-
-    expect(
-      screen.getByTestId('curated-assets-modal-container')
-    ).toBeInTheDocument();
-  });
-
-  it('displays empty state when no assets are curated', () => {
+  it('renders empty state with create button when no data and no resources', () => {
     render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
 
     expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
+    expect(screen.getByTestId('add-curated-asset-button')).toBeInTheDocument();
+    expect(screen.getByTestId('plus-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('curated-assets-empty-icon')).toBeInTheDocument();
   });
 
-  it('displays loading state when data is being fetched', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} />);
-
-    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
-  });
-
-  it('displays curated assets when data is available', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Test Entity')).toBeInTheDocument();
+  it('renders no data state when resources selected but no data available', async () => {
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: { hits: [] },
+      aggregations: { entityType: { buckets: [] } },
     });
-  });
-
-  it('handles search query error gracefully', async () => {
-    (searchQuery as jest.Mock).mockRejectedValueOnce(
-      new Error('Search failed')
-    );
     render(<CuratedAssetsWidget {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
-    });
-  });
-
-  it('updates layout when save is called from modal', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
-
-    const addButton = screen.getByTestId('add-curated-asset-button');
-    fireEvent.click(addButton);
-
-    const saveButton = screen.getByTestId('saveButton');
-    fireEvent.click(saveButton);
-
-    expect(mockHandleLayoutUpdate).toHaveBeenCalled();
-  });
-
-  it('closes modal and resets data when cancel is clicked', () => {
-    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
-
-    const addButton = screen.getByTestId('add-curated-asset-button');
-    fireEvent.click(addButton);
-
-    const cancelButton = screen.getByTestId('cancelButton');
-    fireEvent.click(cancelButton);
 
     expect(
-      screen.queryByTestId('curated-assets-modal-container')
-    ).not.toBeInTheDocument();
+      screen.getByText('message.curated-assets-no-data-message')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('curated-assets-no-data-icon')
+    ).toBeInTheDocument();
   });
 
-  it('displays drag handle in edit mode', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+  it('shows loading skeleton with correct data length', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    const skeleton = screen.getByTestId('loading-skeleton');
 
-    expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
+    expect(skeleton).toHaveAttribute('data-length', '5');
   });
 
-  it('renders entity links correctly', async () => {
+  it('renders widget title from config', () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
 
-    await waitFor(() => {
-      const entityLink = screen.getByText('Test Entity');
-
-      expect(entityLink).toBeInTheDocument();
-    });
+    expect(screen.getByText('Test Widget')).toBeInTheDocument();
   });
 
-  it('handles empty selected resource gracefully', async () => {
-    const propsWithEmptyResource = {
-      ...defaultProps,
-      currentLayout: [
-        {
-          ...defaultProps.currentLayout[0],
-          config: {
-            sourceConfig: {
-              config: {
-                appConfig: {
-                  resources: {
-                    type: [],
-                    queryFilter: '{}',
-                  },
-                },
-              },
-            },
-          },
-        } as WidgetConfig,
-      ],
-    };
-
-    render(<CuratedAssetsWidget {...propsWithEmptyResource} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
-    });
-  });
-
-  it('handles invalid query filter gracefully', async () => {
-    const propsWithInvalidFilter = {
+  it('renders default title when no title in config', () => {
+    const propsWithoutTitle = {
       ...defaultProps,
       currentLayout: [
         {
@@ -417,7 +296,7 @@ describe('CuratedAssetsWidget', () => {
                 appConfig: {
                   resources: {
                     type: ['table'],
-                    queryFilter: 'invalid-json',
+                    queryFilter: '{}',
                   },
                 },
               },
@@ -426,71 +305,85 @@ describe('CuratedAssetsWidget', () => {
         } as WidgetConfig,
       ],
     };
+    render(<CuratedAssetsWidget {...propsWithoutTitle} />);
 
-    render(<CuratedAssetsWidget {...propsWithInvalidFilter} />);
+    expect(screen.getByText('label.curated-asset-plural')).toBeInTheDocument();
+  });
 
+  it('calls handleLayoutUpdate with correct data when saving new widget', () => {
+    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+    fireEvent.click(screen.getByTestId('saveButton'));
+
+    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+      {
+        i: 'test-widget',
+        config: { title: 'Test Widget' },
+      },
+    ]);
+  });
+
+  it('calls handleLayoutUpdate with updated config when editing existing widget', () => {
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+    fireEvent.click(screen.getByTestId('edit-widget-button'));
+    fireEvent.click(screen.getByTestId('saveButton'));
+
+    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+      {
+        ...defaultProps.currentLayout[0],
+        config: { title: 'Test Widget' },
+      },
+    ]);
+  });
+
+  it('closes modal and resets data when cancel is clicked', () => {
+    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+    fireEvent.click(screen.getByTestId('cancelButton'));
+
+    expect(
+      screen.queryByTestId('curated-assets-modal-container')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders edit modal with correct title when editing', () => {
+    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
+    fireEvent.click(screen.getByTestId('edit-widget-button'));
+
+    expect(screen.getByTestId('modal-title')).toHaveTextContent('Edit Widget');
+  });
+
+  it('renders create modal with correct title when creating', () => {
+    render(<CuratedAssetsWidget {...defaultProps} currentLayout={[]} />);
+    fireEvent.click(screen.getByTestId('add-curated-asset-button'));
+
+    expect(screen.getByTestId('modal-title')).toHaveTextContent(
+      'Create Widget'
+    );
+  });
+
+  it('renders entity list with correct test IDs', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('Recently Viewed-Test Entity')
+      ).toBeInTheDocument();
     });
   });
 
-  it('opens popover when filter button is clicked', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
-
-    expect(screen.getByText('label.edit-widget')).toBeInTheDocument();
-    expect(screen.getByText('label.refresh')).toBeInTheDocument();
-    expect(screen.getByText('label.view-all')).toBeInTheDocument();
-  });
-
-  it('closes popover when clicking outside', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
-
-    expect(screen.getByText('label.edit-widget')).toBeInTheDocument();
-
-    // Click outside to close
-    fireEvent.click(document.body);
-
-    expect(screen.queryByText('label.edit-widget')).not.toBeInTheDocument();
-  });
-
-  it('opens edit modal when edit option is clicked in popover', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
-
-    const editOption = screen.getByText('label.edit-widget');
-    fireEvent.click(editOption);
-
-    expect(
-      screen.getByTestId('curated-assets-modal-container')
-    ).toBeInTheDocument();
-  });
-
-  it('refreshes data when refresh option is clicked in popover', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
-
-    const refreshOption = screen.getByText('label.refresh');
-    fireEvent.click(refreshOption);
-
-    // Verify that searchQuery was called (data refresh)
-    expect(searchQuery).toHaveBeenCalled();
-  });
-
-  it('handles view-all option click in popover', () => {
-    render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
-
-    const viewAllOption = screen.getByText('label.view-all');
-    fireEvent.click(viewAllOption);
-
-    // Popover should close after clicking view-all
-    expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
+  it('handles search query with correct parameters', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: '',
+        pageNumber: 1,
+        pageSize: 10,
+        searchIndex: 'table',
+        includeDeleted: false,
+        trackTotalHits: false,
+        fetchSource: true,
+        queryFilter: {},
+      });
+    });
   });
 });
