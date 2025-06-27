@@ -23,7 +23,7 @@ DBT_RUN_RESULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 
-REQUIRED_EXPOSURE_KEYS = ["label", "type", "resource_type", "sources"]
+REQUIRED_EXPOSURE_KEYS = ["name", "meta", "type", "resource_type", "sources"]
 
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]

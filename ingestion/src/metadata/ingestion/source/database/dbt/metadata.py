@@ -780,12 +780,14 @@ class DbtSource(DbtServiceSource):
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
 
-        The implementation assumes that label provided in DBT exposures object matches to FQN of OpenMetadata object:
-        exposures. We cannot use name field for this as dbt only allows letters, digits and underscores in this field.
+        The implementation assumes that value of meta.open_metadata_fqn provided in DBT exposures object matches
+        to FQN of OpenMetadata object.
 
         ```yaml
           - name: orders_dashboard
-            label: sample_looker.orders  # OpenMetadata entity FullyQualifiedName
+            label: orders
+            meta:
+              open_metadata_fqn: sample_looker.orders  # OpenMetadata entity FullyQualifiedName
             type: dashboard
             maturity: high
             url: http://localhost:808/looker/dashboard/8/
@@ -797,16 +799,19 @@ class DbtSource(DbtServiceSource):
         ```
         """
         exposure_type = exposure_spec.type.value
-        entity_type = ExposureTypeMap.get(exposure_type, {}).get(
-            "entity_type"
-        )
+        entity_type = ExposureTypeMap.get(exposure_type, {}).get("entity_type")
 
         if not entity_type:
             logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
 
             return None
 
-        entity_fqn = exposure_spec.label
+        try:
+            entity_fqn = exposure_spec.meta["open_metadata_fqn"]
+        except KeyError:
+            logger.warning(f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec.")
+            return None
+
 
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
 
