@@ -13,6 +13,10 @@ on:
         default: "main"
         type: string
 
+concurrency:
+  group: typescript-generation-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   generate-types:
     runs-on: ubuntu-latest
@@ -63,7 +67,7 @@ jobs:
         run: |
           git add openmetadata-ui/src/main/resources/ui/src/generated/
           git commit -m "Update generated TypeScript types"
-          git push
+          git push --force-with-lease
 
       - name: Create PR comment about auto-update
         if: steps.git-check.outputs.changes == 'true' && github.event_name == 'pull_request'
