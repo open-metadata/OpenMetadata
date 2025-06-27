@@ -154,3 +154,34 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
     ).toBeGreaterThan(0);
   });
 };
+
+export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.getByTestId('sorting-dropdown-label').click();
+  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+    state: 'visible',
+  });
+  await page.getByRole('menuitem', { name: sortOrder }).click();
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortOrder
+  );
+
+  await page.getByTestId('sort-order-button').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyEntitiesAreSorted = async (page: Page) => {
+  const entityNames = await page.$$eval(
+    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
+    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
+  );
+
+  // Helper to remove punctuation and normalize case
+  const normalize = (str: string) => str.replace(/[^\w\s]/gi, '').toLowerCase();
+
+  const sortedEntityNames = [...entityNames].sort((a, b) =>
+    normalize(a).localeCompare(normalize(b))
+  );
+
+  expect(entityNames).toEqual(sortedEntityNames);
+};
