@@ -425,7 +425,7 @@ export interface TestCaseParameterValue {
  *
  * Remove Data Products Action Type.
  *
- * Lineage propagation action type
+ * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
