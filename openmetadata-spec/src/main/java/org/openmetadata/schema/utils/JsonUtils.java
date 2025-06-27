@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.util;
-
-import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
+package org.openmetadata.schema.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,11 +47,19 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -62,8 +68,13 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
@@ -73,10 +84,11 @@ import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
-import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.schema.exception.JsonParsingException;
 
 @Slf4j
 public final class JsonUtils {
+  public static final DateFormat DATE_TIME_FORMAT;
   public static final String FIELD_TYPE_ANNOTATION = "@om-field-type";
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
@@ -87,6 +99,12 @@ public final class JsonUtils {
   private static final JsonSchemaFactory schemaFactory =
       JsonSchemaFactory.getInstance(VersionFlag.V7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+
+  static {
+    // Quoted "Z" to indicate UTC, no timezone offset
+    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+    DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -129,7 +147,7 @@ public final class JsonUtils {
           ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
           : OBJECT_MAPPER.writeValueAsString(o);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -143,7 +161,7 @@ public final class JsonUtils {
           JsonInclude.Include.NON_NULL); // Ignore null values
       return objectMapperIgnoreNull.writeValueAsString(o);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -186,7 +204,7 @@ public final class JsonUtils {
     try {
       return (T) readValue(json, Class.forName(clazzName));
     } catch (ClassNotFoundException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -207,7 +225,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER.readValue(json, clz);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -218,7 +236,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER_LENIENT.readValue(json, clz);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -229,7 +247,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER.readValue(json, valueTypeRef);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -251,7 +269,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -403,9 +421,9 @@ public final class JsonUtils {
     List<Type> types = new ArrayList<>();
     List<String> jsonSchemas;
     try {
-      jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/type/.*\\.json$");
+      jsonSchemas = getJsonDataResources(Pattern.compile(".*json/schema/type/.*\\.json$"));
     } catch (IOException e) {
-      throw new UnhandledServerException("Failed to read JSON resources at .*json/schema/type", e);
+      throw new JsonParsingException("Failed to read JSON resources at .*json/schema/type", e);
     }
     for (String jsonSchema : jsonSchemas) {
       try {
@@ -417,10 +435,9 @@ public final class JsonUtils {
 
     // Get Entity Types
     try {
-      jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/entity/.*\\.json$");
+      jsonSchemas = getJsonDataResources(Pattern.compile(".*json/schema/entity/.*\\.json$"));
     } catch (IOException e) {
-      throw new UnhandledServerException(
-          "Failed to read JSON resources at .*json/schema/entity", e);
+      throw new JsonParsingException("Failed to read JSON resources at .*json/schema/entity", e);
     }
     for (String jsonSchema : jsonSchemas) {
       try {
@@ -447,7 +464,7 @@ public final class JsonUtils {
               Objects.requireNonNull(
                   JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
     } catch (IOException e) {
-      throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+      throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
     if (node.get("definitions") == null) {
       return Collections.emptyList();
@@ -490,7 +507,7 @@ public final class JsonUtils {
               Objects.requireNonNull(
                   JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
     } catch (IOException e) {
-      throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+      throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
     if (!JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)) {
       return null;
@@ -526,7 +543,7 @@ public final class JsonUtils {
     try {
       return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -537,7 +554,7 @@ public final class JsonUtils {
       jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
       return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -554,7 +571,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER.readTree(extensionJson);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -562,7 +579,7 @@ public final class JsonUtils {
     try {
       return OBJECT_MAPPER.treeToValue(jsonNode, classType);
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -584,7 +601,7 @@ public final class JsonUtils {
           .writeValueAsString(obj1sorted)
           .equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
     } catch (JsonProcessingException e) {
-      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+      throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
   }
 
@@ -714,5 +731,60 @@ public final class JsonUtils {
       JsonArray patchArray = reader.readArray();
       return Json.createPatch(patchArray);
     }
+  }
+
+  public static List<String> getJsonDataResources(Pattern pattern) throws IOException {
+    ArrayList<String> resources = new ArrayList<>();
+    String classPath = System.getProperty("java.class.path", ".");
+    Set<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(
+                jarName ->
+                    Stream.of("openmetadata", "collate").anyMatch(jarName.toLowerCase()::contains))
+            .collect(Collectors.toSet());
+
+    for (String element : classPathElements) {
+      File file = new File(element);
+      resources.addAll(
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
+    }
+    return resources;
+  }
+
+  private static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
+    final Path root = Path.of(file.getPath());
+    try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
+      return paths
+          .filter(Files::isRegularFile)
+          .filter(path -> pattern.matcher(path.toString()).matches())
+          .map(
+              path -> {
+                String relativePath = root.relativize(path).toString();
+                LOG.debug("Adding directory file {}", relativePath);
+                return relativePath;
+              })
+          .collect(Collectors.toSet());
+    }
+  }
+
+  private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    LOG.debug("Adding from file {}", file);
+    ArrayList<String> retval = new ArrayList<>();
+    try (ZipFile zf = new ZipFile(file)) {
+      Enumeration<? extends ZipEntry> e = zf.entries();
+      while (e.hasMoreElements()) {
+        String fileName = e.nextElement().getName();
+        if (pattern.matcher(fileName).matches()) {
+          retval.add(fileName);
+          LOG.debug("Adding file from jar {}", fileName);
+        }
+      }
+    } catch (Exception ignored) {
+      // Ignored exception
+    }
+    return retval;
   }
 }

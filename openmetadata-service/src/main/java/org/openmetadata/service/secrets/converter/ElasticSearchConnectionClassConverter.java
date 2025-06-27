@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth;
 import org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `ElasticSearchConnection` object. */
 public class ElasticSearchConnectionClassConverter extends ClassConverter {
