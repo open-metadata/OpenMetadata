@@ -2131,7 +2131,10 @@
     "team-no-asset": "Votre équipe n'a pas d'actifs de données",
     "test-case-schedule-description": "Les tests de quelité de données peuvent être planifiés pour tourner à la fréquence désirée. La timezone est en UTC.",
     "test-connection-cannot-be-triggered": "Le test de connexion ne peut pas être déclenché.",
-    "test-connection-taking-too-long": "Le test de connexion prend trop de temps. Veuillez réessayer.",
+    "test-connection-taking-too-long": {
+      "default": "Veuillez vérifier que {{service_type}} est configuré pour autoriser les connexions",
+      "withIp": " depuis {{ip}}"
+    },
     "test-your-connection-before-creating-service": "Testez la connexion avant de créer le service",
     "testing-your-connection-may-take-two-minutes": "Le test de votre connexion peut prendre jusqu'à 2 minutes",
     "this-action-is-not-allowed-for-deleted-entities": "Cette action n'est pas permise pour les entités supprimées.",
