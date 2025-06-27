@@ -28,3 +28,16 @@ export const EXPECTED_BUCKETS = [
   'searchIndex',
   'mlmodel',
 ];
+
+export const DATA_ASSETS = [
+  { name: 'Table', filter: 'table' },
+  { name: 'Database', filter: 'database' },
+  { name: 'Database Schema', filter: 'databaseSchema' },
+  { name: 'Dashboard', filter: 'dashboard' },
+  { name: 'Dashboard Data Model', filter: 'dashboardDataModel' },
+  { name: 'Pipeline', filter: 'pipeline' },
+  { name: 'Topic', filter: 'topic' },
+  { name: 'ML Model', filter: 'mlmodel' },
+  { name: 'Container', filter: 'container' },
+  { name: 'Search Index', filter: 'searchIndex' },
+];

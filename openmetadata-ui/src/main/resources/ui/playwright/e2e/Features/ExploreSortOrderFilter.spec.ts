@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -29,73 +30,11 @@ test.describe('Explore Sort Order Filter for all entities', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
-  test('Table', async ({ page }) => {
-    await selectDataAssetFilter(page, 'table');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Database', async ({ page }) => {
-    await selectDataAssetFilter(page, 'database');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Database schema', async ({ page }) => {
-    await selectDataAssetFilter(page, 'databaseSchema');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Dashboard', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboard');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Dashboard data model', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboardDataModel');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Pipeline', async ({ page }) => {
-    await selectDataAssetFilter(page, 'pipeline');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Topic', async ({ page }) => {
-    await selectDataAssetFilter(page, 'topic');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('ML Model', async ({ page }) => {
-    await selectDataAssetFilter(page, 'mlmodel');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Container', async ({ page }) => {
-    await selectDataAssetFilter(page, 'container');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
-  });
-
-  test('Search Index', async ({ page }) => {
-    await selectDataAssetFilter(page, 'searchIndex');
-
-    await selectSortOrder(page, 'Name');
-    await verifyEntitiesAreSorted(page);
+  DATA_ASSETS.forEach(({ name, filter }) => {
+    test(`${name} - sort order by Name`, async ({ page }) => {
+      await selectDataAssetFilter(page, filter);
+      await selectSortOrder(page, 'Name');
+      await verifyEntitiesAreSorted(page);
+    });
   });
 });
