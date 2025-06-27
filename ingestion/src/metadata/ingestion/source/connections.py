@@ -73,7 +73,7 @@ def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Call
     if connection_class:
 
         def _get_client(conn):
-            return connection_class(conn).get_client()
+            return connection_class(conn).client
 
         return _get_client
     return None
