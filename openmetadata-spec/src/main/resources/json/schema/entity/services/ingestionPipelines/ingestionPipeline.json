@@ -242,6 +242,10 @@
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

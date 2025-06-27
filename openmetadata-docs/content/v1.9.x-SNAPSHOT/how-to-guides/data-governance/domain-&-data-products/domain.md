@@ -39,7 +39,7 @@ This guide will walk you through the steps to add and configure a Domain in Open
 - **Explore Page**: Use the Explore page to filter and view data assets assigned to different domains. This helps in easily locating and accessing data assets within specific domains.
 
 {% image
-  src="/images/v1.9how-to-guides/governance/domains.gif"
+  src="/images/v1.9/how-to-guides/governance/domains.gif"
   alt="Domains"
  /%}
 

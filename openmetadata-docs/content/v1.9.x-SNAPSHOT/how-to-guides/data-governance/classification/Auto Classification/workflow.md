@@ -12,19 +12,19 @@ Follow these steps to configure Auto Classification Agent via the OpenMetadata U
 - Select the database for which you want to configure Auto Classification Agent.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-1.png"
+src="/images/v1.9/how-to-guides/governance/ac-1.png"
 alt="Settings"
 caption="Settings"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-1.1.png"
+src="/images/v1.9/how-to-guides/governance/ac-1.1.png"
 alt="Services"
 caption="Services"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-2.png"
+src="/images/v1.9/how-to-guides/governance/ac-2.png"
 alt="Databases"
 caption="Databases"
 /%}
@@ -34,7 +34,7 @@ caption="Databases"
 - Click on the option to **Add Auto Classification Agent**, as shown in the example image.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-3.png"
+src="/images/v1.9/how-to-guides/governance/ac-3.png"
 alt="Access the Agents Tab"
 caption="Access the Agents Tab"
 /%}
@@ -44,7 +44,7 @@ caption="Access the Agents Tab"
 - Each field's purpose is explained directly in the UI, allowing you to customize the configuration based on your requirements.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-4.png"
+src="/images/v1.9/how-to-guides/governance/ac-4.png"
 alt="Configure Auto Classification Details"
 caption="Configure Auto Classification Details"
 /%}
@@ -52,7 +52,7 @@ caption="Configure Auto Classification Details"
 - By default, the store sample data option is enabled. If you prefer not to ingest sample data during a scheduled run, please ensure that this option is disabled in the Agent configuration.
 
 {% image
-src="/images/v1.9how-to-guides/governance/acnew.png"
+src="/images/v1.9/how-to-guides/governance/acnew.png"
 alt="Disable sample data"
 caption="Disable sample data"
 /%}
@@ -61,7 +61,7 @@ caption="Disable sample data"
 - Specify the time interval at which the Auto Classification Agent should run.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-5.png"
+src="/images/v1.9/how-to-guides/governance/ac-5.png"
 alt="Set the Schedule"
 caption="Set the Schedule"
 /%}
@@ -70,7 +70,7 @@ caption="Set the Schedule"
 - Once all details are configured, click **Add Auto Classification Agent** to save and activate the workflow.
 
 {% image
-src="/images/v1.9how-to-guides/governance/ac-6.png"
+src="/images/v1.9/how-to-guides/governance/ac-6.png"
 alt="Add the Agent Workflow"
 caption="Add the Agent Workflow"
 /%}

@@ -1,5 +1,5 @@
 ---
-title: revokeToken
+title: Revoke Token API | OpenMetadata Token Revocation
 slug: /main-concepts/metadata-standard/schemas/auth/revoketoken
 ---
 

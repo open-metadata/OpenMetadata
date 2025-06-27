@@ -1,5 +1,5 @@
 ---
-title: Data Lineage
+title: Data Lineage | OpenMetadata Lineage How-To Guide
 slug: /how-to-guides/data-lineage
 ---
 
@@ -8,7 +8,7 @@ slug: /how-to-guides/data-lineage
 OpenMetadata tracks data lineage, showing how data moves through the organization's systems. Users can visualize how data is transformed and where it is used, helping with data traceability and impact analysis. OpenMetadata supports lineage for Database, Dashboard, and Pipelines.
 
 {% image
-src="/images/v1.9how-to-guides/lineage/lineage1.png"
+src="/images/v1.9/how-to-guides/lineage/lineage1.png"
 alt="Data Lineage in OpenMetadata"
 caption="Data Lineage in OpenMetadata"
 /%}

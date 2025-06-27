@@ -26,7 +26,7 @@ Managing metadata manually can be challenging, particularly in dynamic environme
 ### 1. Bulk Description
 
 {% image
-src="/images/v1.6/how-to-guides/governance/automator-description.png"
+src="/images/v1.8/how-to-guides/governance/automator-description.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -42,7 +42,7 @@ For the Action Configuration:
 ### 2. Bulk Ownership and Domain Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-ownership-and.png"
+src="/images/v1.8/how-to-guides/governance/bulk-ownership-and.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -57,7 +57,7 @@ For the Action Configuration:
 ### 3. Bulk Tagging and Glossary Term Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-tagging-glossary.png"
+src="/images/v1.8/how-to-guides/governance/bulk-tagging-glossary.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -74,7 +74,7 @@ For the Action Configuration:
 ### 4. Metadata Propagation via Lineage
 
 {% image
-src="/images/v1.6/how-to-guides/governance/metadata-propogation.png"
+src="/images/v1.8/how-to-guides/governance/metadata-propogation.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -98,7 +98,7 @@ As with other actions, you can choose to **Overwrite Metadata** or keep the exis
 ### 5. Automatic PII Detection and Tagging
 
 {% image
-src="/images/v1.6/how-to-guides/governance/automatic-detection.png"
+src="/images/v1.8/how-to-guides/governance/automatic-detection.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
