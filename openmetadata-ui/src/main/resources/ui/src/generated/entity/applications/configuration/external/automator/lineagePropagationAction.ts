@@ -57,7 +57,7 @@ export interface LineagePropagationAction {
 /**
  * Application Type
  *
- * Lineage propagation action type. description.
+ * Lineage propagation action type.
  */
 export enum LineagePropagationActionType {
     LineagePropagationAction = "LineagePropagationAction",
