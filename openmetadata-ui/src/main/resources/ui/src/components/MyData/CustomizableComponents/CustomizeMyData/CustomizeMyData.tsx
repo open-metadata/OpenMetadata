@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -43,6 +42,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -201,16 +201,24 @@ function CustomizeMyData({
     });
   };
 
+  const handleBackgroundColorUpdate = async (color: string) => {
+    await onSaveLayout({
+      ...(initialPageData ??
+        ({
+          pageType: PageType.LandingPage,
+        } as Page)),
+      layout: getUniqueFilteredLayout(layout),
+      homePageBannerBackgroundColor: color,
+    } as Page);
+  };
+
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
     <>
       <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageContainerStyle={{
-          backgroundImage: `url(${gridBgImg})`,
-        }}
+        className="p-t-box customise-my-data"
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
@@ -219,19 +227,25 @@ function CustomizeMyData({
           onReset={handleReset}
           onSave={handleSave}
         />
-        <ReactGridLayout
-          className="grid-container"
-          cols={4}
-          draggableHandle=".drag-widget-icon"
-          isResizable={false}
-          margin={[
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-          ]}
-          rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
-          onLayoutChange={handleLayoutUpdate}>
-          {widgets}
-        </ReactGridLayout>
+        <div className="grid-wrapper">
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            onBackgroundColorUpdate={handleBackgroundColorUpdate} // TODO: We need to update this background color updation api call when we get the api
+          />
+          <ReactGridLayout
+            className="grid-container"
+            cols={3}
+            draggableHandle=".drag-widget-icon"
+            isResizable={false}
+            margin={[
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
+            onLayoutChange={handleLayoutUpdate}>
+            {widgets}
+          </ReactGridLayout>
+        </div>
       </PageLayoutV1>
 
       {isWidgetModalOpen && (
