@@ -67,7 +67,8 @@ source:
 ```
 ```yaml {% srNumber=1 %}
       openAPISchemaURL: https://docs.open-metadata.org/swagger.json
-
+      docURL: https://petstore3.swagger.io/
+      # token: <jwt_token>
 ```
 
 

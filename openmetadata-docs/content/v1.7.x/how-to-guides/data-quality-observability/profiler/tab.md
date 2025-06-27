@@ -1,5 +1,5 @@
 ---
-title: Profiler Tab
+title: Profiler Tab | OpenMetadata Data Profiling Interface
 slug: /how-to-guides/data-quality-observability/profiler/tab
 ---
 
