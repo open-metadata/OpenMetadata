@@ -45,7 +45,5 @@ export const DATA_ASSETS = [
   { name: 'Stored Procedure', filter: 'storedProcedure' },
   { name: 'Glossary Term', filter: 'glossaryTerm' },
   { name: 'Tags', filter: 'tag' },
-  { name: 'Data Products', filter: 'dataProduct' },
   { name: 'Metrics', filter: 'metric' },
-  { name: 'Chart', filter: 'chart' },
 ];

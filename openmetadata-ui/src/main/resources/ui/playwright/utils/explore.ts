@@ -156,6 +156,7 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
 };
 
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('sorting-dropdown-label').click();
   await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
     state: 'visible',

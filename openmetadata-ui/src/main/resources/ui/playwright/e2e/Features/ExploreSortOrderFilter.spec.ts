@@ -13,38 +13,56 @@
 import { test } from '@playwright/test';
 import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-// Use admin user to run the test
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe('Explore Sort Order Filter', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
 
-test.describe('Explore Sort Order Filter for all entities', () => {
-  test.beforeEach(async ({ page }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await EntityDataClass.preRequisitesForTests(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await EntityDataClass.postRequisitesForTests(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ browser }) => {
+    test.slow(true);
+
+    const { page } = await performAdminLogin(browser);
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
   DATA_ASSETS.forEach(({ name, filter }) => {
     test(`${name} - sort order`, async ({ page }) => {
-      await page.getByRole('button', { name: 'Data Assets' }).click();
+      test.slow(true);
 
-      // Check if filter exists
-      const filterCheckbox = page.getByTestId(`${filter}-checkbox`);
-      const isFilterPresent = await filterCheckbox.isVisible();
-
-      if (!isFilterPresent) {
-        return;
-      }
-
-      // Proceed if filter exists
-      await filterCheckbox.check();
-      await page.getByTestId('update-btn').click();
-
-      await page.waitForSelector('[data-testid="loader"]', {
+      await page.waitForSelector('data-testid="loader"', {
         state: 'detached',
       });
+
+      await page.getByRole('button', { name: 'Data Assets' }).click();
+
+      await page.waitForSelector(
+        'data-testid="drop-down-menu" data-testid="loader"',
+        {
+          state: 'detached',
+        }
+      );
+
+      await page.getByTestId(`${filter}-checkbox`).check();
+      await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
