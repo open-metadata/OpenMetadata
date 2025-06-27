@@ -36,6 +36,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 PAGE_SIZE = 100
+API_TIMEOUT = 10
 QUERIES_PATH = "/sql/history/queries"
 # Constants for query status polling
 MAX_RETRIES = 30  # Maximum number of retries
