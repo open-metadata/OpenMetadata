@@ -36,19 +36,16 @@ test.describe('Explore Sort Order Filter', () => {
     await afterAction();
   });
 
-  test.beforeEach(async ({ browser }) => {
-    test.slow(true);
-
-    const { page } = await performAdminLogin(browser);
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.EXPLORE);
-  });
-
   DATA_ASSETS.forEach(({ name, filter }) => {
-    test(`${name} - sort order`, async ({ page }) => {
+    test(`${name}`, async ({ browser }) => {
       test.slow(true);
 
-      await page.waitForSelector('data-testid="loader"', {
+      const { page, afterAction } = await performAdminLogin(browser);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+
+      await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
@@ -66,6 +63,8 @@ test.describe('Explore Sort Order Filter', () => {
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
+
+      await afterAction();
     });
   });
 });
