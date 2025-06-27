@@ -785,7 +785,7 @@ class DbtSource(DbtServiceSource):
 
         ```yaml
           - name: orders_dashboard
-            label: sample_looker.orders
+            label: sample_looker.orders  # OpenMetadata entity FullyQualifiedName
             type: dashboard
             maturity: high
             url: http://localhost:808/looker/dashboard/8/
