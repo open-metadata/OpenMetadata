@@ -27,6 +27,7 @@ import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { DatabaseClass } from './DatabaseClass';
 import { DatabaseSchemaClass } from './DatabaseSchemaClass';
 import { EntityDataClassCreationConfig } from './EntityDataClass.interface';
+import { MetricClass } from './MetricClass';
 import { MlModelClass } from './MlModelClass';
 import { PipelineClass } from './PipelineClass';
 import { SearchIndexClass } from './SearchIndexClass';
@@ -104,6 +105,7 @@ export class EntityDataClass {
   static readonly dataProduct1 = new DataProduct(this.domain1);
   static readonly dataProduct2 = new DataProduct(this.domain1);
   static readonly dataProduct3 = new DataProduct(this.domain2);
+  static readonly metric1 = new MetricClass();
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
@@ -129,6 +131,7 @@ export class EntityDataClass {
             this.certificationTag1.create(apiContext),
             this.certificationTag2.create(apiContext),
             this.classification1.create(apiContext),
+            this.metric1.create(apiContext),
           ]
         : [];
 
@@ -249,6 +252,7 @@ export class EntityDataClass {
             this.dataProduct1.delete(apiContext),
             this.dataProduct2.delete(apiContext),
             this.dataProduct3.delete(apiContext),
+            this.metric1.delete(apiContext),
           ]
         : [];
 
