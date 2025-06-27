@@ -23,7 +23,7 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 - [Enable Security](#securing-doris-connection-with-ssl-in-openmetadata)
 - [Troubleshooting](/connectors/database/doris/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
 
 ## Requirements
 
@@ -32,12 +32,12 @@ Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
 ## Metadata Ingestion
 
 {% partial
-file="/v1.9connectors/metadata-ingestion-ui.md"
+file="/v1.9/connectors/metadata-ingestion-ui.md"
 variables={
 connector: "Doris",
-selectServicePath: "/images/v1.9connectors/doris/select-service.png",
-addNewServicePath: "/images/v1.9connectors/doris/add-new-service.png",
-serviceConnectionPath: "/images/v1.9connectors/doris/service-connection.png",
+selectServicePath: "/images/v1.9/connectors/doris/select-service.png",
+addNewServicePath: "/images/v1.9/connectors/doris/add-new-service.png",
+serviceConnectionPath: "/images/v1.9/connectors/doris/service-connection.png",
 }
 /%}
 
@@ -55,15 +55,15 @@ serviceConnectionPath: "/images/v1.9connectors/doris/service-connection.png",
 - **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
 - **sslKey**: Provide the path to ssl client certificate file (ssl_key).
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -72,9 +72,9 @@ serviceConnectionPath: "/images/v1.9connectors/doris/service-connection.png",
 To establish secure connections between OpenMetadata and Doris, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
 
 {% image
-  src="/images/v1.9connectors/ssl_connection.png"
+  src="/images/v1.9/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}

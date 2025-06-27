@@ -14,5 +14,5 @@ slug: /how-to-guides/data-discovery/hierarchy
 - Click on a data asset within the hierarchy to view detailed information, metadata, or related data connections.
 
 {% image
-  src="/images/v1.9features/hierarchy.gif"
+  src="/images/v1.9/features/hierarchy.gif"
 /%}
