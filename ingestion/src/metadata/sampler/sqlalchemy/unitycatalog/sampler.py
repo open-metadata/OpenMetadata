@@ -20,9 +20,13 @@ from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 class UnityCatalogSamplerInterface(SQASampler):
+    def __init__(self, *args, **kwargs):
+        """Initialize with a single Databricks connection"""
+        super().__init__(*args, **kwargs)
+        self.connection = databricks_get_connection(self.service_connection_config)
+
     def get_client(self):
         """client is the session for SQA"""
-        self.connection = databricks_get_connection(self.service_connection_config)
         client = super().get_client()
         self.set_catalog(client)
         return client
