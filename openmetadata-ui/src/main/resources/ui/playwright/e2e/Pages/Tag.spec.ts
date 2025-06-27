@@ -158,7 +158,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const updateName = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('save-button').click();
-    updateName;
+    await updateName;
 
     await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
   });
@@ -181,7 +181,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();
-    updateColor;
+    await updateColor;
 
     await adminPage.waitForLoadState('networkidle');
 
@@ -227,7 +227,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
-    deleteTag;
+    await deleteTag;
 
     await expect(
       adminPage.getByText(classification.data.description)
@@ -239,11 +239,11 @@ test.describe('Tag Page with Admin Roles', () => {
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
     await test.step('Add Asset ', async () => {
-      await addAssetsToTag(adminPage, assets, tag);
+      await addAssetsToTag(adminPage, assets, tag1);
     });
 
     await test.step('Delete Asset', async () => {
-      await removeAssetsFromTag(adminPage, assets, tag);
+      await removeAssetsFromTag(adminPage, assets, tag1);
       await assetCleanup();
     });
   });
@@ -346,7 +346,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
   test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await editTagPageDescription(dataConsumerPage, tag);
+    await editTagPageDescription(dataConsumerPage, tag1);
   });
 
   test('Add and Remove Assets for Data Consumer', async ({
@@ -381,7 +381,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
   });
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
-    await editTagPageDescription(dataStewardPage, tag);
+    await editTagPageDescription(dataStewardPage, tag1);
   });
 
   test('Add and Remove Assets for Data Steward', async ({

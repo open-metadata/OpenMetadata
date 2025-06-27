@@ -346,7 +346,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());

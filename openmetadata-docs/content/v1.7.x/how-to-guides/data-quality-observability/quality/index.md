@@ -1,5 +1,5 @@
 ---
-title: Data Quality
+title: Data Quality | OpenMetadata Quality Management Guide
 slug: /how-to-guides/data-quality-observability/quality
 ---
 

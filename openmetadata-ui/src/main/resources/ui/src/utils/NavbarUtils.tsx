@@ -56,7 +56,7 @@ const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
     return (
       <a
         className="no-underline"
-        href={item.link}
+        href={item.link?.replace('{{currentVersion}}', version ?? '')}
         rel="noreferrer"
         target="_blank">
         {getHelpDropdownLabelContentRenderer(item, version)}

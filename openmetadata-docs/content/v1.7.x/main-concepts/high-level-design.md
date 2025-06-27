@@ -1,5 +1,5 @@
 ---
-title: High Level Design
+title: High Level Design | OpenMetadata Architecture Overview
 slug: /main-concepts/high-level-design
 ---
 

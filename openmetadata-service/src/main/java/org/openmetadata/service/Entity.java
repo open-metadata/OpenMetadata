@@ -665,7 +665,28 @@ public final class Entity {
             .acceptPackages(PACKAGES.toArray(new String[0]))
             .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
-      return classList.loadClasses();
+
+      List<Class<?>> unnamedRepositories = new ArrayList<>();
+      Map<String, Class<?>> namedRepositories = new HashMap<>();
+
+      for (Class<?> clz : classList.loadClasses()) {
+        Repository annotation = clz.getAnnotation(Repository.class);
+        String name = annotation.name();
+
+        if (name.isEmpty()) {
+          unnamedRepositories.add(clz);
+        } else {
+          Class<?> existing = namedRepositories.get(name);
+          if (existing == null
+              || annotation.priority() < existing.getAnnotation(Repository.class).priority()) {
+            namedRepositories.put(name, clz);
+          }
+        }
+      }
+
+      List<Class<?>> result = new ArrayList<>(unnamedRepositories);
+      result.addAll(namedRepositories.values());
+      return result;
     }
   }
 

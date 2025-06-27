@@ -100,6 +100,12 @@ test.describe('Advanced Search Custom Property', () => {
         'Custom Properties'
       );
 
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Table'
+      );
+
       // Perform click on custom property type to filter
       await selectOption(
         page,

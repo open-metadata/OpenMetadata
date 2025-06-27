@@ -335,7 +335,7 @@ const TaskFeedCard = ({
                     width={20}
                     onClick={isForFeedTab ? showReplies : undefined}
                   />
-                  {feed?.postsCount && feed?.postsCount > 0 && (
+                  {feed?.postsCount && feed?.postsCount > 0 ? (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
                       data-testid="replies-count"
@@ -348,7 +348,7 @@ const TaskFeedCard = ({
                         { number: feed.postsCount }
                       )}
                     </Button>
-                  )}
+                  ) : null}
                 </Col>
 
                 <Col

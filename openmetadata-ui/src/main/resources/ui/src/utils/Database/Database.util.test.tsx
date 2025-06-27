@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import React from 'react';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -40,6 +41,26 @@ jest.mock(
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useHistory: jest.fn(),
+}));
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      filterIcon: () => <div>FilterIcon</div>,
+      render: () => (
+        <OwnerLabel
+          isCompactView={false}
+          maxVisibleOwners={4}
+          owners={[{ id: '1', name: 'John Doe', type: 'user' }]}
+          showLabel={false}
+        />
+      ),
+    },
+  ]),
 }));
 
 describe('Database Util', () => {

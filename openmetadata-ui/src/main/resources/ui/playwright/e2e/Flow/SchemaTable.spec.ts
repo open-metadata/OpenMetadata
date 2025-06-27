@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { test } from '../fixtures/pages';
 
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -104,7 +104,7 @@ const crudColumnDisplayName = async (
   );
 };
 
-// will update this tests sepratly
+// will update this tests separately
 test.fixme(
   'schema table test',
   async ({ dataStewardPage, ownerPage, page }) => {
@@ -127,3 +127,32 @@ test.fixme(
     }
   }
 );
+
+test('Schema Table Pagination should work Properly', async ({ page }) => {
+  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
+
+  await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+  await tableResponse;
+
+  await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+    '15 / Page'
+  );
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+
+  await expect(page.getByTestId('next')).not.toBeDisabled();
+
+  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+  await page.getByTestId('next').click();
+  await tableResponse2;
+
+  await expect(page.getByTestId('previous')).not.toBeDisabled();
+
+  await expect(page.getByTestId('page-indicator')).toContainText('2');
+
+  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+  await page.getByTestId('previous').click();
+  await tableResponse3;
+
+  await expect(page.getByTestId('page-indicator')).toContainText('1');
+});

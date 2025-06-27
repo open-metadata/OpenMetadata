@@ -15,6 +15,7 @@
   .group.rule_group {
     border: none !important;
     padding: 0;
+
     .group--children {
       padding-top: 0;
       padding-bottom: 0;
@@ -24,12 +25,20 @@
 
   .group--field {
     width: 180px;
+
     .ant-select {
       width: 100% !important;
     }
+
     label {
       font-weight: normal;
       margin-bottom: 6px;
+    }
+  }
+
+  .rule_group {
+    .group--field {
+      align-self: flex-start;
     }
   }
 }

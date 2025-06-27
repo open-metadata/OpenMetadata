@@ -1,5 +1,5 @@
 ---
-title: Data Asset Versioning
+title: Data Asset Versioning | OpenMetadata Version Control Guide
 slug: /how-to-guides/guide-for-data-users/versions
 ---
 

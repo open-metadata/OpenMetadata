@@ -283,7 +283,7 @@ test.describe('Glossary tests', () => {
           page,
           'PersonalData.Personal',
           'Add',
-          undefined,
+          EntityTypeEndpoint.Glossary,
           'tabs'
         );
       });

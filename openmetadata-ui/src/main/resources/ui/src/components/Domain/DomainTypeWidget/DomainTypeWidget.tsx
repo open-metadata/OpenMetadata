@@ -24,7 +24,12 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
 export const DomainTypeWidget = () => {
-  const { data: domain, permissions, onUpdate } = useGenericContext<Domain>();
+  const {
+    data: domain,
+    permissions,
+    onUpdate,
+    isVersionView,
+  } = useGenericContext<Domain>();
   const [editDomainType, setEditDomainType] = useState(false);
 
   const { editAllPermission } = useMemo(
@@ -58,7 +63,7 @@ export const DomainTypeWidget = () => {
         />
       </Typography.Text>
 
-      {editAllPermission && domain.domainType && (
+      {!isVersionView && editAllPermission && domain.domainType && (
         <EditIconButton
           newLook
           data-testid="edit-domainType-button"

@@ -5780,6 +5780,27 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT 42")
     Integer testConnection() throws StatementException;
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_EXTRACT(json, '$.fullyQualifiedName') FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> 'fullyQualifiedName' FROM <table> WHERE id NOT IN ( SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)",
+        connectionType = POSTGRES)
+    List<String> getBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
+
+    @SqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE id NOT IN (SELECT toId FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity)")
+    int deleteBrokenRelationFromParentToChild(
+        @Define("table") String tableName,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
