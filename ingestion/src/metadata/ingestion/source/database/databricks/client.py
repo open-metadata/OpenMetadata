@@ -36,12 +36,9 @@ from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-PAGE_SIZE = 100
 API_TIMEOUT = 10
+PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
-# Constants for query status polling
-MAX_RETRIES = 30  # Maximum number of retries
-RETRY_INTERVAL = 2  # Seconds between retries
 API_VERSION = "/api/2.0"
 JOB_API_VERSION = "/api/2.1"
 
