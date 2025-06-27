@@ -51,6 +51,7 @@ import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
+import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
@@ -88,6 +89,7 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
+import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
@@ -2321,7 +2323,12 @@ public class ElasticSearchClient implements SearchClient {
         }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
+        String errorMessage =
+            String.format(
+                "Error: %s.\nCause: %s",
+                ex.getMessage(), ex.getCause() != null ? ex.getCause().toString() : "Unknown");
+        throw new ParsingException(XContentLocation.UNKNOWN, errorMessage, ex);
       }
     }
   }

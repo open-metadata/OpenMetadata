@@ -30,6 +30,8 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.common.ParsingException;
+import es.org.elasticsearch.xcontent.XContentLocation;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -2433,7 +2435,12 @@ public class OpenSearchClient implements SearchClient {
         }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
+        String errorMessage =
+            String.format(
+                "Error: %s.\nCause: %s",
+                ex.getMessage(), ex.getCause() != null ? ex.getCause().toString() : "Unknown");
+        throw new ParsingException(XContentLocation.UNKNOWN, errorMessage, ex);
       }
     }
   }
