@@ -61,7 +61,6 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  APP_CONFIG_PATH: ['sourceConfig', 'config', 'appConfig'],
   getExploreURLWithFilters: jest.fn().mockReturnValue('test-url'),
   getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
@@ -119,16 +118,9 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
     <Form
       form={form}
       initialValues={{
-        sourceConfig: {
-          config: {
-            appConfig: {
-              resources: {
-                type: ['table'],
-                queryFilter: '{}',
-              },
-            },
-          },
-        },
+        queryFilter: '{"query":{"bool":{"must":[]}}}',
+        resources: ['table'],
+        title: 'Test Widget',
       }}
     >
       {children}

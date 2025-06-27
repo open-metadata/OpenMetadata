@@ -20,7 +20,6 @@ import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.con
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
 import {
   AlertMessage,
-  APP_CONFIG_PATH,
   getExploreURLWithFilters,
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
@@ -40,10 +39,7 @@ export const SelectAssetTypeField = ({
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
 
   const selectedResource: Array<string> =
-    Form.useWatch<Array<string>>(
-      [...APP_CONFIG_PATH, 'resources', 'type'],
-      form
-    ) || [];
+    Form.useWatch<Array<string>>('resources', form) || [];
 
   const resourcesOptions: DefaultOptionType[] = useMemo(() => {
     return getSourceOptionsFromResourceList(
@@ -89,7 +85,7 @@ export const SelectAssetTypeField = ({
   const handleResourceChange = useCallback(
     (val: string | string[]) => {
       if (form) {
-        form.setFieldValue([...APP_CONFIG_PATH, 'resources', 'type'], [val]);
+        form.setFieldValue('resources', [val]);
       }
     },
     [form]
@@ -115,7 +111,7 @@ export const SelectAssetTypeField = ({
         messageVariables={{
           fieldName: t('label.data-asset-plural'),
         }}
-        name={[...APP_CONFIG_PATH, 'resources', 'type']}
+        name="resources"
         style={{ marginBottom: 8 }}
       >
         <Select

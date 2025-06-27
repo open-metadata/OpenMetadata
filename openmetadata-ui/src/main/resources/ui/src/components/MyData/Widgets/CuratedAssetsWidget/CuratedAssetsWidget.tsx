@@ -89,22 +89,12 @@ const CuratedAssetsWidget = ({
   }, [currentLayout, widgetKey]);
 
   const queryFilter = useMemo(
-    () =>
-      get(
-        curatedAssetsData,
-        'sourceConfig.config.appConfig.resources.queryFilter',
-        '{}'
-      ),
+    () => get(curatedAssetsData, 'queryFilter', '{}'),
     [curatedAssetsData]
   );
 
   const selectedResource = useMemo(
-    () =>
-      get(
-        curatedAssetsData,
-        'sourceConfig.config.appConfig.resources.type',
-        []
-      ),
+    () => get(curatedAssetsData, 'resources', []),
     [curatedAssetsData]
   );
 
