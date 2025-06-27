@@ -3,7 +3,7 @@ title: ADLS Datalake Connector Troubleshooting
 slug: /connectors/database/adls-datalake/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the ADLS Datalake connector.
 
@@ -16,7 +16,7 @@ Learn how to resolve the most common problems people encounter in the ADLS Datal
 - Select `Certificates & Secret` under `Manage` Section
 
 {% image
-src="/images/v1.9connectors/datalake/troubleshoot-clientId.png"
+src="/images/v1.9/connectors/datalake/troubleshoot-clientId.png"
 alt="Configure service connection"
 caption="Find Client ID" /%}
 

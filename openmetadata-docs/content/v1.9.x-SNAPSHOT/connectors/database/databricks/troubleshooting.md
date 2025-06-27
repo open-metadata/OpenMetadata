@@ -3,7 +3,7 @@ title: Databricks Connector Troubleshooting
 slug: /connectors/database/databricks/troubleshooting
 ---
 
-{% partial file="/v1.9connectors/troubleshooting.md" /%}
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
 
 ## Databricks connection details
 
@@ -37,7 +37,7 @@ First login to Azure Databricks and from side bar select SQL Warehouse (In SQL s
 
 
 {% image
-src="/images/v1.9connectors/databricks/select-sql-warehouse.png"
+src="/images/v1.9/connectors/databricks/select-sql-warehouse.png"
 alt="Select Sql Warehouse"
 caption="Select Sql Warehouse" /%}
 
@@ -46,7 +46,7 @@ Now click on sql Warehouse from the SQL Warehouses list.
 
 
 {% image
-src="/images/v1.9connectors/databricks/Open-sql-warehouse.png"
+src="/images/v1.9/connectors/databricks/Open-sql-warehouse.png"
 alt="Open Sql Warehouse"
 caption="Open Sql Warehouse" /%}
 
@@ -57,7 +57,7 @@ In this page Server hostname and Port is your `hostPort`, HTTP path is your `htt
 
 
 {% image
-src="/images/v1.9connectors/databricks/Connection-details.png"
+src="/images/v1.9/connectors/databricks/Connection-details.png"
 alt="Connection details"
 caption="Connection details" /%}
 
@@ -65,7 +65,7 @@ caption="Connection details" /%}
 In Connection details section page click on Create a personal access token.
 
 {% image
-src="/images/v1.9connectors/databricks/Open-create-tocken-page.png"
+src="/images/v1.9/connectors/databricks/Open-create-tocken-page.png"
 alt="Open create tocken"
 caption="Open create tocken" /%}
 
@@ -75,7 +75,7 @@ Now In this page you can create new `token`.
 
 
 {% image
-src="/images/v1.9connectors/databricks/Generate-token.png"
+src="/images/v1.9/connectors/databricks/Generate-token.png"
 alt="Generate tocken"
 caption="Generate tocken" /%}
 
