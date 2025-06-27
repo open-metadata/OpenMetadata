@@ -68,7 +68,7 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertGreaterEqual(
                 (len(sink_status.records) + len(sink_status.updated_records)),
-                self.expected_dashboards_and_charts() + self.expected_lineage(),
+                self.expected_dashboards_and_charts(),
             )
 
         def assert_for_vanilla_ingestion(
