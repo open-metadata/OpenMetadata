@@ -781,9 +781,10 @@ class DbtSource(DbtServiceSource):
         Open Metadata entity. Returns entity object if both conditions are met.
 
         The implementation assumes that value of meta.open_metadata_fqn provided in DBT exposures object matches
-        to FQN of OpenMetadata object.
+        to FQN of OpenMetadata entity.
 
         ```yaml
+        exposures:
           - name: orders_dashboard
             label: orders
             meta:
