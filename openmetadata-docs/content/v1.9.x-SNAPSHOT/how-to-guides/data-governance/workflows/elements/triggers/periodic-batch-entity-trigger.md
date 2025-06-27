@@ -26,4 +26,4 @@ Additionally, this trigger allows to optionally define the BatchSize to improve 
 
 As an example we can check the default **Table Certification Workflow**, shipped with Collate.
 
-{% image src="/images/v1.9how-to-guides/governance/workflows-periodic-batch-entity-trigger.png" alt="periodic-batch-entity-trigger" /%}
+{% image src="/images/v1.9/how-to-guides/governance/workflows-periodic-batch-entity-trigger.png" alt="periodic-batch-entity-trigger" /%}

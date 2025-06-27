@@ -12,7 +12,7 @@ Exporting a glossary from OpenMetadata is easy.
 - Click on the **⋮** icon and **Export** the glossary file.
 
 {% image
-src="/images/v1.9how-to-guides/governance/glossary8.png"
+src="/images/v1.9/how-to-guides/governance/glossary8.png"
 alt="Export Glossary File"
 caption="Export Glossary File"
 /%}

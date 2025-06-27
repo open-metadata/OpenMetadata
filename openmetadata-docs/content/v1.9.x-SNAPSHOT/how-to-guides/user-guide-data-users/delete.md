@@ -13,7 +13,7 @@ To delete a data asset:
 - Click on the vertical ellipsis icon **⋮** located on the top right and click on **Delete**.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/delete.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/delete.png"
 alt="Delete a Data Asset"
 caption="Delete a Data Asset"
 /%}
@@ -22,7 +22,7 @@ caption="Delete a Data Asset"
 - Type DELETE to confirm deletion.
 
 {% image
-src="/images/v1.9how-to-guides/user-guide-for-data-stewards/delete2.png"
+src="/images/v1.9/how-to-guides/user-guide-for-data-stewards/delete2.png"
 alt="Soft or Hard Delete a Data Asset"
 caption="Soft or Hard Delete a Data Asset"
 /%}
