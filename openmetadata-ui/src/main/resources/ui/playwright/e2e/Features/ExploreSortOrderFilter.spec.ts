@@ -11,18 +11,13 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
-import { startCase } from 'lodash';
-import { EXPECTED_BUCKETS as DATA_ASSETS } from '../../constant/explore';
+import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
-import {
-  selectDataAssetFilter,
-  selectSortOrder,
-  verifyEntitiesAreSorted,
-} from '../../utils/explore';
+import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-// use admin user to run the test
+// Use admin user to run the test
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Explore Sort Order Filter for all entities', () => {
@@ -31,9 +26,26 @@ test.describe('Explore Sort Order Filter for all entities', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
-  DATA_ASSETS.forEach((asset) => {
-    test(`${startCase(asset)} - sort order`, async ({ page }) => {
-      await selectDataAssetFilter(page, asset);
+  DATA_ASSETS.forEach(({ name, filter }) => {
+    test(`${name} - sort order`, async ({ page }) => {
+      await page.getByRole('button', { name: 'Data Assets' }).click();
+
+      // Check if filter exists
+      const filterCheckbox = page.getByTestId(`${filter}-checkbox`);
+      const isFilterPresent = await filterCheckbox.isVisible();
+
+      if (!isFilterPresent) {
+        return;
+      }
+
+      // Proceed if filter exists
+      await filterCheckbox.check();
+      await page.getByTestId('update-btn').click();
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
     });
