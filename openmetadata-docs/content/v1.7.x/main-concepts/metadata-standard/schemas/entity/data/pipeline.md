@@ -1,5 +1,5 @@
 ---
-title: pipeline
+title: Pipeline Schema | OpenMetadata Pipeline Schema and API
 slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 ---
 

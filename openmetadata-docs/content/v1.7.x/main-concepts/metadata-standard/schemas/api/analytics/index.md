@@ -1,5 +1,5 @@
 ---
-title: index
+title: Analytics API Schemas | OpenMetadata Analytics API
 slug: /main-concepts/metadata-standard/schemas/api/analytics
 ---
 

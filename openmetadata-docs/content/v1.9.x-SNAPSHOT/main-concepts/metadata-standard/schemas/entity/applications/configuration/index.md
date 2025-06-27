@@ -1,5 +1,5 @@
 ---
-title: index
+title: Application Config Schema | OpenMetadata Entity Configuration
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration
 ---
 

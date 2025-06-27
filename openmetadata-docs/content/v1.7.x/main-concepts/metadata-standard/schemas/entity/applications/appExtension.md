@@ -1,5 +1,5 @@
 ---
-title: appExtension
+title: App Extension | OpenMetadata App Extensions
 slug: /main-concepts/metadata-standard/schemas/entity/applications/appextension
 ---
 

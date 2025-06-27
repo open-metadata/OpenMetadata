@@ -1,5 +1,5 @@
 ---
-title: basicLoginRequest
+title: Basic Login Request | OpenMetadata Login API
 slug: /main-concepts/metadata-standard/schemas/auth/basicloginrequest
 ---
 
