@@ -330,7 +330,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     entity_type=Table,
                                     table_name=source.get("table"),
                                     database_name=source.get("database"),
-                                    schema_name=source.get("schema"),
+                                    schema_name=source.get("database_schema"),
                                     service_name=dbservicename,
                                 ),
                             )
@@ -345,7 +345,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     entity_type=Table,
                                     table_name=target.get("table"),
                                     database_name=target.get("database"),
-                                    schema_name=target.get("schema"),
+                                    schema_name=target.get("database_schema"),
                                     service_name=dbservicename,
                                 ),
                             )
