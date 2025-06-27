@@ -72,18 +72,16 @@ class BaseTableParameter:
             db_service (DatabaseService): The database service entity
         """
         if db_service.connection.config.type.value.lower() == "trino":
-            from metadata.ingestion.source.database.trino.connection import (
+            from metadata.ingestion.source.database.trino.connection import (  # pylint: disable=import-outside-toplevel
                 get_connection_dict,
             )
 
-            source_url = get_connection_dict(db_service.connection.config)
-            return source_url
-        else:
-            return (
-                str(get_connection(db_service.connection.config).url)
-                if db_service.connection.config
-                else None
-            )
+            return get_connection_dict(db_service.connection.config)
+        return (
+            str(get_connection(db_service.connection.config).url)
+            if db_service.connection.config
+            else None
+        )
 
     @staticmethod
     def get_data_diff_url(
