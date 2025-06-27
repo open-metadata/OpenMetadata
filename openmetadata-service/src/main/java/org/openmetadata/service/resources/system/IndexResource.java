@@ -10,6 +10,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.util.UIUtils;
 
 @Path("/")
 public class IndexResource {
@@ -24,11 +25,8 @@ public class IndexResource {
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    // Remove trailing slash from basePath to avoid double slashes in webpack-generated assets
-    String basePath = config.getBasePath();
-    if (basePath.endsWith("/")) {
-      basePath = basePath.substring(0, basePath.length() - 1);
-    }
+    // Use utility method to format basePath for UI assets
+    String basePath = UIUtils.formatBasePathForUI(config.getBasePath());
     this.indexHtml = this.indexHtml.replace("${basePath}", basePath);
   }
 
@@ -40,7 +38,9 @@ public class IndexResource {
             .lines()
             .collect(Collectors.joining("\n"));
 
-    return indexHtml.replace("${basePath}", basePath);
+    // Use utility method to format basePath for UI assets  
+    String formattedBasePath = UIUtils.formatBasePathForUI(basePath);
+    return indexHtml.replace("${basePath}", formattedBasePath);
   }
 
   @GET
