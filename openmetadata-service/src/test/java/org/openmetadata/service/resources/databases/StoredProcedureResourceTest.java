@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.entity.data.*;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;

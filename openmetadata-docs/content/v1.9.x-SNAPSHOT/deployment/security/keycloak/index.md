@@ -25,7 +25,7 @@ Security requirements for your **production** environment:
 - You need an administrator account. If you don't have, see [Creating the first administrator](https://www.keycloak.org/docs/latest/server_admin/#creating-first-admin_server_administration_guide).
 - Go to the URL for the Admin Console. For example, for localhost, use this URL: http://localhost:8080/admin/
 
-{% image src="/images/v1.9deployment/security/keycloak/1-login-page.png" alt="login-page" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/1-login-page.png" alt="login-page" /%}
 
 - Enter the username and password you created.
 
@@ -33,7 +33,7 @@ Security requirements for your **production** environment:
 - The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new.
 - In this example we are used an existing one called "Data-sec".
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-2.png" alt="change-realm" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-2.png" alt="change-realm" /%}
 
 ## Create Server Credentials
 
@@ -62,4 +62,4 @@ After creating the account, choose the authentication flow you want to use:
 {% /note %}
 
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}

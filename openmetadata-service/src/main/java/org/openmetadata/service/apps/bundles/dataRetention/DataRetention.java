@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataRe
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -27,7 +28,6 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 
 @Slf4j

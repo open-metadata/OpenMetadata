@@ -15,19 +15,19 @@ collate: false
 - Enter the Name and Description `(Optional)`.
 - Click on `Next` button.
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
 
 ### Step 2: Edit Configs of the client
 
 - Select `Standard flow` and `Implicit flow` as an `Authentication flow`.
 - Click `Next`.
 
-{% image src="/images/v1.9deployment/security/keycloak/implicit-keycloak-step-4.png" alt="compatibility configs" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/implicit-keycloak-step-4.png" alt="compatibility configs" /%}
 
 ### Step 3: Add Login Settings
 - fill the required options
 
-{% image src="/images/v1.9deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
+{% image src="/images/v1.9/deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
 
 - Click on `Save` button.
 
