@@ -1,5 +1,5 @@
 ---
-title: index
+title: Classification API | OpenMetadata Classification Schemas
 slug: /main-concepts/metadata-standard/schemas/api/classification
 ---
 

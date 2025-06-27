@@ -1,5 +1,5 @@
 ---
-title: createThread
+title: Create Thread API | OpenMetadata Thread API
 slug: /main-concepts/metadata-standard/schemas/api/feed/createthread
 ---
 

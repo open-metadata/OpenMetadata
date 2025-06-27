@@ -1,5 +1,5 @@
 ---
-title: index
+title: Data Schema | OpenMetadata Data Entity Schema Details
 slug: /main-concepts/metadata-standard/schemas/entity/data
 ---
 

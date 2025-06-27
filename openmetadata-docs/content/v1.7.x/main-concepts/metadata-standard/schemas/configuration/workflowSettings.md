@@ -1,5 +1,5 @@
 ---
-title: workflowSettings
+title: Workflow Settings | OpenMetadata Workflow Config
 slug: /main-concepts/metadata-standard/schemas/configuration/workflowsettings
 ---
 

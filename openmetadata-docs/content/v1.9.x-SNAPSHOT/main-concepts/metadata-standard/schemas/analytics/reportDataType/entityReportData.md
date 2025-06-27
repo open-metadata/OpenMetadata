@@ -1,5 +1,5 @@
 ---
-title: entityReportData
+title: Entity Report Data | OpenMetadata Entity Analytics Data
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/entityreportdata
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: reportData
+title: Report Data Schema | OpenMetadata Report Data Models
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdata
 ---
 

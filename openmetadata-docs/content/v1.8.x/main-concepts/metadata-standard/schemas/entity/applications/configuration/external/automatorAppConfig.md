@@ -1,5 +1,5 @@
 ---
-title: automatorAppConfig
+title: Automator App Config | OpenMetadata Automator Config
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automatorappconfig
 ---
 

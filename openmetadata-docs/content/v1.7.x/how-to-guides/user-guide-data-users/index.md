@@ -1,5 +1,5 @@
 ---
-title: Guide for Data Users
+title: Guide for Data Users | OpenMetadata User Guide
 slug: /how-to-guides/guide-for-data-users
 ---
 

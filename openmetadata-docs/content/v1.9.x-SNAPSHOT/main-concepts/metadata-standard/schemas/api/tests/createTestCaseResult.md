@@ -1,5 +1,5 @@
 ---
-title: createTestCaseResult
+title: Create Test Case Result | OpenMetadata Test Result API
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestcaseresult
 ---
 
