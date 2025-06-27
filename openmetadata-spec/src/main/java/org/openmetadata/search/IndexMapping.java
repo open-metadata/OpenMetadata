@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.models;
+package org.openmetadata.search;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,5 +46,9 @@ public class IndexMapping {
     return clusterAlias != null && !clusterAlias.isEmpty()
         ? childAliases.stream().map(a -> clusterAlias + INDEX_NAME_SEPARATOR + a).toList()
         : childAliases;
+  }
+
+  public String getIndexMappingFile(String language) {
+    return String.format(indexMappingFile, language).replaceFirst("^/", "");
   }
 }

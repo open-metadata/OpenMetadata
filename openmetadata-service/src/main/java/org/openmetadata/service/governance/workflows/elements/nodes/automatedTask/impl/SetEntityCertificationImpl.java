@@ -19,11 +19,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SetEntityCertificationImpl implements JavaDelegate {

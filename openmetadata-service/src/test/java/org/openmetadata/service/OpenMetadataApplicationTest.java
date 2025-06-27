@@ -52,6 +52,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -198,6 +199,9 @@ public abstract class OpenMetadataApplicationTest {
     PORT = parts[1];
     overrideElasticSearchConfig();
     overrideDatabaseConfig(sqlContainer);
+
+    // Init IndexMapping class
+    IndexMappingLoader.init(getEsConfig());
 
     // Migration overrides
     configOverrides.add(
