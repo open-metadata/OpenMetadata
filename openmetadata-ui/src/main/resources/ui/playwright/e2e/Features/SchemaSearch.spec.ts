@@ -50,7 +50,15 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     const serviceName = table.serviceResponseData?.name ?? '';
     const schemaName = table.schemaResponseData?.name;
+
+    const searchServiceResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*'
+    );
+
     await page.getByPlaceholder('Search Services').fill(serviceName);
+    await searchServiceResponse;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
     await page.click(`[data-testid="service-name-${serviceName}"]`);
 
     await page.waitForLoadState('networkidle');
