@@ -159,7 +159,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           .markStaleEntriesStopped(getApp().getId().toString());
       LOG.debug("Cleaned up stale jobs.");
     } catch (Exception ex) {
-      LOG.error("Failed in marking stale entries as stopped.", ex);
+      logger.error("Failed in marking stale entries as stopped.", ex);
     }
   }
 
@@ -167,6 +167,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     cleanUpStaleJobsFromRuns();
 
     LOG.info("Executing Reindexing Job with JobData: {}", jobData);
+
+    logger.info(String.format("Executing Reindexing Job with JobData: %s", jobData));
 
     jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
@@ -657,8 +659,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private int getTotalEntityRecords(String entityType) {
-    return ((StepStats)
-            searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType))
+    return searchIndexStats
+        .get()
+        .getEntityStats()
+        .getAdditionalProperties()
+        .get(entityType)
         .getTotalRecords();
   }
 
@@ -712,8 +717,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private int getRemainingRecordsToProcess(String entityType) {
     StepStats entityStats =
-        ((StepStats)
-            searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType));
+        searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType);
     return entityStats.getTotalRecords()
         - entityStats.getFailedRecords()
         - entityStats.getSuccessRecords();
