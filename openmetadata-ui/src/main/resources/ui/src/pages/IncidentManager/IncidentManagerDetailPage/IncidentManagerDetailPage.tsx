@@ -25,6 +25,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -91,6 +92,8 @@ const IncidentManagerDetailPage = ({
     testCasePermission,
     setTestCasePermission,
     setIsPermissionLoading,
+    isTabExpanded,
+    setIsTabExpanded,
   } = useTestCaseStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -111,6 +114,15 @@ const IncidentManagerDetailPage = ({
         hasDeletePermission: testCasePermission?.Delete,
       };
     }, [testCasePermission]);
+
+  const isExpandViewSupported = useMemo(
+    () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
+    [activeTab]
+  );
+
+  const toggleTabExpanded = useCallback(() => {
+    setIsTabExpanded(!isTabExpanded);
+  }, [isTabExpanded, setIsTabExpanded]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
     const tabs = testCaseClassBase.getTab(
@@ -418,6 +430,17 @@ const IncidentManagerDetailPage = ({
             className="tabs-new"
             data-testid="tabs"
             items={tabDetails}
+            tabBarExtraContent={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
             onChange={handleTabChange}
           />
         </Col>
