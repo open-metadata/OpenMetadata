@@ -29,6 +29,7 @@ Reverse Metadata uses the existing service connection configuration provided dur
 | Redshift       | ✅  | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata) |
 | Snowflake      | ✅  | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata) |
 | Unity Catalog  | ✅  | ✅  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata) |
+| Trino  | ✅ (Table) | ❌ | ❌ | ✅                | [Link](/connectors/database/trino#reverse-metadata) |
 
 ## Key Features
 
