@@ -126,6 +126,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.AzureAuthenticator;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
@@ -371,7 +372,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
           new AuthenticationCodeFlowHandler(
-              config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+              config.getAuthenticationConfiguration(),
+              config.getAuthorizerConfiguration(),
+              authenticatorHandler);
 
       // Register Servlets
       ServletHolder authLoginHolder =
@@ -631,9 +634,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     switch (authenticationConfiguration.getProvider()) {
       case BASIC -> authenticatorHandler = new BasicAuthenticator();
       case LDAP -> authenticatorHandler = new LdapAuthenticator();
+      case AZURE -> authenticatorHandler = new AzureAuthenticator();
       default ->
       // For all other types, google, okta etc. auth is handled externally
       authenticatorHandler = new NoopAuthenticator();
+    }
+    if (authenticatorHandler instanceof AzureAuthenticator) {
+      authenticatorHandler.init(catalogConfig);
+      LOG.info("Initialized authenticator: {}", authenticatorHandler.getClass().getSimpleName());
     }
   }
 
