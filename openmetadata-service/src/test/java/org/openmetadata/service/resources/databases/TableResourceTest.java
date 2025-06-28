@@ -4346,7 +4346,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipWithDirection() throws IOException {
     // Create a schema for this test to avoid conflicts
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_test_schema_direction");
@@ -4364,48 +4363,52 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 .withColumns(List.of(c1)),
             ADMIN_AUTH_HEADERS);
 
-    // This table will have a FK to tableInSchema2, so create it first without the constraint
-    CreateTable createDownstream =
-        createRequest("er_downstream_fk")
-            .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withTableConstraints(null)
-            .withColumns(List.of(new Column().withName("c2_fk").withDataType(ColumnDataType.INT)));
-    Table downstreamTable = createEntity(createDownstream, ADMIN_AUTH_HEADERS);
-
-    // This table has a FK to upstreamTable, create it without constraint first
-    CreateTable createTableInSchema1 =
-        createRequest("er_table1_fk")
-            .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withTableConstraints(null)
-            .withColumns(List.of(new Column().withName("c1_fk").withDataType(ColumnDataType.INT)));
-    Table tableInSchema1 = createEntity(createTableInSchema1, ADMIN_AUTH_HEADERS);
-
+    // Create table2 (no constraints) so its column FQN is available
     Table tableInSchema2 =
         createEntity(
             createRequest("er_table2_fk")
                 .withDatabaseSchema(schema.getFullyQualifiedName())
-                .withTableConstraints(null)
-                .withColumns(List.of(c2)),
+                .withColumns(List.of(c2))
+                .withTableConstraints(null),
             ADMIN_AUTH_HEADERS);
 
-    // Now, add the constraints via update
-    createTableInSchema1.withTableConstraints(
-        List.of(
-            new TableConstraint()
-                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-                .withColumns(List.of("c1_fk"))
-                .withReferredColumns(
-                    List.of(upstreamTable.getColumns().getFirst().getFullyQualifiedName()))));
-    updateEntity(createTableInSchema1, Status.OK, ADMIN_AUTH_HEADERS);
+    // Resolve column FQNs needed for FK definitions
+    Table upstreamRef = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table table2Ref = getEntityByName(tableInSchema2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
-    createDownstream.withTableConstraints(
-        List.of(
-            new TableConstraint()
-                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-                .withColumns(List.of("c2_fk"))
-                .withReferredColumns(
-                    List.of(tableInSchema2.getColumns().getFirst().getFullyQualifiedName()))));
-    updateEntity(createDownstream, Status.OK, ADMIN_AUTH_HEADERS);
+    // Central table – created WITH FK to upstream
+    Column c1Local = new Column().withName("c1_local").withDataType(ColumnDataType.INT);
+    Column c1FkCol = new Column().withName("c1_fk").withDataType(ColumnDataType.INT);
+    Table tableInSchema1 =
+        createEntity(
+            createRequest("er_table1_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1Local, c1FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c1FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Down-stream table – created WITH FK to table2
+    Column c2Local = new Column().withName("c2_local").withDataType(ColumnDataType.INT);
+    Column c2FkCol = new Column().withName("c2_fk").withDataType(ColumnDataType.INT);
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_downstream_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c2Local, c2FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c2FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
 
     // Test UPSTREAM direction for the table (not schema)
     Map<String, String> queryParamsUpstream = new HashMap<>();
@@ -4472,7 +4475,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // and <=1 edge
     assertTrue(upstreamTwoResult.getNodes().size() >= 2);
     assertTrue(upstreamTwoResult.getUpstreamEdges().size() <= 2);
-    // If you want to enforce 2-level upstream, add more FK chains in the test data
 
     // Test UPSTREAM direction with depth=0 (should return no upstream edges)
     Map<String, String> queryParamsUpstreamZero = new HashMap<>();
@@ -4542,7 +4544,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipBothDirections() throws IOException {
     // Create a schema for this test to avoid conflicts
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_both_dir_schema_fk");
@@ -4556,7 +4557,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     String testSchemaFqn = schema.getFullyQualifiedName();
 
-    // Step 1: Create all tables with columns, but no constraints
+    // 1. Upstream table (parent)
     Table upstreamTable =
         createEntity(
             createRequest("er_both_upstream_fk")
@@ -4565,64 +4566,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 .withColumns(List.of(cUp)),
             ADMIN_AUTH_HEADERS);
 
-    Table downstreamTable =
-        createEntity(
-            createRequest("er_both_downstream_fk")
-                .withDatabaseSchema(testSchemaFqn)
-                .withTableConstraints(null)
-                .withColumns(List.of(cDownFk)),
-            ADMIN_AUTH_HEADERS);
+    // Refresh to obtain column FQN
+    Table upstreamRef = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
+    // 2. Main table that references the upstream table (FK defined upfront)
     Table tableInSchema =
         createEntity(
             createRequest("er_both_table_fk")
                 .withDatabaseSchema(testSchemaFqn)
-                .withTableConstraints(null)
-                .withColumns(List.of(cMain, cMainFk)),
+                .withColumns(List.of(cMain, cMainFk))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(cMainFk.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef
+                                        .getColumns()
+                                        .getFirst()
+                                        .getFullyQualifiedName())))),
             ADMIN_AUTH_HEADERS);
 
-    // Step 2: Retrieve the tables to get columns with FQN
-    final Table upstreamTableFinal =
-        getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    final Table downstreamTableFinal =
-        getEntityByName(downstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    final Table tableInSchemaFinal =
+    // Refresh to obtain column FQN that downstream will reference
+    Table tableInSchemaRef =
         getEntityByName(tableInSchema.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
-    // Step 3: Patch constraints using the correct FQN columns
-    CreateTable updateTableInSchema =
-        createRequest("er_both_table_fk")
-            .withDatabaseSchema(testSchemaFqn)
-            .withColumns(List.of(cMain, cMainFk))
-            .withTableConstraints(
-                List.of(
-                    new TableConstraint()
-                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-                        .withColumns(List.of(cMainFk.getName()))
-                        .withReferredColumns(
-                            List.of(
-                                upstreamTableFinal
-                                    .getColumns()
-                                    .getFirst()
-                                    .getFullyQualifiedName()))));
-    updateEntity(updateTableInSchema, Status.OK, ADMIN_AUTH_HEADERS);
+    // 3. Downstream table that references the main table (FK defined upfront)
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_both_downstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withColumns(List.of(cDownFk))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(cDownFk.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    tableInSchemaRef
+                                        .getColumns()
+                                        .getFirst()
+                                        .getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
 
-    CreateTable updateDownstream =
-        createRequest("er_both_downstream_fk")
-            .withDatabaseSchema(testSchemaFqn)
-            .withColumns(List.of(cDownFk))
-            .withTableConstraints(
-                List.of(
-                    new TableConstraint()
-                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-                        .withColumns(List.of(cDownFk.getName()))
-                        .withReferredColumns(
-                            List.of(
-                                tableInSchemaFinal
-                                    .getColumns()
-                                    .getFirst()
-                                    .getFullyQualifiedName()))));
-    updateEntity(updateDownstream, Status.OK, ADMIN_AUTH_HEADERS);
+    // Use final refs for assertions
+    final Table upstreamTableFinal = upstreamRef;
+    final Table tableInSchemaFinal = tableInSchemaRef;
+    final Table downstreamTableFinal = downstreamTable;
 
     // Test both directions using the main table's FQN
     Map<String, String> queryParams = new HashMap<>();
@@ -4672,7 +4664,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipFanOutUpstream(TestInfo test) throws IOException {
     // Schema isolation for this test
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_fanout_schema");
@@ -4715,15 +4706,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             new Column().withName("p2_fk").withDataType(ColumnDataType.INT),
             new Column().withName("p3_fk").withDataType(ColumnDataType.INT));
 
-    Table child =
-        createEntity(
-            createRequest("fanout_child")
-                .withDatabaseSchema(schemaFqn)
-                .withTableConstraints(null)
-                .withColumns(childCols),
-            ADMIN_AUTH_HEADERS);
-
-    // Add FK constraints to child (one per parent)
+    // Build FK constraints ahead of creation
     TableConstraint fk1 =
         new TableConstraint()
             .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
@@ -4740,13 +4723,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(List.of("p3_fk"))
             .withReferredColumns(List.of(p3Ref.getColumns().getFirst().getFullyQualifiedName()));
 
-    updateEntity(
-        createRequest("fanout_child")
-            .withDatabaseSchema(schemaFqn)
-            .withColumns(childCols)
-            .withTableConstraints(List.of(fk1, fk2, fk3)),
-        Status.OK,
-        ADMIN_AUTH_HEADERS);
+    Table child =
+        createEntity(
+            createRequest("fanout_child")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(childCols)
+                .withTableConstraints(List.of(fk1, fk2, fk3)),
+            ADMIN_AUTH_HEADERS);
 
     // Call ER API: upstream depth = 1
     WebTarget target =
@@ -4768,7 +4751,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipMultiHopDownstream(TestInfo test) throws IOException {
     // Schema isolation
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_multihop_schema");
@@ -4785,71 +4767,46 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS);
     Table cRef = getEntityByName(cTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
 
-    // Direct children D1 & D2 referencing C
+    // Direct children D1 & D2 referencing C (constraints defined during creation)
+    TableConstraint childFkTemplate =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("c_fk"))
+            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
+
     Table d1 =
         createEntity(
             createRequest("mh_d1")
                 .withDatabaseSchema(schemaFqn)
-                .withTableConstraints(null)
                 .withColumns(
-                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT))),
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(childFkTemplate)),
             ADMIN_AUTH_HEADERS);
     Table d2 =
         createEntity(
             createRequest("mh_d2")
                 .withDatabaseSchema(schemaFqn)
-                .withTableConstraints(null)
                 .withColumns(
-                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT))),
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(childFkTemplate)),
             ADMIN_AUTH_HEADERS);
-
-    TableConstraint d1fk =
-        new TableConstraint()
-            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-            .withColumns(List.of("c_fk"))
-            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
-    TableConstraint d2fk =
-        new TableConstraint()
-            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
-            .withColumns(List.of("c_fk"))
-            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
-    updateEntity(
-        createRequest("mh_d1")
-            .withDatabaseSchema(schemaFqn)
-            .withColumns(d1.getColumns())
-            .withTableConstraints(List.of(d1fk)),
-        Status.OK,
-        ADMIN_AUTH_HEADERS);
-    updateEntity(
-        createRequest("mh_d2")
-            .withDatabaseSchema(schemaFqn)
-            .withColumns(d2.getColumns())
-            .withTableConstraints(List.of(d2fk)),
-        Status.OK,
-        ADMIN_AUTH_HEADERS);
 
     // Grand-child G1 referencing D1
     Table d1Ref = getEntityByName(d1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    Table g1 =
-        createEntity(
-            createRequest("mh_g1")
-                .withDatabaseSchema(schemaFqn)
-                .withTableConstraints(null)
-                .withColumns(
-                    List.of(new Column().withName("d1_fk").withDataType(ColumnDataType.INT))),
-            ADMIN_AUTH_HEADERS);
     TableConstraint g1fk =
         new TableConstraint()
             .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
             .withColumns(List.of("d1_fk"))
             .withReferredColumns(List.of(d1Ref.getColumns().getFirst().getFullyQualifiedName()));
-    updateEntity(
-        createRequest("mh_g1")
-            .withDatabaseSchema(schemaFqn)
-            .withColumns(g1.getColumns())
-            .withTableConstraints(List.of(g1fk)),
-        Status.OK,
-        ADMIN_AUTH_HEADERS);
+
+    Table g1 =
+        createEntity(
+            createRequest("mh_g1")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("d1_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(g1fk)),
+            ADMIN_AUTH_HEADERS);
 
     // Downstream depth = 1 (expect C, D1, D2)
     WebTarget depth1Target =
