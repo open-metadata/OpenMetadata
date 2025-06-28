@@ -160,8 +160,6 @@ public class OSEntityRelationshipGraphBuilder {
           String fromFqn = data.getEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(fromFqn)) {
             result.getNodes().put(fromFqn, new NodeInformation().withEntity(data.getEntity()));
-          }
-          if (!result.getNodes().containsKey(fromFqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
           }
         }

@@ -4668,4 +4668,211 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         && e.getRelatedEntity().getId().equals(downstreamTableFinal.getId())),
         "Edge from tableInSchema to downstreamTable not found in downstream edges");
   }
+
+  @Test
+  void test_tableEntityRelationshipFanOutUpstream(TestInfo test) throws IOException {
+    // Schema isolation for this test
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_fanout_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Three parent tables (P1, P2, P3)
+    Table p1 =
+        createEntity(
+            createRequest("fanout_p1")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table p2 =
+        createEntity(
+            createRequest("fanout_p2")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table p3 =
+        createEntity(
+            createRequest("fanout_p3")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+
+    // Refresh parent tables to get the full column FQNs
+    Table p1Ref = getEntityByName(p1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table p2Ref = getEntityByName(p2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table p3Ref = getEntityByName(p3.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Child table referencing all three parents
+    List<Column> childCols =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("p1_fk").withDataType(ColumnDataType.INT),
+            new Column().withName("p2_fk").withDataType(ColumnDataType.INT),
+            new Column().withName("p3_fk").withDataType(ColumnDataType.INT));
+
+    Table child =
+        createEntity(
+            createRequest("fanout_child")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(childCols),
+            ADMIN_AUTH_HEADERS);
+
+    // Add FK constraints to child (one per parent)
+    TableConstraint fk1 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p1_fk"))
+            .withReferredColumns(List.of(p1Ref.getColumns().getFirst().getFullyQualifiedName()));
+    TableConstraint fk2 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p2_fk"))
+            .withReferredColumns(List.of(p2Ref.getColumns().getFirst().getFullyQualifiedName()));
+    TableConstraint fk3 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p3_fk"))
+            .withReferredColumns(List.of(p3Ref.getColumns().getFirst().getFullyQualifiedName()));
+
+    updateEntity(
+        createRequest("fanout_child")
+            .withDatabaseSchema(schemaFqn)
+            .withColumns(childCols)
+            .withTableConstraints(List.of(fk1, fk2, fk3)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS);
+
+    // Call ER API: upstream depth = 1
+    WebTarget target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", child.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
+        TestUtils.get(
+            target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Expectations: 4 nodes (child + 3 parents) and 3 upstream edges
+    assertEquals(4, result.getNodes().size());
+    assertEquals(3, result.getUpstreamEdges().size());
+    assertTrue(result.getDownstreamEdges().isEmpty());
+  }
+
+  @Test
+  void test_tableEntityRelationshipMultiHopDownstream(TestInfo test) throws IOException {
+    // Schema isolation
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_multihop_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Central table C
+    Table cTable =
+        createEntity(
+            createRequest("mh_c")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table cRef = getEntityByName(cTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Direct children D1 & D2 referencing C
+    Table d1 =
+        createEntity(
+            createRequest("mh_d1")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table d2 =
+        createEntity(
+            createRequest("mh_d2")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+
+    TableConstraint d1fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("c_fk"))
+            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
+    TableConstraint d2fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("c_fk"))
+            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
+    updateEntity(
+        createRequest("mh_d1")
+            .withDatabaseSchema(schemaFqn)
+            .withColumns(d1.getColumns())
+            .withTableConstraints(List.of(d1fk)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS);
+    updateEntity(
+        createRequest("mh_d2")
+            .withDatabaseSchema(schemaFqn)
+            .withColumns(d2.getColumns())
+            .withTableConstraints(List.of(d2fk)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS);
+
+    // Grand-child G1 referencing D1
+    Table d1Ref = getEntityByName(d1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table g1 =
+        createEntity(
+            createRequest("mh_g1")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(
+                    List.of(new Column().withName("d1_fk").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    TableConstraint g1fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("d1_fk"))
+            .withReferredColumns(List.of(d1Ref.getColumns().getFirst().getFullyQualifiedName()));
+    updateEntity(
+        createRequest("mh_g1")
+            .withDatabaseSchema(schemaFqn)
+            .withColumns(g1.getColumns())
+            .withTableConstraints(List.of(g1fk)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS);
+
+    // Downstream depth = 1 (expect C, D1, D2)
+    WebTarget depth1Target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", cTable.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "1");
+    var depth1Result =
+        TestUtils.get(
+            depth1Target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(3, depth1Result.getNodes().size());
+    assertEquals(2, depth1Result.getDownstreamEdges().size());
+
+    // Downstream depth = 2 (expect C, D1, D2, G1)
+    WebTarget depth2Target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", cTable.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "2");
+    var depth2Result =
+        TestUtils.get(
+            depth2Target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(4, depth2Result.getNodes().size());
+    assertEquals(3, depth2Result.getDownstreamEdges().size());
+  }
 }
