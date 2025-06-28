@@ -255,7 +255,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
   private final String collectionPath;
-  private final Class<T> entityClass;
+  @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
