@@ -214,7 +214,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   return (
     <div
-      className={classNames('p-md border-default border-radius-sm', {
+      className={classNames('p-md border-default border-radius-sm bg-white', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
