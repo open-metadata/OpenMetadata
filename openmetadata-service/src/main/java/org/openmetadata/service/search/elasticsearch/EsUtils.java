@@ -151,7 +151,7 @@ public class EsUtils {
       List<String> fieldsToRemove)
       throws IOException {
     Map<String, Object> result =
-        searchEREntitiesByKey(
+        searchEntitiesByKey(
             direction, indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
@@ -163,7 +163,7 @@ public class EsUtils {
     }
   }
 
-  public static Map<String, Object> searchEREntitiesByKey(
+  public static Map<String, Object> searchEntitiesByKey(
       LineageDirection direction,
       String indexAlias,
       String keyName,
