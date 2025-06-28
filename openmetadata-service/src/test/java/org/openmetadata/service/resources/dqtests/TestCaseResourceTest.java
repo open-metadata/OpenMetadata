@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.DELETE;
@@ -1190,6 +1191,84 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
     }
+  }
+
+  @Test
+  void test_getTestCaseWithTagsField(TestInfo testInfo) throws IOException {
+    // Create a table with tags
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    String columnName = "taggedColumn";
+    CreateTable createTable = tableResourceTest.createRequest(testInfo);
+    createTable.setDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName());
+    List<Column> columns = new ArrayList<>(createTable.getColumns());
+    columns.addAll(
+        List.of(
+            new Column()
+                .withName(columnName)
+                .withDisplayName(columnName)
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(10)
+                .withTags(List.of(PII_SENSITIVE_TAG_LABEL)),
+            new Column()
+                .withName("normalColumn")
+                .withDisplayName("normalColumn")
+                .withDataType(ColumnDataType.BIGINT)));
+    createTable.setColumns(columns);
+    createTable.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Create test cases - one for table level, one for column level
+    CreateTestCase tableTestCase =
+        createRequest(testInfo)
+            .withName("tableTestCaseWithTags")
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTags(List.of(TIER1_TAG_LABEL))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase createdTableTestCase = createEntity(tableTestCase, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase columnTestCase =
+        createRequest(testInfo)
+            .withName("columnTestCaseWithTags")
+            .withEntityLink(
+                String.format(
+                    "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName))
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withTags(List.of(TIER1_TAG_LABEL))
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("10").withName("missingCountValue")));
+    TestCase createdColumnTestCase = createEntity(columnTestCase, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Get table-level test case by ID with tags field
+    TestCase fetchedTableTestCase =
+        getEntity(createdTableTestCase.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedTableTestCase.getTags());
+    assertEquals(2, fetchedTableTestCase.getTags().size());
+    Set<String> tableTestCaseTags =
+        fetchedTableTestCase.getTags().stream().map(TagLabel::getName).collect(Collectors.toSet());
+    assertTrue(tableTestCaseTags.contains(PERSONAL_DATA_TAG_LABEL.getName()));
+    assertTrue(tableTestCaseTags.contains(TIER1_TAG_LABEL.getName()));
+
+    // Test 2: Get column-level test case by ID with tags field
+    TestCase fetchedColumnTestCase =
+        getEntity(createdColumnTestCase.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedColumnTestCase.getTags());
+    assertEquals(3, fetchedColumnTestCase.getTags().size());
+    Set<String> columnTestCaseTags =
+        fetchedColumnTestCase.getTags().stream().map(TagLabel::getName).collect(Collectors.toSet());
+    assertTrue(columnTestCaseTags.contains(TIER1_TAG_LABEL.getName()));
+    assertTrue(columnTestCaseTags.contains(PII_SENSITIVE_TAG_LABEL.getName()));
+
+    // Test 3: Get test case by name with tags field
+    TestCase fetchedByName =
+        getEntityByName(createdTableTestCase.getFullyQualifiedName(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedByName.getTags());
+    assertEquals(2, fetchedByName.getTags().size());
+
+    // Test 4: Verify tags are not included when not requested
+    TestCase withoutTags = getEntity(createdTableTestCase.getId(), null, ADMIN_AUTH_HEADERS);
+    assertTrue(nullOrEmpty(withoutTags.getTags()));
   }
 
   @Test
