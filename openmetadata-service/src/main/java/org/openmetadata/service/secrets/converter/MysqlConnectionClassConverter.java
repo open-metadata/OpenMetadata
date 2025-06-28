@@ -19,7 +19,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.AzureConfig;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Converter class to get an `DatalakeConnection` object.
