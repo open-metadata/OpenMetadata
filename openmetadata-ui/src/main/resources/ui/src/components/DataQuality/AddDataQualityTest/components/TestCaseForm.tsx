@@ -31,6 +31,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
+import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
@@ -188,6 +189,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
+      tags: [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
@@ -234,22 +236,55 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: initialValue?.description ?? '',
-        style: {
-          margin: 0,
+  const formField: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'description',
+        required: false,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: initialValue?.description ?? '',
+          style: {
+            margin: 0,
+          },
         },
       },
-    }),
-    [initialValue?.description]
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'tags-selector',
+          },
+        },
+      },
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+          },
+          open: false,
+          hasNoActionButtons: true,
+          isTreeSelect: true,
+          tagType: TagSource.Glossary,
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
+        },
+      },
+    ],
+    [initialValue?.description, initialValue?.tags]
   );
 
   useEffect(() => {
@@ -284,6 +319,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ? getParamsValue()
         : undefined,
       columnName: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
+      tags: initialValue?.tags || [],
     });
   }, []);
 
@@ -422,7 +458,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         }
       </Form.Item>
 
-      {generateFormFields([descriptionField])}
+      {generateFormFields(formField)}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 
