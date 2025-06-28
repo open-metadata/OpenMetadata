@@ -4346,6 +4346,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipWithDirection() throws IOException {
     // Create a schema for this test to avoid conflicts
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_test_schema_direction");
@@ -4541,6 +4542,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipBothDirections() throws IOException {
     // Create a schema for this test to avoid conflicts
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_both_dir_schema_fk");
@@ -4670,6 +4672,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipFanOutUpstream(TestInfo test) throws IOException {
     // Schema isolation for this test
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_fanout_schema");
@@ -4765,6 +4768,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Execution(ExecutionMode.SAME_THREAD)
   void test_tableEntityRelationshipMultiHopDownstream(TestInfo test) throws IOException {
     // Schema isolation
     CreateDatabaseSchema createSchema = schemaTest.createRequest("er_multihop_schema");
