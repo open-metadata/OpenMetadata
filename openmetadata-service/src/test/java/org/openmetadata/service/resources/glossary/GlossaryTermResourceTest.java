@@ -122,7 +122,6 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.MoveGlossaryTermMessage;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.ResultList;
