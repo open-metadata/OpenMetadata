@@ -70,8 +70,7 @@ import org.quartz.JobExecutionContext;
 public class SearchIndexApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final String POISON_PILL = "__POISON_PILL__";
-  private static final int QUEUE_CAPACITY =
-      20000; // Increased buffer for better producer-consumer throughput
+  private static final int QUEUE_CAPACITY = 20000;
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -84,8 +83,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
           TEST_CASE_RESULT,
           QUERY_COST_RECORD);
 
-  // Constants to replace magic numbers
-  private static final int MAX_CONCURRENT_TASKS = 50;
   private BulkSink searchIndexSink;
 
   @Getter private EventPublisherJob jobData;
@@ -127,7 +124,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    // Initializes the jobData from AppConfiguration
     jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
   }
 
@@ -140,14 +136,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     lastBackpressureTime = 0;
     originalBatchSize = 0;
 
-    // Initialize jobData from JobDataMap if not already initialized
     if (jobData == null) {
       String appConfigJson =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG);
       if (appConfigJson != null) {
         jobData = JsonUtils.readValue(appConfigJson, EventPublisherJob.class);
       } else {
-        // Fallback: try to get from app configuration
         if (getApp() != null && getApp().getAppConfiguration() != null) {
           jobData = JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
         } else {
@@ -157,7 +151,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
     }
 
-    // Clean up AppConfiguration for on-demand jobs
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
       Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, Map.class);
@@ -165,7 +158,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      // Expand "all" to actual entity list before initialization
       if (jobData.getEntities().contains(ALL)) {
         jobData.setEntities(getAll());
       }
@@ -186,7 +178,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       reIndexFromStartToEnd(clusterMetrics);
 
-      // Force final flush to ensure all documents are indexed
       if (searchIndexSink != null) {
         LOG.info("Forcing final flush of bulk processor");
         searchIndexSink.close();
@@ -200,7 +191,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       handleJobSuccess();
     } catch (Exception ex) {
-      // Ensure resources are cleaned up even on failure
       if (searchIndexSink != null) {
         try {
           searchIndexSink.close();
@@ -218,10 +208,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
-      // Always send final update
       sendUpdates(jobExecutionContext, true);
 
-      // If stopped, ensure the final status is STOPPED in JobDataMap
       if (stopped && jobExecutionContext != null) {
         LOG.info("Ensuring final STOPPED status in JobDataMap");
         AppRunRecord appRecord = getJobRecord(jobExecutionContext);
@@ -259,7 +247,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(searchIndexStats.get());
 
-    // Apply auto-tuning if enabled (after stats are initialized)
     SearchClusterMetrics clusterMetrics = null;
     if (Boolean.TRUE.equals(jobData.getAutoTune())) {
       LOG.info("Auto-tune enabled, analyzing cluster and adjusting parameters...");
@@ -267,13 +254,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     batchSize.set(jobData.getBatchSize());
-    originalBatchSize = jobData.getBatchSize(); // Store original for later restoration
+    originalBatchSize = jobData.getBatchSize();
     sendUpdates(jobExecutionContext, true);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
     LOG.info("Initializing searchIndexSink with search type: {}", searchType);
 
-    // Use the new bulk processor-based implementations
     if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.searchIndexSink =
           new OpenSearchBulkSink(
@@ -322,14 +308,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void reIndexFromStartToEnd(SearchClusterMetrics clusterMetrics)
       throws InterruptedException {
-    // Calculate the number of threads based on data volume
     long totalEntities = searchIndexStats.get().getJobStats().getTotalRecords();
-
-    // Use auto-tuned values if available
-    int numProducers = Math.min(8, Math.max(2, (int) (totalEntities / 10000)));
+    int numProducers = Math.clamp((int) (totalEntities / 10000), 2, 8);
     int numConsumers = jobData.getConsumerThreads(); // Default from config
-
-    // Override with auto-tuned values if available
     if (clusterMetrics != null) {
       numConsumers = clusterMetrics.getRecommendedConsumerThreads();
       LOG.info("Using auto-tuned consumer threads: {}", numConsumers);
@@ -341,17 +322,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
         numConsumers,
         totalEntities);
 
-    // Initialize task queue
     taskQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
     producersDone.set(false);
-
-    // Use bounded executor for jobs
     jobExecutor = Executors.newVirtualThreadPerTaskExecutor();
-
-    // Create consumer executor
     consumerExecutor = Executors.newFixedThreadPool(numConsumers, Thread.ofVirtual().factory());
 
-    // Start consumers
     CountDownLatch consumerLatch = new CountDownLatch(numConsumers);
     for (int i = 0; i < numConsumers; i++) {
       final int consumerId = i;
@@ -377,21 +352,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
           });
     }
 
-    // Use bounded executor for producer threads
     producerExecutor = Executors.newFixedThreadPool(numProducers, Thread.ofVirtual().factory());
 
     try {
       processEntityReindex(jobExecutionContext);
-
-      // Signal producers are done
       producersDone.set(true);
-
-      // Add poison pills for consumers
       for (int i = 0; i < numConsumers; i++) {
         taskQueue.offer(new IndexingTask<>(POISON_PILL, null, -1));
       }
-
-      // Wait for all consumers to finish
       boolean finished = consumerLatch.await(5, TimeUnit.MINUTES);
       if (!finished) {
         LOG.warn("Consumers did not finish within timeout");
@@ -400,7 +368,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } catch (InterruptedException e) {
       LOG.info("Reindexing interrupted - stopping immediately");
       stopped = true;
-      Thread.currentThread().interrupt(); // Preserve interrupt status
+      Thread.currentThread().interrupt();
       throw e;
     } catch (Exception e) {
       if (!stopped) {
@@ -408,13 +376,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
       throw e;
     } finally {
-      // Only do graceful shutdown if not stopped
       if (!stopped) {
         shutdownExecutor(consumerExecutor, "ConsumerExecutor", 30, TimeUnit.SECONDS);
         shutdownExecutor(jobExecutor, "JobExecutor", 20, TimeUnit.SECONDS);
         shutdownExecutor(producerExecutor, "ProducerExecutor", 1, TimeUnit.MINUTES);
       }
-      // If stopped, executors are already force-shutdown in stop() method
     }
   }
 
@@ -424,18 +390,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
     CountDownLatch producerLatch = new CountDownLatch(latchCount);
     submitProducerTask(jobExecutionContext, producerLatch);
 
-    // Wait for completion but check for stop signal and thread interruption every second
     while (!producerLatch.await(1, TimeUnit.SECONDS)) {
       if (stopped || Thread.currentThread().isInterrupted()) {
         LOG.info("Stop signal or interrupt received during reindexing - exiting immediately");
-        // Force interrupt all tasks
         if (producerExecutor != null) {
           producerExecutor.shutdownNow();
         }
         if (jobExecutor != null) {
           jobExecutor.shutdownNow();
         }
-        return; // Exit immediately without waiting
+        return;
       }
     }
   }
@@ -458,13 +422,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
                   producerExecutor.submit(
                       () -> {
                         try {
-                          // Check if stopped before processing
                           if (stopped) {
                             LOG.debug("Skipping batch - stop signal received");
                             return;
                           }
-
-                          // Apply natural throttling if we're experiencing backpressure
                           long backpressureDelay = getBackpressureDelay();
                           if (backpressureDelay > 0) {
                             LOG.debug("Applying backpressure delay of {} ms", backpressureDelay);
@@ -476,12 +437,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
                               return;
                             }
                           }
-
                           LOG.debug(
                               "Virtual thread processing offset: {}, remaining batches: {}",
                               currentOffset,
                               producerLatch.getCount());
-                          // Create a new source for each thread to avoid thread-safety issues
                           Source<?> source = createSource(entityType);
                           processReadTask(jobExecutionContext, entityType, source, currentOffset);
                         } catch (Exception e) {
@@ -550,7 +509,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
     }
 
-    // Never overwrite STOP_IN_PROGRESS or STOPPED status
     if (currentStatus == EventPublisherJob.Status.STOP_IN_PROGRESS
         || currentStatus == EventPublisherJob.Status.STOPPED) {
       LOG.debug(
@@ -563,16 +521,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void handleBackpressure(String errorMessage) {
-    // Check if this is a rejected execution exception
     if (errorMessage != null && errorMessage.contains("rejected_execution_exception")) {
       consecutiveErrors++;
       consecutiveSuccesses = 0; // Reset success counter
       LOG.warn("Detected backpressure from OpenSearch (consecutive errors: {})", consecutiveErrors);
 
-      // Reduce batch size if we're getting too many errors
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         int currentBatchSize = batchSize.get();
-        int newBatchSize = Math.max(50, currentBatchSize / 2); // Reduce by half, minimum 50
+        int newBatchSize =
+            Math.clamp(currentBatchSize / 2, 50, Integer.MAX_VALUE); // Reduce by half, minimum 50
 
         if (newBatchSize < currentBatchSize) {
           batchSize.set(newBatchSize);
@@ -584,10 +541,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           consecutiveErrors = 0; // Reset counter
 
           // Update the bulk sink's batch size
-          if (searchIndexSink instanceof OpenSearchBulkSink) {
-            ((OpenSearchBulkSink) searchIndexSink).updateBatchSize(newBatchSize);
-          } else if (searchIndexSink instanceof ElasticSearchBulkSink) {
-            ((ElasticSearchBulkSink) searchIndexSink).updateBatchSize(newBatchSize);
+          if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
+            opensearchBulkSink.updateBatchSize(newBatchSize);
+          } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
+            elasticSearchBulkSink.updateBatchSize(newBatchSize);
           }
         }
       }
@@ -614,7 +571,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     // Calculate remaining cooldown time and convert to a reasonable delay
     long remainingCooldown = BACKPRESSURE_WAIT_MS - timeSinceBackpressure;
     // Add delay proportional to consecutive errors (50-500ms range)
-    return Math.min(500, Math.max(50, remainingCooldown / 10));
+    return Math.clamp(remainingCooldown / 10, 50, 500);
   }
 
   private void handleJobFailure(Exception ex) {
@@ -808,15 +765,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private Source<?> createSource(String entityType) {
-    // Handle incorrect entity type name for query cost
     String correctedEntityType = entityType;
     if ("queryCostResult".equals(entityType)) {
       LOG.warn("Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'");
       correctedEntityType = QUERY_COST_RECORD;
     }
 
-    // For search indexing, we need specific fields but not all relationships
-    // This significantly improves performance while still loading required data
     List<String> searchIndexFields = getSearchIndexFields(correctedEntityType);
 
     if (!TIME_SERIES_ENTITIES.contains(correctedEntityType)) {
@@ -827,19 +781,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  /**
-   * Returns optimized field list for search indexing.
-   * For now, we load all fields to ensure search index builders have everything they need.
-   * TODO: Optimize this by analyzing each entity's actual field requirements from their SearchIndex classes.
-   */
   private List<String> getSearchIndexFields(String entityType) {
-    // Time series entities are stored differently and don't need relationship loading
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return List.of(); // Empty list for time series
     }
-
-    // For all other entities, load all fields to ensure search indexes build correctly
-    // This is slower but guarantees correctness until we can optimize field loading
     return List.of("*");
   }
 
@@ -848,13 +793,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.info("Reindexing job is being stopped.");
     stopped = true;
 
-    // CRITICAL: Capture status FIRST, while jobData might still be valid
     EventPublisherJob.Status currentStatus = null;
     if (jobData != null) {
       currentStatus = jobData.getStatus();
       LOG.info("Current job status before stop: {}", currentStatus);
 
-      // Update job status to STOP_IN_PROGRESS if not already
       if (currentStatus != EventPublisherJob.Status.STOP_IN_PROGRESS
           && currentStatus != EventPublisherJob.Status.STOPPED) {
         jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
@@ -864,7 +807,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.warn("jobData is null during stop - cannot capture current status");
     }
 
-    // Send stop-in-progress update
     if (jobExecutionContext != null) {
       AppRunRecord appRecord = getJobRecord(jobExecutionContext);
       appRecord.setStatus(AppRunRecord.Status.STOP_IN_PROGRESS);
@@ -969,19 +911,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
     String entityType = task.entityType();
     ResultList<?> entities = task.entities();
-
-    // Handle incorrect entity type name for query cost
-    String correctedEntityType = entityType;
-    if ("queryCostResult".equals(entityType)) {
-      LOG.warn("Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'");
-      correctedEntityType = QUERY_COST_RECORD;
-    }
-
     Map<String, Object> contextData = new HashMap<>();
-    contextData.put(ENTITY_TYPE_KEY, correctedEntityType);
+    contextData.put(ENTITY_TYPE_KEY, entityType);
 
     try {
-      if (!TIME_SERIES_ENTITIES.contains(correctedEntityType)) {
+      if (!TIME_SERIES_ENTITIES.contains(entityType)) {
         @SuppressWarnings("unchecked")
         List<EntityInterface> entityList = (List<EntityInterface>) entities.getData();
         searchIndexSink.write(entityList, contextData);
@@ -992,13 +926,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
         searchIndexSink.write(entityList, contextData);
       }
 
-      // After successful write, create a new StepStats for the current batch
       StepStats currentEntityStats = new StepStats();
       currentEntityStats.setSuccessRecords(listOrEmpty(entities.getData()).size());
       currentEntityStats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
-      // Do NOT set Total Records here
 
-      // Update statistics in a thread-safe manner
       if (!entities.getErrors().isEmpty()) {
         jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
         jobData.setFailure(
@@ -1011,18 +942,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
                     "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
                 .withFailedEntities(entities.getErrors()));
       } else {
-        // Reset consecutive errors on successful batch
         if (consecutiveErrors > 0) {
           consecutiveErrors = 0;
           LOG.debug("Reset consecutive error counter after successful batch");
         }
 
-        // Track consecutive successes and potentially increase batch size
         consecutiveSuccesses++;
         if (consecutiveSuccesses >= BATCH_SIZE_INCREASE_THRESHOLD && originalBatchSize > 0) {
           int currentBatchSize = batchSize.get();
           int targetBatchSize =
-              Math.min(originalBatchSize, currentBatchSize * 3 / 2); // Increase by 50%
+              Math.clamp(currentBatchSize * 3 / 2, 1, originalBatchSize); // Increase by 50%
 
           if (targetBatchSize > currentBatchSize) {
             batchSize.set(targetBatchSize);
@@ -1034,18 +963,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
             jobData.setBatchSize(targetBatchSize);
             consecutiveSuccesses = 0; // Reset counter
 
-            // Update the bulk sink's batch size
-            if (searchIndexSink instanceof OpenSearchBulkSink) {
-              ((OpenSearchBulkSink) searchIndexSink).updateBatchSize(targetBatchSize);
-            } else if (searchIndexSink instanceof ElasticSearchBulkSink) {
-              ((ElasticSearchBulkSink) searchIndexSink).updateBatchSize(targetBatchSize);
+            if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
+              opensearchBulkSink.updateBatchSize(targetBatchSize);
+            } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
+              elasticSearchBulkSink.updateBatchSize(targetBatchSize);
             }
           }
         }
       }
       updateStats(entityType, currentEntityStats);
 
-      // Broadcast updated metrics via WebSocket after each batch
       LOG.debug(
           "Broadcasting metrics update for entity type: {}, success: {}, failed: {}",
           entityType,
@@ -1054,21 +981,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
       sendUpdates(jobExecutionContext);
 
     } catch (SearchIndexException e) {
-      // Only update to ACTIVE_ERROR if not stopped
       if (!stopped) {
         updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
-        // Use the IndexingError from SearchIndexException if available
         IndexingError indexingError = e.getIndexingError();
         if (indexingError != null) {
           jobData.setFailure(indexingError);
-          // Check for backpressure
           handleBackpressure(indexingError.getMessage());
         } else {
           jobData.setFailure(
               new IndexingError()
                   .withErrorSource(IndexingError.ErrorSource.SINK)
                   .withMessage(e.getMessage()));
-          // Check for backpressure
           handleBackpressure(e.getMessage());
         }
 
@@ -1078,13 +1001,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
         failedEntityStats.setFailedRecords(
             indexingError != null ? indexingError.getFailedCount() : entities.getData().size());
         updateStats(entityType, failedEntityStats);
-
-        // Immediately broadcast the error via WebSocket
         sendUpdates(jobExecutionContext, true); // Force update for errors
       }
       LOG.error(String.format("Issues in Sink to Elastic Search for %s", entityType), e);
     } catch (Exception e) {
-      // Only update to ACTIVE_ERROR if not stopped
       if (!stopped) {
         updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
         jobData.setFailure(
@@ -1097,8 +1017,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
         failedEntityStats.setFailedRecords(
             entities != null && entities.getData() != null ? entities.getData().size() : 0);
         updateStats(entityType, failedEntityStats);
-
-        // Immediately broadcast the error via WebSocket
         sendUpdates(jobExecutionContext, true); // Force update for errors
       }
       LOG.error(String.format("Issues in Sink to Elastic Search for %s", entityType), e);
@@ -1113,7 +1031,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private int getTotalLatchCount(Set<String> entities) {
-    // Ensure stats are initialized
     if (searchIndexStats.get() == null) {
       LOG.warn("searchIndexStats not initialized, using entity count as latch count");
       return entities.size();
