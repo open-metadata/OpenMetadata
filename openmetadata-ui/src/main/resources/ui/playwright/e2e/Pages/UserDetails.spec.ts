@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
+import { Domain } from '../../support/domain/Domain';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -22,6 +23,14 @@ import { redirectToUserPage } from '../../utils/userDetails';
 const user1 = new UserClass();
 const user2 = new UserClass();
 const admin = new AdminClass();
+const domain = new Domain({
+  name: `PW%domain`,
+  displayName: `PWDomain`,
+  description: 'playwright domain description',
+  domainType: 'Aggregate',
+  // eslint-disable-next-line no-useless-escape
+  fullyQualifiedName: `PW%domain`,
+});
 const team = new TeamClass({
   name: `a-new-team-${uuid()}`,
   displayName: `A New Team ${uuid()}`,
@@ -56,6 +65,7 @@ test.describe('User with different Roles', () => {
     await user2.create(apiContext);
 
     await team.create(apiContext);
+    await domain.create(apiContext);
 
     await afterAction();
   });
@@ -67,6 +77,7 @@ test.describe('User with different Roles', () => {
     await user2.delete(apiContext);
 
     await team.delete(apiContext);
+    await domain.delete(apiContext);
 
     await afterAction();
   });
@@ -96,6 +107,33 @@ test.describe('User with different Roles', () => {
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       'Accounting'
     );
+  });
+
+  test('User can search for a domain', async ({ adminPage }) => {
+    await redirectToUserPage(adminPage);
+
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
+
+    await adminPage.getByTestId('edit-domains').click();
+
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill('PWDomain');
+
+    await searchPromise;
+
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    await expect(
+      adminPage.locator('.domain-custom-dropdown-class')
+    ).toContainText('PWDomain');
   });
 
   test('Admin user can get all the roles hierarchy and edit roles', async ({
