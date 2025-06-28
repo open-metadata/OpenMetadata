@@ -21,6 +21,7 @@ export interface SuggestionDataByTypes {
 
 export interface SuggestionsContextType {
   suggestionLimit: number;
+  suggestionPendingCount: number;
   selectedUserSuggestions: SuggestionDataByTypes;
   suggestions: Suggestion[];
   suggestionsByUser: Map<string, SuggestionDataByTypes>;
@@ -30,6 +31,7 @@ export interface SuggestionsContextType {
   allSuggestionsUsers: EntityReference[];
   onUpdateActiveUser: (user?: EntityReference) => void;
   fetchSuggestions: () => void;
+  fetchSuggestionsByUserId: (userId: string, limit?: number) => void;
   acceptRejectSuggestion: (
     suggestion: Suggestion,
     action: SuggestionAction

@@ -23,6 +23,7 @@ const SuggestionsSlider = () => {
   const {
     suggestions,
     loading,
+    suggestionPendingCount,
     fetchSuggestions,
     suggestionLimit,
     selectedUserSuggestions,
@@ -46,7 +47,7 @@ const SuggestionsSlider = () => {
           type="primary"
           onClick={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
-            count: suggestionLimit - 10, // 10 is the default limit, and only show count of pending suggestions
+            count: suggestionPendingCount,
           })}
         </Button>
       )}

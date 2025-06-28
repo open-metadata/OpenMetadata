@@ -13,6 +13,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { EntityReference } from '../../../generated/entity/type';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from './AvatarCarouselItem';
 
 const suggestions = [
@@ -46,6 +47,7 @@ jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
     acceptRejectSuggestion: jest.fn(),
     selectedUserSuggestions: [],
     onUpdateActiveUser: jest.fn(),
+    fetchSuggestionsByUserId: jest.fn(),
   })),
   __esModule: true,
   default: 'SuggestionsProvider',
@@ -99,6 +101,37 @@ describe('AvatarCarouselItem', () => {
     button.click();
 
     expect(onAvatarClick).toHaveBeenCalledWith(index);
+  });
+
+  it('calls fetchSuggestionsByUserId when avatar is clicked', () => {
+    const mockFetchSuggestionsByUserId = jest.fn();
+    (useSuggestionsContext as jest.Mock).mockImplementation(() => ({
+      suggestions: suggestions,
+      suggestionsByUser: suggByUser,
+      allSuggestionsUsers: [
+        { id: '1', name: 'Avatar 1', type: 'user' },
+        { id: '2', name: 'Avatar 2', type: 'user' },
+      ],
+      acceptRejectSuggestion: jest.fn(),
+      selectedUserSuggestions: [],
+      onUpdateActiveUser: jest.fn(),
+      fetchSuggestionsByUserId: mockFetchSuggestionsByUserId,
+    }));
+
+    const { getByTestId } = render(
+      <AvatarCarouselItem
+        avatar={avatar}
+        avatarBtnRefs={avatarBtnRefs}
+        index={index}
+        isActive={isActive}
+        onAvatarClick={onAvatarClick}
+      />
+    );
+
+    const button = getByTestId(`avatar-carousel-item-${avatar.id}`);
+    button.click();
+
+    expect(mockFetchSuggestionsByUserId).toHaveBeenCalledWith(avatar.id);
   });
 
   it('sets isActive class when isActive is true', () => {

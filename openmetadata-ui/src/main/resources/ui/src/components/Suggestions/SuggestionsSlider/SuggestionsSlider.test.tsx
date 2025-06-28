@@ -35,6 +35,7 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
     fetchSuggestions,
     loadingAccept: false,
     loadingReject: false,
+    suggestionPendingCount: 0,
   })),
   __esModule: true,
   default: 'SuggestionsProvider',

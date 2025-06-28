@@ -35,6 +35,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
 import {
   approveRejectAllSuggestions,
+  getSuggestionsByUserId,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -66,6 +67,8 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
   const [loading, setLoading] = useState(false);
   const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
+  const [suggestionPendingCount, setSuggestionPendingCount] =
+    useState<number>(0);
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
@@ -81,8 +84,47 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
         const { allUsersList, groupedSuggestions } = getSuggestionByType(data);
         setSuggestionLimit(paging.total);
+        setSuggestionPendingCount(paging.total - PAGE_SIZE);
         setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
         setSuggestionsByUser(groupedSuggestions);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.suggestion-lowercase-plural'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [entityFqn, suggestionLimit]
+  );
+
+  const fetchSuggestionsByUserId = useCallback(
+    async (userId: string, limit?: number) => {
+      setLoading(true);
+      try {
+        const { data } = await getSuggestionsByUserId(userId, {
+          entityFQN: entityFqn,
+          limit: limit ?? suggestionLimit,
+        });
+
+        // Merge new suggestions with existing ones, removing duplicates by ID
+        setSuggestions((prevSuggestions) => {
+          const existingIds = new Set(prevSuggestions.map((s) => s.id));
+          const newSuggestions = data.filter((s) => !existingIds.has(s.id));
+          const mergedSuggestions = [...prevSuggestions, ...newSuggestions];
+
+          // Update grouped suggestions with merged data
+          const { allUsersList, groupedSuggestions } =
+            getSuggestionByType(mergedSuggestions);
+          setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
+          setSuggestionsByUser(groupedSuggestions);
+          setSuggestionPendingCount(suggestionLimit - mergedSuggestions.length);
+
+          return mergedSuggestions;
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -186,8 +228,10 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       loadingAccept,
       loadingReject,
       allSuggestionsUsers,
+      suggestionPendingCount,
       onUpdateActiveUser,
       fetchSuggestions,
+      fetchSuggestionsByUserId,
       acceptRejectSuggestion,
       acceptRejectAllSuggestions,
     };
@@ -201,8 +245,10 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     loadingAccept,
     loadingReject,
     allSuggestionsUsers,
+    suggestionPendingCount,
     onUpdateActiveUser,
     fetchSuggestions,
+    fetchSuggestionsByUserId,
     acceptRejectSuggestion,
     acceptRejectAllSuggestions,
   ]);

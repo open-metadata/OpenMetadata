@@ -45,6 +45,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve()),
+  getSuggestionsByUserId: jest.fn().mockImplementation(() => Promise.resolve()),
   approveRejectAllSuggestions: jest.fn(),
   updateSuggestionStatus: jest.fn(),
 }));
@@ -54,6 +55,49 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
     permissions: mockEntityPermissions,
   })),
 }));
+
+function TestComponent() {
+  const {
+    acceptRejectAllSuggestions,
+    onUpdateActiveUser,
+    acceptRejectSuggestion,
+    fetchSuggestionsByUserId,
+  } = useSuggestionsContext();
+
+  return (
+    <>
+      <button
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
+        Accept All
+      </button>
+      <button
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
+        Reject All
+      </button>
+      <button
+        onClick={() =>
+          onUpdateActiveUser({ id: '1', name: 'Avatar 1', type: 'user' })
+        }>
+        Active User
+      </button>
+      <button
+        onClick={() =>
+          acceptRejectSuggestion(suggestions[0], SuggestionAction.Accept)
+        }>
+        Accept One
+      </button>
+      <button
+        onClick={() =>
+          acceptRejectSuggestion(suggestions[0], SuggestionAction.Reject)
+        }>
+        Reject One
+      </button>
+      <button onClick={() => fetchSuggestionsByUserId('test-user-id')}>
+        Fetch By User ID
+      </button>
+    </>
+  );
+}
 
 describe('SuggestionsProvider', () => {
   it('renders provider and fetches data', async () => {
@@ -144,43 +188,24 @@ describe('SuggestionsProvider', () => {
       SuggestionAction.Reject
     );
   });
+
+  it('calls fetchSuggestionsByUserId when button is clicked', async () => {
+    const { getSuggestionsByUserId } = await import(
+      '../../../rest/suggestionsAPI'
+    );
+
+    render(
+      <SuggestionsProvider>
+        <TestComponent />
+      </SuggestionsProvider>
+    );
+
+    const fetchByUserIdBtn = screen.getByText('Fetch By User ID');
+    fireEvent.click(fetchByUserIdBtn);
+
+    expect(getSuggestionsByUserId).toHaveBeenCalledWith('test-user-id', {
+      entityFQN: 'mockFQN',
+      limit: 10,
+    });
+  });
 });
-
-function TestComponent() {
-  const {
-    acceptRejectAllSuggestions,
-    onUpdateActiveUser,
-    acceptRejectSuggestion,
-  } = useSuggestionsContext();
-
-  return (
-    <>
-      <button
-        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
-        Accept All
-      </button>
-      <button
-        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
-        Reject All
-      </button>
-      <button
-        onClick={() =>
-          onUpdateActiveUser({ id: '1', name: 'Avatar 1', type: 'user' })
-        }>
-        Active User
-      </button>
-      <button
-        onClick={() =>
-          acceptRejectSuggestion(suggestions[0], SuggestionAction.Accept)
-        }>
-        Accept One
-      </button>
-      <button
-        onClick={() =>
-          acceptRejectSuggestion(suggestions[0], SuggestionAction.Reject)
-        }>
-        Reject One
-      </button>
-    </>
-  );
-}
