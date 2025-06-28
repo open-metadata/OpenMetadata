@@ -10,10 +10,10 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
   private static final Set<String> excludeFields =
