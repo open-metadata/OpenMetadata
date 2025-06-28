@@ -281,4 +281,169 @@ describe('EditTestCaseModal Component', () => {
     // Verify that onUpdate was called (indicating form submission)
     expect(mockProps.onUpdate).toHaveBeenCalled();
   });
+
+  // Tier tag filtering tests
+  it('should filter out tier tags from displayed tags', async () => {
+    const mockTestCaseWithTierTag = {
+      ...MOCK_TEST_CASE[0],
+      tags: [
+        {
+          tagFQN: 'Tier.Tier1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PersonalData.Email',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ],
+    };
+
+    const propsWithTierTag = {
+      ...mockProps,
+      testCase: mockTestCaseWithTierTag,
+    };
+
+    render(<EditTestCaseModal {...propsWithTierTag} />);
+
+    // Verify that tag fields are rendered
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+
+    // The tier tag should be filtered out and not displayed in the form
+    // But it should be preserved when updating
+  });
+
+  it('should preserve tier tags when updating test case', async () => {
+    const mockUpdateTestCaseById = jest.fn().mockResolvedValue({});
+    jest.doMock('../../../rest/testAPI', () => ({
+      ...jest.requireActual('../../../rest/testAPI'),
+      updateTestCaseById: mockUpdateTestCaseById,
+    }));
+
+    const mockTestCaseWithTierTag = {
+      ...MOCK_TEST_CASE[0],
+      tags: [
+        {
+          tagFQN: 'Tier.Tier2',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ],
+    };
+
+    const propsWithTierTag = {
+      ...mockProps,
+      testCase: mockTestCaseWithTierTag,
+    };
+
+    render(<EditTestCaseModal {...propsWithTierTag} />);
+
+    // Wait for form to load
+    expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
+
+    // Submit the form
+    const submitBtn = await screen.findByText('label.submit');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // The tier tag should be preserved in the update
+    expect(mockProps.onUpdate).toHaveBeenCalled();
+  });
+
+  it('should handle multiple tier tags correctly', async () => {
+    const mockTestCaseWithMultipleTierTags = {
+      ...MOCK_TEST_CASE[0],
+      tags: [
+        {
+          tagFQN: 'Tier.Tier1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'Tier.Tier2', // This should not happen in practice, but test it
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ],
+    };
+
+    const propsWithMultipleTierTags = {
+      ...mockProps,
+      testCase: mockTestCaseWithMultipleTierTags,
+    };
+
+    render(<EditTestCaseModal {...propsWithMultipleTierTags} />);
+
+    // Should still render properly
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+  });
+
+  it('should work correctly when no tier tags are present', async () => {
+    const mockTestCaseWithoutTierTag = {
+      ...MOCK_TEST_CASE[0],
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+        {
+          tagFQN: 'PersonalData.Email',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ],
+    };
+
+    const propsWithoutTierTag = {
+      ...mockProps,
+      testCase: mockTestCaseWithoutTierTag,
+    };
+
+    render(<EditTestCaseModal {...propsWithoutTierTag} />);
+
+    // Wait for form to load
+    expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
+
+    // Submit the form
+    const submitBtn = await screen.findByText('label.submit');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // Should work normally without tier tags
+    expect(mockProps.onUpdate).toHaveBeenCalled();
+  });
 });

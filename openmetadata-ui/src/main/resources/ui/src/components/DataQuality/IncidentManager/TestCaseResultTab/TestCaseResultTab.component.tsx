@@ -39,6 +39,7 @@ import {
   getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
+import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -116,11 +117,13 @@ const TestCaseResultTab = () => {
     if (!testCaseData) {
       return;
     }
+    // Preserve tier tags
+    const tierTag = getTierTags(testCaseData.tags ?? []);
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     const updatedTestCase = {
       ...testCaseData,
-      tags: updatedTags,
+      tags: [...(tierTag ? [tierTag] : []), ...(updatedTags ?? [])],
     };
     const jsonPatch = compare(testCaseData, updatedTestCase);
     if (jsonPatch.length) {
@@ -192,7 +195,7 @@ const TestCaseResultTab = () => {
         testCaseData as VersionEntityTypes,
         testCaseData?.changeDescription as ChangeDescription
       )
-    : testCaseData?.tags;
+    : getTagsWithoutTier(testCaseData?.tags ?? []);
 
   const testCaseParams = useMemo(() => {
     if (isVersionPage) {

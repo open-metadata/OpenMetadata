@@ -48,6 +48,7 @@ import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
@@ -105,15 +106,21 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table]);
 
-  const { tags, glossaryTerms } = useMemo(() => {
+  const { tags, glossaryTerms, tierTag } = useMemo(() => {
     if (!testCase?.tags) {
-      return { tags: [], glossaryTerms: [] };
+      return { tags: [], glossaryTerms: [], tierTag: null };
     }
-    const filteredTags = getFilterTags(testCase.tags);
+
+    // First extract tier tag
+    const tierTag = getTierTags(testCase.tags);
+    // Filter out tier tags before processing
+    const tagsWithoutTier = getTagsWithoutTier(testCase.tags);
+    const filteredTags = getFilterTags(tagsWithoutTier);
 
     return {
       tags: filteredTags.Classification,
       glossaryTerms: filteredTags.Glossary,
+      tierTag,
     };
   }, [testCase?.tags]);
 
@@ -134,7 +141,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         : testCase?.computePassedFailedRowCount,
       tags: showOnlyParameter
         ? testCase.tags
-        : [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
+        : [
+            ...(tierTag ? [tierTag] : []),
+            ...(value.tags ?? []),
+            ...(value.glossaryTerms ?? []),
+          ],
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
