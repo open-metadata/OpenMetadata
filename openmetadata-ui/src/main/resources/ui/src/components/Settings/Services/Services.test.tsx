@@ -173,6 +173,18 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
 }));
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
+    },
+  ]),
+}));
+
 jest.mock('../../common/ListView/ListView.component', () => ({
   ListView: jest.fn().mockImplementation(({ cardRenderer, tableProps }) => (
     <div data-testid="mocked-list-view">

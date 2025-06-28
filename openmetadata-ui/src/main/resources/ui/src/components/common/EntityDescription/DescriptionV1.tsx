@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
@@ -61,6 +62,7 @@ const DescriptionV1 = ({
   entityFullyQualifiedName,
 }: DescriptionProps) => {
   const history = useHistory();
+  const { isVersionView } = useGenericContext<Domain>();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -145,7 +147,7 @@ const DescriptionV1 = ({
   const actionButtons = useMemo(
     () => (
       <Space size={12}>
-        {!isReadOnly && hasEditAccess && (
+        {!isVersionView && !isReadOnly && hasEditAccess && (
           <EditIconButton
             newLook
             data-testid="edit-description"
@@ -174,6 +176,7 @@ const DescriptionV1 = ({
     ),
     [
       isReadOnly,
+      isVersionView,
       hasEditAccess,
       handleEditDescription,
       taskActionButton,

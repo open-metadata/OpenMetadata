@@ -146,7 +146,9 @@ export const createTagTask = async (
     await clickOutside(page);
   }
 
+  const taskResponse = page.waitForResponse(`/api/v1/feed`);
   await page.click('button[type="submit"]');
+  await taskResponse;
 
   await toastNotification(page, /Task created successfully./);
 };
