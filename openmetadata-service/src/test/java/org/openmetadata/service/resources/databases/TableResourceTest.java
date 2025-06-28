@@ -4390,7 +4390,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                             .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
                             .withColumns(List.of(c1FkCol.getName()))
                             .withReferredColumns(
-                                List.of(upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
             ADMIN_AUTH_HEADERS);
 
     // Down-stream table – created WITH FK to table2
@@ -4407,7 +4408,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                             .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
                             .withColumns(List.of(c2FkCol.getName()))
                             .withReferredColumns(
-                                List.of(table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+                                List.of(
+                                    table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
             ADMIN_AUTH_HEADERS);
 
     // Test UPSTREAM direction for the table (not schema)
@@ -4426,32 +4428,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
             ADMIN_AUTH_HEADERS);
 
-    // Debug logging for upstream
-    System.out.println("\n=== UPSTREAM RELATIONSHIP DEBUG ===");
-    System.out.println("Query Params: " + queryParamsUpstream);
-    System.out.println(
-        "Nodes found ("
-            + upstreamResult.getNodes().size()
-            + "): "
-            + upstreamResult.getNodes().keySet());
-    System.out.println(
-        "Upstream edges ("
-            + upstreamResult.getUpstreamEdges().size()
-            + "): "
-            + upstreamResult.getUpstreamEdges());
-    System.out.println(
-        "Downstream edges ("
-            + upstreamResult.getDownstreamEdges().size()
-            + "): "
-            + upstreamResult.getDownstreamEdges());
-    System.out.println("================================\n");
-
     // Assertions for upstream: should find upstreamTable -> tableInSchema1
     assertNotNull(upstreamResult);
-    assertEquals(2, upstreamResult.getNodes().size());
-    assertTrue(upstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
-    assertTrue(upstreamResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    // --- verify nodes ---
+    assertEquals(
+        Set.of(tableInSchema1.getFullyQualifiedName(), upstreamTable.getFullyQualifiedName()),
+        upstreamResult.getNodes().keySet());
+
+    // --- verify single upstream edge ---
     assertEquals(1, upstreamResult.getUpstreamEdges().size());
+    var upstreamEdge = upstreamResult.getUpstreamEdges().values().iterator().next();
+    assertEquals(upstreamTable.getId(), upstreamEdge.getEntity().getId());
+    assertEquals(tableInSchema1.getId(), upstreamEdge.getRelatedEntity().getId());
     assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
 
     // Test UPSTREAM direction with depth=2 (should return up to 2 upstream edges if the chain
@@ -4475,6 +4463,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // and <=1 edge
     assertTrue(upstreamTwoResult.getNodes().size() >= 2);
     assertTrue(upstreamTwoResult.getUpstreamEdges().size() <= 2);
+    // Ensure the original edge is still present
+    assertTrue(
+        upstreamTwoResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(upstreamTable.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchema1.getId())));
 
     // Test UPSTREAM direction with depth=0 (should return no upstream edges)
     Map<String, String> queryParamsUpstreamZero = new HashMap<>();
@@ -4516,25 +4511,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Assertions for downstream: should find tableInSchema1 -> (none, since no downstream for this
     // table)
     assertNotNull(downstreamResult);
-    // Debug logging
-    System.out.println("\n=== DOWNSTREAM RELATIONSHIP DEBUG ===");
-    System.out.println("Query Params: " + queryParamsDownstream);
-    System.out.println(
-        "Nodes found ("
-            + downstreamResult.getNodes().size()
-            + "): "
-            + downstreamResult.getNodes().keySet());
-    System.out.println(
-        "Downstream edges ("
-            + downstreamResult.getDownstreamEdges().size()
-            + "): "
-            + downstreamResult.getDownstreamEdges());
-    System.out.println(
-        "Upstream edges ("
-            + downstreamResult.getUpstreamEdges().size()
-            + "): "
-            + downstreamResult.getUpstreamEdges());
-    System.out.println("==================================\n");
 
     // For this test setup, tableInSchema1 has no downstream relationships
     assertEquals(1, downstreamResult.getNodes().size());
@@ -4582,10 +4558,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                             .withColumns(List.of(cMainFk.getName()))
                             .withReferredColumns(
                                 List.of(
-                                    upstreamRef
-                                        .getColumns()
-                                        .getFirst()
-                                        .getFullyQualifiedName())))),
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
             ADMIN_AUTH_HEADERS);
 
     // Refresh to obtain column FQN that downstream will reference
@@ -4748,6 +4721,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(4, result.getNodes().size());
     assertEquals(3, result.getUpstreamEdges().size());
     assertTrue(result.getDownstreamEdges().isEmpty());
+
+    // Expected nodes
+    assertEquals(
+        Set.of(
+            child.getFullyQualifiedName(),
+            p1.getFullyQualifiedName(),
+            p2.getFullyQualifiedName(),
+            p3.getFullyQualifiedName()),
+        result.getNodes().keySet());
+
+    // Verify upstream edges: each parent -> child
+    assertEquals(3, result.getUpstreamEdges().size());
+    Set<UUID> parentIds = Set.of(p1.getId(), p2.getId(), p3.getId());
+    for (var edge : result.getUpstreamEdges().values()) {
+      assertTrue(parentIds.contains(edge.getEntity().getId()));
+      assertEquals(child.getId(), edge.getRelatedEntity().getId());
+    }
+    assertTrue(result.getDownstreamEdges().isEmpty());
   }
 
   @Test
@@ -4821,6 +4812,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS);
     assertEquals(3, depth1Result.getNodes().size());
     assertEquals(2, depth1Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(
+            cTable.getFullyQualifiedName(), d1.getFullyQualifiedName(), d2.getFullyQualifiedName()),
+        depth1Result.getNodes().keySet());
+    assertEquals(2, depth1Result.getDownstreamEdges().size());
+    for (var edge : depth1Result.getDownstreamEdges().values()) {
+      assertEquals(cTable.getId(), edge.getEntity().getId());
+      assertTrue(Set.of(d1.getId(), d2.getId()).contains(edge.getRelatedEntity().getId()));
+    }
 
     // Downstream depth = 2 (expect C, D1, D2, G1)
     WebTarget depth2Target =
@@ -4835,5 +4835,32 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS);
     assertEquals(4, depth2Result.getNodes().size());
     assertEquals(3, depth2Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(
+            cTable.getFullyQualifiedName(),
+            d1.getFullyQualifiedName(),
+            d2.getFullyQualifiedName(),
+            g1.getFullyQualifiedName()),
+        depth2Result.getNodes().keySet());
+    assertEquals(3, depth2Result.getDownstreamEdges().size());
+    // Expected edges: C->D1, C->D2, D1->G1
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(cTable.getId())
+                        && e.getRelatedEntity().getId().equals(d1.getId())));
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(cTable.getId())
+                        && e.getRelatedEntity().getId().equals(d2.getId())));
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(d1.getId())
+                        && e.getRelatedEntity().getId().equals(g1.getId())));
   }
 }
