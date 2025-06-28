@@ -7,7 +7,7 @@ slug: /connectors/database/trino/yaml
 name="Trino"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -20,6 +20,9 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+{% collateContent %}
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
+{% /collateContent %}
 
 {% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 
