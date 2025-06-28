@@ -11,14 +11,14 @@ threads around all the various activities across any data asset. In release 0.11
 Across OpenMetadata, users can start conversations around description, column description, tags, announcements, glossary terms of a data asset by clicking the chat icon as shown in the screen-shot below.
 
 {% image
-src="/images/v1.9how-to-guides/collaboration/chat3.webp"
+src="/images/v1.9/how-to-guides/collaboration/chat3.webp"
 alt="Start a Conversation"
 caption="Start a Conversation"
 /%}
 
 Users can also reply or react with emojis for any Conversation by hovering over the conversation.
 {% image
-src="/images/v1.9how-to-guides/collaboration/chat4.webp"
+src="/images/v1.9/how-to-guides/collaboration/chat4.webp"
 alt="Reply or React to a Conversation"
 caption="Reply or React to a Conversation"
 /%}

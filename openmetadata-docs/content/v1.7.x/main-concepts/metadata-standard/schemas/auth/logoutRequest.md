@@ -1,5 +1,5 @@
 ---
-title: logoutRequest
+title: Logout Request API | OpenMetadata Logout API
 slug: /main-concepts/metadata-standard/schemas/auth/logoutrequest
 ---
 

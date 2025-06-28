@@ -1,5 +1,5 @@
 ---
-title: Data Quality Tab
+title: Data Quality Tab | OpenMetadata Quality Interface
 slug: /how-to-guides/data-quality-observability/quality/tab
 ---
 

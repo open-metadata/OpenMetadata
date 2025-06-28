@@ -1,5 +1,5 @@
 ---
-title: index
+title: Services API | OpenMetadata Service APIs
 slug: /main-concepts/metadata-standard/schemas/api/services
 ---
 

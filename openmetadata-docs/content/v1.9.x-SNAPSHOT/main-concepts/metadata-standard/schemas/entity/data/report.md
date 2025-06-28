@@ -1,5 +1,5 @@
 ---
-title: report
+title: Report Schema | OpenMetadata Report Schema Details
 slug: /main-concepts/metadata-standard/schemas/entity/data/report
 ---
 

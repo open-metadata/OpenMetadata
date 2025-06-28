@@ -1,5 +1,5 @@
 ---
-title: index
+title: Schemas Index | OpenMetadata Metadata Schemas Overview
 slug: /main-concepts/metadata-standard/schemas
 ---
 

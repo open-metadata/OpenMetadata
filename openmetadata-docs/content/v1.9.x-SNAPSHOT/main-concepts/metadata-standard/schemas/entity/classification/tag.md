@@ -1,5 +1,5 @@
 ---
-title: tag
+title: Tag Schema | OpenMetadata Tag Schema and Management API
 slug: /main-concepts/metadata-standard/schemas/entity/classification/tag
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: createPersonalToken
+title: Create Personal Token | OpenMetadata Token API
 slug: /main-concepts/metadata-standard/schemas/auth/createpersonaltoken
 ---
 

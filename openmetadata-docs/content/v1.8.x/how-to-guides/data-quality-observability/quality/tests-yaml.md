@@ -1,5 +1,5 @@
 ---
-title: Tests - YAML Config
+title: Tests - YAML Config | OpenMetadata Quality Config Guide
 slug: /how-to-guides/data-quality-observability/quality/tests-yaml
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: index
+title: Web Analytic Event Type | OpenMetadata Event Types
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype
 ---
 

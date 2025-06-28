@@ -1,5 +1,5 @@
 ---
-title: index
+title: Governance API | OpenMetadata Governance Schemas
 slug: /main-concepts/metadata-standard/schemas/api/governance
 ---
 

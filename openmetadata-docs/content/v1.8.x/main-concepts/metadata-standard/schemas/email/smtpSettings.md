@@ -1,5 +1,5 @@
 ---
-title: smtpSettings
+title: SMTP Settings | OpenMetadata SMTP Config
 slug: /main-concepts/metadata-standard/schemas/email/smtpsettings
 ---
 

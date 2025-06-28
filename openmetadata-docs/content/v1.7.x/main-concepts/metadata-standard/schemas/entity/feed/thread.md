@@ -1,5 +1,5 @@
 ---
-title: thread
+title: Thread Schema | OpenMetadata Thread Schema and API Guide
 slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 ---
 

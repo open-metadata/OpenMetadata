@@ -1,5 +1,5 @@
 ---
-title: What is Tiering
+title: What is Tiering | OpenMetadata Data Tiering Guide
 slug: /how-to-guides/data-insights/tiering
 ---
 

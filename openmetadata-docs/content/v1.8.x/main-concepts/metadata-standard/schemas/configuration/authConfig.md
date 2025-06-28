@@ -1,5 +1,5 @@
 ---
-title: authConfig
+title: Auth Config | OpenMetadata Authentication Config
 slug: /main-concepts/metadata-standard/schemas/configuration/authconfig
 ---
 
