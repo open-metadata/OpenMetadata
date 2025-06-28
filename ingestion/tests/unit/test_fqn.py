@@ -748,199 +748,207 @@ class TestFqnGrammar(TestCase):
 
     def test_unicode_handling(self):
         """Test Unicode character handling in FQNs"""
-        
+
         class UnicodeFqnTestCase:
-            def __init__(self, fqn: str, expected_parts: int, description: str, language: str = ""):
+            def __init__(
+                self,
+                fqn: str,
+                expected_parts: int,
+                description: str,
+                language: str = "",
+            ):
                 self.fqn = fqn
                 self.expected_parts = expected_parts
                 self.description = description
                 self.language = language
-                
+
         unicode_test_cases = [
             # East Asian Languages
             UnicodeFqnTestCase(
-                "service.数据库.模式.表", 4,
-                "Chinese characters (Simplified)", "Chinese"
+                "service.数据库.模式.表",
+                4,
+                "Chinese characters (Simplified)",
+                "Chinese",
             ),
             UnicodeFqnTestCase(
-                "service.資料庫.結構描述.資料表", 4,
-                "Chinese characters (Traditional)", "Chinese Traditional"
+                "service.資料庫.結構描述.資料表",
+                4,
+                "Chinese characters (Traditional)",
+                "Chinese Traditional",
             ),
             UnicodeFqnTestCase(
-                "service.データベース.スキーマ.テーブル", 4,
-                "Japanese Hiragana/Katakana", "Japanese"
+                "service.データベース.スキーマ.テーブル",
+                4,
+                "Japanese Hiragana/Katakana",
+                "Japanese",
             ),
-            UnicodeFqnTestCase(
-                "service.데이터베이스.스키마.테이블", 4,
-                "Korean Hangul", "Korean"
-            ),
-            
+            UnicodeFqnTestCase("service.데이터베이스.스키마.테이블", 4, "Korean Hangul", "Korean"),
             # European Languages
             UnicodeFqnTestCase(
-                "service.база_данных.схема.таблица", 4,
-                "Cyrillic characters (Russian)", "Russian"
+                "service.база_данных.схема.таблица",
+                4,
+                "Cyrillic characters (Russian)",
+                "Russian",
             ),
             UnicodeFqnTestCase(
-                "service.βάση_δεδομένων.σχήμα.πίνακας", 4,
-                "Greek characters", "Greek"
+                "service.βάση_δεδομένων.σχήμα.πίνακας", 4, "Greek characters", "Greek"
             ),
             UnicodeFqnTestCase(
-                "service.datenbank.schema.tabelle", 4,
-                "German with umlauts", "German"
+                "service.datenbank.schema.tabelle", 4, "German with umlauts", "German"
             ),
             UnicodeFqnTestCase(
-                "service.base_de_données.schéma.table", 4,
-                "French with accents", "French"
+                "service.base_de_données.schéma.table",
+                4,
+                "French with accents",
+                "French",
             ),
             UnicodeFqnTestCase(
-                "service.banco_de_dados.esquema.tabela", 4,
-                "Portuguese with accents", "Portuguese"
+                "service.banco_de_dados.esquema.tabela",
+                4,
+                "Portuguese with accents",
+                "Portuguese",
             ),
             UnicodeFqnTestCase(
-                "service.baza_danych.schemat.tabela", 4,
-                "Polish with special characters", "Polish"
+                "service.baza_danych.schemat.tabela",
+                4,
+                "Polish with special characters",
+                "Polish",
             ),
-            
             # Middle Eastern and RTL Languages
             UnicodeFqnTestCase(
-                "service.قاعدة_البيانات.مخطط.جدول", 4,
-                "Arabic characters (RTL)", "Arabic"
+                "service.قاعدة_البيانات.مخطط.جدول",
+                4,
+                "Arabic characters (RTL)",
+                "Arabic",
             ),
             UnicodeFqnTestCase(
-                "service.מסד_נתונים.סכמה.טבלה", 4,
-                "Hebrew characters (RTL)", "Hebrew"
+                "service.מסד_נתונים.סכמה.טבלה", 4, "Hebrew characters (RTL)", "Hebrew"
             ),
             UnicodeFqnTestCase(
-                "service.دیتابیس.اسکیما.جدول", 4,
-                "Persian/Farsi characters", "Persian"
+                "service.دیتابیس.اسکیما.جدول", 4, "Persian/Farsi characters", "Persian"
             ),
-            
             # Indian Languages
             UnicodeFqnTestCase(
-                "service.डेटाबेस.स्कीमा.तालिका", 4,
-                "Hindi Devanagari script", "Hindi"
+                "service.डेटाबेस.स्कीमा.तालिका", 4, "Hindi Devanagari script", "Hindi"
             ),
             UnicodeFqnTestCase(
-                "service.ডেটাবেস.স্কিমা.টেবিল", 4,
-                "Bengali script", "Bengali"
+                "service.ডেটাবেস.স্কিমা.টেবিল", 4, "Bengali script", "Bengali"
             ),
             UnicodeFqnTestCase(
-                "service.డేటాబేస్.స్కీమా.టేబుల్", 4,
-                "Telugu script", "Telugu"
+                "service.డేటాబేస్.స్కీమా.టేబుల్", 4, "Telugu script", "Telugu"
             ),
-            
             # Special Characters and Symbols
+            UnicodeFqnTestCase("service.🌟.⭐.✨", 4, "Emoji characters", "Emoji"),
+            UnicodeFqnTestCase("service.🚀.🛸.👽", 4, "More emoji characters", "Emoji"),
             UnicodeFqnTestCase(
-                "service.🌟.⭐.✨", 4,
-                "Emoji characters", "Emoji"
+                "service.α.β.γ.δ.ε", 6, "Greek mathematical symbols", "Greek Math"
             ),
-            UnicodeFqnTestCase(
-                "service.🚀.🛸.👽", 4,
-                "More emoji characters", "Emoji"
-            ),
-            UnicodeFqnTestCase(
-                "service.α.β.γ.δ.ε", 6,
-                "Greek mathematical symbols", "Greek Math"
-            ),
-            UnicodeFqnTestCase(
-                "service.∑.∫.∆.∇", 5,
-                "Mathematical symbols", "Math"
-            ),
-            
+            UnicodeFqnTestCase("service.∑.∫.∆.∇", 5, "Mathematical symbols", "Math"),
             # Mixed Scripts
             UnicodeFqnTestCase(
-                "service_eng.数据库_db.スキーマ_schema.表_table", 4,
-                "Mixed English and Asian scripts", "Mixed"
+                "service_eng.数据库_db.スキーマ_schema.表_table",
+                4,
+                "Mixed English and Asian scripts",
+                "Mixed",
             ),
             UnicodeFqnTestCase(
-                "service.café_データ.schéma_схема.table_表", 4,
-                "Mixed European and Asian scripts", "Mixed"
+                "service.café_データ.schéma_схема.table_表",
+                4,
+                "Mixed European and Asian scripts",
+                "Mixed",
             ),
-            
             # Complex Unicode Cases
             UnicodeFqnTestCase(
-                "service.naïve_résumé.café_señor.table", 4,
-                "Combined diacritical marks", "Diacritics"
+                "service.naïve_résumé.café_señor.table",
+                4,
+                "Combined diacritical marks",
+                "Diacritics",
             ),
             UnicodeFqnTestCase(
-                "service.ä̈ö̈ü̈.ñ̃ç̧.ß̂", 4,
-                "Multiple combining characters", "Combining"
+                "service.ä̈ö̈ü̈.ñ̃ç̧.ß̂",
+                4,
+                "Multiple combining characters",
+                "Combining",
             ),
-            
             # Quoted Unicode Names
             UnicodeFqnTestCase(
-                'service."数据库.with.dots".schema.table', 4,
-                "Quoted Unicode name with dots", "Quoted Unicode"
+                'service."数据库.with.dots".schema.table',
+                4,
+                "Quoted Unicode name with dots",
+                "Quoted Unicode",
             ),
             UnicodeFqnTestCase(
-                '"🌟.service"."データベース.db".schema.table', 4,
-                "Multiple quoted Unicode names", "Quoted Unicode"
+                '"🌟.service"."データベース.db".schema.table',
+                4,
+                "Multiple quoted Unicode names",
+                "Quoted Unicode",
             ),
         ]
 
         for test_case in unicode_test_cases:
             with self.subTest(
-                fqn=test_case.fqn, 
+                fqn=test_case.fqn,
                 language=test_case.language,
-                description=test_case.description
+                description=test_case.description,
             ):
                 # Test basic string properties
                 self.assertIsInstance(
-                    test_case.fqn, str, 
-                    f"FQN should be string: {test_case.description}"
+                    test_case.fqn, str, f"FQN should be string: {test_case.description}"
                 )
                 self.assertTrue(
-                    test_case.fqn, 
-                    f"FQN should not be empty: {test_case.description}"
+                    test_case.fqn, f"FQN should not be empty: {test_case.description}"
                 )
-                
+
                 # Test Unicode string validation
                 try:
                     # Ensure it's valid UTF-8 by encoding/decoding
-                    encoded = test_case.fqn.encode('utf-8')
-                    decoded = encoded.decode('utf-8')
+                    encoded = test_case.fqn.encode("utf-8")
+                    decoded = encoded.decode("utf-8")
                     self.assertEqual(
-                        test_case.fqn, decoded,
-                        f"FQN should survive UTF-8 round-trip: {test_case.description}"
+                        test_case.fqn,
+                        decoded,
+                        f"FQN should survive UTF-8 round-trip: {test_case.description}",
                     )
                 except UnicodeError:
                     self.fail(f"FQN contains invalid Unicode: {test_case.description}")
-                
+
                 # Test FQN splitting
                 parts = fqn.split(test_case.fqn)
                 self.assertEqual(
-                    len(parts), test_case.expected_parts,
-                    f"Expected {test_case.expected_parts} parts, got {len(parts)}: {test_case.description}"
+                    len(parts),
+                    test_case.expected_parts,
+                    f"Expected {test_case.expected_parts} parts, got {len(parts)}: {test_case.description}",
                 )
-                
+
                 # Test each part
                 for i, part in enumerate(parts):
                     self.assertIsInstance(
-                        part, str,
-                        f"Part {i} should be string: {test_case.description}"
+                        part, str, f"Part {i} should be string: {test_case.description}"
                     )
                     self.assertTrue(
-                        part, 
-                        f"Part {i} should not be empty: {test_case.description}"
+                        part, f"Part {i} should not be empty: {test_case.description}"
                     )
-                    
+
                     # Test Unicode normalization consistency
                     import unicodedata
-                    normalized = unicodedata.normalize('NFC', part)
+
+                    normalized = unicodedata.normalize("NFC", part)
                     self.assertEqual(
-                        part, normalized,
-                        f"Part {i} should be in NFC form: {test_case.description}"
+                        part,
+                        normalized,
+                        f"Part {i} should be in NFC form: {test_case.description}",
                     )
-                
+
                 # Test FQN reconstruction using public methods
                 # Join parts with dots and verify it can be split back correctly
                 reconstructed = ".".join(fqn.quote_name(part) for part in parts)
                 reconstructed_parts = fqn.split(reconstructed)
                 self.assertEqual(
-                    parts, reconstructed_parts,
-                    f"FQN should be reconstructible: {test_case.description}"
+                    parts,
+                    reconstructed_parts,
+                    f"FQN should be reconstructible: {test_case.description}",
                 )
-                
+
                 # Test quote handling for Unicode names
                 for part in parts:
                     if part.startswith('"') and part.endswith('"'):
@@ -949,8 +957,9 @@ class TestFqnGrammar(TestCase):
                         # Re-quote and verify it matches original
                         requoted = fqn.quote_name(unquoted)
                         self.assertEqual(
-                            part, requoted,
-                            f"Unicode quoted name should quote/unquote correctly: {test_case.description}"
+                            part,
+                            requoted,
+                            f"Unicode quoted name should quote/unquote correctly: {test_case.description}",
                         )
                     else:
                         # This is an unquoted part, test that quote_name works correctly
@@ -959,13 +968,14 @@ class TestFqnGrammar(TestCase):
                             # If it got quoted, it should unquote back to original
                             unquoted = fqn.unquote_name(quoted)
                             self.assertEqual(
-                                part, unquoted,
-                                f"Unicode name should quote/unquote correctly: {test_case.description}"
+                                part,
+                                unquoted,
+                                f"Unicode name should quote/unquote correctly: {test_case.description}",
                             )
-        
+
         # Test edge cases
         self._test_unicode_edge_cases()
-        
+
     def _test_unicode_edge_cases(self):
         """Test Unicode edge cases and boundary conditions"""
         edge_cases = [
@@ -973,35 +983,30 @@ class TestFqnGrammar(TestCase):
             ("service.data\u200Bbase.schema.table", "Zero-width space"),
             ("service.database\u200C.schema.table", "Zero-width non-joiner"),
             ("service.database.sche\u200Dma.table", "Zero-width joiner"),
-            
             # Directional marks
             ("service.data\u202Abase.schema.table", "Left-to-right embedding"),
             ("service.database\u202B.schema.table", "Right-to-left embedding"),
-            
             # Very long Unicode strings
             ("service." + "测" * 100 + ".schema.table", "Long Unicode component"),
-            
             # Mixed normalization forms
             ("service.café.schema.table", "NFC normalization"),
             ("service.cafe\u0301.schema.table", "NFD normalization"),
         ]
-        
+
         for fqn_str, description in edge_cases:
             with self.subTest(fqn=fqn_str, description=description):
                 try:
                     parts = fqn.split(fqn_str)
                     self.assertGreater(
-                        len(parts), 0,
-                        f"Should split into parts: {description}"
+                        len(parts), 0, f"Should split into parts: {description}"
                     )
-                    
+
                     # Test each part is valid
                     for part in parts:
                         self.assertIsInstance(part, str)
                         self.assertTrue(part)  # Non-empty
-                        
+
                 except Exception as e:
                     # Some edge cases might fail, which is acceptable
                     # Just log for debugging
                     print(f"Edge case failed (expected): {description} - {e}")
-
