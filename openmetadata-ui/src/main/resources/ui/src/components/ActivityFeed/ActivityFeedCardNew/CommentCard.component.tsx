@@ -22,10 +22,12 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -76,6 +78,11 @@ const CommentCard = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isEditPost]);
+
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: post.from ?? '',
+  });
 
   const onEditPost = () => {
     closeFeedEditor();
@@ -144,7 +151,7 @@ const CommentCard = ({
               <Link
                 className="reply-card-user-name"
                 to={getUserPath(post.from ?? '')}>
-                {post.from}
+                {getEntityName(user)}
               </Link>
             </UserPopOverCard>
           </Typography.Text>
