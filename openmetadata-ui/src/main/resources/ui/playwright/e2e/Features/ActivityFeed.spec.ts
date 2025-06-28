@@ -618,7 +618,7 @@ test.describe('Activity feed', () => {
         page2
           .locator('[data-testid="feed-reply-card"] .reply-card-user-name')
           .first()
-      ).toContainText(adminUser.responseData.name);
+      ).toContainText(adminUser.responseData.displayName);
 
       // Check that the mention text contains user2's name
       await expect(
