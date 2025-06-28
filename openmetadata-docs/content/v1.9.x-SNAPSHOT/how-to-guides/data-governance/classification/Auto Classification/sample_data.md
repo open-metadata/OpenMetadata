@@ -31,7 +31,7 @@ You can configure the Sample Data Storage Credentials at Database Service level 
 You will provide the storage credential details in advance config section of connection details form.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/sample-data-config-service.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/sample-data-config-service.png"
   alt="Database Service Storage Config"
   caption="Database Service Storage Config"
  /%}
@@ -42,14 +42,14 @@ You will provide the storage credential details in advance config section of con
 You can configure the Sample Data Storage Credentials at the Database level via the `Profiler Settings` option from the menu.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/sample-data-config-database-1.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/sample-data-config-database-1.png"
   alt="Database Storage Config - 1"
   caption="Database Storage Config - 1"
  /%}
 
 
  {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/sample-data-config-database-2.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/sample-data-config-database-2.png"
   alt="Database Storage Config - 2"
   caption="Database Storage Config - 2"
  /%}
@@ -59,14 +59,14 @@ You can configure the Sample Data Storage Credentials at the Database level via 
 You can configure the Sample Data Storage Credentials at the Database Schema level via the `Profiler Settings` option from the menu.
 
 {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/sample-data-config-schema-1.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/sample-data-config-schema-1.png"
   alt="Database Schema Storage Config - 1"
   caption="Database Schema Storage Config - 1"
  /%}
 
 
  {% image
-  src="/images/v1.9features/ingestion/workflows/profiler/sample-data-config-schema-2.png"
+  src="/images/v1.9/features/ingestion/workflows/profiler/sample-data-config-schema-2.png"
   alt="Database Schema Storage Config - 2"
   caption="Database Schema Storage Config - 2"
  /%}

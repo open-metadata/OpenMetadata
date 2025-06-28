@@ -108,4 +108,4 @@ Configure AWS as IDP.
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-{% partial file="/v1.9deployment/configure-ingestion.md" /%}
+{% partial file="/v1.9/deployment/configure-ingestion.md" /%}

@@ -12,7 +12,7 @@ To stylize your glossary terms:
 - Click on the 3 dots icon **⋮** and click on **style**
 
 {% image
-src="/images/v1.9how-to-guides/governance/style1.png"
+src="/images/v1.9/how-to-guides/governance/style1.png"
 alt="Glossary Styling"
 caption="Glossary Styling"
 /%}
@@ -20,20 +20,20 @@ caption="Glossary Styling"
 - Add a link to the **icon image**. You can also change the **font color**. Click on **Submit** to save the changes.
 
 {% image
-src="/images/v1.9how-to-guides/governance/style2.png"
+src="/images/v1.9/how-to-guides/governance/style2.png"
 alt="Add an Icon and Change the Font Colour"
 caption="Add an Icon and Change the Font Colour"
 /%}
 
 {% image
-src="/images/v1.9how-to-guides/governance/style3.png"
+src="/images/v1.9/how-to-guides/governance/style3.png"
 alt="Glossary Styling has been applied"
 caption="Glossary Styling has been applied"
 /%}
 
 When data assets are tagged with the Glossary terms, the color-coding helps for easier identification of the required data assets.
 {% image
-src="/images/v1.9how-to-guides/governance/style4.png"
+src="/images/v1.9/how-to-guides/governance/style4.png"
 alt="Tagged Data Assets"
 caption="Tagged Data Assets"
 /%}

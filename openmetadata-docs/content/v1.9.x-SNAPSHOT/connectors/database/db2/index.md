@@ -39,7 +39,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/db2/troubleshooting)
 
-{% partial file="/v1.9connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
 ## Requirements
 
@@ -71,12 +71,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Metadata Ingestion
 {% partial 
-  file="/v1.9connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "DB2", 
-    selectServicePath: "/images/v1.9connectors/db2/select-service.png",
-    addNewServicePath: "/images/v1.9connectors/db2/add-new-service.png",
-    serviceConnectionPath: "/images/v1.9connectors/db2/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/db2/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/db2/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/db2/service-connection.png",
 } 
 /%}
 
@@ -113,16 +113,16 @@ For activating a **non-Java license** for Db2 Connect **Application Server Editi
 For further reference, check this IBM post: [Everything About Db2 Connect Licensing](https://community.ibm.com/community/user/datamanagement/blogs/shilu-mathai2/2023/05/05/everything-about-db2-connect-licensing).  
 {% /note %}
 
-{% partial file="/v1.9connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.9connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.9connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.9connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.9connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}
