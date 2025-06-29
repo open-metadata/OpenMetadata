@@ -16,11 +16,11 @@ import org.openmetadata.schema.analytics.DataAssetValues;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j

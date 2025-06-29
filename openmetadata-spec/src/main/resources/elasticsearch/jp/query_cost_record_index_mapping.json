@@ -177,9 +177,8 @@
             }
           },
           "query": {
-            "type": "keyword",
-            "index": false,
-            "doc_values": false
+            "type": "text",
+            "index": false
           },
           "queryDate": {
             "type": "long"

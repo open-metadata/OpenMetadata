@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.schema.type.CustomPropertyConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -36,7 +37,6 @@ import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class BackgroundJobWorkerTest extends OpenMetadataApplicationTest {

@@ -25,11 +25,11 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -16,7 +16,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DbtGCSConfig` object. */
 public class DbtGCSConfigClassConverter extends ClassConverter {

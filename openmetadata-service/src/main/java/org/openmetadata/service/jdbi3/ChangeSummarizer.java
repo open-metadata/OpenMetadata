@@ -13,9 +13,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ChangeSummarizer<T extends EntityInterface> {

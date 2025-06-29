@@ -201,8 +201,7 @@
           },
           "query": {
             "type": "text",
-            "index": false,
-            "doc_values": false
+            "index": false
           },
           "queryDate": {
             "type": "long"

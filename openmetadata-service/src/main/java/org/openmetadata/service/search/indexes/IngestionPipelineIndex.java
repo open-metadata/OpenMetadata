@@ -7,9 +7,9 @@ import java.util.Set;
 import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;

@@ -14,6 +14,9 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      schemaFilterPattern:
+        includes:
+          - "^ADMIN$"
       type: DatabaseMetadata
       includeDDL: true
 sink:

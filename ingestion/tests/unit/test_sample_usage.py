@@ -73,7 +73,7 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.raw_product_catalog": 5,
+            "shopify.raw_product_catalog": 6,
             "dim_customer": 4,
             "fact_order": 4,
             "shopify.fact_sale": 5,

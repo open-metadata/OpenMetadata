@@ -1068,11 +1068,7 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    /**
-     * Processing Engine Configuration. If not provided, the Native Engine will be used by
-     * default.
-     */
-    processingEngine?: ProcessingEngine;
+    processingEngine?:    ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -2399,9 +2395,9 @@ export interface ProcessingEngine {
      */
     config?: { [key: string]: any };
     /**
-     * Spark Master URL (e.g. yarn, ,spark://host:port, local[*], etc.)
+     * Spark Connect Remote URL.
      */
-    master?: string;
+    remote?: string;
 }
 
 /**
@@ -3127,6 +3123,11 @@ export interface ConfigClass {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */

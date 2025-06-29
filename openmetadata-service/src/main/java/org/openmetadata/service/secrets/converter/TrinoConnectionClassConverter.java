@@ -18,7 +18,7 @@ import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.common.AzureConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.common.jwtAuth;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */
 public class TrinoConnectionClassConverter extends ClassConverter {

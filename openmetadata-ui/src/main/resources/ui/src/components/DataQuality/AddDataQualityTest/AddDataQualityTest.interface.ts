@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { Table } from '../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TagLabel, TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
@@ -91,4 +91,6 @@ export type TestCaseFormType = {
   testTypeId: string;
   computePassedFailedRowCount?: boolean;
   description?: string;
+  tags?: TagLabel[];
+  glossaryTerms?: TagLabel[];
 };
