@@ -147,6 +147,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           batchSize, result.getData().size(), result.getErrors().size());
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
+      LOG.error("Error reading batch for entityType: {} at cursor: {}", entityType, cursor, e);
       lastFailedCursor = this.cursor.get();
       int remainingRecords =
           stats.getTotalRecords() - stats.getFailedRecords() - stats.getSuccessRecords();
@@ -170,7 +171,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               .withSuccessCount(0)
               .withFailedCount(submittedRecords)
               .withMessage(
-                  "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
+                  String.format(
+                      "Failed to read batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
               .withLastFailedCursor(lastFailedCursor)
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(indexingError.getMessage());
@@ -215,12 +218,16 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           batchSize, result.getData().size(), result.getErrors().size());
 
     } catch (Exception e) {
+      LOG.error(
+          "Error reading batch for entityType: {} with cursor: {}", entityType, currentCursor, e);
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
               .withSuccessCount(0)
               .withMessage(
-                  "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
+                  String.format(
+                      "Failed to read batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(indexingError.getMessage());
       throw new SearchIndexException(indexingError);

@@ -314,38 +314,68 @@ public class AppScheduler {
       boolean isJobRunning = false;
       // Check if the job is already running
       List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+      LOG.info("Currently executing jobs count: {}", currentJobs.size());
       for (JobExecutionContext context : currentJobs) {
+        LOG.info("Running job: {}", context.getJobDetail().getKey());
         if ((jobDetailScheduled != null
                 && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
             || (jobDetailOnDemand != null
                 && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
           isJobRunning = true;
+          LOG.info("Found matching job for application: {}", application.getName());
         }
       }
       if (!isJobRunning) {
+        LOG.error(
+            "No running job found for application: {}. Scheduled key: {}, OnDemand key: {}",
+            application.getName(),
+            jobDetailScheduled != null ? jobDetailScheduled.getKey() : "null",
+            jobDetailOnDemand != null ? jobDetailOnDemand.getKey() : "null");
         throw new UnhandledServerException("There is no job running for the application.");
       }
+      // Try to interrupt the running job first
+      boolean interruptSuccessful = false;
+
+      // Check which job is actually running and interrupt it
+      for (JobExecutionContext context : currentJobs) {
+        JobKey runningJobKey = context.getJobDetail().getKey();
+        if ((jobDetailScheduled != null && runningJobKey.equals(jobDetailScheduled.getKey()))
+            || (jobDetailOnDemand != null && runningJobKey.equals(jobDetailOnDemand.getKey()))) {
+          LOG.info("Attempting to interrupt running job: {}", runningJobKey);
+          try {
+            interruptSuccessful = scheduler.interrupt(runningJobKey);
+            LOG.info("Interrupt result for {}: {}", runningJobKey, interruptSuccessful);
+
+            if (!interruptSuccessful) {
+              LOG.warn(
+                  "Interrupt returned false for job: {}. Job might not support interruption or already stopped.",
+                  runningJobKey);
+            }
+          } catch (Exception e) {
+            LOG.error("Failed to interrupt job: {}", runningJobKey, e);
+          }
+        }
+      }
+
+      // Delete the job after interrupting
       JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
       if (jobDetailScheduled != null) {
-        LOG.debug("Stopping Scheduled Execution for App: {}", application.getName());
-        scheduler.interrupt(scheduledJobKey);
+        LOG.info("Deleting Scheduled Job for App: {}", application.getName());
         try {
           scheduler.deleteJob(scheduledJobKey);
         } catch (SchedulerException ex) {
           LOG.error("Failed to delete scheduled job: {}", scheduledJobKey, ex);
         }
-      } else {
-        JobKey onDemandJobKey =
-            new JobKey(
-                String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
-        if (jobDetailOnDemand != null) {
-          LOG.debug("Stopping On Demand Execution for App: {}", application.getName());
-          scheduler.interrupt(onDemandJobKey);
-          try {
-            scheduler.deleteJob(onDemandJobKey);
-          } catch (SchedulerException ex) {
-            LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
-          }
+      }
+
+      JobKey onDemandJobKey =
+          new JobKey(String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+      if (jobDetailOnDemand != null) {
+        LOG.info("Deleting On Demand Job for App: {}", application.getName());
+        try {
+          scheduler.deleteJob(onDemandJobKey);
+        } catch (SchedulerException ex) {
+          LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
         }
       }
     } catch (SchedulerException ex) {

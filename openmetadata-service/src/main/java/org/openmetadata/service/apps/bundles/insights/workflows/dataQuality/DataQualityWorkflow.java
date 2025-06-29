@@ -120,14 +120,14 @@ public class DataQualityWorkflow {
           new OpenSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
       this.searchIndexSink =
           new ElasticSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     }
   }
 

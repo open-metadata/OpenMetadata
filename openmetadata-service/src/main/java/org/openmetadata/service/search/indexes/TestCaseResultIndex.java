@@ -42,18 +42,25 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+    // Load TestCase with minimal fields - only what we need for the index
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
             testCaseResult.getTestCaseFQN(),
-            "owners,testSuites,testDefinition,domain,tags",
+            "testSuites,testSuite,testDefinition,entityLink",
             Include.ALL);
-    TestDefinition testDefinition =
-        Entity.getEntityByName(
-            Entity.TEST_DEFINITION,
-            testCase.getTestDefinition().getFullyQualifiedName(),
-            "*",
-            Include.ALL);
+
+    // Load TestDefinition with only required fields
+    TestDefinition testDefinition = null;
+    if (testCase.getTestDefinition() != null) {
+      testDefinition =
+          Entity.getEntity(
+              Entity.TEST_DEFINITION,
+              testCase.getTestDefinition().getId(),
+              "testPlatforms,dataQualityDimension,entityType",
+              Include.ALL);
+    }
+
     // we set testSuites and testSuite at the root for cascade deletion purposes
     Map<String, Object> testCaseMap = JsonUtils.getMap(testCase);
     esDoc.put("testSuites", testCaseMap.get("testSuites"));
@@ -68,7 +75,9 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testDefinition")); // remove testCase fields not needed
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
-    esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+    if (testDefinition != null) {
+      esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+    }
     setParentRelationships(testCase, esDoc);
     return esDoc;
   }
@@ -85,11 +94,12 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   private void setTableEntityParentRelations(
       MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
+    // Only load the references we need for search indexing
     Table table =
         Entity.getEntityByName(
             Entity.TABLE,
             entityLink.getEntityFQN(),
-            "owners,columns,tags,followers,schemaDefinition,dataModel,extension,domain,dataProducts",
+            "database,databaseSchema,service",
             Include.ALL);
     EntityReference databaseSchemaReference = table.getDatabaseSchema();
     EntityReference databaseReference = table.getDatabase();

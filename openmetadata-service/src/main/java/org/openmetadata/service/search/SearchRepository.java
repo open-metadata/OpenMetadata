@@ -137,7 +137,8 @@ public class SearchRepository {
           FIELD_DISPLAY_NAME);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
-  @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
+  @Getter private final ElasticSearchConfiguration searchConfiguration;
+  @Getter private final int maxDBConnections;
 
   @Getter private final String clusterAlias;
 
@@ -154,18 +155,17 @@ public class SearchRepository {
 
   protected NLQService nlqService;
 
-  public SearchRepository(ElasticSearchConfiguration config) {
-    elasticSearchConfiguration = config;
-    searchClient = buildSearchClient(config);
+  public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
+    this.maxDBConnections = maxDBConnections;
+    searchConfiguration = config;
+    searchClient = buildSearchClient(searchConfiguration);
     searchIndexFactory = buildIndexFactory();
     language =
-        config != null && config.getSearchIndexMappingLanguage() != null
-            ? config.getSearchIndexMappingLanguage().value()
+        searchConfiguration != null && searchConfiguration.getSearchIndexMappingLanguage() != null
+            ? searchConfiguration.getSearchIndexMappingLanguage().value()
             : "en";
-    clusterAlias = config != null ? config.getClusterAlias() : "";
+    clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
     loadIndexMappings();
-
-    // Register the search index handler as the primary handler for search operations
     registerSearchIndexHandler();
   }
 
@@ -187,7 +187,7 @@ public class SearchRepository {
     if (searchClient == null) {
       synchronized (SearchRepository.class) {
         if (searchClient == null) {
-          searchClient = buildSearchClient(elasticSearchConfiguration);
+          searchClient = buildSearchClient(searchConfiguration);
         }
       }
     }
